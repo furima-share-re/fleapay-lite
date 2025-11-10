@@ -11,6 +11,155 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// --- 先頭付近に追記 ---
+import pkg from "pg";
+const { Pool } = pkg;
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+// 起動時に最低限のテーブルを自動作成
+async function initDb() {
+  await pool.query(`
+    create extension if not exists pgcrypto;
+
+    create table if not exists sellers (
+      id uuid primary key default gen_random_uuid(),
+      public_id text not null unique,
+      stripe_account_id text not null unique,
+      email text not null,
+      display_name text,
+      charges_enabled boolean default false,
+      payouts_enabled boolean default false,
+      fee_override_pct numeric(5,2),
+      created_at timestamptz default now(),
+      updated_at timestamptz default now()
+    );
+
+    create index if not exists sellers_public_id_idx on sellers(public_id);
+
+    create table if not exists pending_charges (
+      id uuid primary key default gen_random_uuid(),
+      seller_public_id text not null,
+      amount integer not null,
+      created_at timestamptz not null default now(),
+      expires_at timestamptz not null
+    );
+
+    create index if not exists idx_pending_seller_time
+      on pending_charges (seller_public_id, created_at desc);
+
+    create table if not exists payments (
+      id uuid primary key default gen_random_uuid(),
+      payment_intent_id text not null unique,
+      seller_public_id text not null,
+      seller_account_id text not null,
+      amount integer not null,
+      platform_fee integer not null,
+      status text not null,
+      created_at timestamptz default now()
+    );
+
+    create index if not exists payments_seller_idx on payments(seller_public_id, created_at);
+  `);
+  console.log("DB init done");
+}
+initDb().catch(e => { console.error("DB init error", e); });
+
+// 既にあれば不要
+import express from "express";
+import pkg from "pg";
+const { Pool } = pkg;
+
+const app = express();
+app.use(express.json());
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+// 環境変数に設定しておく：SELLER_API_TOKEN=任意の長めの文字列
+function requireSellerAuth(req, res, next) {
+  const token = req.header("x-seller-token");
+  if (!token || token !== process.env.SELLER_API_TOKEN) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+  next();
+}
+
+// 5分で失効（必要なら環境変数で調整）
+const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 5);
+
+/**
+ * POST /api/pending/start
+ * body: { sellerId: "abc123", amount: 1500 }
+ * header: x-seller-token: <SELLER_API_TOKEN>
+ */
+app.post("/api/pending/start", requireSellerAuth, async (req, res) => {
+  try {
+    const { sellerId, amount } = req.body || {};
+    const amt = Number(amount);
+
+    // 最小バリデーション
+    if (!sellerId || !Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
+      return res.status(400).json({ error: "invalid input" });
+    }
+
+    const expiresAt = new Date(Date.now() + PENDING_TTL_MIN * 60 * 1000);
+
+    await pool.query(
+      `insert into pending_charges (seller_public_id, amount, expires_at)
+       values ($1,$2,$3)`,
+      [sellerId, amt, expiresAt]
+    );
+
+    res.json({ ok: true, ttl_min: PENDING_TTL_MIN });
+  } catch (e) {
+    console.error("pending/start", e);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+/**
+ * GET /api/purchase/options?s=abc123
+ * 返却: { pending: [金額,金額,金額], presets: [500,1000,1500], ttl_min: 5 }
+ */
+app.get("/api/purchase/options", async (req, res) => {
+  try {
+    const sellerId = req.query.s;
+    if (!sellerId) return res.status(400).json({ error: "sellerId required" });
+
+    const { rows } = await pool.query(
+      `select amount from pending_charges
+       where seller_public_id=$1 and expires_at > now()
+       order by created_at desc
+       limit 20`,
+      [sellerId]
+    );
+
+    // 重複金額を除いて上から3件
+    const seen = new Set(); const pending = [];
+    for (const r of rows) {
+      if (seen.has(r.amount)) continue;
+      seen.add(r.amount);
+      pending.push(r.amount);
+      if (pending.length >= 3) break;
+    }
+
+    res.json({ pending, presets: [500, 1000, 1500], ttl_min: PENDING_TTL_MIN });
+  } catch (e) {
+    console.error("purchase/options", e);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// 例: sellerId="abc123", amount=1500
+await fetch("/api/pending/start", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-seller-token": "<あなたが設定した SELLER_API_TOKEN>"
+  },
+  body: JSON.stringify({ sellerId: "abc123", amount: 1500 })
+});
+// 成功すると { ok: true, ttl_min: 5 }
+
 // 1) Webhook（署名検証のため raw）を先に定義
 app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
