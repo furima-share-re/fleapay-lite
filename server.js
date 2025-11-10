@@ -81,5 +81,35 @@ app.post("/api/payments", async (req, res) => {
   res.json({ clientSecret: pi.client_secret, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY });
 });
 
+// --- 運営用: 出店者ステータス確認 ---
+app.post("/api/sellers/status", async (req, res) => {
+  const { accountId } = req.body;
+  if (!accountId) return res.status(400).json({ error: "accountId is required" });
+  try {
+    const acct = await stripe.accounts.retrieve(accountId);
+    res.json({
+      accountId,
+      charges_enabled: acct.charges_enabled,
+      payouts_enabled: acct.payouts_enabled,
+      requirements_due: acct.requirements?.currently_due || []
+    });
+  } catch (e) {
+    res.status(400).json({ error: String(e) });
+  }
+});
+
+// --- 運営用: Express ダッシュボードのログインリンク発行 ---
+app.post("/api/sellers/login_link", async (req, res) => {
+  const { accountId } = req.body;
+  if (!accountId) return res.status(400).json({ error: "accountId is required" });
+  try {
+    const link = await stripe.accounts.createLoginLink(accountId);
+    res.json({ url: link.url });
+  } catch (e) {
+    res.status(400).json({ error: String(e) });
+  }
+});
+
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`fleapay-lite running :${port}`));

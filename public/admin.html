@@ -1,0 +1,76 @@
+<!-- public/admin.html -->
+<!doctype html><html lang="ja"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>出店者管理 | FleaPay</title>
+<style>
+body{font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;max-width:760px;margin:40px auto;padding:0 16px}
+section{border:1px solid #eee;border-radius:12px;padding:16px;margin:16px 0}
+label{display:block;margin:8px 0}
+input,button{padding:10px;border-radius:8px;border:1px solid #ddd}
+button{cursor:pointer;border:0;background:#111;color:#fff}
+pre{background:#f7f7f7;padding:12px;border-radius:8px;white-space:pre-wrap}
+small{color:#666}
+</style>
+</head><body>
+<h1>出店者管理</h1>
+<p><small>注意：このページには必ずベーシック認証などのアクセス制限をかけてください。</small></p>
+
+<section>
+  <h2>① 出店者アカウント作成（Connect Express）</h2>
+  <label>メール <input id="email" type="email" placeholder="seller@example.com"></label>
+  <button id="create">作成</button>
+  <pre id="res1"></pre>
+</section>
+
+<section>
+  <h2>② KYCオンボーディングリンクの発行</h2>
+  <label>accountId（acct_...）<input id="acct1" placeholder="acct_XXXXXXXXXXXX"></label>
+  <button id="onboard">リンク発行</button>
+  <pre id="res2"></pre>
+</section>
+
+<section>
+  <h2>③ ステータス確認</h2>
+  <label>accountId（acct_...）<input id="acct2" placeholder="acct_XXXXXXXXXXXX"></label>
+  <button id="status">確認</button>
+  <pre id="res3"></pre>
+</section>
+
+<section>
+  <h2>④ Expressダッシュボード・ログインリンク</h2>
+  <label>accountId（acct_...）<input id="acct3" placeholder="acct_XXXXXXXXXXXX"></label>
+  <button id="loginlink">発行</button>
+  <pre id="res4"></pre>
+</section>
+
+<script>
+async function post(url, body){
+  const r = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const t = await r.text(); try { return JSON.parse(t) } catch { return t }
+}
+document.getElementById("create").onclick = async ()=>{
+  const email = (document.getElementById("email").value||"").trim();
+  document.getElementById("res1").textContent = "処理中...";
+  const res = await post("/api/sellers",{email});
+  document.getElementById("res1").textContent = JSON.stringify(res,null,2);
+};
+document.getElementById("onboard").onclick = async ()=>{
+  const accountId = (document.getElementById("acct1").value||"").trim();
+  document.getElementById("res2").textContent = "処理中...";
+  const res = await post("/api/sellers/onboarding_link",{accountId});
+  document.getElementById("res2").textContent = JSON.stringify(res,null,2);
+};
+document.getElementById("status").onclick = async ()=>{
+  const accountId = (document.getElementById("acct2").value||"").trim();
+  document.getElementById("res3").textContent = "処理中...";
+  const res = await post("/api/sellers/status",{accountId});
+  document.getElementById("res3").textContent = JSON.stringify(res,null,2);
+};
+document.getElementById("loginlink").onclick = async ()=>{
+  const accountId = (document.getElementById("acct3").value||"").trim();
+  document.getElementById("res4").textContent = "処理中...";
+  const res = await post("/api/sellers/login_link",{accountId});
+  document.getElementById("res4").textContent = JSON.stringify(res,null,2);
+};
+</script>
+</body></html>
