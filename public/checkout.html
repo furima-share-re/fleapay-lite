@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>お支払い</title>
+  <style>
+    :root { --gap: 14px; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background:#fafafa; color:#111;}
+    .wrap { max-width: 560px; margin: 6vh auto; padding: 24px; background:#fff; border-radius: 16px; box-shadow: 0 10px 24px rgba(0,0,0,.08); }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    .sub { color:#666; font-size: 14px; margin-bottom: 20px; }
+    .row { display: grid; gap: var(--gap); }
+    .amounts { display:grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); margin-top: 6px;}
+    button.amount { padding: 14px 10px; border:1px solid #e5e5e5; background:#fff; border-radius: 12px; font-size: 18px; cursor:pointer; transition: transform .02s ease, box-shadow .15s ease; }
+    button.amount:hover { box-shadow: 0 6px 14px rgba(0,0,0,.06); }
+    button.amount:disabled, button.primary:disabled { opacity:.6; cursor:not-allowed; }
+    .flex { display:flex; align-items:center; gap: 10px; }
+    .muted { color:#777; font-size: 13px; }
+    .primary { margin-top: 6px; width: 100%; padding: 14px 16px; font-size: 16px; border:0; border-radius: 12px; background:#111; color:#fff; cursor:pointer; }
+    .error { background:#fff3f3; color:#a40000; border:1px solid #ffd6d6; padding:12px; border-radius: 10px; margin-top:12px; }
+    .hidden { display:none; }
+    .ttl { font-size: 12px; color:#666; }
+    .footer { margin-top: 18px; display:flex; justify-content:space-between; align-items:center; }
+    .small { font-size: 12px; color:#888; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>お支払い</h1>
+    <div id="sellerLabel" class="sub">出店者の金額候補を取得しています…</div>
+
+    <div class="row">
+      <div>
+        <div class="muted">金額を選択</div>
+        <div id="amounts" class="amounts"></div>
+        <div id="ttlRow" class="ttl hidden">この候補は <span id="ttl"></span> で更新されます</div>
+      </div>
+
+      <button id="payBtn" class="primary" disabled>この金額で支払う</button>
+
+      <div id="error" class="error hidden"></div>
+    </div>
+
+    <div class="footer">
+      <span class="small">手数料：プラットフォーム10%込み（Checkoutで表示されます）</span>
+      <span class="small" id="accountBadge"></span>
+    </div>
+  </div>
+
+  <script type="module">
+    const $ = (sel) => document.querySelector(sel);
+    const params = new URLSearchParams(location.search);
+    const sellerPublicId = params.get("s");      // 例: "seller-abc123"（公開ID）
+    const sellerAccountId = params.get("acct");  // 例: "acct_1XYZ..."（Stripe Connectアカウント）
+
+    const fmtJPY = (n) => new Intl.NumberFormat("ja-JP", { style:"currency", currency:"JPY" }).format(n);
+
+    const state = { selectedAmount: null, pending: [], ttlSec: 0, timer: null };
+
+    // 事前チェック
+    if (!sellerPublicId) {
+      showError("URL に ?s=<sellerPublicId> を指定してください。例: /checkout.html?s=seller-abc123&acct=acct_XXXX");
+    }
+    if (!sellerAccountId) {
+      showError("URL に ?acct=<Stripe Connect AccountId> を指定してください。例: &acct=acct_XXXX");
+    }
+    $("#accountBadge").textContent = sellerAccountId ? `Connect: ${sellerAccountId}` : "";
+
+    // 初期ロード
+    if (sellerPublicId && sellerAccountId) {
+      loadOptions().catch((e)=>showError(e?.message || "金額候補の取得に失敗しました"));
+    }
+
+    async function loadOptions() {
+      $("#sellerLabel").textContent = `出店者: ${sellerPublicId}`;
+      $("#payBtn").disabled = true;
+
+      const res = await fetch(`/api/purchase/options?s=${encodeURIComponent(sellerPublicId)}`);
+      if (!res.ok) throw new Error(`金額候補APIがエラーを返しました (${res.status})`);
+      const json = await res.json(); // { pending: number[], presets: number[], ttl_min: number }
+      const { pending = [], presets = [], ttl_min = 5 } = json || {};
+
+      // pending上位3件（重複排除・最大3件）。不足分はpresetsから補完
+      const uniq = (arr) => [...new Set(arr)];
+      let amounts = uniq(pending).slice(0, 3);
+      for (const p of presets) {
+        if (amounts.length >= 3) break;
+        if (!amounts.includes(p)) amounts.push(p);
+      }
+      if (amounts.length === 0) throw new Error("有効な金額候補がありません。出店者側で金額を登録してください。");
+
+      state.pending = amounts;
+      renderAmounts(amounts);
+
+      // TTLカウントダウン
+      startTTL(ttl_min);
+    }
+
+    function renderAmounts(amounts) {
+      const box = $("#amounts");
+      box.innerHTML = "";
+      for (const a of amounts) {
+        const b = document.createElement("button");
+        b.className = "amount";
+        b.textContent = fmtJPY(a);
+        b.dataset.amount = String(a);
+        b.addEventListener("click", () => selectAmount(a, b));
+        box.appendChild(b);
+      }
+    }
+
+    function selectAmount(amount, btn) {
+      state.selectedAmount = amount;
+      // 見た目の選択状態
+      document.querySelectorAll("button.amount").forEach(el => {
+        el.style.borderColor = el === btn ? "#111" : "#e5e5e5";
+        el.style.boxShadow = el === btn ? "0 6px 14px rgba(0,0,0,.08)" : "none";
+        el.style.transform = el === btn ? "translateY(-1px)" : "none";
+      });
+      $("#payBtn").disabled = false;
+      $("#error").classList.add("hidden");
+    }
+
+    $("#payBtn").addEventListener("click", async () => {
+      try {
+        if (!state.selectedAmount) {
+          showError("金額を選択してください。");
+          return;
+        }
+        disableUI(true);
+
+        const payload = {
+          amount: state.selectedAmount,
+          sellerAccountId: sellerAccountId,
+          description: `フリマお支払い（${sellerPublicId}）`
+        };
+
+        const res = await fetch("/api/checkout/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          throw new Error(data.error || `Checkout作成に失敗しました (${res.status})`);
+        }
+        // Checkout へ遷移
+        location.href = data.url;
+      } catch (e) {
+        showError(e?.message || "エラーが発生しました。もう一度お試しください。");
+        disableUI(false);
+      }
+    });
+
+    function startTTL(ttl_min) {
+      if (state.timer) clearInterval(state.timer);
+      // 「更新目安」を分→秒でカウントダウン（UX用）
+      state.ttlSec = Math.max(1, Math.floor(ttl_min * 60));
+      $("#ttlRow").classList.remove("hidden");
+      state.timer = setInterval(() => {
+        state.ttlSec -= 1;
+        if (state.ttlSec <= 0) {
+          clearInterval(state.timer);
+          $("#ttl").textContent = "まもなく更新（再取得中…）";
+          // 自動で最新を取り直す
+          loadOptions().catch(()=>{/* 見た目はそのまま */});
+        } else {
+          const m = Math.floor(state.ttlSec / 60);
+          const s = state.ttlSec % 60;
+          $("#ttl").textContent = `${String(m).padStart(1,"0")}:${String(s).padStart(2,"0")}`;
+        }
+      }, 1000);
+    }
+
+    function disableUI(disabled) {
+      $("#payBtn").disabled = disabled;
+      document.querySelectorAll("button.amount").forEach(b => b.disabled = disabled);
+    }
+
+    function showError(msg) {
+      const e = $("#error");
+      e.textContent = msg;
+      e.classList.remove("hidden");
+    }
+  </script>
+</body>
+</html>

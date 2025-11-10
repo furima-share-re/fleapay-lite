@@ -127,6 +127,59 @@ app.post("/api/pending/start", requireSellerAuth, async (req, res) => {
   }
 });
 
+// ↑既存の import/初期化はそのまま。以下のルートを追記
+app.post("/api/checkout/session", async (req, res) => {
+  try {
+    const { amount, sellerAccountId, description } = req.body || {};
+
+    // 入力バリデーション（例：¥100〜¥1,000,000）
+    const amt = Number(amount);
+    if (!Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
+      return res.status(400).json({ error: "invalid amount" });
+    }
+    if (!sellerAccountId) {
+      return res.status(400).json({ error: "sellerAccountId required" });
+    }
+
+    const fee = Math.round(amt * 0.10); // プラットフォーム手数料（10%）
+
+    const base = process.env.BASE_URL; // 例) https://yourapp.onrender.com
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      currency: "jpy",
+      // 1行で金額指定（商品はダミー生成）
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "jpy",
+            unit_amount: amt,
+            product_data: { name: description || "お支払い" }
+          }
+        }
+      ],
+      // Connectの配布＋手数料は payment_intent_data に設定
+      payment_intent_data: {
+        application_fee_amount: fee,
+        transfer_data: { destination: sellerAccountId },
+        metadata: { sellerAccountId, amount: String(amt) }
+      },
+      // 戻り先
+      success_url: `${base}/checkout/success.html?sid={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${base}/checkout/cancel.html`,
+      // 任意オプション
+      allow_promotion_codes: false,
+      customer_creation: "if_required"
+    });
+
+    // URLで返してフロントからリダイレクトするのが一番簡単
+    res.json({ url: session.url, id: session.id });
+  } catch (e) {
+    console.error("create checkout session", e);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // ---- 購入画面の候補金額取得 ----
 app.get("/api/purchase/options", async (req, res) => {
   try {
