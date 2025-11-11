@@ -228,7 +228,8 @@
         const res = await fetch("/api/pending/start", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-seller-token": token },
-          body: JSON.stringify({ sellerId, amount })
+          body: JSON.stringify({ sellerId, amount,
+  summary: document.querySelector('#summary').value || '' })
         });
         const json = await res.json();
         if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`);
