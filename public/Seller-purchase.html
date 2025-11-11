@@ -130,8 +130,6 @@
       if (!token) return showErr('APIトークンを入力してください。');
       if (!Number.isInteger(amount) || amount < 100 || amount > 1_000_000)
         return showErr('合計金額は 100〜1,000,000 の整数で入力してください。');
-      if (!sellerAccountId)
-        return showErr('URLに Stripe アカウントID（acct）がありません。管理画面のリンクから開いてください。');
 
       toggleUI(true);
       try{
