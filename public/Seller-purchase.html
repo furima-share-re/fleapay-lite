@@ -6,14 +6,17 @@
   <title>出店者 ペンディング登録 & 固定QR案内（AI画像解析付き）</title>
   <style>
     :root{--gap:14px}
+    *{box-sizing:border-box}
     body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background:#f6f7f9;color:#111}
     .wrap{max-width:760px;margin:5vh auto;padding:24px;background:#fff;border-radius:16px;box-shadow:0 10px 24px rgba(0,0,0,.08)}
     h1{font-size:20px;margin:0 0 4px}
     h2{font-size:16px;margin:16px 0 8px;color:#333}
     .row{display:grid;gap:var(--gap)}
     label{font-size:12px;color:#666}
-    input[type="text"],input[type="number"],input[type="password"],select,textarea{width:100%;padding:12px 14px;border:1px solid #e5e5e5;border-radius:12px;font-size:16px}
-    textarea{min-height:80px;resize:vertical}
+    input[type="text"],input[type="number"],input[type="password"],select,textarea{
+      width:100%;padding:12px 14px;border:1px solid #e5e5e5;border-radius:12px;font-size:16px;background:#fff
+    }
+    textarea{min-height:84px;resize:vertical}
     .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap)}
     .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--gap)}
     .btn{padding:12px 14px;border:0;border-radius:12px;background:#111;color:#fff;font-size:16px;cursor:pointer}
@@ -28,6 +31,8 @@
     .img-preview{max-width:100%;border-radius:10px;border:1px solid #eee}
     .row-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .tag{font-size:12px;background:#f1f1f5;border:1px solid #e5e5ea;border-radius:999px;padding:4px 10px;color:#444}
+    .small{font-size:12px}
+    a.buttonlike{display:inline-block;padding:10px 14px;border-radius:12px;border:1px solid #e5e5e5;text-decoration:none;color:#111;background:#fff}
   </style>
 </head>
 <body>
@@ -38,6 +43,7 @@
     </p>
 
     <div class="row">
+      <!-- 1. 出店者・決済情報 -->
       <h2>1. 出店者・決済情報</h2>
       <div class="grid2">
         <div>
@@ -45,14 +51,14 @@
           <input id="sellerId" type="text" placeholder="例: seller-abc123" />
         </div>
         <div>
-          <label>APIトークン（x-seller-token）<span class="note">＊サーバー認証用。公開しないこと</span></label>
+          <label>APIトークン（x-seller-token）<span class="note"> ＊公開しないでください</span></label>
           <input id="token" type="password" placeholder="例: sk_seller_xxx" />
         </div>
       </div>
 
       <div class="grid2">
         <div>
-          <label>合計金額（円）<span class="note">＊ペンディング登録に使用</span></label>
+          <label>合計金額（円）<span class="note"> ＊ペンディング登録に使用</span></label>
           <input id="amount" type="number" min="100" max="1000000" step="100" value="1000" />
         </div>
         <div>
@@ -70,6 +76,7 @@
         <textarea id="summary" placeholder="例）ポケカ未開封×2、スリーブ×1（合計3点）"></textarea>
       </div>
 
+      <!-- 2. AI画像解析 -->
       <h2>2.（任意）AI画像解析で商品説明を作成</h2>
       <div class="ai-uploader">
         <div class="row-h">
@@ -78,9 +85,10 @@
           <span id="aiStatus" class="tag">待機中</span>
         </div>
         <img id="preview" class="img-preview hide" alt="preview" />
-        <p class="note">※ 画像はサーバーの <code>/api/analyze-item</code> に送られ、AIが短い説明文を返します。APIキーはサーバー側で保持してください。</p>
+        <p class="note">※ 画像は <code>/api/analyze-item</code> に送られ、AIが短い説明文を返します（APIキーはサーバー側保管）。</p>
       </div>
 
+      <!-- 3. ペンディング登録 -->
       <h2>3. 金額を「ペンディング登録」</h2>
       <div class="row-h">
         <button id="register" class="btn">金額を登録（固定QR用）</button>
@@ -88,6 +96,7 @@
       </div>
       <div id="msg" style="margin-top:8px"></div>
 
+      <!-- 参考：金額候補 -->
       <h2>参考：直近の候補金額</h2>
       <div class="grid2">
         <div>
@@ -100,41 +109,43 @@
         </div>
       </div>
 
+      <!-- 4. 固定QR -->
       <h2>4. 固定QR（購入者提示用）</h2>
       <div class="qrwrap">
         <div id="qrcode"></div>
-        <p><a id="checkoutLink" target="_blank" rel="noopener">購入者用ページを開く</a></p>
+        <p><a id="checkoutLink" class="buttonlike" target="_blank" rel="noopener">購入者用ページを開く</a></p>
         <p class="note">このQR/リンクは固定です。金額は「ペンディング登録」した最新の値が購入者側で自動反映されます。</p>
       </div>
     </div>
   </div>
 
-  <!-- 超軽量QR（SVG生成） -->
+  <!-- 最小QR（SVG生成） -->
   <script>
-  (function(g){function r(a){this.mode=1;this.data=a}function x(a,b){this.typeNumber=a;this.errorCorrectLevel=b;this.modules=null;this.moduleCount=0;this.dataList=[]}x.prototype={addData:function(a){this.dataList.push(new r(a))},isDark:function(a,b){if(!this.modules)throw"not built";return this.modules[a][b]},getModuleCount:function(){return this.moduleCount},make:function(){var a=1;for(;a<=4;a++){this.typeNumber=a;this.moduleCount=4*a+17;this.modules=Array(this.moduleCount);for(var b=0;b<this.moduleCount;b++){this.modules[b]=Array(this.moduleCount);for(var c=0;c<this.moduleCount;c++)this.modules[b][c]=null}y(this);if(z(this))break}},createSvgTag:function(a){a=a||2;for(var b=this.getModuleCount(),c='<svg xmlns="http://www.w3.org/2000/svg" width="'+a*b+'" height="'+a*b+'" viewBox="0 0 '+b+' '+b+'">',d=0;d<b;d++)for(var e=0;e<b;e++)this.isDark(d,e)&&(c+='<rect x="'+e+'" y="'+d+'" width="1" height="1" />');return c+="</svg>"}};function y(a){for(var b=0;b<a.moduleCount;b++)for(var c=0;c<a.moduleCount;c++)a.modules[b][c]=(b+c)%3==0}function z(a){for(var b=0;b<a.moduleCount;b++)for(var c=0;c<a.moduleCount;c++)if(a.modules[b][c]===null){var d=(b*c+a.typeNumber)%2===0;a.modules[b][c]=d}return true}g.MinQR=x})(this);
+    (function(g){function r(a){this.mode=1;this.data=a}function x(a,b){this.typeNumber=a;this.errorCorrectLevel=b;this.modules=null;this.moduleCount=0;this.dataList=[]}x.prototype={addData:function(a){this.dataList.push(new r(a))},isDark:function(a,b){if(!this.modules)throw"not built";return this.modules[a][b]},getModuleCount:function(){return this.moduleCount},make:function(){var a=1;for(;a<=4;a++){this.typeNumber=a;this.moduleCount=4*a+17;this.modules=Array(this.moduleCount);for(var b=0;b<this.moduleCount;b++){this.modules[b]=Array(this.moduleCount);for(var c=0;c<this.moduleCount;c++)this.modules[b][c]=null}y(this);if(z(this))break}},createSvgTag:function(a){a=a||2;for(var b=this.getModuleCount(),c='<svg xmlns="http://www.w3.org/2000/svg" width="'+a*b+'" height="'+a*b+'" viewBox="0 0 '+b+' '+b+'">',d=0;d<b;d++)for(var e=0;e<b;e++)this.isDark(d,e)&&(c+='<rect x="'+e+'" y="'+d+'" width="1" height="1" />');return c+="</svg>"}};function y(a){for(var b=0;b<a.moduleCount;b++)for(var c=0;c<a.moduleCount;c++)a.modules[b][c]=(b+c)%3==0}function z(a){for(var b=0;b<a.moduleCount;b++)for(var c=0;c<a.moduleCount;c++)if(a.modules[b][c]===null){var d=(b*c+a.typeNumber)%2===0;a.modules[b][c]=d}return true}g.MinQR=x})(this);
   </script>
 
   <script type="module">
     const $ = (s)=>document.querySelector(s);
     const params = new URLSearchParams(location.search);
 
-    // 初期値（URLパラメータ s= 出店者ID, t= トークン）
-    $('#sellerId').value = params.get('s') || '';
-    $('#token').value    = params.get('t') || '';
+    // URLから初期値を反映（s/seller, t/token 両対応）
+    const urlSeller = params.get('s') || params.get('seller') || '';
+    const urlToken  = params.get('t') || params.get('token') || '';
+    if (urlSeller) $('#sellerId').value = urlSeller;
+    if (urlToken)  $('#token').value   = urlToken;
     if (params.get('amount')) $('#amount').value = Number(params.get('amount'));
 
-    // よく使う金額プリセット
+    // プリセット
     document.querySelectorAll('[data-preset]').forEach(b=>{
       b.addEventListener('click', ()=> { $('#amount').value = b.dataset.preset; });
     });
 
-    // 固定QR（購入者ページ）リンク生成
+    // 固定QRリンク（購入者用ページ）
     function fixedCheckoutUrl(sellerId){
-      // 例: /checkout.html?s=<sellerId>
       return `${location.origin}/checkout.html?s=${encodeURIComponent(sellerId)}`;
     }
 
-    // 初期表示：sellerIdがあれば候補金額と固定QRを表示
+    // 初期：sellerIdがあれば候補金額と固定QRを描画
     if ($('#sellerId').value) {
       fetchOptions();
       setFixedQR($('#sellerId').value);
@@ -161,15 +172,32 @@
         const formData = new FormData();
         formData.append('file', f);
         const res = await fetch('/api/analyze-item', { method:'POST', body: formData });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        if (!res.ok) {
+          let msg = `HTTP ${res.status}`;
+          try {
+            const j = await res.json();
+            if (j?.error) msg = j.error;
+          } catch {}
+          throw new Error(msg);
+        }
         const json = await res.json();
         const text = (json.summary || '').trim().slice(0,200);
-        if (!text) throw new Error('空の応答');
+        if (!text) throw new Error('empty_response');
         $('#summary').value = text;
         setAiStatus('完了');
       }catch(e){
         console.error(e);
-        setAiStatus('解析に失敗しました', true);
+        const map = {
+          file_required: '画像が送信されていません',
+          unsupported_file_type: '未対応のファイル形式です（png/jpg/webp/heic 等をお試しください）',
+          file_too_large: '画像サイズが大きすぎます（10MB以下にしてください）',
+          'HTTP 400': 'リクエストが不正です（画像を選び直して再試行）',
+          'HTTP 413': '画像サイズが大きすぎます（10MB以下）',
+          'HTTP 500': 'サーバー内部エラー（OPENAI_API_KEYの設定等を確認）',
+          empty_response: 'AIの応答が空でした（別の画像でお試しください）'
+        };
+        setAiStatus(map[e.message] || `解析に失敗しました: ${e.message}`, true);
       }
     }
     function setAiStatus(t, isErr=false){
@@ -189,7 +217,6 @@
       const sellerId = $('#sellerId').value.trim();
       const token = $('#token').value.trim();
       const amount = Number($('#amount').value);
-      const description = ($('#summary').value || '').slice(0,200); // 説明文は購入時に使われます（購入者側でCheckout作成時）
 
       if (!sellerId) return showErr('出店者IDを入力してください。');
       if (!token) return showErr('APIトークンを入力してください。');
@@ -198,7 +225,6 @@
 
       toggleUI(true);
       try{
-        // 金額だけを「最新」として登録（固定QRで読む購入者ページがこの最新額を取得してCheckoutを作成する想定）
         const res = await fetch("/api/pending/start", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-seller-token": token },
@@ -208,11 +234,8 @@
         if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`);
 
         await fetchOptions();       // TTL/候補を更新
-        setFixedQR(sellerId);       // 念のため固定QRも更新
+        setFixedQR(sellerId);       // 固定QRも更新
         showOk("金額を登録しました。固定QRから購入者がアクセスするとこの金額が適用されます。");
-
-        // メモ：説明文は購入者側Checkout作成時（/api/checkout/session）に使われるため、
-        // ここでは保持のみ。必要に応じてサーバーへ記録するAPIを用意してください。
       }catch(e){
         showErr("登録に失敗しました：" + (e.message || e));
       }finally{
@@ -236,8 +259,8 @@
         if (!s) return;
         const res = await fetch(`/api/purchase/options?s=${encodeURIComponent(s)}`);
         const json = await res.json();
-        const { pending = [], ttl_min } = json;
-        $('#ttlMin').textContent = ttl_min ?? '—';
+        const { pending = [], ttl_min } = json || {};
+        $('#ttlMin').textContent = (ttl_min ?? '—');
         const list = [...new Set(pending)].slice(0,3);
         $('#latest').textContent = list.length ? list.map(n=>'¥'+Number(n).toLocaleString()).join(' / ') : '（候補なし）';
       }catch(e){
