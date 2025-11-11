@@ -23,11 +23,15 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
 const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 30); // 購入者ページ表記と合わせて30分
 
-// 画像アップロード設定（5MBまで）
+// ====== アップロード: 10MB / mimetype緩和 / メモリ格納 ======
 const upload = multer({
-  limits: { fileSize: 5 * 1024 * 1024 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (_req, file, cb) => {
-    const ok = /^image\/(png|jpe?g|webp|heic|heif)$/i.test(file.mimetype);
+    // ブラウザや端末で mimetype が崩れるケースを許容
+    const byMime = /^image\/(png|jpe?g|webp|heic|heif|gif|bmp|tiff?)$/i.test(file.mimetype);
+    const byName = /\.(png|jpe?g|jpg|webp|heic|heif|gif|bmp|tif?f)$/i.test(file.originalname || "");
+    const ok = byMime || byName || file.mimetype === "application/octet-stream";
     cb(ok ? null : new Error("unsupported_file_type"));
   }
 });
@@ -381,13 +385,35 @@ app.post("/api/analyze-item", upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "file_required" });
     }
 
-    const mime = req.file.mimetype || "image/jpeg";
+    // 受領ログ（Render Logsで確認可能）
+    console.log("analyze-item received:", {
+      name: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    });
+
+    // mimetype が octet-stream の場合は拡張子から推測
+    const mime = (() => {
+      if (req.file.mimetype && req.file.mimetype !== "application/octet-stream") return req.file.mimetype;
+      const name = (req.file.originalname || "").toLowerCase();
+      if (name.endsWith(".png")) return "image/png";
+      if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+      if (name.endsWith(".webp")) return "image/webp";
+      if (name.endsWith(".heic")) return "image/heic";
+      if (name.endsWith(".heif")) return "image/heif";
+      if (name.endsWith(".gif")) return "image/gif";
+      if (name.endsWith(".bmp")) return "image/bmp";
+      if (name.endsWith(".tif") || name.endsWith(".tiff")) return "image/tiff";
+      return "image/jpeg";
+    })();
+
     const base64 = req.file.buffer.toString("base64");
     const dataUrl = `data:${mime};base64,${base64}`;
 
-    // 50〜120文字程度、句読点・数量を維持した短い説明を生成
+    // 50〜120文字程度、数量・状態を含む要約
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
+      temperature: 0.2,
       messages: [
         {
           role: "user",
@@ -396,8 +422,7 @@ app.post("/api/analyze-item", upload.single("file"), async (req, res) => {
             { type: "image_url", image_url: dataUrl }
           ]
         }
-      ],
-      temperature: 0.2
+      ]
     });
 
     const summary = (completion.choices?.[0]?.message?.content || "").trim().slice(0, 200);
@@ -405,9 +430,14 @@ app.post("/api/analyze-item", upload.single("file"), async (req, res) => {
 
     res.json({ summary });
   } catch (e) {
-    console.error("analyze-item", e);
-    const msg = e?.message === "unsupported_file_type" ? "unsupported_file_type" : "internal_error";
-    res.status(500).json({ error: msg });
+    console.error("analyze-item error", e);
+    if (e?.message === "unsupported_file_type") {
+      return res.status(400).json({ error: "unsupported_file_type" });
+    }
+    if (e?.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ error: "file_too_large" });
+    }
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
@@ -415,7 +445,7 @@ app.post("/api/analyze-item", upload.single("file"), async (req, res) => {
 app.get("/api/ping", (req, res) => res.json({ ok: true }));
 app.use("/api", (req, res) => res.status(404).json({ error: "not_found", path: req.path }));
 
-// ====== 静的ファイル（購入者ページ checkout-matsuri.html など）は最後に配信 ======
+// ====== 静的ファイル（購入者ページなど）は最後に配信 ======
 app.use(express.static(path.join(__dirname, "public")));
 
 // ====== 共通エラーハンドラ ======
