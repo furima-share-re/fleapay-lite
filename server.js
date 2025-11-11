@@ -75,15 +75,6 @@ async function initDb() {
 }
 initDb().catch(e => console.error("DB init error", e));
 
-// ---- 認証（出店者 API 用）----
-function requireSellerAuth(req, res, next) {
-  const token = req.header("x-seller-token");
-  if (!token || token !== process.env.SELLER_API_TOKEN) {
-    return res.status(401).json({ error: "unauthorized" });
-  }
-  next();
-}
-
 // 追加：環境変数（運営者用の管理トークン）
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
 
