@@ -6,6 +6,8 @@ import { fileURLToPath } from "url";
 import cors from "cors";
 import pkg from "pg";
 import crypto from "crypto";
+import multer from "multer";
+import OpenAI from "openai";
 
 dotenv.config();
 
@@ -15,10 +17,20 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ====== 設定 ======
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
 const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 30); // 購入者ページ表記と合わせて30分
+
+// 画像アップロード設定（5MBまで）
+const upload = multer({
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = /^image\/(png|jpe?g|webp|heic|heif)$/i.test(file.mimetype);
+    cb(ok ? null : new Error("unsupported_file_type"));
+  }
+});
 
 // ====== util ======
 function genSellerToken() {
@@ -356,6 +368,46 @@ app.post(registerAndCheckoutPaths, requireSellerAuth, async (req, res) => {
   } catch (e) {
     console.error("register-and-checkout", e);
     res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ====== NEW: AI画像解析（商品写真→短い日本語説明） ======
+app.post("/api/analyze-item", upload.single("file"), async (req, res) => {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: "OPENAI_API_KEY not set" });
+    }
+    if (!req.file?.buffer) {
+      return res.status(400).json({ error: "file_required" });
+    }
+
+    const mime = req.file.mimetype || "image/jpeg";
+    const base64 = req.file.buffer.toString("base64");
+    const dataUrl = `data:${mime};base64,${base64}`;
+
+    // 50〜120文字程度、句読点・数量を維持した短い説明を生成
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "この画像に写る『販売商品』の内容を日本語で50〜120文字で簡潔に説明してください。数量・状態（新品/中古/未開封 など）が分かる場合は含め、宣伝表現は避けてください。" },
+            { type: "image_url", image_url: dataUrl }
+          ]
+        }
+      ],
+      temperature: 0.2
+    });
+
+    const summary = (completion.choices?.[0]?.message?.content || "").trim().slice(0, 200);
+    if (!summary) return res.status(422).json({ error: "empty_response" });
+
+    res.json({ summary });
+  } catch (e) {
+    console.error("analyze-item", e);
+    const msg = e?.message === "unsupported_file_type" ? "unsupported_file_type" : "internal_error";
+    res.status(500).json({ error: msg });
   }
 });
 
