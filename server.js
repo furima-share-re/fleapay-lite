@@ -35,11 +35,9 @@ function requireAdmin(req, res, next) {
 async function requireSellerAuth(req, res, next) {
   const token = req.header("x-seller-token") || "";
   const { sellerId } = req.body || {};
-  // 旧グローバル（後方互換）
   if (token && process.env.SELLER_API_TOKEN && token === process.env.SELLER_API_TOKEN) {
     return next();
   }
-  // 出店者専用トークン
   if (!sellerId || !token) return res.status(401).json({ error: "unauthorized" });
   try {
     const { rows } = await pool.query(
@@ -66,30 +64,17 @@ app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (r
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
-
-    switch (event.type) {
-      case "payment_intent.succeeded":
-        // TODO: 決済成功の保存など
-        break;
-      case "payment_intent.payment_failed":
-        // TODO: 失敗ハンドリング
-        break;
-      case "account.updated":
-        // TODO: sellers の charges_enabled/payouts_enabled 反映
-        break;
-    }
     res.json({ received: true });
   } catch (err) {
     console.error("webhook error", err);
-    res.status(400).send(`Webhook Error: ${err.message}`);
+    res.status(400).json({ error: `Webhook Error: ${err.message}` });
   }
 });
 
-// ====== それ以外は JSON パーサー ======
+// ====== JSONパーサー（通常ルート）======
 app.use(express.json({ limit: "1mb" }));
-app.use(express.static(path.join(__dirname, "public")));
 
-// ====== DB 初期化 ======
+// ====== DB初期化 ======
 async function initDb() {
   await pool.query(`
     create extension if not exists pgcrypto;
@@ -107,7 +92,6 @@ async function initDb() {
       created_at timestamptz default now(),
       updated_at timestamptz default now()
     );
-    create index if not exists sellers_public_id_idx on sellers(public_id);
 
     create table if not exists pending_charges (
       id uuid primary key default gen_random_uuid(),
@@ -116,8 +100,6 @@ async function initDb() {
       created_at timestamptz not null default now(),
       expires_at timestamptz not null
     );
-    create index if not exists idx_pending_seller_time
-      on pending_charges (seller_public_id, created_at desc);
 
     create table if not exists payments (
       id uuid primary key default gen_random_uuid(),
@@ -129,7 +111,6 @@ async function initDb() {
       status text not null,
       created_at timestamptz default now()
     );
-    create index if not exists payments_seller_idx on payments(seller_public_id, created_at);
   `);
   console.log("DB init done");
 }
@@ -139,7 +120,6 @@ initDb().catch(e => console.error("DB init error", e));
 app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
   const { publicId, email, displayName, stripeAccountId, rotate } = req.body || {};
   if (!publicId) return res.status(400).json({ error: "publicId required" });
-
   const newToken = genSellerToken();
   try {
     const q = `
@@ -162,11 +142,9 @@ app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
       !!rotate,
     ]);
     const row = rows[0];
-
     const base = process.env.BASE_URL?.replace(/\/+$/, "") || "";
     const sellerUrl = `${base}/seller.html?s=${encodeURIComponent(row.public_id)}&t=${encodeURIComponent(row.api_token)}`;
     const checkoutUrl = `${base}/checkout.html?s=${encodeURIComponent(row.public_id)}${row.stripe_account_id ? `&acct=${encodeURIComponent(row.stripe_account_id)}` : ""}`;
-
     res.json({
       publicId: row.public_id,
       stripeAccountId: row.stripe_account_id || null,
@@ -179,24 +157,13 @@ app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
   }
 });
 
-app.get("/api/sellers/resolve", requireAdmin, async (req, res) => {
-  const s = String(req.query.s || "");
-  if (!s) return res.status(400).json({ error: "sellerId required" });
-  const { rows } = await pool.query(
-    `select public_id, stripe_account_id from sellers where public_id=$1 limit 1`, [s]
-  );
-  if (rows.length === 0) return res.status(404).json({ error: "not_found" });
-  res.json(rows[0]);
-});
-
-// ====== Pending 金額の登録 ======
+// ====== Pending金額登録 ======
 app.post("/api/pending/start", requireSellerAuth, async (req, res) => {
   try {
     const { sellerId, amount } = req.body || {};
     const amt = Number(amount);
-    if (!sellerId || !Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
+    if (!sellerId || !Number.isInteger(amt) || amt < 100 || amt > 1_000_000)
       return res.status(400).json({ error: "invalid input" });
-    }
     const expiresAt = new Date(Date.now() + PENDING_TTL_MIN * 60 * 1000);
     await pool.query(
       `insert into pending_charges (seller_public_id, amount, expires_at) values ($1,$2,$3)`,
@@ -214,15 +181,12 @@ app.get("/api/purchase/options", async (req, res) => {
   try {
     const sellerId = req.query.s;
     if (!sellerId) return res.status(400).json({ error: "sellerId required" });
-
     const { rows } = await pool.query(
       `select amount from pending_charges
        where seller_public_id=$1 and expires_at > now()
-       order by created_at desc
-       limit 20`,
+       order by created_at desc limit 20`,
       [sellerId]
     );
-
     const seen = new Set(); const pending = [];
     for (const r of rows) {
       if (seen.has(r.amount)) continue;
@@ -230,7 +194,6 @@ app.get("/api/purchase/options", async (req, res) => {
       pending.push(r.amount);
       if (pending.length >= 3) break;
     }
-
     res.json({ pending, presets: [500, 1000, 1500], ttl_min: PENDING_TTL_MIN });
   } catch (e) {
     console.error("purchase/options", e);
@@ -238,21 +201,18 @@ app.get("/api/purchase/options", async (req, res) => {
   }
 });
 
-// ====== Checkout セッション作成（10%プラットフォーム手数料）======
+// ====== Checkoutセッション作成 ======
 app.post("/api/checkout/session", async (req, res) => {
   try {
     const { amount, sellerAccountId, description } = req.body || {};
     const amt = Number(amount);
-    if (!Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
+    if (!Number.isInteger(amt) || amt < 100 || amt > 1_000_000)
       return res.status(400).json({ error: "invalid amount" });
-    }
-    if (!sellerAccountId) {
+    if (!sellerAccountId)
       return res.status(400).json({ error: "sellerAccountId required" });
-    }
 
     const fee = Math.round(amt * 0.10);
     const base = process.env.BASE_URL;
-
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "jpy",
@@ -284,7 +244,7 @@ app.post("/api/checkout/session", async (req, res) => {
   }
 });
 
-// ====== Connect：アカウント作成/Onboarding等 ======
+// ====== Connectアカウント関連 ======
 app.post("/api/sellers", async (req, res) => {
   const { email } = req.body;
   const account = await stripe.accounts.create({
@@ -333,6 +293,15 @@ app.post("/api/sellers/login_link", async (req, res) => {
   } catch (e) {
     res.status(400).json({ error: String(e) });
   }
+});
+
+// ====== 静的ファイルは最後 ======
+app.use(express.static(path.join(__dirname, "public")));
+
+// ====== 共通エラーハンドラ（必ずJSON返却）======
+app.use((err, req, res, next) => {
+  console.error("unhandled", err);
+  res.status(err.status || 500).json({ error: err.message || "internal_error" });
 });
 
 // ====== 起動 ======
