@@ -24,6 +24,15 @@ const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 5);
 function genSellerToken() {
   return "sk_seller_" + crypto.randomBytes(24).toString("hex");
 }
+async function resolveSellerAccountId(sellerId, provided) {
+  if (provided) return provided;
+  if (!sellerId) return null;
+  const r = await pool.query(
+    `select stripe_account_id from sellers where public_id=$1 limit 1`,
+    [sellerId]
+  );
+  return r.rows[0]?.stripe_account_id || null;
+}
 
 // ====== 認証ミドルウェア ======
 function requireAdmin(req, res, next) {
@@ -238,11 +247,14 @@ app.get("/api/purchase/options", async (req, res) => {
 // ====== Checkout セッション作成（10%プラットフォーム手数料）======
 app.post("/api/checkout/session", async (req, res) => {
   try {
-    const { amount, sellerAccountId, description } = req.body || {};
+    const { amount, sellerAccountId: acctFromBody, description, sellerId } = req.body || {};
     const amt = Number(amount);
     if (!Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
       return res.status(400).json({ error: "invalid amount" });
     }
+
+    // ★ 自動解決：sellerAccountId が来なければ DB から取得
+    const sellerAccountId = await resolveSellerAccountId(sellerId, acctFromBody);
     if (!sellerAccountId) {
       return res.status(400).json({ error: "sellerAccountId required" });
     }
@@ -266,7 +278,7 @@ app.post("/api/checkout/session", async (req, res) => {
       payment_intent_data: {
         application_fee_amount: fee,
         transfer_data: { destination: sellerAccountId },
-        metadata: { sellerAccountId, amount: String(amt) }
+        metadata: { sellerAccountId, amount: String(amt), sellerId: sellerId || "" }
       },
       success_url: `${base}/checkout/success.html?sid={CHECKOUT_SESSION_ID}`,
       cancel_url: `${base}/checkout/cancel.html`,
@@ -292,11 +304,14 @@ const registerAndCheckoutPaths = [
 
 app.post(registerAndCheckoutPaths, requireSellerAuth, async (req, res) => {
   try {
-    const { sellerId, amount, sellerAccountId, description } = req.body || {};
+    const { sellerId, amount, sellerAccountId: acctFromBody, description } = req.body || {};
     const amt = Number(amount);
     if (!sellerId || !Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
       return res.status(400).json({ error: "invalid input" });
     }
+
+    // ★ 自動解決：acct 未指定なら sellers から取得
+    const sellerAccountId = await resolveSellerAccountId(sellerId, acctFromBody);
     if (!sellerAccountId) {
       return res.status(400).json({ error: "sellerAccountId required" });
     }
