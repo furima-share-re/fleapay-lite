@@ -18,9 +18,9 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 // ====== 設定 ======
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
-const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 5);
+const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 30); // 購入者ページ表記と合わせて30分
 
-// ====== ユーティリティ ======
+// ====== util ======
 function genSellerToken() {
   return "sk_seller_" + crypto.randomBytes(24).toString("hex");
 }
@@ -34,23 +34,18 @@ async function resolveSellerAccountId(sellerId, provided) {
   return r.rows[0]?.stripe_account_id || null;
 }
 
-// ====== 認証ミドルウェア ======
+// ====== middlewares ======
 function requireAdmin(req, res, next) {
   const t = req.header("x-admin-token");
   if (!t || t !== ADMIN_TOKEN) return res.status(401).json({ error: "unauthorized" });
   next();
 }
-
 async function requireSellerAuth(req, res, next) {
   const token = req.header("x-seller-token") || "";
   const { sellerId } = req.body || {};
-
-  // 後方互換（旧グローバルトークン）
-  if (token && process.env.SELLER_API_TOKEN && token === process.env.SELLER_API_TOKEN) {
-    return next();
-  }
+  // 後方互換（グローバルトークン）
+  if (token && process.env.SELLER_API_TOKEN && token === process.env.SELLER_API_TOKEN) return next();
   if (!sellerId || !token) return res.status(401).json({ error: "unauthorized" });
-
   try {
     const { rows } = await pool.query(
       `select 1 from sellers where public_id=$1 and api_token=$2 limit 1`,
@@ -64,27 +59,14 @@ async function requireSellerAuth(req, res, next) {
   }
 }
 
-// ====== 先にCORSだけ通す（rawを壊さない）======
 app.use(cors());
 
-// ====== Stripe Webhook（raw優先。bodyParserより前）======
+// ====== Stripe webhook (raw) ======
 app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   try {
-    const event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-    switch (event.type) {
-      case "payment_intent.succeeded":
-        // TODO: 保存など
-        break;
-      case "payment_intent.payment_failed":
-        break;
-      case "account.updated":
-        break;
-    }
+    const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    // TODO: 必要に応じてイベント処理
     res.json({ received: true });
   } catch (err) {
     console.error("webhook error", err);
@@ -92,10 +74,10 @@ app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (r
   }
 });
 
-// ====== それ以外は JSON パーサー ======
+// 以降は JSON パーサー
 app.use(express.json({ limit: "1mb" }));
 
-// ====== DB 初期化 ======
+// ====== DB init ======
 async function initDb() {
   await pool.query(`
     create extension if not exists pgcrypto;
@@ -104,7 +86,7 @@ async function initDb() {
       id uuid primary key default gen_random_uuid(),
       public_id text not null unique,
       stripe_account_id text not null unique,
-      email text not null,
+      email text,
       display_name text,
       charges_enabled boolean default false,
       payouts_enabled boolean default false,
@@ -135,13 +117,12 @@ async function initDb() {
       status text not null,
       created_at timestamptz default now()
     );
-    create index if not exists payments_seller_idx on payments(seller_public_id, created_at);
   `);
   console.log("DB init done");
 }
 initDb().catch(e => console.error("DB init error", e));
 
-// ====== 管理API：トークン発行/更新 ======
+// ====== 管理API：出店者トークン発行/更新 ======
 app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
   const { publicId, email, displayName, stripeAccountId, rotate } = req.body || {};
   if (!publicId) return res.status(400).json({ error: "publicId required" });
@@ -150,11 +131,11 @@ app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
   try {
     const q = `
       insert into sellers (public_id, email, display_name, stripe_account_id, api_token)
-      values ($1, coalesce($2,'admin@example.com'), $3, coalesce($4,''), $5)
+      values ($1, $2, $3, $4, $5)
       on conflict (public_id) do update set
-        email=excluded.email,
-        display_name=excluded.display_name,
-        stripe_account_id=case when excluded.stripe_account_id='' then sellers.stripe_account_id else excluded.stripe_account_id end,
+        email=coalesce(excluded.email, sellers.email),
+        display_name=coalesce(excluded.display_name, sellers.display_name),
+        stripe_account_id=case when excluded.stripe_account_id is null or excluded.stripe_account_id='' then sellers.stripe_account_id else excluded.stripe_account_id end,
         api_token=case when $6::bool is true then excluded.api_token else sellers.api_token end,
         updated_at=now()
       returning public_id, stripe_account_id, api_token
@@ -185,6 +166,7 @@ app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
   }
 });
 
+// 解決用（確認）
 app.get("/api/sellers/resolve", requireAdmin, async (req, res) => {
   const s = String(req.query.s || "");
   if (!s) return res.status(400).json({ error: "sellerId required" });
@@ -195,14 +177,14 @@ app.get("/api/sellers/resolve", requireAdmin, async (req, res) => {
   res.json(rows[0]);
 });
 
-// ====== Pending 金額の登録 ======
+// ====== ① 出店者：金額登録（ペンディング） ======
 app.post("/api/pending/start", requireSellerAuth, async (req, res) => {
   try {
     const { sellerId, amount } = req.body || {};
     const amt = Number(amount);
-    if (!sellerId || !Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
+    if (!sellerId || !Number.isInteger(amt) || amt < 100 || amt > 1_000_000)
       return res.status(400).json({ error: "invalid input" });
-    }
+
     const expiresAt = new Date(Date.now() + PENDING_TTL_MIN * 60 * 1000);
     await pool.query(
       `insert into pending_charges (seller_public_id, amount, expires_at) values ($1,$2,$3)`,
@@ -215,20 +197,17 @@ app.post("/api/pending/start", requireSellerAuth, async (req, res) => {
   }
 });
 
-// ====== 購入画面の候補金額 ======
+// 出店者画面用：候補一覧（上位3 & TTL）
 app.get("/api/purchase/options", async (req, res) => {
   try {
     const sellerId = req.query.s;
     if (!sellerId) return res.status(400).json({ error: "sellerId required" });
-
     const { rows } = await pool.query(
       `select amount from pending_charges
        where seller_public_id=$1 and expires_at > now()
-       order by created_at desc
-       limit 20`,
+       order by created_at desc limit 20`,
       [sellerId]
     );
-
     const seen = new Set(); const pending = [];
     for (const r of rows) {
       if (seen.has(r.amount)) continue;
@@ -236,7 +215,6 @@ app.get("/api/purchase/options", async (req, res) => {
       pending.push(r.amount);
       if (pending.length >= 3) break;
     }
-
     res.json({ pending, presets: [500, 1000, 1500], ttl_min: PENDING_TTL_MIN });
   } catch (e) {
     console.error("purchase/options", e);
@@ -244,20 +222,57 @@ app.get("/api/purchase/options", async (req, res) => {
   }
 });
 
-// ====== Checkout セッション作成（10%プラットフォーム手数料）======
+// ====== ② 購入者：最新金額取得（固定QRで開くページ用） ======
+app.get("/api/price/latest", async (req, res) => {
+  try {
+    const sellerId = String(req.query.s || "");
+    if (!sellerId) return res.status(400).json({ error: "sellerId required" });
+
+    const { rows } = await pool.query(
+      `select amount
+         from pending_charges
+        where seller_public_id = $1
+          and expires_at > now()
+        order by created_at desc
+        limit 1`,
+      [sellerId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: "not_found" });
+
+    res.json({ amount: rows[0].amount, summary: "" });
+  } catch (e) {
+    console.error("price/latest", e);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ====== ③ Checkout セッション作成（最新金額 or 指定金額） ======
 app.post("/api/checkout/session", async (req, res) => {
   try {
-    const { amount, sellerAccountId: acctFromBody, description, sellerId } = req.body || {};
-    const amt = Number(amount);
-    if (!Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
-      return res.status(400).json({ error: "invalid amount" });
-    }
+    const { amount, sellerAccountId: acctFromBody, description, sellerId, latest } = req.body || {};
 
-    // ★ 自動解決：sellerAccountId が来なければ DB から取得
-    const sellerAccountId = await resolveSellerAccountId(sellerId, acctFromBody);
-    if (!sellerAccountId) {
-      return res.status(400).json({ error: "sellerAccountId required" });
+    // latest=true かつ amount未指定なら DB から解決
+    let amt = Number(amount);
+    if (latest && (!Number.isInteger(amt) || amt < 100)) {
+      if (!sellerId) return res.status(400).json({ error: "sellerId required for latest" });
+      const r = await pool.query(
+        `select amount
+           from pending_charges
+          where seller_public_id = $1
+            and expires_at > now()
+          order by created_at desc
+          limit 1`,
+        [sellerId]
+      );
+      if (r.rows.length === 0) return res.status(400).json({ error: "latest_amount_not_found" });
+      amt = Number(r.rows[0].amount);
     }
+    if (!Number.isInteger(amt) || amt < 100 || amt > 1_000_000)
+      return res.status(400).json({ error: "invalid amount" });
+
+    // acct 自動解決
+    const sellerAccountId = await resolveSellerAccountId(sellerId, acctFromBody);
+    if (!sellerAccountId) return res.status(400).json({ error: "sellerAccountId required" });
 
     const fee = Math.round(amt * 0.10);
     const base = process.env.BASE_URL;
@@ -265,24 +280,21 @@ app.post("/api/checkout/session", async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "jpy",
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: "jpy",
-            unit_amount: amt,
-            product_data: { name: description || "お支払い" }
-          }
+      line_items: [{
+        quantity: 1,
+        price_data: {
+          currency: "jpy",
+          unit_amount: amt,
+          product_data: { name: description || "お支払い" }
         }
-      ],
+      }],
       payment_intent_data: {
         application_fee_amount: fee,
         transfer_data: { destination: sellerAccountId },
-        metadata: { sellerAccountId, amount: String(amt), sellerId: sellerId || "" }
+        metadata: { sellerAccountId, amount: String(amt), sellerId: sellerId || "", latest: String(!!latest) }
       },
       success_url: `${base}/checkout/success.html?sid={CHECKOUT_SESSION_ID}`,
       cancel_url: `${base}/checkout/cancel.html`,
-      allow_promotion_codes: false,
       customer_creation: "if_required"
     });
 
@@ -293,7 +305,7 @@ app.post("/api/checkout/session", async (req, res) => {
   }
 });
 
-// ====== (新規) 「登録して決済QRを作成」複合API（エイリアス複数）======
+// 既存：登録→Checkout作成を1発で（出店者画面向け）
 const registerAndCheckoutPaths = [
   "/api/register-and-create-qr",
   "/api/register_and_create_qr",
@@ -301,44 +313,35 @@ const registerAndCheckoutPaths = [
   "/api/register_checkout",
   "/api/flows/pending-and-checkout"
 ];
-
 app.post(registerAndCheckoutPaths, requireSellerAuth, async (req, res) => {
   try {
     const { sellerId, amount, sellerAccountId: acctFromBody, description } = req.body || {};
     const amt = Number(amount);
-    if (!sellerId || !Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
+    if (!sellerId || !Number.isInteger(amt) || amt < 100 || amt > 1_000_000)
       return res.status(400).json({ error: "invalid input" });
-    }
 
-    // ★ 自動解決：acct 未指定なら sellers から取得
     const sellerAccountId = await resolveSellerAccountId(sellerId, acctFromBody);
-    if (!sellerAccountId) {
-      return res.status(400).json({ error: "sellerAccountId required" });
-    }
+    if (!sellerAccountId) return res.status(400).json({ error: "sellerAccountId required" });
 
-    // ❶ pending_charges 登録
     const expiresAt = new Date(Date.now() + PENDING_TTL_MIN * 60 * 1000);
     await pool.query(
       `insert into pending_charges (seller_public_id, amount, expires_at) values ($1,$2,$3)`,
       [sellerId, amt, expiresAt]
     );
 
-    // ❷ Checkout Session 作成
     const fee = Math.round(amt * 0.10);
     const base = process.env.BASE_URL;
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "jpy",
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: "jpy",
-            unit_amount: amt,
-            product_data: { name: description || "お支払い" }
-          }
+      line_items: [{
+        quantity: 1,
+        price_data: {
+          currency: "jpy",
+          unit_amount: amt,
+          product_data: { name: description || "お支払い" }
         }
-      ],
+      }],
       payment_intent_data: {
         application_fee_amount: fee,
         transfer_data: { destination: sellerAccountId },
@@ -346,11 +349,9 @@ app.post(registerAndCheckoutPaths, requireSellerAuth, async (req, res) => {
       },
       success_url: `${base}/checkout/success.html?sid={CHECKOUT_SESSION_ID}`,
       cancel_url: `${base}/checkout/cancel.html`,
-      allow_promotion_codes: false,
       customer_creation: "if_required"
     });
 
-    // ❸ JSONで返却
     res.json({ ok: true, url: session.url, id: session.id, ttl_min: PENDING_TTL_MIN });
   } catch (e) {
     console.error("register-and-checkout", e);
@@ -358,16 +359,14 @@ app.post(registerAndCheckoutPaths, requireSellerAuth, async (req, res) => {
   }
 });
 
-// ====== APIのヘルス & 未定義APIをJSON化 ======
+// ====== APIヘルス/404 JSON化 ======
 app.get("/api/ping", (req, res) => res.json({ ok: true }));
-app.use("/api", (req, res) => {
-  res.status(404).json({ error: "not_found", path: req.path });
-});
+app.use("/api", (req, res) => res.status(404).json({ error: "not_found", path: req.path }));
 
-// ====== 静的ファイルは最後 ======
+// ====== 静的ファイル（購入者ページ checkout-matsuri.html など）は最後に配信 ======
 app.use(express.static(path.join(__dirname, "public")));
 
-// ====== 共通エラーハンドラ（必ずJSON返却）======
+// ====== 共通エラーハンドラ ======
 app.use((err, req, res, next) => {
   console.error("unhandled", err);
   res.status(err.status || 500).json({ error: err.message || "internal_error" });
