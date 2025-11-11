@@ -33,7 +33,7 @@ const upload = multer({
 
 // ====== 簡易レート制限 & 同一オリジン検証 ======
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1分
-const RATE_LIMIT_MAX_WRITES = 12;       // pending/start 上限
+the const RATE_LIMIT_MAX_WRITES = 12;       // pending/start 上限
 const RATE_LIMIT_MAX_CHECKOUT = 20;     // checkout/session 上限
 const hits = new Map();                 // key -> [timestamps]
 
@@ -114,11 +114,14 @@ async function initDb() {
       seller_public_id text not null,
       amount integer not null,
       created_at timestamptz not null default now(),
-      expires_at timestamptz not null
+      expires_at timestamptz not null,
+      summary text
     );
     create index if not exists idx_pending_seller_time
       on pending_charges (seller_public_id, created_at desc);
   `);
+  // 既存環境アップグレード用
+  await pool.query(`alter table if exists pending_charges add column if not exists summary text;`);
   console.log("DB init done");
 }
 initDb().catch(e => console.error("DB init error", e));
@@ -190,7 +193,7 @@ app.post("/api/pending/start", async (req, res) => {
   try {
     if (!isSameOrigin(req)) return res.status(403).json({ error: "forbidden_origin" });
 
-    const { sellerId, amount } = req.body || {};
+    const { sellerId, amount, summary } = req.body || {};
     const amt = Number(amount);
     if (!sellerId || !Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
       return res.status(400).json({ error: "invalid input" });
@@ -204,11 +207,14 @@ app.post("/api/pending/start", async (req, res) => {
 
     const ttlMin = PENDING_TTL_MIN;
     const expiresAt = new Date(Date.now() + ttlMin * 60 * 1000);
+    const safeSummary = (summary || "").toString().slice(0, 250);
+
     await pool.query(
-      `insert into pending_charges (seller_public_id, amount, expires_at) values ($1,$2,$3)`,
-      [sellerId, amt, expiresAt]
+      `insert into pending_charges (seller_public_id, amount, expires_at, summary)
+       values ($1,$2,$3,$4)`,
+      [sellerId, amt, expiresAt, safeSummary]
     );
-    audit("pending_start", { ip, sellerId, amount: amt, ttl_min: ttlMin });
+    audit("pending_start", { ip, sellerId, amount: amt, ttl_min: ttlMin, summary: safeSummary });
     res.json({ ok: true, ttl_min: ttlMin });
   } catch (e) {
     console.error("pending/start", e);
@@ -216,14 +222,14 @@ app.post("/api/pending/start", async (req, res) => {
   }
 });
 
-// ====== 購入者ページ：最新金額取得 ======
+// ====== 購入者ページ：最新金額取得（summary 付き） ======
 app.get("/api/price/latest", async (req, res) => {
   try {
     const sellerId = String(req.query.s || "");
     if (!sellerId) return res.status(400).json({ error: "sellerId required" });
 
     const { rows } = await pool.query(
-      `select amount
+      `select amount, summary
          from pending_charges
         where seller_public_id = $1
           and expires_at > now()
@@ -233,14 +239,14 @@ app.get("/api/price/latest", async (req, res) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: "not_found" });
 
-    res.json({ amount: rows[0].amount, summary: "" });
+    res.json({ amount: rows[0].amount, summary: rows[0].summary || "" });
   } catch (e) {
     console.error("price/latest", e);
     res.status(500).json({ error: "internal_error" });
   }
 });
 
-// ====== Checkout セッション作成（latest/指定金額の両対応） ======
+// ====== Checkout セッション作成（latest/指定金額の両対応 & 説明反映） ======
 app.post("/api/checkout/session", async (req, res) => {
   try {
     if (!isSameOrigin(req)) return res.status(403).json({ error: "forbidden_origin" });
@@ -252,12 +258,13 @@ app.post("/api/checkout/session", async (req, res) => {
 
     const { amount, sellerAccountId: acctFromBody, description, sellerId, latest } = req.body || {};
 
-    // latest=true で amount 無指定ならDBから解決
+    // latest=true で amount 無指定ならDBから解決（summary も取得）
     let amt = Number(amount);
+    let latestSummary = "";
     if (latest && (!Number.isInteger(amt) || amt < 100)) {
       if (!sellerId) return res.status(400).json({ error: "sellerId required for latest" });
       const r = await pool.query(
-        `select amount
+        `select amount, summary
            from pending_charges
           where seller_public_id = $1
             and expires_at > now()
@@ -267,6 +274,7 @@ app.post("/api/checkout/session", async (req, res) => {
       );
       if (r.rows.length === 0) return res.status(400).json({ error: "latest_amount_not_found" });
       amt = Number(r.rows[0].amount);
+      latestSummary = r.rows[0].summary || "";
     }
     if (!Number.isInteger(amt) || amt < 100 || amt > 1_000_000)
       return res.status(400).json({ error: "invalid amount" });
@@ -276,6 +284,8 @@ app.post("/api/checkout/session", async (req, res) => {
     if (!sellerAccountId) return res.status(400).json({ error: "sellerAccountId required" });
 
     const fee = Math.round(amt * 0.10);
+    const desc = (description || latestSummary || "").toString().slice(0, 250); // Stripe説明に載せる
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "jpy",
@@ -284,13 +294,24 @@ app.post("/api/checkout/session", async (req, res) => {
         price_data: {
           currency: "jpy",
           unit_amount: amt,
-          product_data: { name: description || "お支払い" }
+          product_data: {
+            name: "お支払い",
+            description: desc,                // ← 商品説明（領収書/明細側）
+            metadata: { summary: desc }
+          }
         }
       }],
       payment_intent_data: {
         application_fee_amount: fee,
         transfer_data: { destination: sellerAccountId },
-        metadata: { sellerAccountId, amount: String(amt), sellerId: sellerId || "", latest: String(!!latest) }
+        description: desc,                    // ← 支払い詳細の説明欄
+        metadata: {
+          sellerId: sellerId || "",
+          sellerAccountId,
+          amount: String(amt),
+          latest: String(!!latest),
+          summary: desc
+        }
       },
       success_url: `${BASE_URL}/checkout/success.html?sid={CHECKOUT_SESSION_ID}`,
       cancel_url: `${BASE_URL}/checkout/cancel.html`,
