@@ -35,10 +35,13 @@ function requireAdmin(req, res, next) {
 async function requireSellerAuth(req, res, next) {
   const token = req.header("x-seller-token") || "";
   const { sellerId } = req.body || {};
+
+  // 後方互換（旧グローバルトークン）
   if (token && process.env.SELLER_API_TOKEN && token === process.env.SELLER_API_TOKEN) {
     return next();
   }
   if (!sellerId || !token) return res.status(401).json({ error: "unauthorized" });
+
   try {
     const { rows } = await pool.query(
       `select 1 from sellers where public_id=$1 and api_token=$2 limit 1`,
@@ -55,7 +58,7 @@ async function requireSellerAuth(req, res, next) {
 // ====== 先にCORSだけ通す（rawを壊さない）======
 app.use(cors());
 
-// ====== Stripe Webhook（raw優先）======
+// ====== Stripe Webhook（raw優先。bodyParserより前）======
 app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   try {
@@ -64,6 +67,15 @@ app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (r
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
+    switch (event.type) {
+      case "payment_intent.succeeded":
+        // TODO: 保存など
+        break;
+      case "payment_intent.payment_failed":
+        break;
+      case "account.updated":
+        break;
+    }
     res.json({ received: true });
   } catch (err) {
     console.error("webhook error", err);
@@ -71,10 +83,10 @@ app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (r
   }
 });
 
-// ====== JSONパーサー（通常ルート）======
+// ====== それ以外は JSON パーサー ======
 app.use(express.json({ limit: "1mb" }));
 
-// ====== DB初期化 ======
+// ====== DB 初期化 ======
 async function initDb() {
   await pool.query(`
     create extension if not exists pgcrypto;
@@ -92,6 +104,7 @@ async function initDb() {
       created_at timestamptz default now(),
       updated_at timestamptz default now()
     );
+    create index if not exists sellers_public_id_idx on sellers(public_id);
 
     create table if not exists pending_charges (
       id uuid primary key default gen_random_uuid(),
@@ -100,6 +113,8 @@ async function initDb() {
       created_at timestamptz not null default now(),
       expires_at timestamptz not null
     );
+    create index if not exists idx_pending_seller_time
+      on pending_charges (seller_public_id, created_at desc);
 
     create table if not exists payments (
       id uuid primary key default gen_random_uuid(),
@@ -111,6 +126,7 @@ async function initDb() {
       status text not null,
       created_at timestamptz default now()
     );
+    create index if not exists payments_seller_idx on payments(seller_public_id, created_at);
   `);
   console.log("DB init done");
 }
@@ -120,6 +136,7 @@ initDb().catch(e => console.error("DB init error", e));
 app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
   const { publicId, email, displayName, stripeAccountId, rotate } = req.body || {};
   if (!publicId) return res.status(400).json({ error: "publicId required" });
+
   const newToken = genSellerToken();
   try {
     const q = `
@@ -142,9 +159,11 @@ app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
       !!rotate,
     ]);
     const row = rows[0];
+
     const base = process.env.BASE_URL?.replace(/\/+$/, "") || "";
     const sellerUrl = `${base}/seller.html?s=${encodeURIComponent(row.public_id)}&t=${encodeURIComponent(row.api_token)}`;
     const checkoutUrl = `${base}/checkout.html?s=${encodeURIComponent(row.public_id)}${row.stripe_account_id ? `&acct=${encodeURIComponent(row.stripe_account_id)}` : ""}`;
+
     res.json({
       publicId: row.public_id,
       stripeAccountId: row.stripe_account_id || null,
@@ -157,13 +176,24 @@ app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
   }
 });
 
-// ====== Pending金額登録 ======
+app.get("/api/sellers/resolve", requireAdmin, async (req, res) => {
+  const s = String(req.query.s || "");
+  if (!s) return res.status(400).json({ error: "sellerId required" });
+  const { rows } = await pool.query(
+    `select public_id, stripe_account_id from sellers where public_id=$1 limit 1`, [s]
+  );
+  if (rows.length === 0) return res.status(404).json({ error: "not_found" });
+  res.json(rows[0]);
+});
+
+// ====== Pending 金額の登録 ======
 app.post("/api/pending/start", requireSellerAuth, async (req, res) => {
   try {
     const { sellerId, amount } = req.body || {};
     const amt = Number(amount);
-    if (!sellerId || !Number.isInteger(amt) || amt < 100 || amt > 1_000_000)
+    if (!sellerId || !Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
       return res.status(400).json({ error: "invalid input" });
+    }
     const expiresAt = new Date(Date.now() + PENDING_TTL_MIN * 60 * 1000);
     await pool.query(
       `insert into pending_charges (seller_public_id, amount, expires_at) values ($1,$2,$3)`,
@@ -181,12 +211,15 @@ app.get("/api/purchase/options", async (req, res) => {
   try {
     const sellerId = req.query.s;
     if (!sellerId) return res.status(400).json({ error: "sellerId required" });
+
     const { rows } = await pool.query(
       `select amount from pending_charges
        where seller_public_id=$1 and expires_at > now()
-       order by created_at desc limit 20`,
+       order by created_at desc
+       limit 20`,
       [sellerId]
     );
+
     const seen = new Set(); const pending = [];
     for (const r of rows) {
       if (seen.has(r.amount)) continue;
@@ -194,6 +227,7 @@ app.get("/api/purchase/options", async (req, res) => {
       pending.push(r.amount);
       if (pending.length >= 3) break;
     }
+
     res.json({ pending, presets: [500, 1000, 1500], ttl_min: PENDING_TTL_MIN });
   } catch (e) {
     console.error("purchase/options", e);
@@ -201,18 +235,21 @@ app.get("/api/purchase/options", async (req, res) => {
   }
 });
 
-// ====== Checkoutセッション作成 ======
+// ====== Checkout セッション作成（10%プラットフォーム手数料）======
 app.post("/api/checkout/session", async (req, res) => {
   try {
     const { amount, sellerAccountId, description } = req.body || {};
     const amt = Number(amount);
-    if (!Number.isInteger(amt) || amt < 100 || amt > 1_000_000)
+    if (!Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
       return res.status(400).json({ error: "invalid amount" });
-    if (!sellerAccountId)
+    }
+    if (!sellerAccountId) {
       return res.status(400).json({ error: "sellerAccountId required" });
+    }
 
     const fee = Math.round(amt * 0.10);
     const base = process.env.BASE_URL;
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "jpy",
@@ -244,55 +281,72 @@ app.post("/api/checkout/session", async (req, res) => {
   }
 });
 
-// ====== Connectアカウント関連 ======
-app.post("/api/sellers", async (req, res) => {
-  const { email } = req.body;
-  const account = await stripe.accounts.create({
-    type: "express",
-    country: "JP",
-    email,
-    capabilities: { card_payments: { requested: true }, transfers: { requested: true } }
-  });
-  res.json({ accountId: account.id });
-});
+// ====== (新規) 「登録して決済QRを作成」複合API（エイリアス複数）======
+const registerAndCheckoutPaths = [
+  "/api/register-and-create-qr",
+  "/api/register_and_create_qr",
+  "/api/register-and-checkout",
+  "/api/register_checkout",
+  "/api/flows/pending-and-checkout"
+];
 
-app.post("/api/sellers/onboarding_link", async (req, res) => {
-  const { accountId } = req.body;
-  const base = process.env.BASE_URL;
-  const link = await stripe.accountLinks.create({
-    account: accountId,
-    type: "account_onboarding",
-    refresh_url: `${base}/onboarding/refresh.html`,
-    return_url: `${base}/onboarding/complete.html`
-  });
-  res.json({ url: link.url });
-});
-
-app.post("/api/sellers/status", async (req, res) => {
-  const { accountId } = req.body;
-  if (!accountId) return res.status(400).json({ error: "accountId is required" });
+app.post(registerAndCheckoutPaths, requireSellerAuth, async (req, res) => {
   try {
-    const acct = await stripe.accounts.retrieve(accountId);
-    res.json({
-      accountId,
-      charges_enabled: acct.charges_enabled,
-      payouts_enabled: acct.payouts_enabled,
-      requirements_due: acct.requirements?.currently_due || []
+    const { sellerId, amount, sellerAccountId, description } = req.body || {};
+    const amt = Number(amount);
+    if (!sellerId || !Number.isInteger(amt) || amt < 100 || amt > 1_000_000) {
+      return res.status(400).json({ error: "invalid input" });
+    }
+    if (!sellerAccountId) {
+      return res.status(400).json({ error: "sellerAccountId required" });
+    }
+
+    // ❶ pending_charges 登録
+    const expiresAt = new Date(Date.now() + PENDING_TTL_MIN * 60 * 1000);
+    await pool.query(
+      `insert into pending_charges (seller_public_id, amount, expires_at) values ($1,$2,$3)`,
+      [sellerId, amt, expiresAt]
+    );
+
+    // ❷ Checkout Session 作成
+    const fee = Math.round(amt * 0.10);
+    const base = process.env.BASE_URL;
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      currency: "jpy",
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "jpy",
+            unit_amount: amt,
+            product_data: { name: description || "お支払い" }
+          }
+        }
+      ],
+      payment_intent_data: {
+        application_fee_amount: fee,
+        transfer_data: { destination: sellerAccountId },
+        metadata: { sellerId, sellerAccountId, amount: String(amt) }
+      },
+      success_url: `${base}/checkout/success.html?sid={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${base}/checkout/cancel.html`,
+      allow_promotion_codes: false,
+      customer_creation: "if_required"
     });
+
+    // ❸ JSONで返却
+    res.json({ ok: true, url: session.url, id: session.id, ttl_min: PENDING_TTL_MIN });
   } catch (e) {
-    res.status(400).json({ error: String(e) });
+    console.error("register-and-checkout", e);
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
-app.post("/api/sellers/login_link", async (req, res) => {
-  const { accountId } = req.body;
-  if (!accountId) return res.status(400).json({ error: "accountId is required" });
-  try {
-    const link = await stripe.accounts.createLoginLink(accountId);
-    res.json({ url: link.url });
-  } catch (e) {
-    res.status(400).json({ error: String(e) });
-  }
+// ====== APIのヘルス & 未定義APIをJSON化 ======
+app.get("/api/ping", (req, res) => res.json({ ok: true }));
+app.use("/api", (req, res) => {
+  res.status(404).json({ error: "not_found", path: req.path });
 });
 
 // ====== 静的ファイルは最後 ======
@@ -307,11 +361,3 @@ app.use((err, req, res, next) => {
 // ====== 起動 ======
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`fleapay-lite running :${port}`));
-
-// ヘルスチェック
-app.get("/api/ping", (req, res) => res.json({ ok: true }));
-
-// 未定義の /api/* は必ず JSON 404 を返す（HTMLに落ちない）
-app.use("/api", (req, res) => {
-  res.status(404).json({ error: "not_found", path: req.path });
-});
