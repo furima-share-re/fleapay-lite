@@ -3,18 +3,24 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>出店者管理 | FleaPay</title>
 <style>
-body{font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;max-width:760px;margin:40px auto;padding:0 16px}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:760px;margin:40px auto;padding:0 16px}
 section{border:1px solid #eee;border-radius:12px;padding:16px;margin:16px 0}
 label{display:block;margin:8px 0}
 input,button{padding:10px;border-radius:8px;border:1px solid #ddd}
 button{cursor:pointer;border:0;background:#111;color:#fff}
+button.ghost{background:#fff;color:#111;border:1px solid #ddd}
 pre{background:#f7f7f7;padding:12px;border-radius:8px;white-space:pre-wrap}
 small{color:#666}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.box{border:1px dashed #ddd;border-radius:8px;padding:10px;background:#fafafa;word-break:break-all}
+.ok{background:#f0fff5;color:#0a7a2f;border:1px solid #b9f0cd;padding:10px;border-radius:8px;margin-top:8px}
+.err{background:#fff3f3;color:#a40000;border:1px solid #ffd6d6;padding:10px;border-radius:8px;margin-top:8px}
 </style>
 </head><body>
 <h1>出店者管理</h1>
-<p><small>注意：このページには必ずベーシック認証などのアクセス制限をかけてください。</small></p>
+<p><small>注意：このページには必ずアクセス制限（Basic認証など）をかけてください。</small></p>
 
+<!-- ① 〜 ④：既存機能（そのまま） -->
 <section>
   <h2>① 出店者アカウント作成（Connect Express）</h2>
   <label>メール <input id="email" type="email" placeholder="seller@example.com"></label>
@@ -41,6 +47,48 @@ small{color:#666}
   <label>accountId（acct_...）<input id="acct3" placeholder="acct_XXXXXXXXXXXX"></label>
   <button id="loginlink">発行</button>
   <pre id="res4"></pre>
+</section>
+
+<!-- ⑤ 出店者トークン発行 & 共有URL自動生成（新規） -->
+<section>
+  <h2>⑤ 出店者トークン発行 & 共有URL自動生成（運営者専用）</h2>
+  <div class="grid">
+    <label>運営トークン（x-admin-token）
+      <input id="adminToken" type="password" placeholder="例: admin-devtoken">
+    </label>
+    <label>出店者 公開ID（publicId）
+      <input id="publicId" type="text" placeholder="例: seller-abc123">
+    </label>
+  </div>
+  <div class="grid">
+    <label>メール（任意）
+      <input id="sellerEmail" type="email" placeholder="shop@example.com">
+    </label>
+    <label>表示名（任意）
+      <input id="displayName" type="text" placeholder="花子商店">
+    </label>
+  </div>
+  <label>Stripe Connect アカウントID（acct_… 任意・後で更新可）
+    <input id="sellerAcct" type="text" placeholder="acct_1Pxxxxxxx">
+  </label>
+
+  <div class="grid" style="margin-top:8px">
+    <button id="issue" class="ghost">新規発行 / 更新</button>
+    <button id="rotate" class="ghost">トークンをローテーション</button>
+  </div>
+
+  <div id="msg"></div>
+
+  <h3>共有URL</h3>
+  <label>出店者 金額登録URL（seller.html）
+    <div id="sellerUrl" class="box">—</div>
+  </label>
+  <button class="ghost" onclick="copyBox('#sellerUrl')">コピー</button>
+
+  <label>購入ページURL（checkout.html）
+    <div id="checkoutUrl" class="box">—</div>
+  </label>
+  <button class="ghost" onclick="copyBox('#checkoutUrl')">コピー</button>
 </section>
 
 <script>
@@ -71,6 +119,50 @@ document.getElementById("loginlink").onclick = async ()=>{
   document.getElementById("res4").textContent = "処理中...";
   const res = await post("/api/sellers/login_link",{accountId});
   document.getElementById("res4").textContent = JSON.stringify(res,null,2);
+};
+
+/* ⑤ 用ユーティリティ */
+function setMsg(type,text){
+  const m = document.getElementById('msg');
+  m.className = type==='ok' ? 'ok' : 'err';
+  m.textContent = text;
+}
+async function callIssue(rotate){
+  setMsg('', '');
+  const adminToken = (document.getElementById('adminToken').value||'').trim();
+  const publicId   = (document.getElementById('publicId').value||'').trim();
+  const email      = (document.getElementById('sellerEmail').value||'').trim();
+  const display    = (document.getElementById('displayName').value||'').trim();
+  const acct       = (document.getElementById('sellerAcct').value||'').trim();
+
+  if(!adminToken) return setMsg('err','運営トークンを入力してください');
+  if(!publicId)   return setMsg('err','publicId を入力してください');
+
+  try{
+    const r = await fetch('/api/admin/sellers/issue_token',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-admin-token':adminToken},
+      body: JSON.stringify({
+        publicId, email: email||undefined, displayName: display||undefined,
+        stripeAccountId: acct||undefined, rotate: !!rotate
+      })
+    });
+    const j = await r.json();
+    if(!r.ok || j.error) throw new Error(j.error || ('HTTP '+r.status));
+    setMsg('ok','発行/更新しました');
+    document.getElementById('sellerUrl').textContent   = j.urls?.sellerUrl || '—';
+    document.getElementById('checkoutUrl').textContent = j.urls?.checkoutUrl || 'acct 未設定';
+  }catch(e){
+    setMsg('err', e.message || String(e));
+  }
+}
+document.getElementById('issue').onclick  = ()=>callIssue(false);
+document.getElementById('rotate').onclick = ()=>callIssue(true);
+
+window.copyBox = (sel)=>{
+  const t = document.querySelector(sel).textContent;
+  if(!t || t==='—') return;
+  navigator.clipboard.writeText(t).then(()=>setMsg('ok','コピーしました')).catch(()=>{});
 };
 </script>
 </body></html>

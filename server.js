@@ -16,9 +16,23 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+const params = new URLSearchParams(location.search);
+const s = params.get('s');            // publicId
+const t = params.get('t');            // 専用トークン
+if (s) $('#sellerId').value = s;
+if (t) $('#token').value = t;
+// 両方あれば入力欄を隠す = 金額だけUI
+if (s && t) {
+  $('#sellerId').closest('div').style.display = 'none';
+  $('#token').closest('div').style.display = 'none';
+}
+
 // ---- DB 初期化（起動時1回）----
 async function initDb() {
   await pool.query(`
+
+    alter table if exists sellers add column if not exists api_token text unique;
+
     create extension if not exists pgcrypto;
 
     create table if not exists sellers (
@@ -70,6 +84,45 @@ function requireSellerAuth(req, res, next) {
   next();
 }
 
+// 追加：環境変数（運営者用の管理トークン）
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
+
+// util: ランダムな売り手用トークンを生成
+import crypto from "crypto";
+function genSellerToken() {
+  return "sk_seller_" + crypto.randomBytes(24).toString("hex"); // 52文字程度
+}
+
+// middleware: 運営API用の簡易認証
+function requireAdmin(req, res, next) {
+  const t = req.header("x-admin-token");
+  if (!t || t !== ADMIN_TOKEN) return res.status(401).json({ error: "unauthorized" });
+  next();
+}
+
+// middleware: 出店者の価格登録API用認証（出店者専用 or 旧グローバルでもOKに）
+async function requireSellerAuth(req, res, next) {
+  const token = req.header("x-seller-token") || "";
+  const { sellerId } = req.body || {};
+  // ① 運営の旧グローバルトークンでも通す（後方互換）
+  if (token && process.env.SELLER_API_TOKEN && token === process.env.SELLER_API_TOKEN) {
+    return next();
+  }
+  // ② 出店者専用トークン（sellerIdとペア）で認証
+  if (!sellerId || !token) return res.status(401).json({ error: "unauthorized" });
+  try {
+    const { rows } = await pool.query(
+      `select 1 from sellers where public_id=$1 and api_token=$2 limit 1`,
+      [sellerId, token]
+    );
+    if (rows.length === 0) return res.status(401).json({ error: "unauthorized" });
+    return next();
+  } catch (e) {
+    console.error("auth error", e);
+    return res.status(500).json({ error: "internal_error" });
+  }
+}
+
 // ---- 先に CORS だけ許可（raw を壊さない）----
 app.use(cors());
 
@@ -106,6 +159,63 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 5);
+
+// 出店者の登録/更新 & 専用トークン発行（新規 or ローテーション）
+// 保護: x-admin-token: ADMIN_TOKEN
+app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
+  const { publicId, email, displayName, stripeAccountId, rotate } = req.body || {};
+  if (!publicId) return res.status(400).json({ error: "publicId required" });
+
+  const newToken = genSellerToken();
+  try {
+    // upsert
+    const q = `
+      insert into sellers (public_id, email, display_name, stripe_account_id, api_token)
+      values ($1, coalesce($2,'admin@example.com'), $3, coalesce($4,''), $5)
+      on conflict (public_id) do update set
+        email=excluded.email,
+        display_name=excluded.display_name,
+        stripe_account_id=case when excluded.stripe_account_id='' then sellers.stripe_account_id else excluded.stripe_account_id end,
+        api_token=case when $6::bool is true then excluded.api_token else sellers.api_token end,
+        updated_at=now()
+      returning public_id, stripe_account_id, api_token
+    `;
+    const { rows } = await pool.query(q, [
+      publicId,
+      email || null,
+      displayName || null,
+      stripeAccountId || "",
+      newToken,
+      !!rotate, // rotate=trueなら新トークンに置き換え
+    ]);
+
+    const row = rows[0];
+    // URLの生成（seller.html / checkout.html）
+    const base = process.env.BASE_URL?.replace(/\/+$/, "") || "";
+    const sellerUrl = `${base}/seller.html?s=${encodeURIComponent(row.public_id)}&t=${encodeURIComponent(row.api_token)}`;
+    const checkoutUrl = `${base}/checkout.html?s=${encodeURIComponent(row.public_id)}${row.stripe_account_id ? `&acct=${encodeURIComponent(row.stripe_account_id)}` : ""}`;
+
+    res.json({
+      publicId: row.public_id,
+      stripeAccountId: row.stripe_account_id || null,
+      apiToken: row.api_token,
+      urls: { sellerUrl, checkoutUrl }
+    });
+  } catch (e) {
+    console.error("issue_token", e);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+app.get("/api/sellers/resolve", requireAdmin, async (req, res) => {
+  const s = String(req.query.s || "");
+  if (!s) return res.status(400).json({ error: "sellerId required" });
+  const { rows } = await pool.query(
+    `select public_id, stripe_account_id from sellers where public_id=$1 limit 1`, [s]
+  );
+  if (rows.length === 0) return res.status(404).json({ error: "not_found" });
+  res.json(rows[0]);
+});
 
 // ---- Pending 金額の登録 ----
 app.post("/api/pending/start", requireSellerAuth, async (req, res) => {

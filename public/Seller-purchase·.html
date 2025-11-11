@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>出店者 購入登録 & 決済QR</title>
+  <style>
+    :root{--gap:14px}
+    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background:#f6f7f9;color:#111}
+    .wrap{max-width:720px;margin:5vh auto;padding:24px;background:#fff;border-radius:16px;box-shadow:0 10px 24px rgba(0,0,0,.08)}
+    h1{font-size:20px;margin:0 0 4px}
+    h2{font-size:16px;margin:16px 0 8px;color:#333}
+    .row{display:grid;gap:var(--gap)}
+    label{font-size:12px;color:#666}
+    input[type="text"],input[type="number"],input[type="password"],select,textarea{width:100%;padding:12px 14px;border:1px solid #e5e5e5;border-radius:12px;font-size:16px}
+    textarea{min-height:80px;resize:vertical}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap)}
+    .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--gap)}
+    .btn{padding:12px 14px;border:0;border-radius:12px;background:#111;color:#fff;font-size:16px;cursor:pointer}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .ghost{background:#fff;color:#111;border:1px solid #e5e5e5}
+    .note{font-size:12px;color:#777}
+    .error{background:#fff3f3;color:#a40000;border:1px solid #ffd6d6;padding:10px;border-radius:10px}
+    .ok{background:#f0fff5;color:#0a7a2f;border:1px solid #b9f0cd;padding:10px;border-radius:10px}
+    .flex{display:flex;gap:10px;align-items:center}
+    .qrwrap{display:grid;place-items:center;border:1px dashed #ddd;border-radius:12px;padding:16px}
+    .hide{display:none}
+  </style>
+  <style>
+    /* 購入者用のシンプルビュー */
+    .buyerBox{margin-top:12px;padding:18px;border:1px solid #eee;border-radius:12px;background:#fafbff}
+    .amt{font-size:28px;font-weight:700;margin:6px 0}
+    .fade{color:#666;font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>出店者 購入登録 & 決済QR / 固定QRモード対応</h1>
+    <p class="note">フロー：①購入決定 → ②（任意）写真撮影 → ③合計と購入者情報を入力 → ④登録 → ⑤QR決済 → ⑥入金確認 → ⑦引渡</p>
+
+    <div class="buyerBox hide" id="buyerBox">
+      <div class="fade">固定QR → 最新金額を自動表示 → 購入</div>
+      <div id="buyerInfo">
+        <div class="amt" id="buyerAmount">—</div>
+        <div id="buyerSummary" class="note">—</div>
+      </div>
+      <div class="flex" style="margin-top:10px">
+        <button id="buyerPay" class="btn">この内容で支払う</button>
+      </div>
+      <div id="buyerMsg" class="note" style="margin-top:8px"></div>
+    </div>
+
+    <div class="row">
+      <h2>1. 出店者・決済情報</h2>
+      <div class="grid2">
+        <div>
+          <label>出店者ID（sellerPublicId）</label>
+          <input id="sellerId" type="text" placeholder="例: seller-abc123" />
+        </div>
+        <div>
+          <label>APIトークン（x-seller-token）</label>
+          <input id="token" type="password" placeholder="例: devtoken123" />
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label>合計金額（円）<span class="note">＊必須</span></label>
+          <input id="amount" type="number" min="100" max="1000000" step="100" value="1000" />
+        </div>
+        <div>
+          <label>よく使う金額</label>
+          <div class="grid3">
+            <button class="ghost" data-preset="500">¥500</button>
+            <button class="ghost" data-preset="1000">¥1,000</button>
+            <button class="ghost" data-preset="1500">¥1,500</button>
+          </div>
+        </div>
+      </div>
+
+      <h2>2. （任意）写真→AI要約</h2>
+      <div class="grid2">
+        <div>
+          <label>写真アップロード（保存しません／最大3枚）</label>
+          <input id="photos" type="file" accept="image/*" multiple />
+          <p class="note">アップロードされた画像はサーバーに保存されません。AI要約後に破棄されます。</p>
+        </div>
+        <div class="flex" style="align-items:flex-end;justify-content:flex-start">
+          <button id="ai" class="btn" type="button">写真から要約を生成</button>
+          <button id="clearSummary" class="ghost btn" type="button">要約クリア</button>
+        </div>
+      </div>
+      <div>
+        <label>商品概要（AI要約／手動編集可）</label>
+        <textarea id="summary" placeholder="例）ポケカ未開封×2、スリーブ×1（合計3点）"></textarea>
+      </div>
+
+      <h2>3. 購入者情報（任意）</h2>
+      <div class="grid3">
+        <div>
+          <label>居住区分</label>
+          <select id="resident">
+            <option value="">未選択</option>
+            <option value="domestic">国内</option>
+            <option value="inbound">インバウンド</option>
+          </select>
+        </div>
+        <div>
+          <label>属性</label>
+          <select id="gender">
+            <option value="">未選択</option>
+            <option value="male">男性</option>
+            <option value="female">女性</option>
+            <option value="child">子供</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+        <div>
+          <label>年齢帯</label>
+          <select id="age">
+            <option value="">未選択</option>
+            <option value="0-12">0-12</option>
+            <option value="13-18">13-18</option>
+            <option value="19-29">19-29</option>
+            <option value="30-49">30-49</option>
+            <option value="50+">50+</option>
+          </select>
+        </div>
+      </div>
+
+      <h2>4-5. 情報登録 → 決済QR 作成</h2>
+      <div class="flex">
+        <button id="register" class="btn">登録して決済QRを作成</button>
+        <button id="reset" class="ghost btn" type="button">リセット</button>
+      </div>
+
+      <div id="msg"></div>
+
+      <div id="qrbox" class="qrwrap hide">
+        <div id="qrcode"></div>
+        <p><a id="checkoutLink" target="_blank" rel="noopener">Stripe決済画面を開く</a></p>
+        <p class="note">顧客がQRを読み取って、Stripe画面で合計金額を確認の上、購入します。</p>
+      </div>
+
+      <h2>参考：直近の候補金額</h2>
+      <div class="grid2">
+        <div>
+          <label>TTL（分）</label>
+          <div id="ttlMin" class="note">—</div>
+        </div>
+        <div>
+          <label>上位3候補</label>
+          <div id="latest" class="note">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- シンプルQRコード生成（軽量） -->
+  <script>
+  /*! qrcode-generator (minimal) */
+  // 簡略版・誤り訂正Lで十分。実装は最小限（参照: Kazuhiko Arase MIT）。
+  // ここでは埋め込みの最小実装（URLが長すぎる場合は短縮を推奨）。
+  (function(g){function r(a){this.mode=1;this.data=a}function x(a,b){this.typeNumber=a;this.errorCorrectLevel=b;this.modules=null;this.moduleCount=0;this.dataList=[]}x.prototype={addData:function(a){this.dataList.push(new r(a))},isDark:function(a,b){if(!this.modules)throw"not built";return this.modules[a][b]},getModuleCount:function(){return this.moduleCount},make:function(){var a=1;for(;a<=4;a++){this.typeNumber=a;this.moduleCount=4*a+17;this.modules=Array(this.moduleCount);for(var b=0;b<this.moduleCount;b++){this.modules[b]=Array(this.moduleCount);for(var c=0;c<this.moduleCount;c++)this.modules[b][c]=null}y(this);if(z(this))break}},createSvgTag:function(a){a=a||2;for(var b=this.getModuleCount(),c='<svg xmlns="http://www.w3.org/2000/svg" width="'+a*b+'" height="'+a*b+'" viewBox="0 0 '+b+' '+b+'">',d=0;d<b;d++)for(var e=0;e<b;e++)this.isDark(d,e)&&(c+='<rect x="'+e+'" y="'+d+'" width="1" height="1" />');return c+="</svg>"}};function y(a){for(var b=0;b<a.moduleCount;b++)for(var c=0;c<a.moduleCount;c++)a.modules[b][c]=(b+c)%3==0}function z(a){for(var b=0;b<a.moduleCount;b++)for(var c=0;c<a.moduleCount;c++)if(a.modules[b][c]===null){var d=(b*c+a.typeNumber)%2===0;a.modules[b][c]=d}return true}g.MinQR=x})(this);
+  </script>
+
+  <script type="module">
+    const $ = (s)=>document.querySelector(s);
+    const params = new URLSearchParams(location.search);
+
+    // 初期値（旧画面互換）
+    $('#sellerId').value = params.get('s') || '';
+    $('#token').value    = params.get('token') || '';
+    if (params.get('amount')) $('#amount').value = Number(params.get('amount'));
+
+    // よく使う金額プリセット
+    document.querySelectorAll('[data-preset]').forEach(b=>{
+      b.addEventListener('click', ()=> { $('#amount').value = b.dataset.preset; });
+    });
+
+    // 候補取得（TTL と上位3つ）
+    if ($('#sellerId').value) fetchOptions();
+
+    $('#ai').addEventListener('click', async ()=>{
+      clearMsg();
+      const files = $('#photos').files;
+      const total = Number($('#amount').value || 0);
+      if (!files.length) return showErr('写真を選択してください（最大3枚）。');
+      if (!Number.isFinite(total) || total <= 0) return showErr('先に合計金額を入力してください。');
+
+      const fd = new FormData();
+      [...files].slice(0,3).forEach(f=>fd.append('photos', f));
+      fd.append('total', String(total));
+
+      toggleUI(true);
+      try{
+        // 保存しない前提：サーバーはメモリ処理→要約のみ返す
+        const res = await fetch('/api/ai/summarize', { method:'POST', body: fd });
+        const json = await res.json();
+        if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`);
+        $('#summary').value = json.summary || '';
+        showOk('AI要約を反映しました。必要なら編集してください。');
+      }catch(e){
+        showErr('AI要約に失敗しました：' + (e.message || e));
+      }finally{ toggleUI(false); }
+    });
+
+    $('#clearSummary').addEventListener('click', ()=>{ $('#summary').value=''; });
+
+    $('#register').addEventListener('click', async ()=>{
+      clearMsg();
+      const sellerId = $('#sellerId').value.trim();
+      const token = $('#token').value.trim();
+      const amount = Number($('#amount').value);
+      if (!sellerId) return showErr('出店者IDを入力してください。');
+      if (!token) return showErr('APIトークンを入力してください。');
+      if (!Number.isInteger(amount) || amount < 100 || amount > 1_000_000) return showErr('合計金額は 100〜1,000,000 の整数で入力してください。');
+
+      const payload = {
+        sellerId,
+        amount,
+        summary: ($('#summary').value || '').slice(0, 200), // Stripe description/metadataに入れやすい長さ
+        buyer: {
+          resident: $('#resident').value || null,
+          gender: $('#gender').value || null,
+          age: $('#age').value || null
+        }
+      };
+
+      toggleUI(true);
+      try{
+        // 4. 情報登録（あなたのDBに保存）
+        const reg = await fetch('/api/order/register', {
+          method:'POST', headers: { 'Content-Type':'application/json', 'x-seller-token': token },
+          body: JSON.stringify(payload)
+        });
+        const regJson = await reg.json();
+        if (!reg.ok || regJson.error) throw new Error(regJson.error || `HTTP ${reg.status}`);
+        const orderId = regJson.orderId;
+
+        // 5. Stripe Checkout セッション作成（合計のみ／要約をdescription/metadataへ）
+        const ck = await fetch('/api/checkout/session', {
+          method:'POST', headers: { 'Content-Type':'application/json', 'x-seller-token': token },
+          body: JSON.stringify({
+            orderId,
+            sellerId,
+            amount,
+            summary: payload.summary
+          })
+        });
+        const ckJson = await ck.json();
+        if (!ck.ok || ckJson.error || !ckJson.url) throw new Error(ckJson.error || `HTTP ${ck.status}`);
+
+        // QR生成
+        const url = ckJson.url;
+        $('#checkoutLink').href = url;
+        $('#checkoutLink').textContent = 'Stripe決済画面を開く';
+        drawQR(url);
+        $('#qrbox').classList.remove('hide');
+        showOk('登録しました。QRをお客様に読み取ってもらってください。');
+      }catch(e){
+        showErr('登録/決済QRの作成に失敗しました：' + (e.message || e));
+      }finally{ toggleUI(false); }
+    });
+
+    $('#reset').addEventListener('click', ()=>{
+      ['amount','summary','photos','resident','gender','age'].forEach(id=>{
+        const el = $('#'+id);
+        if (el.tagName === 'INPUT') el.value = (el.type==='number'? '1000' : '');
+        else if (el.tagName === 'SELECT') el.value='';
+        else el.value='';
+      });
+      $('#qrbox').classList.add('hide');
+      $('#qrcode').innerHTML='';
+      clearMsg();
+    });
+
+    async function fetchOptions(){
+      clearMsg();
+      const sellerId = $('#sellerId').value.trim();
+      if (!sellerId) return;
+      try{
+        const res = await fetch(`/api/purchase/options?s=${encodeURIComponent(sellerId)}`);
+        const json = await res.json();
+        const { pending = [], ttl_min } = json;
+        $('#ttlMin').textContent = ttl_min ?? '—';
+        const list = [...new Set(pending)].slice(0,3);
+        $('#latest').textContent = list.length ? list.map(n=>'¥'+Number(n).toLocaleString()).join(' / ') : '（候補なし）';
+      }catch{}
+    }
+
+    function drawQR(text){
+      const q = new MinQR(2, 'L');
+      q.addData(text);
+      q.make();
+      const svg = q.createSvgTag(4);
+      const box = document.getElementById('qrcode');
+      box.innerHTML = svg;
+      box.querySelector('svg').style.maxWidth = '280px';
+      box.querySelector('svg').style.height = 'auto';
+    }
+
+    function toggleUI(disabled){
+      ['ai','register','reset'].forEach(id=>{ const el=$('#'+id); if(el) el.disabled = disabled; });
+    }
+    function clearMsg(){ const m=$('#msg'); m.className=''; m.textContent=''; }
+    function showErr(t){ const m=$('#msg'); m.className='error'; m.textContent=t; }
+    function showOk(t){ const m=$('#msg'); m.className='ok'; m.textContent=t; }
+  </script>
+  <script type="module">
+    // 既存スクリプトの後ろに、購入者（固定QR）モードを追加
+      // --- ここから購入者モード ---
+    const mode = (new URLSearchParams(location.search)).get('mode');
+    if(mode === 'buyer'){
+      // 出店者用UIを隠し、購入者UIを表示
+      document.querySelector('.row').classList.add('hide');
+      const box = document.getElementById('buyerBox');
+      box.classList.remove('hide');
+
+      const s = (new URLSearchParams(location.search)).get('s');
+      if(!s){
+        document.getElementById('buyerMsg').textContent = '無効なQRです（seller id 不足）';
+      }else{
+        // 2. 最新金額を表示（直前に出店者が登録したもの）
+        try{
+          const r = await fetch(`/api/price/latest?s=${encodeURIComponent(s)}`);
+          const j = await r.json();
+          if(!r.ok || j.error || !j.amount){
+            document.getElementById('buyerMsg').textContent = '現在、支払可能な金額がありません。店員へお声掛けください。';
+          }else{
+            document.getElementById('buyerAmount').textContent = '¥' + Number(j.amount).toLocaleString();
+            document.getElementById('buyerSummary').textContent = (j.summary || '');
+
+            // 3. 購入（ボタン→即Checkout作成→自動遷移）
+            document.getElementById('buyerPay').addEventListener('click', async ()=>{
+              document.getElementById('buyerMsg').textContent = '決済画面を開いています…';
+              try{
+                const ck = await fetch('/api/checkout/session', {
+                  method:'POST', headers:{'Content-Type':'application/json'},
+                  body: JSON.stringify({ latest:true, sellerId:s })
+                });
+                const ckj = await ck.json();
+                if(!ck.ok || ckj.error || !ckj.url) throw new Error(ckj.error || `HTTP ${ck.status}`);
+                location.href = ckj.url; // Stripe Checkoutへ遷移（メール入力→領収書送信はStripe側）
+              }catch(e){
+                document.getElementById('buyerMsg').textContent = '決済開始に失敗しました。店員へお声掛けください。';
+              }
+            });
+          }
+        }catch(e){
+          document.getElementById('buyerMsg').textContent = '通信エラー。電波状況をご確認ください。';
+        }
+      }
+    }
+  </script>
+</body>
+</html>

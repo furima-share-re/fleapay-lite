@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FleaPay Matsuri – Checkout</title>
+  <style>
+    :root{
+      --ai:#0f3557;
+      --akane:#e34234;
+      --kinari:#fbfaf5;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+      color:#0f172a;
+      background:
+        radial-gradient(1200px 700px at 80% -10%, #ffedd5 0%, transparent 60%),
+        radial-gradient(1200px 700px at -20% 110%, #e6eef9 0%, transparent 60%),
+        var(--kinari);
+    }
+    /* 和紙風テクスチャ */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(circle at 25% 25%, rgba(255,255,255,0.8) 1px, transparent 1px),
+        radial-gradient(circle at 75% 75%, rgba(227,66,52,0.1) 1px, transparent 1px);
+      background-size: 60px 60px, 80px 80px;
+      pointer-events: none;
+      z-index: -1;
+      opacity: 0.3;
+    }
+    .container{
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .card{
+      position:relative;
+      background:#fff;
+      border:1px solid #e6eaef;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 30px rgba(15,53,87,0.06);
+      overflow:hidden;
+    }
+    .card::before {
+      content: "🌸";
+      position: absolute;
+      top: -10px;
+      right: 60px;
+      font-size: 20px;
+      opacity: 0.7;
+      animation: sakuraFloat 3s ease-in-out infinite;
+      z-index: 1;
+    }
+    .card::after {
+      content: "🌸";
+      position: absolute;
+      bottom: 40px;
+      left: 40px;
+      font-size: 16px;
+      opacity: 0.5;
+      animation: sakuraFloat 4s ease-in-out infinite reverse;
+      z-index: 1;
+    }
+    @keyframes sakuraFloat {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      33% { transform: translateY(-8px) rotate(5deg); }
+      66% { transform: translateY(4px) rotate(-3deg); }
+    }
+
+    .header{
+      position:relative;
+      padding: 8px 0 16px;
+    }
+    .header h1{
+      margin: 8px 0 4px;
+      font-size: 24px;
+      letter-spacing:.04em;
+    }
+    .sub-message{
+      margin:0;
+      color:#475569;
+      font-size:14px;
+    }
+    /* 言語切替 */
+    .lang-switch {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255,255,255,.18);
+      backdrop-filter: saturate(120%) blur(6px);
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 999px;
+      padding: 3px;
+      display: flex;
+      gap: 4px;
+    }
+    .lang-btn {
+      width: 32px;
+      height: 32px;
+      border: 0;
+      background: transparent;
+      border-radius: 50%;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .lang-btn.active {
+      background: rgba(255,255,255,0.2);
+      transform: scale(1.1);
+    }
+
+    /* 価格ボックス */
+    .priceBox {
+      background:
+        radial-gradient(circle at 20% 80%, rgba(227,66,52,0.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(15,53,87,0.05) 0%, transparent 50%),
+        linear-gradient(180deg, #fff, #fafbff);
+      border: 2px solid transparent;
+      background-clip: padding-box;
+      border-radius: 20px;
+      padding: 24px 20px;
+      position: relative;
+      overflow: hidden;
+      margin: 10px 0 14px;
+    }
+    .priceBox::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, 
+        var(--akane) 0%, 
+        #ff8a65 25%, 
+        var(--ai) 50%, 
+        #5c7cfa 75%, 
+        var(--akane) 100%);
+      opacity: 0.8;
+    }
+    .priceHead {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: end;
+      gap: 10px;
+      justify-items: center;
+    }
+    .ccy {
+      font-size: 12px;
+      letter-spacing: .12em;
+      color: #475569;
+      border: 1px solid #e6eaef;
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: #fff;
+    }
+    .price {
+      font-weight: 900;
+      font-size: 48px;
+      letter-spacing: 1px;
+      background: linear-gradient(135deg, var(--ai), var(--akane));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin: 8px 0;
+    }
+    .fx {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .summary{
+      margin: 10px 0 0;
+      font-size: 13px;
+      color:#334155;
+    }
+
+    /* ローディング */
+    .loading { position: relative; color: transparent; }
+    .loading::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #eef2f7 25%, #f7f9fc 37%, #eef2f7 63%);
+      background-size: 400% 100%;
+      animation: shimmer 1.2s infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: 0 0; }
+    }
+    .progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      width: 0;
+      background: linear-gradient(90deg, #ff7a5a, #ffb06b);
+      box-shadow: 0 0 10px rgba(255,122,90,.6);
+      transition: width .3s ease;
+      z-index:9999;
+    }
+    body.loading .progress { width: 65%; }
+    body.ready .progress { width: 100%; transition: width .4s ease .2s; }
+
+    /* ボタン・ブランド */
+    .btn {
+      width: 100%;
+      border:0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, var(--ai) 0%, #1e40af 100%);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 25px rgba(15,53,87,0.2);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .btn:disabled{opacity:.6;cursor:not-allowed;filter:grayscale(0.2)}
+    .btn::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255,255,255,0.2), 
+        transparent);
+      transition: left 0.5s ease;
+    }
+    .btn:hover:not(:disabled)::before { left: 100%; }
+    .btn:hover:not(:disabled){
+      background: linear-gradient(135deg, #1e40af 0%, var(--akane) 100%);
+      box-shadow: 0 12px 35px rgba(15,53,87,0.25);
+      transform: translateY(-2px);
+    }
+    .brands {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      margin-top: 10px;
+      flex-wrap:wrap;
+    }
+    .brand-icon {
+      padding: 4px 8px;
+      font-size: 11px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      color: #64748b;
+    }
+
+    /* バッジ */
+    .security-badges {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin: 16px 0;
+      flex-wrap: wrap;
+    }
+    .security-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid #e7f3ff;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--ai);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .security-icon {
+      width: 16px;
+      height: 16px;
+      color: #10b981;
+    }
+
+    /* テーマ（季節/時間帯） */
+    .theme-evening {
+      background: 
+        radial-gradient(1200px 700px at 80% -10%, #ffd4a3 0%, transparent 60%),
+        radial-gradient(1200px 700px at -20% 110%, #e6eef9 0%, transparent 60%),
+        var(--kinari);
+    }
+    .theme-night {
+      background: 
+        radial-gradient(1200px 700px at 80% -10%, #2d1b69 0%, transparent 60%),
+        radial-gradient(1200px 700px at -20% 110%, #1a365d 0%, transparent 60%),
+        #0f172a;
+      color: #f8fafc;
+    }
+    .theme-night .card {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+    }
+
+    /* helpers */
+    .muted{color:#64748b}
+    .center{text-align:center}
+    .mt8{margin-top:8px}
+    .mt16{margin-top:16px}
+    .mt24{margin-top:24px}
+  </style>
+</head>
+<body class="loading">
+  <div class="progress"></div>
+  <div class="container">
+    <div class="card">
+      <header class="header">
+        <div class="lang-switch" aria-label="Language">
+          <button class="lang-btn active" data-lang="ja" aria-label="Japanese">🇯🇵</button>
+          <button class="lang-btn" data-lang="en" aria-label="English">🇺🇸</button>
+          <button class="lang-btn" data-lang="zh" aria-label="Chinese">🇨🇳</button>
+        </div>
+        <h1 class="welcome-message" data-lang-content data-lang-key="welcome">いらっしゃいませ！</h1>
+        <p class="sub-message" data-lang-content data-lang-key="enjoy">フリマとお祭りをお楽しみください 🎆</p>
+      </header>
+
+      <section class="priceBox" id="priceBox" aria-live="polite">
+        <div class="priceHead">
+          <span class="ccy">JPY</span>
+          <div id="amount" class="price loading">—</div>
+        </div>
+        <div id="fx" class="fx muted" aria-live="polite"></div>
+        <p id="summary" class="summary muted loading"></p>
+      </section>
+
+      <div class="security-badges" aria-hidden="false">
+        <div class="security-badge">
+          <svg class="security-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span data-lang-content data-lang-key="ssl">SSL暗号化</span>
+        </div>
+        <div class="security-badge">
+          <svg class="security-icon" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+            <circle cx="12" cy="16" r="1" fill="currentColor"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span data-lang-content data-lang-key="stripe">Stripe認証</span>
+        </div>
+      </div>
+
+      <div class="mt8">
+        <button id="payBtn" class="btn" disabled>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18">
+            <path d="M5 12h14M13 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span id="payLabel">Pay Now</span>
+        </button>
+        <div class="brands" aria-hidden="true">
+          <div class="brand-icon">Visa</div>
+          <div class="brand-icon">Mastercard</div>
+          <div class="brand-icon">Apple Pay</div>
+          <div class="brand-icon">Google Pay</div>
+        </div>
+      </div>
+
+      <footer class="center mt24 muted" style="font-size:12px">
+        <span data-lang-content data-lang-key="note">表示の外貨換算は参考値です。最終決済はJPYで行われます。</span>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    // ---- 時間帯テーマ ----
+    (function(){
+      const hour = new Date().getHours();
+      let timeTheme = 'day';
+      if (hour >= 18 || hour < 6) timeTheme = 'night';
+      else if (hour >= 16) timeTheme = 'evening';
+      document.body.classList.add('theme-' + timeTheme);
+    })();
+
+    // ---- i18n ----
+    const languages = {
+      ja: { 
+        welcome: 'いらっしゃいませ！',
+        enjoy: 'フリマとお祭りをお楽しみください 🎆',
+        pay: '{amount} を支払う',
+        fetching: '最新の金額を取得しています…',
+        ssl: 'SSL暗号化',
+        stripe: 'Stripe認証',
+        note: '表示の外貨換算は参考値です。最終決済はJPYで行われます。'
+      },
+      en: { 
+        welcome: 'Welcome!',
+        enjoy: 'Enjoy the flea market & festival 🎆',
+        pay: 'Pay {amount}',
+        fetching: 'Fetching latest amount…',
+        ssl: 'SSL encryption',
+        stripe: 'Powered by Stripe',
+        note: 'Any foreign currency shown is indicative. Payment is settled in JPY.'
+      },
+      zh: { 
+        welcome: '欢迎光临！',
+        enjoy: '祝您在集市和祭典玩得开心 🎆',
+        pay: '支付 {amount}',
+        fetching: '正在获取最新金额…',
+        ssl: 'SSL 加密',
+        stripe: 'Stripe 保障',
+        note: '外币换算仅供参考，最终以日元结算。'
+      }
+    };
+    let currentLang = 'ja';
+
+    function switchLanguage(lang) {
+      currentLang = languages[lang] ? lang : 'ja';
+      document.querySelectorAll('[data-lang-content]').forEach(el => {
+        const key = el.dataset.langKey;
+        if (languages[currentLang] && languages[currentLang][key]) {
+          el.textContent = languages[currentLang][key];
+        }
+      });
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === currentLang);
+      });
+      // ボタンラベルの再描画
+      if (window.__amountInt) updatePayLabel(window.__amountInt);
+    }
+
+    // URL パラメータ取得
+    function getParam(name){
+      const url = new URL(location.href);
+      return url.searchParams.get(name);
+    }
+
+    // 表示更新
+    function formatJPY(n){
+      return new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY'}).format(n);
+    }
+
+    function updatePayLabel(amount) {
+      const t = languages[currentLang]?.pay || 'Pay {amount}';
+      const label = t.replace('{amount}', formatJPY(amount));
+      document.getElementById('payLabel').textContent = label;
+    }
+
+    // 参考外貨（簡易、固定レート・表記のみ）
+    function updateFx(amount){
+      // 固定の概算レート（最新ではありません）
+      const USD = 0.0065;  // 約
+      const EUR = 0.0060;  // 約
+      const usd = (amount * USD).toFixed(2);
+      const eur = (amount * EUR).toFixed(2);
+      const fx = document.getElementById('fx');
+      fx.textContent = `≈ USD ${usd} / EUR ${eur}`;
+    }
+
+    async function fetchLatest() {
+      const s = getParam('s') || '';
+      const amountEl = document.getElementById('amount');
+      const summaryEl = document.getElementById('summary');
+      const payBtn = document.getElementById('payBtn');
+
+      amountEl.classList.add('loading');
+      summaryEl.classList.add('loading');
+      summaryEl.textContent = languages[currentLang].fetching;
+
+      if(!s){
+        amountEl.classList.remove('loading');
+        summaryEl.classList.remove('loading');
+        amountEl.textContent = '—';
+        summaryEl.textContent = 'sellerId is missing';
+        return;
+      }
+
+      try{
+        const resp = await fetch(`/api/price/latest?s=${encodeURIComponent(s)}`);
+        if(!resp.ok){
+          throw new Error('not found');
+        }
+        const data = await resp.json();
+        const amount = Number(data.amount);
+        window.__amountInt = amount;
+        amountEl.textContent = formatJPY(amount);
+        amountEl.classList.remove('loading');
+
+        const summary = String(data.summary || '');
+        summaryEl.textContent = summary;
+        summaryEl.classList.remove('loading');
+
+        updatePayLabel(amount);
+        updateFx(amount);
+        payBtn.disabled = false;
+      }catch(err){
+        amountEl.classList.remove('loading');
+        summaryEl.classList.remove('loading');
+        amountEl.textContent = '—';
+        summaryEl.textContent = 'Amount expired or not found';
+        document.getElementById('payBtn').disabled = true;
+      } finally {
+        document.body.classList.remove('loading');
+        document.body.classList.add('ready');
+      }
+    }
+
+    async function startCheckout(){
+      const s = getParam('s') || '';
+      const summaryText = document.getElementById('summary').textContent || '';
+      const payBtn = document.getElementById('payBtn');
+      payBtn.disabled = true;
+
+      try{
+        const resp = await fetch('/api/checkout/session', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ latest:true, sellerId:s, summary:summaryText })
+        });
+        const data = await resp.json();
+        if(data?.url){
+          location.href = data.url;
+        }else{
+          alert('Failed to create checkout session.');
+          payBtn.disabled = false;
+        }
+      }catch(e){
+        console.error(e);
+        alert('Network error.');
+        payBtn.disabled = false;
+      }
+    }
+
+    // 初期化
+    document.addEventListener('DOMContentLoaded', () => {
+      // 言語切替イベント
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchLanguage(btn.dataset.lang));
+      });
+      // 支払い
+      document.getElementById('payBtn').addEventListener('click', startCheckout);
+      // デフォルト言語（ブラウザに応じて）
+      const ua = navigator.language || 'ja';
+      if(ua.startsWith('en')) switchLanguage('en');
+      else if(ua.startsWith('zh')) switchLanguage('zh');
+      else switchLanguage('ja');
+      // データ取得
+      fetchLatest();
+    });
+  </script>
+</body>
+</html>
