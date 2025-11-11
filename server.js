@@ -16,16 +16,45 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-const params = new URLSearchParams(location.search);
-const s = params.get('s');            // publicId
-const t = params.get('t');            // 専用トークン
-if (s) $('#sellerId').value = s;
-if (t) $('#token').value = t;
-// 両方あれば入力欄を隠す = 金額だけUI
-if (s && t) {
-  $('#sellerId').closest('div').style.display = 'none';
-  $('#token').closest('div').style.display = 'none';
+import express from 'express';
+import cors from 'cors';
+
+const app = express();
+app.use(cors());
+app.use(express.json()); // ← bodyを読む
+
+// 例: 顧客画面（GET）のクエリから読む
+app.get('/purchase', (req, res) => {
+  const { seller_id, booth, amount } = req.query; // ← ここで取得
+  // バリデーション
+  if (!seller_id) return res.status(400).send('seller_id required');
+  // 画面テンプレ or JSON返却
+  res.json({ seller_id, booth, amount: Number(amount || 0) });
+});
+
+// 例: Checkout作成（POST）のbody/クエリから読む
+app.post('/api/checkout/session', requireSellerAuth, async (req, res) => {
+  const { amount, currency = 'jpy' } = req.body ?? {};
+  const { seller_id, booth } = req.query; // または body 側に寄せてもOK
+  if (!amount || Number(amount) <= 0) {
+    return res.status(400).json({ error: 'invalid_amount' });
+  }
+  // ここで Stripe Checkout を作成…
+  // const session = await stripe.checkout.sessions.create({ ... });
+  res.json({ ok: true /*, url: session.url */ });
+});
+
+// 管理・出店者用の認証はヘッダ or クエリで
+function requireSellerAuth(req, res, next) {
+  const token = req.get('x-api-key') || req.query.token;
+  if (!token || token !== process.env.SELLER_API_KEY) {
+    return res.status(401).json({ error: 'unauthorized_seller' });
+  }
+  next();
 }
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`listening on ${PORT}`));
 
 // ---- DB 初期化（起動時1回）----
 async function initDb() {
