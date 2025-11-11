@@ -307,3 +307,11 @@ app.use((err, req, res, next) => {
 // ====== 起動 ======
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`fleapay-lite running :${port}`));
+
+// ヘルスチェック
+app.get("/api/ping", (req, res) => res.json({ ok: true }));
+
+// 未定義の /api/* は必ず JSON 404 を返す（HTMLに落ちない）
+app.use("/api", (req, res) => {
+  res.status(404).json({ error: "not_found", path: req.path });
+});
