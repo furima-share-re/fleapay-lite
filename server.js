@@ -23,7 +23,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
 const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 30);
 
-// ====== multer（10MB、あらゆる拡張子許容） ======
+// ====== multer（10MBまで、全拡張子許可） ======
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }
@@ -142,11 +142,9 @@ app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
       !!rotate,
     ]);
     const row = rows[0];
-
     const base = process.env.BASE_URL?.replace(/\/+$/, "") || "";
-    const sellerUrl = `${base}/seller.html?s=${encodeURIComponent(row.public_id)}&t=${encodeURIComponent(row.api_token)}`;
+    const sellerUrl = `${base}/Seller-purchase.html?s=${encodeURIComponent(row.public_id)}&t=${encodeURIComponent(row.api_token)}`;
     const checkoutUrl = `${base}/checkout.html?s=${encodeURIComponent(row.public_id)}${row.stripe_account_id ? `&acct=${encodeURIComponent(row.stripe_account_id)}` : ""}`;
-
     res.json({
       publicId: row.public_id,
       stripeAccountId: row.stripe_account_id || null,
@@ -203,12 +201,15 @@ app.get("/api/purchase/options", async (req, res) => {
   }
 });
 
-// ====== AI画像解析（安定版） ======
+// ====== AI画像解析 ======
 app.post("/api/analyze-item", upload.any(), async (req, res) => {
   try {
-    if (!process.env.OPENAI_API_KEY) return res.status(500).json({ error: "OPENAI_API_KEY not set" });
+    if (!process.env.OPENAI_API_KEY)
+      return res.status(500).json({ error: "OPENAI_API_KEY not set" });
+
     const f = (req.files && req.files[0]) || null;
-    if (!f || !f.buffer) return res.status(400).json({ error: "file_required" });
+    if (!f || !f.buffer)
+      return res.status(400).json({ error: "file_required" });
 
     console.log("analyze-item received:", {
       name: f.originalname,
@@ -216,6 +217,7 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
       mimetype: f.mimetype
     });
 
+    // MIME推定
     let mime = f.mimetype;
     const name = (f.originalname || "").toLowerCase();
     if (!mime || mime === "application/octet-stream") {
@@ -223,7 +225,6 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
       else if (name.endsWith(".jpg") || name.endsWith(".jpeg")) mime = "image/jpeg";
       else if (name.endsWith(".webp")) mime = "image/webp";
       else if (name.endsWith(".heic")) mime = "image/heic";
-      else if (name.endsWith(".heif")) mime = "image/heif";
       else mime = "image/jpeg";
     }
 
@@ -231,14 +232,20 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
     const dataUrl = `data:${mime};base64,${base64}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       temperature: 0.2,
       messages: [
         {
           role: "user",
           content: [
-            { type: "text", text: "この画像に写る『販売商品』の内容を日本語で50〜120文字で簡潔に説明してください。数量・状態（新品/中古/未開封 など）が分かる場合は含め、宣伝表現は避けてください。" },
-            { type: "image_url", image_url: dataUrl }
+            {
+              type: "text",
+              text: "この画像に写る『販売商品』の内容を日本語で50〜120文字で簡潔に説明してください。数量・状態（新品/中古/未開封 など）が分かる場合は含め、宣伝表現は避けてください。"
+            },
+            {
+              type: "image_url",
+              image_url: { url: dataUrl } // ← 修正版
+            }
           ]
         }
       ]
@@ -246,8 +253,8 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
 
     const summary = (completion.choices?.[0]?.message?.content || "").trim().slice(0, 200);
     if (!summary) return res.status(422).json({ error: "empty_response" });
-
     res.json({ summary });
+
   } catch (e) {
     console.error("analyze-item error", e);
     if (e?.code === "LIMIT_FILE_SIZE") return res.status(413).json({ error: "file_too_large" });
@@ -255,7 +262,7 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
   }
 });
 
-// ====== 404 & 静的ファイル ======
+// ====== APIヘルス & 静的ファイル ======
 app.get("/api/ping", (req, res) => res.json({ ok: true }));
 app.use("/api", (req, res) => res.status(404).json({ error: "not_found" }));
 app.use(express.static(path.join(__dirname, "public")));
