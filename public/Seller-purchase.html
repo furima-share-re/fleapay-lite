@@ -36,7 +36,7 @@
   #kidApp{display:none}
   #kidApp.active{display:block}
   .kid-screen{display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center}
-  .kid-screen.active{display:flex}
+  .kid-screen.active{display:flex !important}
   .kid-h1{font-size:1.8rem}
   .kid-big{font-size:1.4rem;padding:18px 24px;border-radius:20px}
   .kid-preset{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;width:100%}
@@ -194,7 +194,7 @@
     </div>
   </div>
 
-  <!-- テンキー -->
+  <!-- ローディング -->
   <div class="loading-ol" id="loadingOverlay" role="alert" aria-live="assertive">
     <div class="spinner" aria-hidden="true"></div>
     <div style="font-size:1.25rem;margin-bottom:4px">よみこみちゅう…</div>
@@ -221,8 +221,8 @@
     $('#sellerId').value    = model.sellerId;
 
     // デバッグ欄
-    $('#dbg-analyze-url').textContent = ENDPOINT_ANALYZE || '(未設定：AIなし運用)';
-    $('#dbg-pending-url').textContent = ENDPOINT_PENDING;
+    setText('#dbg-analyze-url', ENDPOINT_ANALYZE || '(未設定：AIなし運用)');
+    setText('#dbg-pending-url', ENDPOINT_PENDING);
 
     // モード切替
     $('#tabKid').onclick=()=>switchMode(true);
@@ -232,9 +232,11 @@
     $('#sellerIdKid').addEventListener('input',e=>syncSellerId(e.target.value));
     $('#sellerId').addEventListener('input',e=>syncSellerId(e.target.value));
 
-    // 子ども：撮影
-    $('#k-take').addEventListener('click',()=>$('#kidFile').click());
-    $('#kidFile').addEventListener('change',onKidPhotoTaken);
+    // 子ども：撮影（iOS対策で input もフック）
+    const fileEl = $('#kidFile');
+    $('#k-take').addEventListener('click',()=>fileEl.click());
+    fileEl.addEventListener('change',onKidPhotoTaken,{passive:true});
+    fileEl.addEventListener('input', onKidPhotoTaken,{passive:true});
 
     // 子ども：金額
     document.querySelectorAll('[data-kid-price]').forEach(b=>b.addEventListener('click',()=>{ setKidAmount(+b.dataset.kidPrice); }));
@@ -277,6 +279,10 @@
 
     // 最初は子どもモード
     switchMode(true);
+
+    // グローバルエラーハンドラ（JSエラーもデバッグ欄に出す）
+    window.addEventListener('error',ev=>logDebug('JS Error: '+ev.message));
+    window.addEventListener('unhandledrejection',ev=>logDebug('Promise Rejection: '+(ev.reason?.message||ev.reason)));
   })();
 
   function switchMode(kid){
@@ -301,37 +307,52 @@
     new QRCode(el,{text:buildBuyerUrl(),width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
   }
 
-  // =========== 子ども：撮影→AI(任意)→次画面 ===========
+  /* === 重要: 画面遷移関数（なかったため追加） === */
+  function goKid(n){
+    [1,2,4].forEach(i=>{
+      const sec=document.getElementById('k-step'+i);
+      if(sec) sec.classList.remove('active');
+    });
+    const next=document.getElementById('k-step'+n);
+    if(next){ next.classList.add('active'); window.scrollTo({top:0,behavior:'smooth'}); }
+    else{ logDebug('goKid: セクション k-step'+n+' が見つかりません'); }
+  }
+
+  // =========== 子ども：撮影→まず遷移→AI(任意) ===========
   async function onKidPhotoTaken(e){
     const f=e.target.files?.[0];
     if(!f){ kidMsg('err','しゃしんを えらんでね'); return; }
+
+    // 先に必ず画面を進める
+    goKid(2);
     setLoading(true);
+    $('#k2-summary-edit-wrap').style.display='none';
+    kidMsg('ok','しゃしんを うけとりました。いま しらべています…');
+
     let aiOK=false;
     try{
       if(ENDPOINT_ANALYZE){
-        try{
-          const fd=new FormData(); fd.append('file',f,f.name);
-          const res=await fetch(ENDPOINT_ANALYZE,{method:'POST',body:fd});
-          const text=await res.text(); // まず生で取得（APIがJSONじゃない可能性にも耐える）
-          logDebug(`status ${res.status}\n${text}`);
-          let j={};
-          try{ j=JSON.parse(text); }catch{ j={}; }
-          if(j.summary) model.summary=j.summary;
-          if(j.amount)  model.amount = Number(j.amount)||0;
-          aiOK=true;
-        }catch(err){
-          logDebug('analyze error: '+(err?.message||err));
-        }
+        const fd=new FormData(); fd.append('file',f,f.name);
+        const res=await fetch(ENDPOINT_ANALYZE,{method:'POST',body:fd});
+        const text=await res.text();
+        logDebug(`analyze status ${res.status}\n${text}`);
+        let j={}; try{ j=JSON.parse(text); }catch{}
+        if(j.summary) model.summary=j.summary;
+        if(j.amount)  model.amount = Number(j.amount)||0;
+        aiOK = res.ok;
       }else{
         logDebug('analyze endpoint not set; skipping AI');
       }
-    } finally {
-      setLoading(false);
-      goKid(2);
-      // AIが何も返せなかった場合は手動入力UIを表示
+    }catch(err){
+      logDebug('analyze error: '+(err?.message||err));
+    }finally{
+      // 結果反映／手動切替
       $('#k2-summary-edit-wrap').style.display = model.summary ? 'none' : 'block';
+      if(!aiOK && ENDPOINT_ANALYZE){
+        kidMsg('err','AIの けっかが とれません。てで いれてね。');
+      }
       updateKidPanels();
-      if(!aiOK) kidMsg('err','AIから はんていが とれません。てで いれてね。');
+      setLoading(false);
     }
   }
 
@@ -343,13 +364,13 @@
     model.amount=v; updateKidPanels();
   }
   function updateKidPanels(){
-    $('#k2-summary-view').innerHTML = model.summary?.trim()
+    setHTML('#k2-summary-view', model.summary?.trim()
       ? `<pre style="margin:0">${escapeHtml(model.summary)}</pre>`
-      : '（しょうひん じょうほう なし）';
-    $('#k-amtView').textContent = 'いま：' + (model.amount?('¥'+model.amount.toLocaleString()):'—');
-    $('#k2-sum').textContent   = model.amount?('¥'+model.amount.toLocaleString()):'—';
+      : '（しょうひん じょうほう なし）');
+    setText('#k-amtView', 'いま：' + (model.amount?('¥'+model.amount.toLocaleString()):'—'));
+    setText('#k2-sum',     model.amount?('¥'+model.amount.toLocaleString()):'—');
     // 確認チェックは毎回リセット
-    $('#k2-adult').checked=false; $('#k2-go').disabled=true;
+    const ad=$('#k2-adult'); if(ad){ ad.checked=false; $('#k2-go').disabled=true; }
   }
 
   // =========== おとな：AI ===========
@@ -360,14 +381,13 @@
     try{
       const fd=new FormData(); fd.append('file',f,f.name);
       const res=await fetch(ENDPOINT_ANALYZE,{method:'POST',body:fd});
-      const text=await res.text(); logDebug(`status ${res.status}\n${text}`);
+      const text=await res.text(); logDebug(`adult analyze status ${res.status}\n${text}`);
       let j={}; try{ j=JSON.parse(text);}catch{}
       if(j.summary){ $('#summary').value=j.summary; model.summary=j.summary; }
       if(j.amount){ $('#amount').value=j.amount; model.amount=Number(j.amount)||0; }
-      $('#aiMsg').className='msg ok'; $('#aiMsg').textContent='AI解析が完了しました'; $('#aiMsg').style.display='block';
+      showMsg('ok','AI解析が完了しました');
     }catch(e){
-      $('#aiMsg').className='msg err'; $('#aiMsg').textContent='AI解析に失敗しました'; $('#aiMsg').style.display='block';
-      logDebug('adult analyze error: '+(e?.message||e));
+      showMsg('err','AI解析に失敗しました'); logDebug('adult analyze error: '+(e?.message||e));
     }
   }
 
@@ -388,14 +408,14 @@
     return true;
   }
 
-  // 共通UI
-  function showMsg(type,text){ const el=$('#msg'); el.className='msg '+type; el.textContent=text; el.style.display='block'; }
-  function kidMsg(type,text){ const el=$('#k-aiMsg'); el.className='msg '+type; el.textContent=text; el.style.display='block'; }
+  // 共通UI/UTIL
+  function setText(sel,txt){ const el=$(sel); if(el) el.textContent=txt; }
+  function setHTML(sel,html){ const el=$(sel); if(el) el.innerHTML=html; }
+  function showMsg(type,text){ const el=$('#msg'); if(!el) return; el.className='msg '+type; el.textContent=text; el.style.display='block'; }
+  function kidMsg(type,text){ const el=$('#k-aiMsg'); if(!el) return; el.className='msg '+type; el.textContent=text; el.style.display='block'; }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
-  function setLoading(v){ $('#loadingOverlay').classList.toggle('show', !!v); }
-
-  // デバッグ
-  function logDebug(s){ model.lastLog = (model.lastLog?model.lastLog+'\n':'')+s; $('#dbg-log').textContent = model.lastLog; console.log('[DBG]',s); }
+  function setLoading(v){ const ol=$('#loadingOverlay'); if(ol) ol.classList.toggle('show', !!v); }
+  function logDebug(s){ model.lastLog=(model.lastLog?model.lastLog+'\n':'')+s; const box=$('#dbg-log'); if(box) box.textContent=model.lastLog; console.log('[DBG]',s); }
 
   // 簡易テンキー（promptで代用：実運用では専用UIに置換可）
   function openKeypad(){
