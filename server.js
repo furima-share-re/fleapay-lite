@@ -33,7 +33,7 @@ const upload = multer({
 
 // ====== 簡易レート制限 & 同一オリジン検証 ======
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1分
-the const RATE_LIMIT_MAX_WRITES = 12;       // pending/start 上限
+const RATE_LIMIT_MAX_WRITES = 12;       // pending/start 上限
 const RATE_LIMIT_MAX_CHECKOUT = 20;     // checkout/session 上限
 const hits = new Map();                 // key -> [timestamps]
 
