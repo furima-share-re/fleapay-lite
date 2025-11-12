@@ -65,6 +65,13 @@
   /* テンキー */
   .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
   .numpad .btn{height:64px;font-size:1.3rem}
+
+  /* ===== 追加：読み込みオーバーレイ（子ども撮影後の待機表示） ===== */
+  .loading-ol{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(255,255,255,.94);z-index:10000}
+  .loading-ol.show{display:flex}
+  .spinner{width:72px;height:72px;border-radius:50%;border:8px solid #e5e7eb;border-top-color:var(--brand);animation:spin 1s linear infinite;margin-bottom:16px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .fileinput{display:none}
 </style>
 </head>
 <body>
@@ -86,10 +93,11 @@
         <div class="hint">※ ここを かえると QR も じどうで かわります。</div>
       </div>
 
-      <!-- ①しゃしん -->
+      <!-- ①しゃしん（ボタン1つ・選択したら自動で次へ） -->
       <div id="k-step1" class="card kid-screen active">
         <div class="kid-h1">📷 しゃしんを とる</div>
-        <input id="kidFile" type="file" accept="image/*" capture="environment" aria-label="しゃしんを えらぶ">
+        <!-- 入力は隠す：撮影はボタンから起動 -->
+        <input id="kidFile" class="fileinput" type="file" accept="image/*" capture="environment" aria-label="しゃしんを えらぶ">
         <button class="btn primary kid-big" id="k-take">しゃしんを とる</button>
         <div class="hint">しゃしんは AI に おくって、しょうひん を みつけます。</div>
         <div id="k-aiMsg" class="msg" style="display:none"></div>
@@ -224,6 +232,13 @@
     </div>
   </div>
 
+  <!-- 追加：読み込みオーバーレイ -->
+  <div class="loading-ol" id="loadingOverlay" role="alert" aria-live="assertive">
+    <div class="spinner" aria-hidden="true"></div>
+    <div style="font-size:1.25rem;margin-bottom:4px">よみこみちゅう…</div>
+    <div class="hint">そのまま まってね</div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
   const $=s=>document.querySelector(s);
@@ -276,28 +291,10 @@
     $('#file').addEventListener('change',e=>{const f=e.target.files?.[0]; if(!f)return; $('#previewImg').src=URL.createObjectURL(f); $('#preview').hidden=false;});
     $('#btnClearPreview').addEventListener('click',()=>{$('#preview').hidden=true; $('#previewImg').src=''; $('#aiMsg').style.display='none';});
 
-    // 大人：登録
-    $('#btnRegister').addEventListener('click',()=>openConfirm(getAdultValues()));
-    $('#btnReset').addEventListener('click',()=>{ $('#amount').value=''; $('#summary').value=''; $('#msg').style.display='none'; });
-
-    // こども：ステップ遷移
-    $('#k-take').addEventListener('click',async ()=>{
-      const f=$('#kidFile').files?.[0];
-      if(!f){ kidMsg('err','しゃしんを えらんでね'); fx.ng(); return; }
-      // 任意：AI解析
-      try{
-        const fd=new FormData(); fd.append('file',f,f.name);
-        const res=await fetch('/api/analyze-item',{method:'POST',body:fd});
-        const j=await res.json();
-        if(res.ok && !j.error){
-          if(j.summary) model.summary = j.summary;
-          if(j.amount)  model.amount  = Number(j.amount)||0;
-          $('#k-aiMsg').className='msg ok'; $('#k-aiMsg').textContent='みつけた よ'; $('#k-aiMsg').style.display='block';
-        }else{ $('#k-aiMsg').className='msg err'; $('#k-aiMsg').textContent='AIに しっぱい したよ'; $('#k-aiMsg').style.display='block'; }
-      }catch{ $('#k-aiMsg').className='msg err'; $('#k-aiMsg').textContent='AIに しっぱい したよ'; $('#k-aiMsg').style.display='block'; }
-      goKid(2); fx.ok();
-      if(model.amount){ setKidAmount(model.amount); }
-    });
+    // こども：撮影ボタン→ファイル入力起動（ボタンは1つだけ）
+    $('#k-take').addEventListener('click',()=>$('#kidFile').click());
+    // こども：写真をえらんだら自動で解析→次画面へ
+    $('#kidFile').addEventListener('change',onKidPhotoTaken);
 
     $('#k-more').addEventListener('click',openNumpad);
     $('#k-back').addEventListener('click',()=>goKid(2));
@@ -324,6 +321,32 @@
     $('#npOk').onclick=()=>{ const v=parseInt($('#npDisplay').value||'0'); setKidAmount(v); $('#numpadOverlay').classList.remove('show'); goKid(3); };
 
   })();
+
+  // ===== 子ども：写真選択→自動遷移＋ローディング表示 =====
+  async function onKidPhotoTaken(e){
+    const f=e.target.files?.[0];
+    if(!f){ kidMsg('err','しゃしんを えらんでね'); fx.ng(); return; }
+    setLoading(true);
+    try{
+      // 任意：AI解析（失敗しても次へ進む）
+      try{
+        const fd=new FormData(); fd.append('file',f,f.name);
+        const res=await fetch('/api/analyze-item',{method:'POST',body:fd});
+        const j=await res.json();
+        if(res.ok && !j.error){
+          if(j.summary) model.summary = j.summary;
+          if(j.amount)  model.amount  = Number(j.amount)||0;
+        }
+      }catch{} // 解析失敗は無視
+      // 自動で金額選択画面へ
+      goKid(2);
+      // 解析で金額が出たら即反映して確認画面へ
+      if(model.amount){ setKidAmount(model.amount); }
+      fx.ok();
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // ===== こども：表示制御と値の反映 =====
   function goKid(n){ [1,2,3,4].forEach(i=>$('#k-step'+i).classList.remove('active')); $('#k-step'+n).classList.add('active'); }
@@ -409,6 +432,9 @@
     $('#sellerIdKid').value=model.sellerId;
     setQR('#qrcode','adult'); setQR('#k-qrcode','kid');
   }
+
+  // 読み込みオーバーレイ制御
+  function setLoading(v){ $('#loadingOverlay').classList.toggle('show', !!v); }
 
   // 演出
   function flash(sel){ const el=$(sel); if(!el)return; const org=el.style.boxShadow; el.style.boxShadow='0 0 0 3px #c9eedc,0 6px 24px rgba(0,0,0,.12)'; setTimeout(()=>el.style.boxShadow=org,900); }
