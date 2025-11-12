@@ -2,11 +2,11 @@
 <html lang="ja">
 <head>
   <!-- =========================================================
-       FleaPay｜出店者UI（こども/おとな）
+       FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
        ・AIは常時ON（/api/analyze-item）
-       ・撮影→自動で次画面遷移
-       ・読み込みオーバーレイ
-       ・商品明細（AI or 手動）
+       ・「品名のみ」抽出でもOK → 価格パッドで単価/数量を補完
+       ・撮影→自動で次画面遷移 / 読み込みオーバーレイ
+       ・商品明細（AI or 手動 or 価格パッド）
        ・金額プリセット＋テンキー
        ・同画面確認＋旧分離確認ステップ（残置）
        ・大人モーダル確認→登録
@@ -15,7 +15,7 @@
        ========================================================= -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FleaPay｜出店者UI（全部入り・AI常時有効・ロング版）</title>
+  <title>FleaPay｜出店者UI（値札なし対応版）</title>
 
   <!-- Normalize -->
   <link rel="stylesheet"
@@ -47,360 +47,105 @@
       text-rendering:optimizeLegibility;
     }
 
-    .wrap{
-      max-width:960px;
-      margin:20px auto;
-      padding:0 16px;
-    }
+    .wrap{ max-width:960px; margin:20px auto; padding:0 16px; }
 
-    header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin:8px 0 14px;
-    }
+    header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:8px 0 14px; }
 
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .brand h1{ margin:0; font-size:1.45rem; font-weight:750; letter-spacing:.02em; }
 
-    .brand h1{
-      margin:0;
-      font-size:1.45rem;
-      font-weight:750;
-      letter-spacing:.02em;
-    }
+    .modeSwitch{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
-    .modeSwitch{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      flex-wrap:wrap;
-    }
+    .chip{ display:inline-flex; align-items:center; gap:.5em; padding:10px 14px; border-radius:999px; border:1px solid var(--bd); background:#fff; cursor:pointer; user-select:none; transition:.15s ease; font-weight:600; }
+    .chip.active{ background:var(--brand); border-color:var(--brand); color:#fff; box-shadow:0 2px 8px rgba(90,107,255,.25); }
 
-    .chip{
-      display:inline-flex;
-      align-items:center;
-      gap:.5em;
-      padding:10px 14px;
-      border-radius:999px;
-      border:1px solid var(--bd);
-      background:#fff;
-      cursor:pointer;
-      user-select:none;
-      transition:.15s ease;
-      font-weight:600;
-    }
+    .card{ background:var(--panel); border:1px solid var(--bd); border-radius:16px; padding:20px; margin:14px 0; box-shadow:0 2px 10px rgba(0,0,0,.04); }
 
-    .chip.active{
-      background:var(--brand);
-      border-color:var(--brand);
-      color:#fff;
-      box-shadow:0 2px 8px rgba(90,107,255,.25);
-    }
+    h2{ margin:0 0 8px; font-size:1.15rem; letter-spacing:.01em; }
 
-    .card{
-      background:var(--panel);
-      border:1px solid var(--bd);
-      border-radius:16px;
-      padding:20px;
-      margin:14px 0;
-      box-shadow:0 2px 10px rgba(0,0,0,.04);
-    }
+    label{ display:block; font-size:.92rem; color:var(--sub); margin:6px 0 6px; }
 
-    h2{
-      margin:0 0 8px;
-      font-size:1.15rem;
-      letter-spacing:.01em;
-    }
+    input, textarea{ width:100%; padding:12px 14px; border:1px solid var(--bd); border-radius:12px; background:#fff; outline:none; font:inherit; }
+    textarea{ min-height:120px; white-space:pre-wrap; }
 
-    label{
-      display:block;
-      font-size:.92rem;
-      color:var(--sub);
-      margin:6px 0 6px;
-    }
+    .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 
-    input, textarea{
-      width:100%;
-      padding:12px 14px;
-      border:1px solid var(--bd);
-      border-radius:12px;
-      background:#fff;
-      outline:none;
-      font:inherit;
-    }
-
-    textarea{
-      min-height:120px;
-      white-space:pre-wrap;
-    }
-
-    .row{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:12px;
-    }
-
-    .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:.5em;
-      padding:12px 16px;
-      border-radius:999px;
-      border:1px solid var(--bd);
-      background:#fff;
-      cursor:pointer;
-      user-select:none;
-      transition:.12s ease;
-      font-weight:650;
-    }
-
+    .btn{ display:inline-flex; align-items:center; justify-content:center; gap:.5em; padding:12px 16px; border-radius:999px; border:1px solid var(--bd); background:#fff; cursor:pointer; user-select:none; transition:.12s ease; font-weight:650; }
     .btn:hover{ transform:translateY(-1px); }
-
     .btn:active{ transform:translateY(0); }
-
-    .btn.primary{
-      background:var(--brand);
-      border-color:var(--brand);
-      color:#fff;
-      box-shadow:0 2px 8px rgba(90,107,255,.25);
-    }
-
+    .btn.primary{ background:var(--brand); border-color:var(--brand); color:#fff; box-shadow:0 2px 8px rgba(90,107,255,.25); }
     .btn.ghost{ background:#fff; }
+    .btn.warn{ background:#fff3d6; border-color:#ffd27a; }
+    .btn:disabled{ opacity:.62; cursor:not-allowed; transform:none; box-shadow:none; }
 
-    .btn.warn{
-      background:#fff3d6;
-      border-color:#ffd27a;
-    }
-
-    .btn:disabled{
-      opacity:.62;
-      cursor:not-allowed;
-      transform:none;
-      box-shadow:none;
-    }
-
-    .msg{
-      padding:12px 14px;
-      border-radius:12px;
-      margin:10px 0;
-      border:1px solid transparent;
-      font-weight:600;
-    }
-
-    .msg.ok{
-      background:#e9f7ef;
-      color:#0f6b43;
-      border-color:#c9eedc;
-    }
-
-    .msg.err{
-      background:#fff1f1;
-      color:#a1161b;
-      border-color:#ffd7d9;
-    }
+    .msg{ padding:12px 14px; border-radius:12px; margin:10px 0; border:1px solid transparent; font-weight:600; }
+    .msg.ok{ background:#e9f7ef; color:#0f6b43; border-color:#c9eedc; }
+    .msg.err{ background:#fff1f1; color:#a1161b; border-color:#ffd7d9; }
 
     .hint{ font-size:.86rem; color:var(--muted); }
 
-    .qrbox{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:12px;
-      padding:16px;
-      border:1px dashed var(--bd);
-      border-radius:14px;
-      background:#fff;
-    }
+    .qrbox{ display:flex; flex-direction:column; align-items:center; gap:12px; padding:16px; border:1px dashed var(--bd); border-radius:14px; background:#fff; }
 
-    .divider{
-      height:1px;
-      background:#eee;
-      margin:12px 0;
-    }
+    .divider{ height:1px; background:#eee; margin:12px 0; }
 
-    .kbd{
-      font-family:ui-monospace,Menlo,Consolas,monospace;
-      font-size:.84rem;
-      padding:2px 6px;
-      border:1px solid var(--bd);
-      border-radius:6px;
-      background:#fff;
-    }
+    .kbd{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.84rem; padding:2px 6px; border:1px solid var(--bd); border-radius:6px; background:#fff; }
 
     /* ========== こどもモード ========== */
     #kidApp{ display:none }
     #kidApp.active{ display:block }
 
-    .kid-screen{
-      display:none;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:18px;
-      text-align:center;
-    }
-
+    .kid-screen{ display:none; flex-direction:column; align-items:center; justify-content:center; gap:18px; text-align:center; }
     .kid-screen.active{ display:flex !important }
 
-    .kid-h1{
-      font-size:1.85rem;
-      font-weight:800;
-      letter-spacing:.01em;
-    }
+    .kid-h1{ font-size:1.85rem; font-weight:800; letter-spacing:.01em; }
+    .kid-big{ font-size:1.35rem; padding:18px 24px; border-radius:20px; }
 
-    .kid-big{
-      font-size:1.35rem;
-      padding:18px 24px;
-      border-radius:20px;
-    }
+    .kid-preset{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; width:100%; }
+    .kid-preset .btn{ height:80px; font-size:1.35rem; }
 
-    .kid-preset{
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:12px;
-      width:100%;
-    }
-
-    .kid-preset .btn{
-      height:80px;
-      font-size:1.35rem;
-    }
-
-    .kid-qr{
-      width:260px;
-      height:260px;
-      background:#fff;
-      border:4px solid #000;
-      border-radius:12px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
-    }
+    .kid-qr{ width:260px; height:260px; background:#fff; border:4px solid #000; border-radius:12px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
 
     .kid-hint{ font-size:1rem; color:#333 }
 
     .fileinput{ display:none }
 
     /* ========== モーダル・オーバーレイ ========== */
-    .overlay{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.45);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:16px;
-      z-index:9999;
-      backdrop-filter:saturate(1.1) blur(2px);
-    }
-
+    .overlay{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding:16px; z-index:9999; backdrop-filter:saturate(1.1) blur(2px); }
     .overlay.show{ display:flex }
 
-    .modal{
-      width:min(600px,100%);
-      background:#fff;
-      border-radius:18px;
-      border:1px solid var(--bd);
-      box-shadow:0 12px 30px rgba(0,0,0,.18);
-      padding:18px;
-    }
+    .modal{ width:min(600px,100%); background:#fff; border-radius:18px; border:1px solid var(--bd); box-shadow:0 12px 30px rgba(0,0,0,.18); padding:18px; }
+    .modal h3{ margin:0 0 8px; font-size:1.28rem; letter-spacing:.01em; }
 
-    .modal h3{
-      margin:0 0 8px;
-      font-size:1.28rem;
-      letter-spacing:.01em;
-    }
+    .list{ margin:8px 0 12px; padding-left:0; list-style:none; max-height:240px; overflow:auto; border:1px dashed #eee; border-radius:10px; padding:10px; background:#fff; }
 
-    .list{
-      margin:8px 0 12px;
-      padding-left:0;
-      list-style:none;
-      max-height:240px;
-      overflow:auto;
-      border:1px dashed #eee;
-      border-radius:10px;
-      padding:10px;
-      background:#fff;
-    }
+    .rowbtn{ display:flex; gap:10px; justify-content:flex-end; margin-top:12px; }
 
-    .rowbtn{
-      display:flex;
-      gap:10px;
-      justify-content:flex-end;
-      margin-top:12px;
-    }
+    .ck{ display:flex; align-items:center; gap:8px; margin-top:6px; font-size:1rem; }
 
-    .ck{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      margin-top:6px;
-      font-size:1rem;
-    }
-
-    .priceXL{
-      font-size:1.6rem;
-      font-weight:800;
-      letter-spacing:.02em;
-    }
+    .priceXL{ font-size:1.6rem; font-weight:800; letter-spacing:.02em; }
 
     /* ========== テンキー ========== */
-    .numpad{
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:8px;
-      margin-top:8px;
-    }
-
-    .numpad .btn{
-      height:64px;
-      font-size:1.25rem;
-    }
+    .numpad{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; }
+    .numpad .btn{ height:64px; font-size:1.25rem; }
 
     /* ========== 読み込みオーバーレイ ========== */
-    .loading-ol{
-      position:fixed;
-      inset:0;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      flex-direction:column;
-      background:rgba(255,255,255,.94);
-      z-index:10000;
-    }
-
+    .loading-ol{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; background:rgba(255,255,255,.94); z-index:10000; }
     .loading-ol.show{ display:flex }
-
-    .spinner{
-      width:72px;
-      height:72px;
-      border-radius:50%;
-      border:8px solid #e5e7eb;
-      border-top-color:var(--brand);
-      animation:spin 1s linear infinite;
-      margin-bottom:16px;
-    }
-
+    .spinner{ width:72px; height:72px; border-radius:50%; border:8px solid #e5e7eb; border-top-color:var(--brand); animation:spin 1s linear infinite; margin-bottom:16px; }
     @keyframes spin{ to{ transform:rotate(360deg) } }
 
     /* ========== デバッグ ========== */
     details.debug{ margin-top:12px }
-    details.debug pre{
-      white-space:pre-wrap;
-      font-family:ui-monospace,Consolas,monospace;
-      background:#fff;
-      border:1px solid #eee;
-      border-radius:10px;
-      padding:10px;
-      min-height:64px;
-    }
+    details.debug pre{ white-space:pre-wrap; font-family:ui-monospace,Consolas,monospace; background:#fff; border:1px solid #eee; border-radius:10px; padding:10px; min-height:64px; }
+
+    /* ========== 価格パッド ========== */
+    #k2-pricepad{ width:100%; text-align:left; display:none; }
+    .pp-item{ border:1px dashed #e5e7eb; border-radius:12px; padding:10px; margin-top:8px; background:#fff; }
+    .pp-title{ font-weight:800; margin-bottom:6px; }
+    .pp-row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .pp-quick .btn{ height:40px; }
+    .pp-qty{ display:flex; align-items:center; gap:6px; }
+    .pp-qty input{ width:72px; text-align:center; }
   </style>
 </head>
 
@@ -443,7 +188,7 @@
       <div id="k-step2" class="card kid-screen">
         <div class="kid-h1">💰 きんがく を えらぶ</div>
 
-        <!-- 明細 -->
+        <!-- 明細（AI/手動/価格パッド結果を表示） -->
         <div style="width:100%;text-align:left">
           <div style="font-weight:700;margin:4px 0 6px">🛍 しょうひん の がいよう</div>
           <div id="k2-summary-view"
@@ -457,6 +202,16 @@
             <div class="right" style="margin-top:8px">
               <button class="btn" id="k2-summary-apply">このないようで つかう</button>
             </div>
+          </div>
+        </div>
+
+        <!-- 価格パッド（単価/数量 補完） -->
+        <div id="k2-pricepad" class="card" style="display:none">
+          <h2 style="margin-bottom:6px">🔢 ねだん を いれてね</h2>
+          <div id="k2-pricepad-body"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+            <button class="btn" id="k2-pricepad-cancel">やめる</button>
+            <button class="btn primary" id="k2-pricepad-ok">けってい</button>
           </div>
         </div>
 
@@ -566,8 +321,8 @@
           </div>
         </div>
 
-        <label for="summary">商品概要（各行「商品名 ×数量」）</label>
-        <textarea id="summary" placeholder="りんごジュース ×1&#10;クッキー ×2"></textarea>
+        <label for="summary">商品概要（各行「商品名 * 価格円 * 数量」もしくは「商品名 ×数量」）</label>
+        <textarea id="summary" placeholder="りんごジュース * 500円 * 1&#10;クッキー ×2"></textarea>
       </div>
 
       <!-- 登録 → モーダル確認 -->
@@ -657,7 +412,8 @@
       sellerId: params.get('s') || '',
       amount:   0,
       summary:  '',
-      lastLog:  ''
+      lastLog:  '',
+      items:    [] // {id,name,qty,unit_price}
     };
 
     const fx = {
@@ -677,30 +433,19 @@
     function showMsg(type, text){ const el=$('#msg'); if(!el) return; el.className='msg '+type; el.textContent=text; el.style.display='block'; }
     function setLoading(v){ $('#loadingOverlay')?.classList.toggle('show', !!v); }
     function logDebug(s){
-      model.lastLog = (model.lastLog ? model.lastLog + '\\n' : '') + s;
-      const box = $('#dbg-log');
-      if (box) box.textContent = model.lastLog;
-      console.log('[DBG]', s);
+      model.lastLog = (model.lastLog ? model.lastLog + '\n' : '') + s;
+      const box = $('#dbg-log'); if (box) box.textContent = model.lastLog; console.log('[DBG]', s);
     }
-    function flash(sel){
-      const el=$(sel); if(!el) return;
-      const org=el.style.boxShadow;
-      el.style.boxShadow='0 0 0 3px #c9eedc,0 6px 24px rgba(0,0,0,.12)';
-      setTimeout(()=>el.style.boxShadow=org, 900);
-    }
+    function flash(sel){ const el=$(sel); if(!el) return; const org=el.style.boxShadow; el.style.boxShadow='0 0 0 3px #c9eedc,0 6px 24px rgba(0,0,0,.12)'; setTimeout(()=>el.style.boxShadow=org, 900); }
 
     // 空/非JSON/422でも落ちないfetch
     async function fetchJsonSafe(url, opts={}){
-      const ac=new AbortController();
-      const to=setTimeout(()=>ac.abort(), 15000);
+      const ac=new AbortController(); const to=setTimeout(()=>ac.abort(), 15000);
       try{
         const res = await fetch(url, { ...opts, signal: ac.signal });
         const ct  = res.headers.get('content-type') || '';
         const text= await res.text();
-        let data  = null;
-        if (text && ct.includes('application/json')) {
-          try{ data = JSON.parse(text); }catch{}
-        }
+        let data  = null; if (text && ct.includes('application/json')) { try{ data = JSON.parse(text); }catch{} }
         return { res, data, text, ct };
       } finally { clearTimeout(to); }
     }
@@ -719,43 +464,22 @@
       if (next) { next.classList.add('active'); window.scrollTo({top:0,behavior:'smooth'}); }
       else { logDebug('goKid: k-step'+n+' が見つかりません'); }
     }
-    function buildBuyerUrl(){
-      return `${location.origin}${CHECKOUT_PATH}?s=${encodeURIComponent(model.sellerId||'')}`;
-    }
-    function setQR(sel){
-      const el=$(sel); if(!el) return;
-      el.innerHTML='';
-      new QRCode(el, { text: buildBuyerUrl(), width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
-    }
-    function syncSellerId(v){
-      model.sellerId = (v||'').trim();
-      setQR('#qrcode'); setQR('#k-qrcode');
-    }
+    function buildBuyerUrl(){ return `${location.origin}${CHECKOUT_PATH}?s=${encodeURIComponent(model.sellerId||'')}`; }
+    function setQR(sel){ const el=$(sel); if(!el) return; el.innerHTML=''; new QRCode(el, { text: buildBuyerUrl(), width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M }); }
+    function syncSellerId(v){ model.sellerId = (v||'').trim(); setQR('#qrcode'); setQR('#k-qrcode'); }
 
     /* ------------------ 子ども：UI更新 ------------------ */
     function setKidAmount(v){
-      if(!Number.isFinite(v) || v<100 || v>1_000_000){
-        kidMsg('err','きんがくを いれてね（100〜1,000,000）'); fx.ng(); return;
-      }
-      model.amount = v;
-      updateKidPanels();
-      fx.ok();
+      if(!Number.isFinite(v) || v<100 || v>1_000_000){ kidMsg('err','きんがくを いれてね（100〜1,000,000）'); fx.ng(); return; }
+      model.amount = v; updateKidPanels(); fx.ok();
     }
 
     function updateKidPanels(){
-      const summaryHtml = model.summary?.trim()
-        ? `<pre style="margin:0">${escapeHtml(model.summary)}</pre>`
-        : '（しょうひん じょうほう なし）';
-
+      const summaryHtml = model.summary?.trim() ? `<pre style="margin:0">${escapeHtml(model.summary)}</pre>` : '（しょうひん じょうほう なし）';
       setHTML('#k2-summary-view', summaryHtml);
       setText('#k-amtView', 'いま：' + (model.amount ? ('¥'+model.amount.toLocaleString()) : '—'));
       setText('#k2-sum',     model.amount ? ('¥'+model.amount.toLocaleString()) : '—');
-
-      // 旧ステップ3も同期
-      setHTML('#k-listWrap', summaryHtml);
-      setText('#k-sum', model.amount ? ('¥'+model.amount.toLocaleString()) : '—');
-
-      // 確認チェックを毎回リセット
+      setHTML('#k-listWrap', summaryHtml); setText('#k-sum', model.amount ? ('¥'+model.amount.toLocaleString()) : '—');
       const a1=$('#k2-adult'); if(a1){ a1.checked=false; $('#k2-go').disabled=true; }
       const a2=$('#k-adult');  if(a2){ a2.checked=false;  $('#k-go').disabled=true; }
     }
@@ -766,47 +490,107 @@
       return true;
     }
 
+    /* ------------------ 価格パッド ------------------ */
+    function getSavedPrice(name){ try{ const map = JSON.parse(localStorage.getItem('fp_last_prices')||'{}'); return map[name]||null; }catch{return null;}}
+    function savePrice(name, price){ try{ const map = JSON.parse(localStorage.getItem('fp_last_prices')||'{}'); map[name]=price; localStorage.setItem('fp_last_prices', JSON.stringify(map)); }catch{} }
+
+    function renderPricePad(items){
+      const wrap = $('#k2-pricepad'); const body = $('#k2-pricepad-body'); if(!wrap||!body) return;
+      const quick = [100,200,300,500,800,1000,1200,1500,2000,3000,5000];
+      body.innerHTML = items.map(it=>{
+        const last = getSavedPrice(it.name);
+        const btns = [...quick, last].filter(v=>Number.isInteger(v)).filter((v,i,a)=>a.indexOf(v)===i);
+        return `
+          <div class="pp-item">
+            <div class="pp-title">${escapeHtml(it.name)}</div>
+            <div class="pp-row">
+              <div class="pp-quick">
+                ${btns.map(v=>`<button class=\"btn\" data-id=\"${it.id}\" data-v=\"${v}\">¥${v}</button>`).join('')}
+              </div>
+              <div class="pp-row">
+                <input type="number" min="0" step="1" placeholder="価格" id="pp-price-${it.id}" style="width:120px" />
+                <div class="pp-qty">
+                  <button class="btn" data-pp-minus="${it.id}">−</button>
+                  <input type="number" min="1" step="1" value="${it.qty}" id="pp-qty-${it.id}" style="width:72px" />
+                  <button class="btn" data-pp-plus="${it.id}">＋</button>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+
+      wrap.style.display='block';
+
+      wrap.onclick = (e)=>{
+        const t=e.target;
+        if(t.matches('[data-id][data-v]')){ const id=t.getAttribute('data-id'); $('#pp-price-'+id).value = t.getAttribute('data-v'); }
+        if(t.matches('[data-pp-plus]')){ const id=t.getAttribute('data-pp-plus'); const el=$('#pp-qty-'+id); el.value = Math.max(1, (+el.value||1)+1); }
+        if(t.matches('[data-pp-minus]')){ const id=t.getAttribute('data-pp-minus'); const el=$('#pp-qty-'+id); el.value = Math.max(1, (+el.value||1)-1); }
+      };
+
+      $('#k2-pricepad-cancel').onclick = ()=>{ wrap.style.display='none'; };
+      $('#k2-pricepad-ok').onclick = ()=>{
+        let unresolved = [];
+        items.forEach(it=>{
+          const pv = parseInt(($('#pp-price-'+it.id).value||'').replace(/\D/g,''),10);
+          const qv = parseInt($('#pp-qty-'+it.id).value||'1',10);
+          if(Number.isFinite(pv)) { it.unit_price = Math.floor(pv); savePrice(it.name, it.unit_price); }
+          it.qty = Math.max(1, Math.floor(qv||1));
+          if(!Number.isFinite(it.unit_price)) unresolved.push(it.name);
+        });
+        if(unresolved.length){ alert(unresolved[0]+' の価格を入力してください'); return; }
+        wrap.style.display='none';
+        finalizeFromItems(items);
+      };
+    }
+
+    function finalizeFromItems(items){
+      // summary（* 区切り）と合計
+      const summary = items.map(it=>`${it.name} * ${it.unit_price}円 * ${it.qty}`).join("\n");
+      const total   = items.reduce((s,it)=> s + (it.unit_price*it.qty), 0);
+      model.summary = summary; model.amount = total; updateKidPanels(); fx.ok();
+    }
+
     /* ------------------ 子ども：撮影→AI ------------------ */
     async function onKidPhotoTaken(e){
-      const f = e.target.files?.[0];
-      if(!f){ kidMsg('err','しゃしんを えらんでね'); fx.ng(); return; }
+      const f = e.target.files?.[0]; if(!f){ kidMsg('err','しゃしんを えらんでね'); fx.ng(); return; }
 
       // 先に必ず遷移（UX）
-      goKid(2);
-      setLoading(true);
-      $('#k2-summary-edit-wrap').style.display='none';
-      kidMsg('ok','しゃしんを うけとりました。いま しらべています…');
+      goKid(2); setLoading(true); $('#k2-summary-edit-wrap').style.display='none'; kidMsg('ok','しゃしんを うけとりました。いま しらべています…');
 
       try{
-        const fd=new FormData();
-        fd.append('file', f, f.name); // サーバは "file" を期待
-
+        const fd=new FormData(); fd.append('file', f, f.name); // サーバは "file" を期待
         const {res, data, text} = await fetchJsonSafe(ENDPOINT_ANALYZE, { method:'POST', body:fd });
         logDebug(`analyze ${res.status}\n${text||'(empty body)'}`);
 
         if(res.ok){
-          // サーバの仕様：{ items[], total, summary }（空なら422になる場合あり）
           const items  = Array.isArray(data?.items) ? data.items : [];
           const totalN = Number.isInteger(data?.total) ? Number(data.total) : null;
 
+          // items を内部形式へ
+          model.items = items.map((it,i)=>({ id:i, name:String(it?.name||`商品${i+1}`), qty: (parseInt(it?.qty,10)||1), unit_price: Number.isInteger(it?.unit_price)? it.unit_price : null }));
+
+          // サーバ summary があれば採用（なければ後で生成）
           if (typeof data?.summary === 'string' && data.summary.trim()){
             model.summary = data.summary.trim();
-          } else if (items.length){
-            // 予防：itemsからsummary生成
-            model.summary = items.map(it=>{
-              const nm = (it?.name||'商品');
-              const qt = Number(it?.qty)||1;
-              const un = Number.isInteger(it?.unit_price) ? it.unit_price : '?';
-              return `${nm} × ${un}円 ×${qt}`;
-            }).join('\\n');
-          }
+          } else { model.summary = ''; }
 
-          if (Number.isInteger(totalN)) model.amount = totalN;
+          // total があれば採用
+          if (Number.isInteger(totalN)) model.amount = totalN; else model.amount = 0;
 
-          if (!model.summary && !model.amount){
+          // 値札なし: 単価欠けの行がある → 価格パッドで補完
+          const need = model.items.filter(x=>!Number.isFinite(x.unit_price));
+          if (model.items.length && need.length){
+            kidMsg('ok','しょうひん を みつけました。ねだん を いれてね');
+            renderPricePad(model.items);
+          } else if (!model.summary && model.items.length){
+            // AIがunit_priceを持っている → こちらで summary 生成
+            finalizeFromItems(model.items);
+            kidMsg('ok','AIの けっかを はんえいしました');
+          } else if (!model.summary && !model.amount){
             kidMsg('err','AIの けっかが ありません。てで いれてね。');
             $('#k2-summary-edit-wrap').style.display='block';
-          }else{
+          } else {
             kidMsg('ok','AIの けっかを はんえいしました');
           }
         } else if (res.status===422){
@@ -819,40 +603,22 @@
       } catch(err){
         kidMsg('err','AIエラー: '+(err?.message||err));
         $('#k2-summary-edit-wrap').style.display='block';
-      } finally {
-        updateKidPanels();
-        setLoading(false);
-      }
+      } finally { updateKidPanels(); setLoading(false); }
     }
 
     /* ------------------ 大人：AI ------------------ */
     async function onAnalyzeAdult(){
-      const f=$('#file').files?.[0];
-      if(!f){ showMsg('err','画像を選んでください'); return; }
-
+      const f=$('#file').files?.[0]; if(!f){ showMsg('err','画像を選んでください'); return; }
       try{
-        const fd=new FormData();
-        fd.append('file', f, f.name);
-
+        const fd=new FormData(); fd.append('file', f, f.name);
         const {res, data, text} = await fetchJsonSafe(ENDPOINT_ANALYZE, { method:'POST', body:fd });
         logDebug(`adult analyze ${res.status}\n${text||'(empty body)'}`);
-
         if(res.ok){
-          if (typeof data?.summary === 'string') {
-            $('#summary').value = data.summary.trim();
-            model.summary = data.summary.trim();
-          }
-          if (Number.isInteger(data?.total)) {
-            $('#amount').value = String(data.total);
-            model.amount = data.total;
-          }
+          if (typeof data?.summary === 'string') { $('#summary').value = data.summary.trim(); model.summary = data.summary.trim(); }
+          if (Number.isInteger(data?.total)) { $('#amount').value = String(data.total); model.amount = data.total; }
           showMsg('ok','AI解析が完了しました');
-        }else{
-          showMsg('err', res.status===422 ? 'AIが読み取れません（empty）' : `AIエラー: HTTP ${res.status}`);
-        }
-      }catch(e){
-        showMsg('err','AIエラー: '+(e?.message||e));
-      }
+        }else{ showMsg('err', res.status===422 ? 'AIが読み取れません（empty）' : `AIエラー: HTTP ${res.status}`); }
+      }catch(e){ showMsg('err','AIエラー: '+(e?.message||e)); }
     }
 
     /* ------------------ 登録（子/大共通） ------------------ */
@@ -860,33 +626,12 @@
       try{
         if(!sellerId) throw new Error('出店者IDは必須です');
         if(!Number.isInteger(amount) || amount < 100) throw new Error('金額が正しくありません（100円以上）');
-
         const body = JSON.stringify({ sellerId, amount, summary });
-        const {res, data, text} = await fetchJsonSafe(ENDPOINT_PENDING, {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json' },
-          body
-        });
+        const {res, data, text} = await fetchJsonSafe(ENDPOINT_PENDING, { method:'POST', headers:{ 'Content-Type':'application/json' }, body });
         logDebug(`pending ${res.status}\n${text||'(empty body)'}`);
-
-        if (res.ok){
-          showMsg('ok','登録しました。購入者側に反映されます。');
-          flash('#qrCard');
-          setQR('#qrcode'); setQR('#k-qrcode');
-          fx.ok();
-          return true;
-        }
-
-        const serverMsg = (data?.error || data?.message || text || '').trim();
-        showMsg('err', serverMsg || `登録エラー: HTTP ${res.status}`);
-        fx.ng();
-        return false;
-
-      }catch(e){
-        showMsg('err', e.message || '登録エラー');
-        fx.ng();
-        return false;
-      }
+        if (res.ok){ showMsg('ok','登録しました。購入者側に反映されます。'); flash('#qrCard'); setQR('#qrcode'); setQR('#k-qrcode'); fx.ok(); return true; }
+        const serverMsg = (data?.error || data?.message || text || '').trim(); showMsg('err', serverMsg || `登録エラー: HTTP ${res.status}`); fx.ng(); return false;
+      }catch(e){ showMsg('err', e.message || '登録エラー'); fx.ng(); return false; }
     }
 
     /* ------------------ 大人：値の吸い上げ＆モーダル ------------------ */
@@ -894,25 +639,16 @@
       const sellerId = ($('#sellerId').value || $('#sellerIdKid').value || '').trim();
       const amount   = parseInt(($('#amount').value || model.amount || '').toString().replace(/[^\d]/g,''), 10);
       const summary  = ($('#summary').value || model.summary || '').trim();
-
-      model.sellerId = sellerId;
-      model.amount   = Number.isFinite(amount) ? amount : 0;
-      model.summary  = summary;
-
-      return { sellerId, amount: model.amount, summary };
+      model.sellerId = sellerId; model.amount = Number.isFinite(amount) ? amount : 0; model.summary = summary; return { sellerId, amount: model.amount, summary };
     }
 
     function openConfirm({sellerId,amount,summary}){
       if(!sellerId){ showMsg('err','出店者IDを入力してください'); return; }
       if(!Number.isInteger(amount)||amount<100){ showMsg('err','金額が正しくありません'); return; }
-
-      const lines = (summary||'').split(/\\r?\\n/).map(s=>s.trim()).filter(Boolean);
+      const lines = (summary||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
       $('#confirmList').innerHTML = lines.length ? lines.map(l=>'🛍 '+escapeHtml(l)).join('<br>') : '（商品情報なし）';
       $('#confirmPrice').textContent = '¥'+amount.toLocaleString();
-
-      $('#adultCheck').checked=false;
-      $('#btnConfirm').disabled=true;
-      $('#confirmOverlay').classList.add('show');
+      $('#adultCheck').checked=false; $('#btnConfirm').disabled=true; $('#confirmOverlay').classList.add('show');
     }
 
     /* ------------------ 起動処理 ------------------ */
@@ -922,8 +658,7 @@
       $('#tabAdult').onclick = () => switchMode(false);
 
       // ID同期
-      $('#sellerIdKid').value = model.sellerId;
-      $('#sellerIdKid').addEventListener('input', e => syncSellerId(e.target.value));
+      $('#sellerIdKid').value = model.sellerId; $('#sellerIdKid').addEventListener('input', e => syncSellerId(e.target.value));
 
       // 撮影（iOS対策：change/input両対応）
       const fileEl = $('#kidFile');
@@ -945,24 +680,16 @@
 
       // 同画面確認→登録
       $('#k2-adult').addEventListener('change', e => $('#k2-go').disabled = !e.target.checked);
-      $('#k2-go').addEventListener('click', async ()=>{
-        if(!requireBasics()) return;
-        const ok = await performRegister(model.sellerId, model.amount, model.summary);
-        if(ok) goKid(4);
-      });
+      $('#k2-go').addEventListener('click', async ()=>{ if(!requireBasics()) return; const ok = await performRegister(model.sellerId, model.amount, model.summary); if(ok) goKid(4); });
 
       // 旧確認ステップ（残置）
       $('#k-back').addEventListener('click', ()=> goKid(2));
       $('#k-adult').addEventListener('change', e => $('#k-go').disabled = !e.target.checked);
-      $('#k-go').addEventListener('click', async ()=>{
-        if(!requireBasics()) return;
-        const ok = await performRegister(model.sellerId, model.amount, model.summary);
-        if(ok) goKid(4);
-      });
+      $('#k-go').addEventListener('click', async ()=>{ if(!requireBasics()) return; const ok = await performRegister(model.sellerId, model.amount, model.summary); if(ok) goKid(4); });
 
       // 大人：AI
       $('#btnAnalyze').addEventListener('click', onAnalyzeAdult);
-      $('#file').addEventListener('change', e=>{ const f=e.target.files?.[0]; if(!f) return; $('#previewImg').src=URL.createObjectURL(f); $('#preview').hidden=false; });
+      $('#file').addEventListener('change', e=>{ const f=e.target.files?.[0]; if(!f) return; $('#preview').hidden=false; $('#previewImg').src=URL.createObjectURL(f); });
       $('#btnClearPreview').addEventListener('click', ()=> { $('#preview').hidden=true; $('#previewImg').src=''; $('#aiMsg').style.display='none'; });
 
       // 大人：登録（モーダル確認）
@@ -972,11 +699,7 @@
       // モーダル操作
       $('#btnEdit').onclick = ()=> $('#confirmOverlay').classList.remove('show');
       $('#adultCheck').onchange = e => $('#btnConfirm').disabled = !e.target.checked;
-      $('#btnConfirm').onclick = async ()=>{
-        const {sellerId,amount,summary}=getAdultValues();
-        const ok = await performRegister(sellerId, amount, summary);
-        if(ok) $('#confirmOverlay').classList.remove('show');
-      };
+      $('#btnConfirm').onclick = async ()=>{ const {sellerId,amount,summary}=getAdultValues(); const ok = await performRegister(sellerId, amount, summary); if(ok) $('#confirmOverlay').classList.remove('show'); };
 
       // QR
       setQR('#qrcode'); setQR('#k-qrcode');
