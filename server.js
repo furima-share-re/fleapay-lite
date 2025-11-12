@@ -22,7 +22,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ====== 設定 ======
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
-const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 30); // 分
+const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 30); // 分（運用に合わせて短縮可）
 const BASE_URL = (process.env.BASE_URL || "").replace(/\/+$/, "");
 
 // ====== multer（10MB、拡張子ゆるめ、メモリ格納） ======
@@ -189,6 +189,8 @@ app.get("/api/purchase/options", async (req, res) => {
 });
 
 // ====== ペンディング登録（認証なし／最低限ガードあり） ======
+// 出店者は金額のみでも登録OK。summaryは「任意」。
+// summary が入力された場合のみ DB に保存し、あとで Stripe 明細へ反映。
 app.post("/api/pending/start", async (req, res) => {
   try {
     if (!isSameOrigin(req)) return res.status(403).json({ error: "forbidden_origin" });
@@ -207,7 +209,7 @@ app.post("/api/pending/start", async (req, res) => {
 
     const ttlMin = PENDING_TTL_MIN;
     const expiresAt = new Date(Date.now() + ttlMin * 60 * 1000);
-    const safeSummary = (summary || "").toString().slice(0, 250);
+    const safeSummary = (summary || "").toString().slice(0, 250); // ← 任意・最大250文字に制限
 
     await pool.query(
       `insert into pending_charges (seller_public_id, amount, expires_at, summary)
@@ -223,6 +225,7 @@ app.post("/api/pending/start", async (req, res) => {
 });
 
 // ====== 購入者ページ：最新金額取得（summary 付き） ======
+// summary は存在する場合のみ返る。空文字の場合は "" を返し、フロントで非表示可。
 app.get("/api/price/latest", async (req, res) => {
   try {
     const sellerId = String(req.query.s || "");
@@ -246,7 +249,9 @@ app.get("/api/price/latest", async (req, res) => {
   }
 });
 
-// ====== Checkout セッション作成（latest/指定金額の両対応 & 説明反映） ======
+// ====== Checkout セッション作成（最新/指定額 & 明細反映 = 任意） ======
+// 出店者が summary を入れていれば Stripe の説明欄（Checkoutの商品説明/PIのdescription/metadata）に反映。
+// summary が空の場合は説明未設定で金額のみ決済。
 app.post("/api/checkout/session", async (req, res) => {
   try {
     if (!isSameOrigin(req)) return res.status(403).json({ error: "forbidden_origin" });
@@ -284,7 +289,14 @@ app.post("/api/checkout/session", async (req, res) => {
     if (!sellerAccountId) return res.status(400).json({ error: "sellerAccountId required" });
 
     const fee = Math.round(amt * 0.10);
-    const desc = (description || latestSummary || "").toString().slice(0, 250); // Stripe説明に載せる
+
+    // ---- 明細の反映（任意）----
+    // 1) 優先度: フロントから description 指定があればそれを使用
+    // 2) それがなければ latestSummary（DB保存のsummary）
+    // 3) どちらも空なら説明は未設定（=明細なし）
+    const descRaw = (description ?? latestSummary ?? "").toString();
+    const desc = descRaw.trim().slice(0, 250); // Stripe説明は控えめに（運用で調整可）
+    const includeDescription = desc.length > 0;
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -296,21 +308,24 @@ app.post("/api/checkout/session", async (req, res) => {
           unit_amount: amt,
           product_data: {
             name: "お支払い",
-            description: desc,                // ← 商品説明（領収書/明細側）
-            metadata: { summary: desc }
+            // 出店者が明細を入れた場合のみ説明を載せる
+            ...(includeDescription ? { description: desc } : {}),
+            // 商品側メタデータにも同じ要約を入れておく（検索/連携用）
+            metadata: includeDescription ? { summary: desc } : {}
           }
         }
       }],
       payment_intent_data: {
         application_fee_amount: fee,
         transfer_data: { destination: sellerAccountId },
-        description: desc,                    // ← 支払い詳細の説明欄
+        // 決済の説明欄（レシート/ダッシュボード）。任意で設定。
+        ...(includeDescription ? { description: desc } : {}),
         metadata: {
           sellerId: sellerId || "",
           sellerAccountId,
           amount: String(amt),
           latest: String(!!latest),
-          summary: desc
+          ...(includeDescription ? { summary: desc } : {})
         }
       },
       success_url: `${BASE_URL}/checkout/success.html?sid={CHECKOUT_SESSION_ID}`,
@@ -326,6 +341,7 @@ app.post("/api/checkout/session", async (req, res) => {
 });
 
 // ====== AI画像解析（画像→「商品名 ×数量」リスト） ======
+// 出店者が画像から summary を作るための補助API（任意）
 app.post("/api/analyze-item", upload.any(), async (req, res) => {
   try {
     if (!process.env.OPENAI_API_KEY)
