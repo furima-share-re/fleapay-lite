@@ -7,19 +7,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
   <style>
     :root{
-      /* palette */
-      --night1:#0f2740;      /* deep blue */
-      --night2:#193e5b;      /* dusk */
-      --haze:#24465f;        /* alley fog */
+      --night1:#0f2740;
+      --night2:#193e5b;
+      --haze:#24465f;
       --paper:rgba(255,255,240,.90);
       --paper-stroke:rgba(30,40,40,.16);
-      --ink:#234236;         /* text */
-      --gold:#ffd88a;        /* warm lamp */
-      --lamp-core:#fff6cc;   /* lamp inner */
-      --leaf1:#9ed0b8;       /* accent */
+      --ink:#234236;
+      --gold:#ffd88a;
+      --lamp-core:#fff6cc;
+      --leaf1:#9ed0b8;
       --leaf2:#6fb59a;
     }
-
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100%}
     body{
@@ -28,8 +26,6 @@
       background: radial-gradient(120% 100% at 50% -10%, #274d6a 0%, var(--night1) 40%, var(--night2) 100%);
       overflow:hidden;
     }
-
-    /* star field */
     .stars{position:fixed; inset:0; z-index:0; pointer-events:none;}
     .stars::before,.stars::after{content:""; position:absolute; inset:0; background:
       radial-gradient(2px 2px at 10% 20%, rgba(255,255,255,.9), transparent 50%),
@@ -42,21 +38,17 @@
     .stars::after{filter:blur(1px); opacity:.6; animation-duration:9s}
     @keyframes twinkle{0%,100%{opacity:.5}50%{opacity:1}}
 
-    /* scene layers */
     .scene{position:fixed; inset:0; perspective:800px; overflow:hidden}
     .layer{position:absolute; inset:0; transform-style:preserve-3d}
     .parallax{ transform: translate3d(calc(var(--px,0)*var(--depth,0)), calc(var(--py,0)*var(--depth,0)), 0) }
 
-    /* far buildings silhouettes */
     .town{ position:absolute; inset:auto -10vw 0 -10vw; height:60vh; filter: drop-shadow(0 -6px 24px rgba(0,0,0,.35)); }
     .town svg{ width:120vw; height:100%; display:block }
 
-    /* bunting flags */
     .flags{ position:absolute; left:-5vw; right:-5vw; top:14vh; height:80px; z-index:4; pointer-events:none }
     .flags:before{content:""; position:absolute; left:0; right:0; top:34px; height:2px; background:rgba(250,250,250,.2)}
     .flag{ position:absolute; top:36px; width:0; height:0; border-left:12px solid transparent; border-right:12px solid transparent; border-top:16px solid rgba(255,255,255,.35); filter:drop-shadow(0 1px 1px rgba(0,0,0,.2)); animation: sway 4.6s ease-in-out infinite }
 
-    /* lanterns */
     .lantern{ position:absolute; width:54px; height:68px; border-radius:28px/34px; background:
         radial-gradient(50% 35% at 50% 45%, var(--lamp-core) 0%, rgba(255,230,150,.75) 40%, rgba(255,160,60,.35) 75%, rgba(0,0,0,0) 100%);
       box-shadow: 0 0 18px 6px rgba(255,190,90,.55), inset 0 0 10px rgba(255,255,255,.5);
@@ -67,23 +59,19 @@
     @keyframes swing{0%{transform:rotate(0)}50%{transform:rotate(2.6deg)}100%{transform:rotate(0)}}
     @keyframes sway{0%{transform:translateY(0)}50%{transform:translateY(2px)}100%{transform:translateY(0)}}
 
-    /* foreground table */
     .table{ position:absolute; left:50%; bottom:12vh; transform:translateX(-50%); width:min(92vw,980px); height:30vh; z-index:7 }
     .table svg{ width:100%; height:100% }
 
-    /* price tags */
     .tag{ position:absolute; width:72px; height:96px; background:rgba(255,255,240,.9); border:1px solid rgba(60,70,50,.18); border-radius:6px; box-shadow:0 6px 12px rgba(0,0,0,.12); transform-origin: top center; z-index:8 }
     .tag:before{content:""; position:absolute; top:-16px; left:calc(50% - 1px); width:2px; height:18px; background:rgba(90,70,40,.5)}
     .tag span{ display:block; text-align:center; font-weight:900; color:#2e5a44; padding-top:14px }
 
-    /* floating petals */
     .petal{ position:absolute; width:10px; height:6px; background: radial-gradient(ellipse at 60% 40%, rgba(255,212,212,.95), rgba(255,120,150,.4)); border-radius:60% 40% 60% 40%; filter: blur(.2px); pointer-events:none; opacity:0; animation: fall linear forwards }
     @keyframes fall{ 0%{ transform: translate(var(--sx), 110vh) rotate(0deg); opacity:0 }
                      10%{ opacity:.9 }
                      70%{ opacity:1 }
                      100%{ transform: translate(calc(var(--sx) + var(--dx)), -10vh) rotate(540deg); opacity:0 } }
 
-    /* content card */
     .card-wrap{position:relative; z-index:10; display:grid; place-items:center; height:100vh; padding:24px}
     .card{ position:relative; width:min(92vw,760px); padding:48px 56px; text-align:center; background:var(--paper); border-radius:26px;
       box-shadow: 0 24px 68px rgba(0,0,0,.35), 0 0 0 1px var(--paper-stroke) inset; backdrop-filter: blur(4px) saturate(1.05); }
@@ -92,7 +80,6 @@
     .badge{ display:inline-flex; align-items:center; gap:10px; padding:12px 20px; border-radius:999px; font-weight:900; color:#063b2a;
       background: linear-gradient(135deg,#5ac18e,#b0ffb4); box-shadow:0 10px 22px rgba(20,100,60,.23); animation:breathe 3.6s ease-in-out infinite }
     @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
-
     .actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:20px }
     .btn{ padding:11px 16px; border-radius:14px; border:1px solid rgba(16,60,40,.14); background:rgba(255,255,255,.75); font-weight:700; cursor:pointer; box-shadow:0 6px 14px rgba(30,80,60,.14); transition:.25s }
     .btn:hover{ transform:translateY(-2px); box-shadow:0 10px 20px rgba(30,80,60,.22) }
@@ -100,7 +87,23 @@
     .frame{ position:absolute; inset:5% 5%; border:12px solid rgba(255,255,255,.7); border-radius:18px; box-shadow:0 0 0 1px rgba(255,255,255,.9) inset, 0 8px 26px rgba(0,0,0,.12); pointer-events:none }
     .frame.hide{ display:none }
 
-    /* language */
+    .notice {
+      background: rgba(255,255,255,0.85);
+      border: 1px solid rgba(60,70,50,0.2);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      font-size: 15px;
+      color: #234236;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      line-height: 1.6;
+    }
+    .notice small {
+      display:block;
+      margin-top:4px;
+      color: rgba(60,60,60,0.8);
+    }
+
     .lang{ position:fixed; right:12px; bottom:12px; z-index:20; display:flex; gap:8px }
     .lang button{ font:inherit; padding:6px 9px; border-radius:12px; border:1px solid rgba(20,60,40,.18); background:rgba(255,255,255,.78); cursor:pointer }
 
@@ -109,13 +112,9 @@
 </head>
 <body>
   <div class="stars"></div>
-
   <div class="scene">
-    <!-- bunting & lanterns (subtle, not festival-heavy) -->
     <div class="flags parallax" style="--depth:.02" aria-hidden="true" id="flags"></div>
     <div class="layer parallax" style="--depth:.03" id="lanterns" aria-hidden="true"></div>
-
-    <!-- distant town silhouettes -->
     <div class="layer town parallax" style="--depth:.01" aria-hidden="true">
       <svg viewBox="0 0 1200 600" preserveAspectRatio="none">
         <defs>
@@ -128,9 +127,7 @@
             <stop offset="100%" stop-color="#ffbf69"/>
           </linearGradient>
         </defs>
-        <!-- rooflines -->
         <path d="M0 360 C 120 330, 220 350, 300 340 S 520 350, 620 330 S 880 350, 980 340 S 1100 350, 1200 360 V600 H0 Z" fill="url(#fog)"/>
-        <!-- windows shimmer -->
         <g opacity=".85">
           <rect x="90"  y="380" width="14" height="18" fill="url(#window)"></rect>
           <rect x="140" y="400" width="10" height="14" fill="url(#window)"></rect>
@@ -141,14 +138,10 @@
         </g>
       </svg>
     </div>
-
-    <!-- foreground table and goods -->
     <div class="layer table parallax" style="--depth:.06" aria-hidden="true">
       <svg viewBox="0 0 1200 420">
-        <!-- table wood -->
         <rect x="0" y="250" width="1200" height="170" fill="#6e503d"/>
         <rect x="0" y="248" width="1200" height="12" fill="#5d4434"/>
-        <!-- goods -->
         <g style="animation:sway 6.6s ease-in-out infinite">
           <rect x="320" y="210" width="36" height="40" rx="6" fill="#dbe9dd"/>
           <rect x="360" y="196" width="48" height="54" rx="10" fill="#bedfcc"/>
@@ -158,8 +151,6 @@
         </g>
       </svg>
     </div>
-
-    <!-- hanging price tags to say "flea market" -->
     <div class="layer parallax" style="--depth:.09" aria-hidden="true">
       <div class="tag" style="left:22%; top:40%; animation:swing 3.6s ease-in-out infinite .2s"><span>¥1,200</span></div>
       <div class="tag" style="left:62%; top:38%; animation:swing 4.2s ease-in-out infinite .6s"><span>¥850</span></div>
@@ -167,14 +158,19 @@
     </div>
   </div>
 
-  <!-- petals -->
   <div id="petals" aria-hidden="true"></div>
 
-  <!-- content card -->
   <div class="card-wrap">
     <article class="card parallax" style="--depth:.12">
       <h1 data-i18n="title">お支払い ありがとうございます</h1>
       <p class="lead" data-i18n="body">古い街並みのフリマで、やさしい取引がひとつ生まれました。処理は完了しました。</p>
+
+      <div class="notice">
+        <p>✅ 決済が完了しました。<br>
+        この画面を出店スタッフにお見せください。<br>
+        <small>※商品お渡し後の返品・交換はご遠慮ください。</small></p>
+      </div>
+
       <div class="badge"><span>✓</span>&nbsp;<span data-i18n="badge">決済完了</span>&nbsp;<span>✓</span></div>
       <div class="actions">
         <button class="btn" id="photoBtn" data-i18n="photo">思い出モード（フレームON/OFF）</button>
@@ -191,13 +187,11 @@
   </div>
 
   <script>
-    // ---------- Parallax ----------
     const root = document.documentElement;
     const setParallax=(x,y)=>{ root.style.setProperty('--px', x.toFixed(2)+'px'); root.style.setProperty('--py', y.toFixed(2)+'px'); }
     addEventListener('mousemove', e=>{ const cx=innerWidth/2, cy=innerHeight/2; setParallax((e.clientX-cx)*-0.02, (e.clientY-cy)*-0.02); });
     addEventListener('deviceorientation', e=>{ setParallax(-(e.gamma||0)*1.2, -(e.beta||0)*.8); });
 
-    // ---------- Lanterns & Flags ----------
     const lanternHost = document.getElementById('lanterns');
     const flagHost = document.getElementById('flags');
     function addLantern(x,delay=0){
@@ -205,48 +199,4 @@
       l.style.animationDelay=delay+'s'; l.style.setProperty('--depth', (.02+Math.random()*.03).toFixed(3));
       lanternHost.appendChild(l);
     }
-    [18,32,46,60,74,88].forEach((x,i)=>addLantern(x, i*.3));
-
-    function addFlags(){
-      for(let i=0;i<24;i++){
-        const f=document.createElement('div'); f.className='flag';
-        f.style.left = (i*4)+'%'; f.style.borderTopColor = `hsla(${30+i*12}, 65%, 70%, .6)`;
-        f.style.animationDelay = (Math.random()*2)+'s'; flagHost.appendChild(f);
-      }
-    }
-    addFlags();
-
-    // ---------- Petals ----------
-    const petals = document.getElementById('petals');
-    function spawnPetal(){
-      const p=document.createElement('div'); p.className='petal parallax';
-      const sx=Math.random()*innerWidth; p.style.setProperty('--sx', sx+'px');
-      p.style.setProperty('--dx', (Math.random()*160-80)+'px');
-      p.style.animationDuration=(14+Math.random()*18)+'s';
-      p.style.setProperty('--depth', (.02+Math.random()*.06).toFixed(3));
-      petals.appendChild(p); p.addEventListener('animationend',()=>{p.remove(); spawnPetal();});
-    }
-    for(let i=0;i<38;i++) spawnPetal();
-
-    // ---------- Photo frame ----------
-    const frame=document.getElementById('frame');
-    document.getElementById('photoBtn').addEventListener('click',()=>{ frame.classList.toggle('hide'); });
-
-    // ---------- Back button ----------
-    document.getElementById('backBtn').addEventListener('click',()=>{ if(document.referrer) history.back(); else location.href='/'; });
-
-    // ---------- Reduce motion ----------
-    const mq = matchMedia('(prefers-reduced-motion: reduce)');
-    function reduce(){ if(mq.matches){ document.querySelectorAll('.lantern,.flag,.petal').forEach(el=>el.style.animation='none'); } }
-    mq.addEventListener('change', reduce); reduce();
-
-    // ---------- i18n ----------
-    const dict={
-      ja:{ title:'お支払い ありがとうございます', body:'古い街並みのフリマで、やさしい取引がひとつ生まれました。処理は完了しました。', badge:'決済完了', photo:'思い出モード（フレームON/OFF）', back:'前の画面へ戻る' },
-      en:{ title:'Thank you for your purchase', body:'In the old-town flea market, a gentle trade was made. Your payment is complete.', badge:'Payment Complete', photo:'Photo Mode (Frame ON/OFF)', back:'Go back' },
-      zh:{ title:'感谢您的购买', body:'在旧街跳蚤市场，一次温柔的交换诞生了。付款已完成。', badge:'付款完成', photo:'拍照模式（边框开关）', back:'返回上一页' }
-    };
-    document.querySelectorAll('.lang button').forEach(btn=>btn.addEventListener('click',()=>{ const d=dict[btn.dataset.lang]; if(!d) return; document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent=d[el.dataset.i18n]; }); }));
-  </script>
-</body>
-</html>
+    [18,32,46,60,74,88].
