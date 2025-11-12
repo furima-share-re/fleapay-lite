@@ -3,14 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>出店者 ペンディング登録 & 固定QR案内</title>
+  <title>出店者 ペンディング登録 & 固定QR案内（運用改善版）</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/modern-normalize/2.0.0/modern-normalize.min.css" rel="stylesheet">
-
   <style>
     :root{
       --bg:#f7f7fb;--panel:#fff;--text:#222;--sub:#666;--brand:#5a6bff;
-      --ok:#1a9b63;--err:#e5484d;--bd:#e6e6ee;
+      --ok:#1a9b63;--err:#e5484d;--bd:#e6e6ee;--warn:#c97a00
     }
     body{background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",Arial,sans-serif}
     .wrap{max-width:820px;margin:24px auto;padding:0 16px}
@@ -27,9 +26,10 @@
     .btn:disabled{opacity:.6;cursor:not-allowed}
     .chip{display:inline-block;padding:6px 10px;border-radius:999px;background:#f1f2ff;border:1px solid #dfe2ff;color:#3943ff;font-size:.85rem;margin-right:6px}
     .muted{color:var(--sub);font-size:.9rem}
-    .msg{padding:12px 14px;border-radius:12px;margin:10px 0}
-    .msg.ok{background:#e9f7ef;color:#0f6b43;border:1px solid #c9eedc}
-    .msg.err{background:#fff1f1;color:#a1161b;border:1px solid #ffd7d9}
+    .msg{padding:12px 14px;border-radius:12px;margin:10px 0;border:1px solid transparent}
+    .msg.ok{background:#e9f7ef;color:#0f6b43;border-color:#c9eedc}
+    .msg.err{background:#fff1f1;color:#a1161b;border-color:#ffd7d9}
+    .msg.warn{background:#fff7e6;color:#6b4a00;border-color:#ffe1a6}
     .qrbox{display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px;border:1px dashed var(--bd);border-radius:14px;background:#fff}
     .ttl{font-weight:700}
     .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}
@@ -41,15 +41,16 @@
     .preview img{display:block;width:100%;height:auto}
     .badge{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:999px;border:1px solid var(--bd);background:#fff}
     .space{height:6px}
+    .row-compact{display:flex;align-items:center;gap:12px}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:.8rem; padding:2px 6px; border:1px solid var(--bd); border-radius:6px; background:#fff}
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>出店者 ペンディング登録 & 固定QR案内</h1>
-
     <div class="card">
       <div class="muted">
-        フロー：① 出店者情報 → ②（任意）画像からAIで商品説明 → ③ 金額を「ペンディング登録」 → ④ お客様は固定QRから支払いページへ
+        フロー：① 撮影 → ②（任意）AIで商品説明+合計を自動反映 → ③ 金額を「ペンディング登録」 → ④ お客様は固定QRから支払い
       </div>
     </div>
 
@@ -59,7 +60,7 @@
       <label>出店者ID（sellerPublicId）</label>
       <input id="sellerId" placeholder="例）seller-test01">
 
-      <!-- トークンは運用上不要。隠しブロックとして残しておく（将来用） -->
+      <!-- トークンは運用上不要。隠しブロックとして残置（将来用） -->
       <div data-role="token-row" style="display:none">
         <label>APIトークン（x-seller-token） <span class="hint">※現在は不要です</span></label>
         <input id="token" type="password" placeholder="sk_seller_...">
@@ -81,24 +82,33 @@
       </div>
 
       <label>商品概要（AIで自動入力可・領収書の説明欄に使用）</label>
-      <textarea id="summary" placeholder="例）ポケモンカード シングルカード ×1\nLabubu フィギュア ×1\nキーホルダー ×2"></textarea>
+      <textarea id="summary" placeholder="例）ポケモンカード ×1\nLabubu フィギュア ×1\nキーホルダー ×2"></textarea>
     </div>
 
     <!-- 2. AI 画像解析 -->
     <div class="card">
-      <h2>2.（任意）AI画像解析で商品説明を作成</h2>
+      <h2>2.（任意）AI画像解析で説明＋金額を自動反映</h2>
       <div class="row">
         <div>
-          <div class="right" style="gap:8px;margin-bottom:8px">
-            <label class="badge" id="aiStatus">準備OK</label>
+          <div class="row-compact" style="justify-content:space-between;margin-bottom:8px">
+            <div class="row-compact">
+              <label class="badge" id="aiStatus">準備OK</label>
+              <span class="hint">写真は端末内でプレビュー後、サーバの <span class="kbd">/api/analyze-item</span> に送信されます。</span>
+            </div>
+            <label class="row-compact" style="gap:6px">
+              <input type="checkbox" id="autoAnalyze" checked>
+              <span class="hint">撮影後に自動解析</span>
+            </label>
           </div>
-          <input id="file" type="file" accept="image/*">
+
+          <!-- スマホで即カメラを開く。リアカメラ優先 -->
+          <input id="file" type="file" accept="image/*" capture="environment">
           <div class="space"></div>
           <div style="display:flex;gap:10px">
             <button class="btn primary" id="btnAnalyze">AIで説明を作成</button>
             <button class="btn ghost" id="btnClearPreview">プレビュー消去</button>
           </div>
-          <p class="hint">※ 画像はサーバの <code>/api/analyze-item</code> に送られ、AIが短い説明文を返します（APIキーはサーバ側保管）。</p>
+          <p class="hint">AIが <strong>商品名・数量のリスト</strong>と、可能なら<strong>合計金額</strong>を返し、入力欄に反映します。</p>
         </div>
         <figure class="preview" id="preview" hidden>
           <img id="previewImg" alt="preview">
@@ -147,7 +157,7 @@
   const $ = sel => document.querySelector(sel);
   const params = new URLSearchParams(location.search);
   const baseURL = location.origin;
-  // TDZ回避：QRインスタンスは最初に初期化
+  // QRインスタンス（再生成用に保持）
   window._qrInstance = null;
 
   // ---------- ユーティリティ ----------
@@ -156,7 +166,7 @@
   function showAi(type, text){ const el = $('#aiMsg'); el.className = 'msg ' + type; el.textContent = text; el.style.display = 'block'; }
   function clearAi(){ const el=$('#aiMsg'); el.style.display='none'; el.textContent=''; }
   function toggleUI(disabled){
-    ['btnRegister','btnAnalyze','btnReset','openBuyer'].forEach(id=>{ const el=$('#'+id); if(el) el.disabled=disabled; });
+    ['btnRegister','btnAnalyze','btnReset','openBuyer','file','autoAnalyze'].forEach(id=>{ const el=$('#'+id); if(el) el.disabled=disabled; });
   }
   function toHalfWidthDigits(s){ return String(s||'').replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0)-0xFF10+0x30)); }
   function parseAmount(value){
@@ -180,19 +190,23 @@
       e.target.value = Number.isFinite(n) ? String(n) : '';
     });
 
-    // 画像プレビュー
-    $('#file').addEventListener('change', (e)=>{
+    // 画像プレビュー & 解析自動トリガ
+    $('#file').addEventListener('change', async (e)=>{
       const f=e.target.files?.[0]; if(!f) return;
       const url = URL.createObjectURL(f);
       $('#previewImg').src = url;
       $('#preview').hidden = false;
+      if ($('#autoAnalyze').checked) {
+        await onAnalyze(/*fromAuto*/true);
+      }
     });
     $('#btnClearPreview').addEventListener('click', ()=>{
       $('#preview').hidden = true; $('#previewImg').src = '';
+      clearAi();
     });
 
     // ボタン
-    $('#btnAnalyze').addEventListener('click', onAnalyze);
+    $('#btnAnalyze').addEventListener('click', ()=> onAnalyze(false));
     $('#btnRegister').addEventListener('click', onRegister);
     $('#btnReset').addEventListener('click', ()=>{
       $('#amount').value=''; $('#summary').value=''; clearMsg(); clearAi();
@@ -204,10 +218,19 @@
   })();
 
   // ---------- AI 画像解析 ----------
-  async function onAnalyze(){
-    clearAi(); $('#aiStatus').textContent = '送信中…';
+  async function onAnalyze(fromAuto=false){
+    clearAi(); const status = $('#aiStatus');
     const f = $('#file').files?.[0];
-    if(!f){ showAi('err','画像ファイルを選択してください。'); $('#aiStatus').textContent='未選択'; return; }
+    if(!f){ showAi('err','画像ファイルを選択してください。'); status.textContent='未選択'; return; }
+
+    // 既存の説明があれば確認（誤上書き防止）
+    const hasExisting = $('#summary').value.trim().length > 0;
+    if (hasExisting && !fromAuto) {
+      const ok = confirm('既存の説明を上書きしますか？');
+      if(!ok) return;
+    }
+
+    status.textContent = '送信中…'; toggleUI(true);
     try{
       const fd = new FormData();
       fd.append('file', f, f.name);
@@ -215,13 +238,22 @@
       const json = await res.json();
       if(!res.ok || json.error) throw new Error(json.detail||json.error||`HTTP ${res.status}`);
 
-      const now = $('#summary').value.trim();
-      $('#summary').value = (now ? now + '\n' : '') + (json.summary || '');
-      $('#aiStatus').textContent = '完了';
-      showAi('ok','AIで説明を追加しました。');
+      // サーバは { summary: string, amount?: number } を返す想定
+      if (typeof json.summary === 'string') {
+        $('#summary').value = json.summary;
+      }
+      if (json.amount != null) {
+        const n = parseAmount(String(json.amount));
+        if (Number.isFinite(n)) $('#amount').value = String(n);
+      }
+
+      status.textContent = '完了';
+      showAi('ok','AIで説明を反映しました。金額をご確認のうえ「金額を登録」を押してください。');
     }catch(e){
-      $('#aiStatus').textContent = '失敗';
+      status.textContent = '失敗';
       showAi('err', '解析に失敗しました：' + (e.message||e));
+    }finally{
+      toggleUI(false);
     }
   }
 
@@ -264,7 +296,7 @@
     if(!res.ok || json.error) return;
     $('#ttl').textContent = json.ttl_min ?? '-';
     const c = (json.pending||[]).slice(0,3);
-    $('#cands').textContent = c.length ? c.map(v=>'¥'+v.toLocaleString()).join(' / ') : '(候補なし)';
+    $('#cands').textContent = c.length ? c.map(v=>'¥'+Number(v).toLocaleString()).join(' / ') : '(候補なし)';
   }
 
   // ---------- 固定QR ----------
@@ -272,9 +304,7 @@
     const target = $('#qrcode');
     const url = `${baseURL}/checkout.html?s=${encodeURIComponent(sellerId || '')}`;
     target.innerHTML = '';
-    window._qrInstance = new QRCode(target, {
-      text: url, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M
-    });
+    window._qrInstance = new QRCode(target, { text: url, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
     $('#openBuyer').onclick = ()=> window.open(url, '_blank');
   }
   </script>
