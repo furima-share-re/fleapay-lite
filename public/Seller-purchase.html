@@ -49,6 +49,7 @@
   .kid-preset .btn{height:80px;font-size:1.4rem}
   .kid-qr{width:260px;height:260px;background:#fff;border:4px solid #000;border-radius:12px;display:flex;align-items:center;justify-content:center}
   .kid-hint{font-size:1rem;color:#333}
+  .divider{height:1px;background:#eee;margin:12px 0}
 
   /* モーダル（おとな確認共通） */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:16px;z-index:9999}
@@ -60,13 +61,12 @@
   .rowbtn{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
   .ck{display:flex;align-items:center;gap:8px;margin-top:6px}
   .priceXL{font-size:1.6rem;font-weight:700}
-  .divider{height:1px;background:#eee;margin:10px 0}
 
   /* テンキー */
   .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
   .numpad .btn{height:64px;font-size:1.3rem}
 
-  /* ===== 追加：読み込みオーバーレイ（子ども撮影後の待機表示） ===== */
+  /* 読み込みオーバーレイ（子ども撮影後の待機表示） */
   .loading-ol{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(255,255,255,.94);z-index:10000}
   .loading-ol.show{display:flex}
   .spinner{width:72px;height:72px;border-radius:50%;border:8px solid #e5e7eb;border-top-color:var(--brand);animation:spin 1s linear infinite;margin-bottom:16px}
@@ -86,7 +86,7 @@
 
     <!-- ========== こどもモード ========== -->
     <div id="kidApp" class="active" aria-label="こども もーど">
-      <!-- 共通：出店者ID（小さく・自動連動） -->
+      <!-- 共通：出店者ID -->
       <div class="card" style="padding:12px 16px">
         <label for="sellerIdKid">🆔 しゅってんしゃID（おとなが いれる）</label>
         <input id="sellerIdKid" placeholder="seller-test01" aria-label="しゅってんしゃ アイディー">
@@ -96,26 +96,47 @@
       <!-- ①しゃしん（ボタン1つ・選択したら自動で次へ） -->
       <div id="k-step1" class="card kid-screen active">
         <div class="kid-h1">📷 しゃしんを とる</div>
-        <!-- 入力は隠す：撮影はボタンから起動 -->
         <input id="kidFile" class="fileinput" type="file" accept="image/*" capture="environment" aria-label="しゃしんを えらぶ">
         <button class="btn primary kid-big" id="k-take">しゃしんを とる</button>
         <div class="hint">しゃしんは AI に おくって、しょうひん を みつけます。</div>
         <div id="k-aiMsg" class="msg" style="display:none"></div>
       </div>
 
-      <!-- ②きんがく -->
+      <!-- ②きんがく + 明細 + その場で確認（この画面で完結） -->
       <div id="k-step2" class="card kid-screen">
         <div class="kid-h1">💰 きんがく を えらぶ</div>
-        <div class="kid-preset">
+
+        <!-- 商品明細（概要）表示 -->
+        <div style="width:100%;text-align:left">
+          <div style="font-weight:700;margin:4px 0 6px">🛍 しょうひん の がいよう</div>
+          <div id="k2-summary" class="kid-hint" style="background:#fff;border:1px solid #eee;border-radius:10px;padding:10px;min-height:48px">（しょうひん じょうほう なし）</div>
+        </div>
+
+        <!-- 金額プリセット＋その他 -->
+        <div class="kid-preset" style="margin-top:6px">
           <button class="btn" data-kid-price="500">500えん</button>
           <button class="btn" data-kid-price="1000">1,000えん</button>
           <button class="btn" data-kid-price="1500">1,500えん</button>
         </div>
         <button class="btn ghost kid-big" id="k-more">ほか（ていれい ばんごう）</button>
         <div id="k-amtView" class="kid-hint">いま：—</div>
+
+        <div class="divider"></div>
+
+        <!-- 次の確認画面もこの画面に表示 -->
+        <div style="width:100%;text-align:left">
+          <div style="font-weight:700;margin:4px 0 6px">🧾 かくにん</div>
+          <div class="kid-hint"><strong>ごうけい：</strong><span id="k2-sum">—</span></div>
+          <label class="ck" style="font-size:1.05rem">
+            <input type="checkbox" id="k2-adult"> 👤 おとな に みてもらった
+          </label>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px">
+            <button class="btn primary kid-big" id="k2-go" disabled>はい（QRへ）</button>
+          </div>
+        </div>
       </div>
 
-      <!-- ③かくにん（→④QR） -->
+      <!-- （旧）③かくにん ：残すが通常は使わない -->
       <div id="k-step3" class="card kid-screen">
         <div class="kid-h1">🧾 かくにん</div>
         <div id="k-listWrap" class="hint" style="width:100%;text-align:left"></div>
@@ -197,14 +218,11 @@
     </div>
   </div>
 
-  <!-- 共通：確認モーダル（おとな登録直前／こども→登録時にも使用） -->
+  <!-- 共通：確認モーダル（おとな登録直前／子ども旧画面用） -->
   <div class="overlay" id="confirmOverlay" aria-modal="true" role="dialog">
     <div class="modal">
       <h3>🧾 内容をかくにん</h3>
-      <div class="divider"></div>
-      <div class="ttl muted">商品リスト</div>
-      <ul class="list" id="confirmList"></ul>
-      <div class="ttl muted">合計金額</div>
+      <div class="list" id="confirmList"></div>
       <div class="priceXL" id="confirmPrice">¥ -</div>
       <label class="ck">
         <input type="checkbox" id="adultCheck">
@@ -217,11 +235,10 @@
     </div>
   </div>
 
-  <!-- テンキー（こども ほか） -->
+  <!-- テンキー（子ども ほか） -->
   <div class="overlay" id="numpadOverlay" aria-modal="true" role="dialog">
     <div class="modal">
       <h3>🔢 きんがく を いれてね</h3>
-      <div class="divider"></div>
       <input id="npDisplay" inputmode="numeric" aria-label="きんがく" readonly>
       <div class="numpad">
         <button class="btn" data-np="1">1</button><button class="btn" data-np="2">2</button><button class="btn" data-np="3">3</button>
@@ -232,7 +249,7 @@
     </div>
   </div>
 
-  <!-- 追加：読み込みオーバーレイ -->
+  <!-- 読み込みオーバーレイ -->
   <div class="loading-ol" id="loadingOverlay" role="alert" aria-live="assertive">
     <div class="spinner" aria-hidden="true"></div>
     <div style="font-size:1.25rem;margin-bottom:4px">よみこみちゅう…</div>
@@ -244,14 +261,10 @@
   const $=s=>document.querySelector(s);
   const params=new URLSearchParams(location.search);
   const CHECKOUT_PATH=params.get('cp')||'/checkout-matsuri.html';
-  let qrAdult=null, qrKid=null;
 
   // 共有データモデル
-  const model={
-    sellerId:'', amount:0, summary:'', // 大人画面入力値
-  };
+  const model={ sellerId:'', amount:0, summary:'' };
 
-  // 音/振動（軽いフィードバック）
   const fx={ ok(){try{navigator.vibrate?.(30);}catch{}}, ng(){try{navigator.vibrate?.([40,40,40]);}catch{}} };
 
   // ===== モード切替 =====
@@ -270,101 +283,108 @@
   (function init(){
     const sid=params.get('s')||'';
     if(sid){model.sellerId=sid;}
-    // こども/おとなのID欄へ反映
     $('#sellerIdKid').value=model.sellerId;
     $('#sellerId').value=model.sellerId;
-    // QR初期生成
-    setQR('#qrcode', 'adult');
-    setQR('#k-qrcode', 'kid');
 
-    // ID変更 → 双方向同期＋QR再生成
+    setQR('#qrcode');
+    setQR('#k-qrcode');
+
+    // ID同期
     $('#sellerId').addEventListener('input',e=>syncSellerId(e.target.value));
     $('#sellerIdKid').addEventListener('input',e=>syncSellerId(e.target.value));
 
-    // 大人：プリセット
+    // 大人UI
     document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{ $('#amount').value=b.dataset.preset; }));
-    // 子ども：プリセット
-    document.querySelectorAll('[data-kid-price]').forEach(b=>b.addEventListener('click',()=>{ setKidAmount(+b.dataset.kidPrice); }));
-
-    // 大人：AI
     $('#btnAnalyze').addEventListener('click',onAnalyze);
     $('#file').addEventListener('change',e=>{const f=e.target.files?.[0]; if(!f)return; $('#previewImg').src=URL.createObjectURL(f); $('#preview').hidden=false;});
     $('#btnClearPreview').addEventListener('click',()=>{$('#preview').hidden=true; $('#previewImg').src=''; $('#aiMsg').style.display='none';});
 
-    // こども：撮影ボタン→ファイル入力起動（ボタンは1つだけ）
+    // 子どもUI：撮影→ファイル選択
     $('#k-take').addEventListener('click',()=>$('#kidFile').click());
-    // こども：写真をえらんだら自動で解析→次画面へ
     $('#kidFile').addEventListener('change',onKidPhotoTaken);
 
+    // 子ども：金額UI
+    document.querySelectorAll('[data-kid-price]').forEach(b=>b.addEventListener('click',()=>{ setKidAmount(+b.dataset.kidPrice); }));
     $('#k-more').addEventListener('click',openNumpad);
-    $('#k-back').addEventListener('click',()=>goKid(2));
-    $('#k-adult').addEventListener('change',e=>$('#k-go').disabled=!e.target.checked);
-    $('#k-go').addEventListener('click',async ()=>{
-      // こども→登録API（確認済み）
+
+    // 子ども：この画面内の確認欄（k2-）で完結
+    $('#k2-adult').addEventListener('change',e=>$('#k2-go').disabled=!e.target.checked);
+    $('#k2-go').addEventListener('click',async ()=>{
       const ok=await performRegister(model.sellerId, model.amount, model.summary);
       if(ok){ goKid(4); fx.ok(); }
     });
-    $('#k-open').addEventListener('click',()=>window.open(buildBuyerUrl(model.sellerId),'_blank'));
 
-    // モーダル・テンキー共通
-    $('#btnEdit').onclick=()=>$('#confirmOverlay').classList.remove('show');
-    $('#adultCheck').onchange=()=>$('#btnConfirm').disabled=!$('#adultCheck').checked;
-    $('#btnConfirm').onclick=async ()=>{
-      const {sellerId,amount,summary} = getAdultValues();
-      const ok=await performRegister(sellerId,amount,summary);
-      if(ok) $('#confirmOverlay').classList.remove('show');
-    };
+    // 旧ステップ3（念のため残置）
+    $('#k-back').addEventListener('click',()=>goKid(2));
+    $('#k-adult').addEventListener('change',e=>$('#k-go').disabled=!e.target.checked);
+    $('#k-go').addEventListener('click',async ()=>{
+      const ok=await performRegister(model.sellerId, model.amount, model.summary);
+      if(ok){ goKid(4); fx.ok(); }
+    });
 
     // テンキー
     document.querySelectorAll('[data-np]').forEach(b=>b.addEventListener('click',()=>{$('#npDisplay').value += b.dataset.np;}));
     $('#npClear').onclick=()=>$('#npDisplay').value='';
-    $('#npOk').onclick=()=>{ const v=parseInt($('#npDisplay').value||'0'); setKidAmount(v); $('#numpadOverlay').classList.remove('show'); goKid(3); };
-
+    $('#npOk').onclick=()=>{ const v=parseInt($('#npDisplay').value||'0'); setKidAmount(v); $('#numpadOverlay').classList.remove('show'); };
   })();
 
-  // ===== 子ども：写真選択→自動遷移＋ローディング表示 =====
+  // ===== 子ども：写真→AI→金額画面 =====
   async function onKidPhotoTaken(e){
     const f=e.target.files?.[0];
     if(!f){ kidMsg('err','しゃしんを えらんでね'); fx.ng(); return; }
     setLoading(true);
     try{
-      // 任意：AI解析（失敗しても次へ進む）
+      // AI解析（失敗しても進む）
       try{
         const fd=new FormData(); fd.append('file',f,f.name);
         const res=await fetch('/api/analyze-item',{method:'POST',body:fd});
         const j=await res.json();
-        if(res.ok && !j.error){
-          if(j.summary) model.summary = j.summary;
-          if(j.amount)  model.amount  = Number(j.amount)||0;
-        }
-      }catch{} // 解析失敗は無視
-      // 自動で金額選択画面へ
+        console.log('AI解析結果:', j);
+        if(j.summary) model.summary = j.summary;
+        if(j.amount)  model.amount  = Number(j.amount)||0;
+      }catch(err){ console.warn('AI解析失敗',err); }
       goKid(2);
-      // 解析で金額が出たら即反映して確認画面へ
-      if(model.amount){ setKidAmount(model.amount); }
+      updateKidPanels();
       fx.ok();
     } finally {
       setLoading(false);
     }
   }
 
-  // ===== こども：表示制御と値の反映 =====
-  function goKid(n){ [1,2,3,4].forEach(i=>$('#k-step'+i).classList.remove('active')); $('#k-step'+n).classList.add('active'); }
+  // ===== 子ども：金額設定（画面内の確認も同時更新） =====
   function setKidAmount(v){
-    if(!Number.isFinite(v) || v<100 || v>1_000_000){ kidMsg('err','きんがくを いれてね（100〜1,000,000）'); fx.ng(); return; }
+    if(!Number.isFinite(v) || v<100 || v>1_000_000){
+      kidMsg('err','きんがくを いれてね（100〜1,000,000）'); fx.ng(); return;
+    }
     model.amount=v;
-    $('#k-amtView').textContent='いま：¥'+v.toLocaleString();
-    // かくにん画面に内容を反映
-    $('#k-listWrap').innerHTML = (model.summary?.trim()? `<pre style="margin:0">${escapeHtml(model.summary)}</pre>` : '（しょうひん じょうほう なし）');
-    $('#k-sum').textContent='¥'+v.toLocaleString();
-    $('#k-adult').checked=false; $('#k-go').disabled=true;
-    goKid(3);
+    updateKidPanels();
   }
+
+  function updateKidPanels(){
+    const summaryHtml = (model.summary?.trim()
+      ? `<pre style="margin:0">${escapeHtml(model.summary)}</pre>`
+      : '（しょうひん じょうほう なし）');
+
+    // ステップ2（この画面）
+    $('#k2-summary').innerHTML = summaryHtml;
+    $('#k-amtView').textContent = 'いま：' + (model.amount?('¥'+model.amount.toLocaleString()):'—');
+    $('#k2-sum').textContent   = model.amount?('¥'+model.amount.toLocaleString()):'—';
+
+    // 旧ステップ3（残置）
+    $('#k-listWrap').innerHTML = summaryHtml;
+    $('#k-sum').textContent    = model.amount?('¥'+model.amount.toLocaleString()):'—';
+    // 確認チェックは毎回リセット
+    $('#k2-adult').checked=false; $('#k2-go').disabled=true;
+    $('#k-adult').checked=false;  $('#k-go').disabled=true;
+  }
+
+  // ===== 補助 =====
+  function goKid(n){ [1,2,3,4].forEach(i=>$('#k-step'+i).classList.remove('active')); $('#k-step'+n).classList.add('active'); }
   function openNumpad(){ $('#npDisplay').value=''; $('#numpadOverlay').classList.add('show'); }
   function kidMsg(type,text){ const el=$('#k-aiMsg'); el.className='msg '+type; el.textContent=text; el.style.display='block'; }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
 
-  // ===== 大人：AI解析 =====
+  // ===== 大人：AI/登録 =====
   async function onAnalyze(){
     const f=$('#file').files?.[0];
     if(!f){ showMsg('err','画像を選んでください'); return; }
@@ -379,7 +399,6 @@
     }catch(e){ showMsg('err',e.message); }
   }
 
-  // ===== 大人：値取得／確認モーダル =====
   function getAdultValues(){
     const sellerId=($('#sellerId').value||$('#sellerIdKid').value||'').trim();
     const amount=parseInt(($('#amount').value||model.amount||'').toString().replace(/[^\d]/g,''),10);
@@ -387,57 +406,60 @@
     model.sellerId=sellerId; model.amount=amount||0; model.summary=summary;
     return {sellerId,amount,summary};
   }
+
   function openConfirm({sellerId,amount,summary}){
     if(!sellerId){ showMsg('err','出店者IDを入力してください'); return; }
     if(!Number.isInteger(amount)||amount<100){ showMsg('err','金額が正しくありません'); return; }
     const lines=(summary||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
     const ul=$('#confirmList'); ul.innerHTML='';
-    if(lines.length===0){ ul.innerHTML='<li>（商品情報なし）</li>'; }
-    else lines.forEach(l=>{ const li=document.createElement('li'); li.textContent='🛍 '+l; ul.appendChild(li); });
+    if(lines.length===0){ ul.innerHTML='<div>（商品情報なし）</div>'; }
+    else ul.innerHTML=lines.map(l=>'🛍 '+escapeHtml(l)).join('<br>');
     $('#confirmPrice').textContent='¥'+amount.toLocaleString();
     $('#adultCheck').checked=false; $('#btnConfirm').disabled=true;
     $('#confirmOverlay').classList.add('show');
   }
 
-  // ===== 登録API（共通） =====
   async function performRegister(sellerId,amount,summary){
     try{
       const res=await fetch('/api/pending/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sellerId,amount,summary})});
       const j=await res.json();
       if(!res.ok||j.error) throw new Error(j.error||'登録失敗');
       showMsg('ok','登録しました。購入者側に反映されます。');
-      // QRハイライト＆再生成
-      flash('#qrCard'); setQR('#qrcode','adult'); setQR('#k-qrcode','kid');
-      fx.ok();
+      flash('#qrCard'); setQR('#qrcode'); setQR('#k-qrcode'); fx.ok();
       return true;
     }catch(e){ showMsg('err',e.message||'登録失敗'); fx.ng(); return false; }
   }
 
   function showMsg(type,text){ const el=$('#msg'); el.className='msg '+type; el.textContent=text; el.style.display='block'; }
 
-  // ===== QR生成／URL =====
   function buildBuyerUrl(sellerId){ return `${location.origin}${CHECKOUT_PATH}?s=${encodeURIComponent(sellerId||'')}`; }
-  function setQR(selector,mode){
-    const target=$(selector); target.innerHTML='';
+  function setQR(selector){
+    const target=document.querySelector(selector); if(!target) return;
+    target.innerHTML='';
     const url=buildBuyerUrl(model.sellerId||$('#sellerId').value||$('#sellerIdKid').value||'');
-    const instance=new QRCode(target,{text:url,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
-    if(mode==='adult') qrAdult=instance; else qrKid=instance;
-    (mode==='adult'?$('#openBuyer'):$('#k-open')).onclick=()=>window.open(url,'_blank');
+    new QRCode(target,{text:url,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
+    (selector==='#qrcode'?$('#openBuyer'):$('#k-open')).onclick=()=>window.open(url,'_blank');
   }
 
-  // ID同期
   function syncSellerId(v){
-    model.sellerId=v.trim();
+    model.sellerId=(v||'').trim();
     $('#sellerId').value=model.sellerId;
     $('#sellerIdKid').value=model.sellerId;
-    setQR('#qrcode','adult'); setQR('#k-qrcode','kid');
+    setQR('#qrcode'); setQR('#k-qrcode');
   }
 
-  // 読み込みオーバーレイ制御
   function setLoading(v){ $('#loadingOverlay').classList.toggle('show', !!v); }
-
-  // 演出
   function flash(sel){ const el=$(sel); if(!el)return; const org=el.style.boxShadow; el.style.boxShadow='0 0 0 3px #c9eedc,0 6px 24px rgba(0,0,0,.12)'; setTimeout(()=>el.style.boxShadow=org,900); }
+
+  // 大人：登録ボタンでモーダル使用
+  $('#btnRegister')?.addEventListener('click',()=>openConfirm(getAdultValues()));
+  $('#btnEdit')?.addEventListener('click',()=>$('#confirmOverlay').classList.remove('show'));
+  $('#adultCheck')?.addEventListener('change',e=>$('#btnConfirm').disabled=!e.target.checked);
+  $('#btnConfirm')?.addEventListener('click',async ()=>{
+    const {sellerId,amount,summary}=getAdultValues();
+    const ok=await performRegister(sellerId,amount,summary);
+    if(ok) $('#confirmOverlay').classList.remove('show');
+  });
   </script>
 </body>
 </html>
