@@ -249,9 +249,7 @@ app.get("/api/price/latest", async (req, res) => {
   }
 });
 
-// ====== Checkout セッション作成（最新/指定額 & 明細反映 = 任意） ======
-// 出店者が summary を入れていれば Stripe の説明欄（Checkoutの商品説明/PIのdescription/metadata）に反映。
-// summary が空の場合は説明未設定で金額のみ決済。
+// ====== Checkout セッション作成（複数明細 line_items 対応 + 旧フロー互換） ======
 app.post("/api/checkout/session", async (req, res) => {
   try {
     if (!isSameOrigin(req)) return res.status(403).json({ error: "forbidden_origin" });
@@ -261,71 +259,94 @@ app.post("/api/checkout/session", async (req, res) => {
       return res.status(429).json({ error: "rate_limited" });
     }
 
-    const { amount, sellerAccountId: acctFromBody, description, sellerId, latest } = req.body || {};
+    const {
+      // 旧パラメータ（後方互換）
+      amount, description, sellerId, latest, sellerAccountId: acctFromBody,
+      // 新パラメータ（複数明細）
+      items, total
+    } = req.body || {};
 
-    // latest=true で amount 無指定ならDBから解決（summary も取得）
-    let amt = Number(amount);
-    let latestSummary = "";
-    if (latest && (!Number.isInteger(amt) || amt < 100)) {
-      if (!sellerId) return res.status(400).json({ error: "sellerId required for latest" });
-      const r = await pool.query(
-        `select amount, summary
-           from pending_charges
-          where seller_public_id = $1
-            and expires_at > now()
-          order by created_at desc
-          limit 1`,
-        [sellerId]
-      );
-      if (r.rows.length === 0) return res.status(400).json({ error: "latest_amount_not_found" });
-      amt = Number(r.rows[0].amount);
-      latestSummary = r.rows[0].summary || "";
-    }
-    if (!Number.isInteger(amt) || amt < 100 || amt > 1_000_000)
-      return res.status(400).json({ error: "invalid amount" });
-
-    // 受け取りアカウント解決
+    // 受け取りアカウント解決（従来通り）
     const sellerAccountId = await resolveSellerAccountId(sellerId, acctFromBody);
     if (!sellerAccountId) return res.status(400).json({ error: "sellerAccountId required" });
 
-    const fee = Math.round(amt * 0.10);
+    let line_items = [];
+    let amt = 0;
+    let desc = (description || "").toString().trim().slice(0, 250);
 
-    // ---- 明細の反映（任意）----
-    // 1) 優先度: フロントから description 指定があればそれを使用
-    // 2) それがなければ latestSummary（DB保存のsummary）
-    // 3) どちらも空なら説明は未設定（=明細なし）
-    const descRaw = (description ?? latestSummary ?? "").toString();
-    const desc = descRaw.trim().slice(0, 250); // Stripe説明は控えめに（運用で調整可）
-    const includeDescription = desc.length > 0;
+    if (Array.isArray(items) && items.length > 0) {
+      // 新：複数明細
+      line_items = items
+        .filter(i => Number.isInteger(i.unit_price) && i.unit_price > 0 && Number(i.qty) > 0)
+        .map(i => ({
+          quantity: Number(i.qty),
+          price_data: {
+            currency: "jpy",
+            unit_amount: Number(i.unit_price),
+            product_data: {
+              name: (i.name || "商品").toString().slice(0, 120),
+              description: `qty:${Number(i.qty)}`
+            }
+          }
+        }));
+      amt = Number.isInteger(total)
+        ? total
+        : line_items.reduce((s, li) => s + li.price_data.unit_amount * li.quantity, 0);
+    } else {
+      // 旧：単一金額＋latest/summary
+      let amtIn = Number(amount);
+      let latestSummary = "";
+      if (latest && (!Number.isInteger(amtIn) || amtIn < 100)) {
+        if (!sellerId) return res.status(400).json({ error: "sellerId required for latest" });
+        const r = await pool.query(
+          `select amount, summary
+             from pending_charges
+            where seller_public_id = $1
+              and expires_at > now()
+            order by created_at desc
+            limit 1`,
+          [sellerId]
+        );
+        if (r.rows.length === 0) return res.status(400).json({ error: "latest_amount_not_found" });
+        amtIn = Number(r.rows[0].amount);
+        latestSummary = r.rows[0].summary || "";
+      }
+      if (!Number.isInteger(amtIn) || amtIn < 100 || amtIn > 1_000_000)
+        return res.status(400).json({ error: "invalid amount" });
+
+      if (!desc && latestSummary) desc = latestSummary.toString().slice(0, 250);
+
+      line_items = [{
+        quantity: 1,
+        price_data: {
+          currency: "jpy",
+          unit_amount: amtIn,
+          product_data: {
+            name: "お支払い",
+            ...(desc ? { description: desc } : {}),
+            metadata: desc ? { summary: desc } : {}
+          }
+        }
+      }];
+      amt = amtIn;
+    }
+
+    const fee = Math.round(amt * 0.10);
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: "jpy",
-      line_items: [{
-        quantity: 1,
-        price_data: {
-          currency: "jpy",
-          unit_amount: amt,
-          product_data: {
-            name: "お支払い",
-            // 出店者が明細を入れた場合のみ説明を載せる
-            ...(includeDescription ? { description: desc } : {}),
-            // 商品側メタデータにも同じ要約を入れておく（検索/連携用）
-            metadata: includeDescription ? { summary: desc } : {}
-          }
-        }
-      }],
+      line_items,
       payment_intent_data: {
         application_fee_amount: fee,
         transfer_data: { destination: sellerAccountId },
-        // 決済の説明欄（レシート/ダッシュボード）。任意で設定。
-        ...(includeDescription ? { description: desc } : {}),
+        ...(desc ? { description: desc } : {}),
         metadata: {
           sellerId: sellerId || "",
           sellerAccountId,
           amount: String(amt),
           latest: String(!!latest),
-          ...(includeDescription ? { summary: desc } : {})
+          ...(desc ? { summary: desc } : {})
         }
       },
       success_url: `${BASE_URL}/checkout/success.html?sid={CHECKOUT_SESSION_ID}`,
@@ -336,12 +357,13 @@ app.post("/api/checkout/session", async (req, res) => {
     res.json({ url: session.url, id: session.id });
   } catch (e) {
     console.error("create checkout session", e);
-    res.status(500).json({ error: "internal_error" });
+    res.status(500).json({ error: "internal_error", detail: e.message });
   }
 });
 
-// ====== AI画像解析（画像→「商品名 ×数量」リスト） ======
+// ====== AI画像解析（画像→「商品名・数量・単価・合計」JSON） ======
 // 出店者が画像から summary を作るための補助API（任意）
+// ★ ここがパッチその1
 app.post("/api/analyze-item", upload.any(), async (req, res) => {
   try {
     if (!process.env.OPENAI_API_KEY)
@@ -367,19 +389,23 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
     }
     const dataUrl = `data:${mime};base64,${f.buffer.toString("base64")}`;
 
-    // 出力フォーマット固定プロンプト
+    // 出力フォーマット固定プロンプト（金額必須JSON）
     const prompt = `
-画像に写っている「販売する商品の種類と数量」を日本語だけで行ごとに列挙してください。
-各行は厳密に「商品名 半角スペース ×数量」の形式。
-例:
-ポケモンカード シングルカード ×1
-Labubu フィギュア ×1
-キーホルダー ×2
+画像に写る販売商品の「品名・数量・単価（円）・小計（円）・合計（円）」を抽出して、
+次の JSON だけを返してください。説明文は禁止。
 
-制約:
-- 文や説明、前置き、絵文字、箇条書き記号、番号を入れない
-- 数量が不明なら ×1
-- 余計な空行や末尾の句読点は入れない
+{
+  "items":[
+    {"name":"<商品名>","qty":<整数>,"unit_price":<整数|null>,"subtotal":<整数|null>}
+  ],
+  "total":<整数|null>
+}
+
+厳守ルール：
+- 金額は半角数字のみ（例: 1500）。円や¥は付けない。
+- 数量が不明なら 1。
+- 単価が不明なら null。推測で埋めない。
+- 余計な文や説明は禁止。
 `.trim();
 
     const completion = await openai.chat.completions.create({
@@ -396,28 +422,37 @@ Labubu フィギュア ×1
       ]
     });
 
-    let text = (completion.choices?.[0]?.message?.content || "").trim();
+    let txt = (completion.choices?.[0]?.message?.content || "").trim();
 
-    // 後処理（装飾除去・表記統一）
-    text = text
-      .replace(/\r/g, "")
-      .split("\n")
-      .map(line => line
-        .replace(/^\s*[-*•●◇■\d.()［\]【】\u2022]+\s*/g, "")
-        .replace(/\s*x\s*(\d+)\s*$/i, " ×$1")
-        .replace(/\s+×\s*/g, " ×")
-        .trim()
-      )
-      .filter(Boolean)
+    // 解析 & 安全補完
+    let parsed;
+    try { parsed = JSON.parse(txt); } catch { parsed = { items: [], total: null }; }
+
+    const items = (parsed.items || []).map(i => ({
+      name: (i?.name || "商品").toString().slice(0, 120),
+      qty: Number(i?.qty) || 1,
+      unit_price: Number.isInteger(i?.unit_price) ? Number(i.unit_price) : null,
+      subtotal: Number.isInteger(i?.subtotal) ? Number(i.subtotal) : null
+    }));
+
+    for (const it of items) {
+      if (it.unit_price != null && it.subtotal == null) it.subtotal = it.unit_price * it.qty;
+      if (it.unit_price == null && it.subtotal != null && it.qty > 0)
+        it.unit_price = Math.round(it.subtotal / it.qty);
+    }
+
+    let total = Number.isInteger(parsed.total) ? Number(parsed.total) : null;
+    if (!total) {
+      const sum = items.reduce((s, it) => s + (it.subtotal || 0), 0);
+      total = sum > 0 ? sum : null;
+    }
+
+    const summary = items
+      .map(it => `${it.name} × ${it.unit_price ?? "?"}円 ×${it.qty}`)
       .join("\n");
 
-    const items = text.split("\n").filter(Boolean).map(line => {
-      const m = line.match(/^(.*)\s+×(\d+)$/);
-      return m ? { name: m[1].trim(), qty: Number(m[2]) } : { name: line, qty: 1 };
-    });
-
-    if (!text) return res.status(422).json({ error: "empty_response" });
-    res.json({ summary: text, items });
+    if (!items.length && !total) return res.status(422).json({ error: "empty_response" });
+    res.json({ items, total, summary });
   } catch (e) {
     console.error("analyze-item error", e?.response?.data || e);
     if (e?.code === "LIMIT_FILE_SIZE") return res.status(413).json({ error: "file_too_large" });
