@@ -225,7 +225,6 @@ app.post("/api/pending/start", async (req, res) => {
 });
 
 // ====== 購入者ページ：最新金額取得（summary 付き） ======
-// summary は存在する場合のみ返る。空文字の場合は "" を返し、フロントで非表示可。
 app.get("/api/price/latest", async (req, res) => {
   try {
     const sellerId = String(req.query.s || "");
@@ -363,7 +362,7 @@ app.post("/api/checkout/session", async (req, res) => {
 
 // ====== AI画像解析（画像→「商品名・数量・単価・合計」JSON） ======
 // 出店者が画像から summary を作るための補助API（任意）
-// ★ ここがパッチその1
+// ★ パッチ適用：ゆる受け・フォールバック・422廃止
 app.post("/api/analyze-item", upload.any(), async (req, res) => {
   try {
     if (!process.env.OPENAI_API_KEY)
@@ -377,7 +376,52 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
       name: f.originalname, size: f.size, mimetype: f.mimetype
     });
 
-    // MIME推定
+    // --- helpers: ゆる正規化 & パース ---
+    const zen2han = (s) => String(s || "").replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+    const intLoose = (s) => {
+      const t = zen2han(String(s)).replace(/[,，\s￥¥円]/g, "");
+      const n = Number(t);
+      return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
+    };
+    const extractFirstJson = (txt) => {
+      // ```json ... ``` の中 or 最初の { ... } ブロックを拾う
+      const codeBlock = txt.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      if (codeBlock) {
+        try { return JSON.parse(codeBlock[1]); } catch {}
+      }
+      const brace = txt.match(/\{[\s\S]*\}/m);
+      if (brace) {
+        try { return JSON.parse(brace[0]); } catch {}
+      }
+      return null;
+    };
+    const parseLinesFallback = (txt) => {
+      // 行から「商品名 × 価格 ×数量」や似た表現をゆるく抽出
+      const items = [];
+      let total = null;
+      const lines = String(txt).split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      for (const line of lines) {
+        // 例: "キーホルダー × 1,200円 ×2" / "Tシャツ x 1500 x 1"
+        const m1 = line.match(/^(.+?)\s*[×x*]\s*([\d０-９,，￥¥\s]*)(?:円)?\s*[×x*]?\s*([\d０-９]+)?$/i);
+        if (m1) {
+          const name = m1[1].slice(0, 120);
+          const price = intLoose(m1[2]);
+          const qty = m1[3] ? intLoose(m1[3]) : 1;
+          if (name && qty) {
+            items.push({ name, qty, unit_price: price, subtotal: price != null ? price * qty : null });
+            continue;
+          }
+        }
+        // 合計拾い
+        if (/合計|total/i.test(line)) {
+          const num = intLoose(line);
+          if (num) total = num;
+        }
+      }
+      return { items, total };
+    };
+
+    // MIME 推定
     let mime = f.mimetype;
     const name = (f.originalname || "").toLowerCase();
     if (!mime || mime === "application/octet-stream") {
@@ -389,32 +433,27 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
     }
     const dataUrl = `data:${mime};base64,${f.buffer.toString("base64")}`;
 
-    // 出力フォーマット固定プロンプト（金額必須JSON）
+    // ゆるフォーマット・プロンプト（説明OKでもサーバ側で抽出）
     const prompt = `
-画像に写る販売商品の「品名・数量・単価（円）・小計（円）・合計（円）」を抽出して、
-次の JSON だけを返してください。説明文は禁止。
+画像に写る販売商品の「品名・数量・単価（円）・小計（円）・合計（円）」を抽出してください。
+可能なら次のJSONで返してください（説明が混ざっても構いません）:
 
 {
-  "items":[
-    {"name":"<商品名>","qty":<整数>,"unit_price":<整数|null>,"subtotal":<整数|null>}
-  ],
+  "items":[{"name":"<商品名>","qty":<整数>,"unit_price":<整数|null>,"subtotal":<整数|null>}],
   "total":<整数|null>
 }
 
-厳守ルール：
-- 金額は半角数字のみ（例: 1500）。円や¥は付けない。
-- 数量が不明なら 1。
-- 単価が不明なら null。推測で埋めない。
-- 余計な文や説明は禁止。
-`.trim();
+ヒント:
+- 金額の数字は半角が望ましい（円や¥、カンマが混ざっても可）。
+- 数量が不明なら1でよい。
+- 単価が不明ならnullのままでよい。
+    `.trim();
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       temperature: 0.2,
       messages: [
-        {
-          role: "user",
-          content: [
+        { role: "user", content: [
             { type: "text", text: prompt },
             { type: "image_url", image_url: { url: dataUrl } }
           ]
@@ -422,37 +461,38 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
       ]
     });
 
-    let txt = (completion.choices?.[0]?.message?.content || "").trim();
+    const raw = (completion.choices?.[0]?.message?.content || "").trim();
 
-    // 解析 & 安全補完
-    let parsed;
-    try { parsed = JSON.parse(txt); } catch { parsed = { items: [], total: null }; }
-
-    const items = (parsed.items || []).map(i => ({
-      name: (i?.name || "商品").toString().slice(0, 120),
-      qty: Number(i?.qty) || 1,
-      unit_price: Number.isInteger(i?.unit_price) ? Number(i.unit_price) : null,
-      subtotal: Number.isInteger(i?.subtotal) ? Number(i.subtotal) : null
-    }));
-
-    for (const it of items) {
-      if (it.unit_price != null && it.subtotal == null) it.subtotal = it.unit_price * it.qty;
-      if (it.unit_price == null && it.subtotal != null && it.qty > 0)
-        it.unit_price = Math.round(it.subtotal / it.qty);
+    // 1) JSON抽出を試す → 2) ダメなら行パース
+    let parsed = extractFirstJson(raw);
+    if (!parsed) {
+      const fb = parseLinesFallback(raw);
+      parsed = { items: fb.items, total: fb.total };
     }
 
-    let total = Number.isInteger(parsed.total) ? Number(parsed.total) : null;
+    // 正規化・補完
+    const items = (parsed.items || []).map(i => {
+      const name = String(i?.name || "商品").slice(0, 120);
+      const qty = intLoose(i?.qty) || 1;
+      let unit = i?.unit_price != null ? intLoose(i.unit_price) : null;
+      let sub = i?.subtotal != null ? intLoose(i.subtotal) : null;
+      if (unit != null && sub == null) sub = unit * qty;
+      if (unit == null && sub != null && qty > 0) unit = Math.round(sub / qty);
+      return { name, qty, unit_price: unit, subtotal: sub };
+    }).filter(it => it.qty > 0);
+
+    let total = parsed?.total != null ? intLoose(parsed.total) : null;
     if (!total) {
       const sum = items.reduce((s, it) => s + (it.subtotal || 0), 0);
       total = sum > 0 ? sum : null;
     }
 
-    const summary = items
-      .map(it => `${it.name} × ${it.unit_price ?? "?"}円 ×${it.qty}`)
-      .join("\n");
+    // サマリー（厳格UIなら "?円" を除去する行を有効化）
+    let summary = items.map(it => `${it.name} × ${it.unit_price ?? "?"}円 ×${it.qty}`).join("\n");
+    // summary = summary.replace(/\?円/g, ""); // ← 厳格クライアント向け
 
-    if (!items.length && !total) return res.status(422).json({ error: "empty_response" });
-    res.json({ items, total, summary });
+    // ここで422は返さず、空でも200
+    return res.json({ items, total, summary, raw });
   } catch (e) {
     console.error("analyze-item error", e?.response?.data || e);
     if (e?.code === "LIMIT_FILE_SIZE") return res.status(413).json({ error: "file_too_large" });
