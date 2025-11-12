@@ -22,7 +22,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ====== 設定 ======
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
-const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 30); // 分（運用に合わせて短縮可）
+const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 30);
 const BASE_URL = (process.env.BASE_URL || "").replace(/\/+$/, "");
 
 // ====== multer（10MB、拡張子ゆるめ、メモリ格納） ======
@@ -32,10 +32,10 @@ const upload = multer({
 });
 
 // ====== 簡易レート制限 & 同一オリジン検証 ======
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1分
-const RATE_LIMIT_MAX_WRITES = 12;       // pending/start 上限
-const RATE_LIMIT_MAX_CHECKOUT = 20;     // checkout/session 上限
-const hits = new Map();                 // key -> [timestamps]
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_WRITES = 12;
+const RATE_LIMIT_MAX_CHECKOUT = 20;
+const hits = new Map();
 
 function bumpAndAllow(key, limit) {
   const now = Date.now();
@@ -48,7 +48,7 @@ function clientIp(req) {
   return req.headers["x-forwarded-for"]?.toString().split(",")[0].trim() || req.ip;
 }
 function isSameOrigin(req) {
-  if (!BASE_URL) return true; // 未設定ならスキップ
+  if (!BASE_URL) return true;
   const ref = req.get("referer") || "";
   return ref.startsWith(BASE_URL);
 }
@@ -89,7 +89,7 @@ app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (r
 // それ以外のAPIは JSON パーサー使用
 app.use(express.json({ limit: "1mb" }));
 
-// ====== DB初期化（必要テーブル最低限） ======
+// ====== DB初期化 ======
 async function initDb() {
   await pool.query(`
     create extension if not exists pgcrypto;
@@ -120,7 +120,6 @@ async function initDb() {
     create index if not exists idx_pending_seller_time
       on pending_charges (seller_public_id, created_at desc);
   `);
-  // 既存環境アップグレード用
   await pool.query(`alter table if exists pending_charges add column if not exists summary text;`);
   console.log("DB init done");
 }
@@ -133,7 +132,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// ====== 管理API：出店者トークン発行/更新 ======
+// ====== 管理API ======
 app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
   const { publicId, email, displayName, stripeAccountId, rotate } = req.body || {};
   if (!publicId) return res.status(400).json({ error: "publicId required" });
@@ -163,7 +162,7 @@ app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
   }
 });
 
-// ====== 出店者画面：候補金額（上位/TTL） ======
+// ====== 出店者画面：候補金額 ======
 app.get("/api/purchase/options", async (req, res) => {
   try {
     const sellerId = req.query.s;
@@ -188,9 +187,7 @@ app.get("/api/purchase/options", async (req, res) => {
   }
 });
 
-// ====== ペンディング登録（認証なし／最低限ガードあり） ======
-// 出店者は金額のみでも登録OK。summaryは「任意」。
-// summary が入力された場合のみ DB に保存し、あとで Stripe 明細へ反映。
+// ====== ペンディング登録 ======
 app.post("/api/pending/start", async (req, res) => {
   try {
     if (!isSameOrigin(req)) return res.status(403).json({ error: "forbidden_origin" });
@@ -209,7 +206,7 @@ app.post("/api/pending/start", async (req, res) => {
 
     const ttlMin = PENDING_TTL_MIN;
     const expiresAt = new Date(Date.now() + ttlMin * 60 * 1000);
-    const safeSummary = (summary || "").toString().slice(0, 250); // ← 任意・最大250文字に制限
+    const safeSummary = (summary || "").toString().slice(0, 250);
 
     await pool.query(
       `insert into pending_charges (seller_public_id, amount, expires_at, summary)
@@ -224,7 +221,7 @@ app.post("/api/pending/start", async (req, res) => {
   }
 });
 
-// ====== 購入者ページ：最新金額取得（summary 付き） ======
+// ====== 購入者ページ：最新金額 ======
 app.get("/api/price/latest", async (req, res) => {
   try {
     const sellerId = String(req.query.s || "");
@@ -248,7 +245,7 @@ app.get("/api/price/latest", async (req, res) => {
   }
 });
 
-// ====== Checkout セッション作成（複数明細 line_items 対応 + 旧フロー互換） ======
+// ====== Checkout セッション作成（複数明細対応 + 旧互換） ======
 app.post("/api/checkout/session", async (req, res) => {
   try {
     if (!isSameOrigin(req)) return res.status(403).json({ error: "forbidden_origin" });
@@ -259,13 +256,10 @@ app.post("/api/checkout/session", async (req, res) => {
     }
 
     const {
-      // 旧パラメータ（後方互換）
       amount, description, sellerId, latest, sellerAccountId: acctFromBody,
-      // 新パラメータ（複数明細）
       items, total
     } = req.body || {};
 
-    // 受け取りアカウント解決（従来通り）
     const sellerAccountId = await resolveSellerAccountId(sellerId, acctFromBody);
     if (!sellerAccountId) return res.status(400).json({ error: "sellerAccountId required" });
 
@@ -274,7 +268,6 @@ app.post("/api/checkout/session", async (req, res) => {
     let desc = (description || "").toString().trim().slice(0, 250);
 
     if (Array.isArray(items) && items.length > 0) {
-      // 新：複数明細
       line_items = items
         .filter(i => Number.isInteger(i.unit_price) && i.unit_price > 0 && Number(i.qty) > 0)
         .map(i => ({
@@ -292,7 +285,6 @@ app.post("/api/checkout/session", async (req, res) => {
         ? total
         : line_items.reduce((s, li) => s + li.price_data.unit_amount * li.quantity, 0);
     } else {
-      // 旧：単一金額＋latest/summary
       let amtIn = Number(amount);
       let latestSummary = "";
       if (latest && (!Number.isInteger(amtIn) || amtIn < 100)) {
@@ -360,9 +352,7 @@ app.post("/api/checkout/session", async (req, res) => {
   }
 });
 
-// ====== AI画像解析（画像→「商品名・数量・単価・合計」JSON） ======
-// 出店者が画像から summary を作るための補助API（任意）
-// ★ パッチ適用：ゆる受け・フォールバック・422廃止
+// ====== AI画像解析（軽量・即導入の強化版） ======
 app.post("/api/analyze-item", upload.any(), async (req, res) => {
   try {
     if (!process.env.OPENAI_API_KEY)
@@ -372,114 +362,61 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
     if (!f || !f.buffer)
       return res.status(400).json({ error: "file_required" });
 
-    console.log("analyze-item received:", {
-      name: f.originalname, size: f.size, mimetype: f.mimetype
-    });
-
-    // --- helpers: ゆる正規化 & パース ---
+    // --- helpers ---
     const zen2han = (s) => String(s || "").replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
     const intLoose = (s) => {
       const t = zen2han(String(s)).replace(/[,，\s￥¥円]/g, "");
       const n = Number(t);
       return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
     };
-    const extractFirstJson = (txt) => {
-      // ```json ... ``` の中 or 最初の { ... } ブロックを拾う
-      const codeBlock = txt.match(/```(?:json)?\s*([\s\S]*?)```/i);
-      if (codeBlock) {
-        try { return JSON.parse(codeBlock[1]); } catch {}
+    const MIME = (() => {
+      let mime = f.mimetype || "image/jpeg";
+      const name = (f.originalname || "").toLowerCase();
+      if (mime === "application/octet-stream") {
+        if (name.endsWith(".png")) mime = "image/png";
+        else if (name.endsWith(".webp")) mime = "image/webp";
+        else if (name.endsWith(".heic")) mime = "image/heic";
+        else mime = "image/jpeg";
       }
-      const brace = txt.match(/\{[\s\S]*\}/m);
-      if (brace) {
-        try { return JSON.parse(brace[0]); } catch {}
-      }
-      return null;
-    };
-    const parseLinesFallback = (txt) => {
-      // 行から「商品名 × 価格 ×数量」や似た表現をゆるく抽出
-      const items = [];
-      let total = null;
-      const lines = String(txt).split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-      for (const line of lines) {
-        // 例: "キーホルダー × 1,200円 ×2" / "Tシャツ x 1500 x 1"
-        const m1 = line.match(/^(.+?)\s*[×x*]\s*([\d０-９,，￥¥\s]*)(?:円)?\s*[×x*]?\s*([\d０-９]+)?$/i);
-        if (m1) {
-          const name = m1[1].slice(0, 120);
-          const price = intLoose(m1[2]);
-          const qty = m1[3] ? intLoose(m1[3]) : 1;
-          if (name && qty) {
-            items.push({ name, qty, unit_price: price, subtotal: price != null ? price * qty : null });
-            continue;
-          }
-        }
-        // 合計拾い
-        if (/合計|total/i.test(line)) {
-          const num = intLoose(line);
-          if (num) total = num;
-        }
-      }
-      return { items, total };
-    };
+      return mime;
+    })();
+    const dataUrl = `data:${MIME};base64,${f.buffer.toString("base64")}`;
 
-    // MIME 推定
-    let mime = f.mimetype;
-    const name = (f.originalname || "").toLowerCase();
-    if (!mime || mime === "application/octet-stream") {
-      if (name.endsWith(".png")) mime = "image/png";
-      else if (name.endsWith(".jpg") || name.endsWith(".jpeg")) mime = "image/jpeg";
-      else if (name.endsWith(".webp")) mime = "image/webp";
-      else if (name.endsWith(".heic")) mime = "image/heic";
-      else mime = "image/jpeg";
-    }
-    const dataUrl = `data:${mime};base64,${f.buffer.toString("base64")}`;
-
-    // ゆるフォーマット・プロンプト（説明OKでもサーバ側で抽出）
-    const prompt = `
-画像に写る販売商品の「品名・数量・単価（円）・小計（円）・合計（円）」を抽出してください。
-可能なら次のJSONで返してください（説明が混ざっても構いません）:
-
+    // ---- 1st: 価格・数量まで（JSON強制） ----
+    const promptFull = `
+画像からテキストをOCRし、「品名」「数量」「単価（円）」「小計（円）」「合計（円）」を可能な限り抽出してください。
+出力はこのJSONだけ（説明文なし）:
 {
   "items":[{"name":"<商品名>","qty":<整数>,"unit_price":<整数|null>,"subtotal":<整数|null>}],
   "total":<整数|null>
 }
+数量が不明なら1、単価が不明ならnullで構いません。`.trim();
 
-ヒント:
-- 金額の数字は半角が望ましい（円や¥、カンマが混ざっても可）。
-- 数量が不明なら1でよい。
-- 単価が不明ならnullのままでよい。
-    `.trim();
-
-    const completion = await openai.chat.completions.create({
+    const full = await openai.chat.completions.create({
       model: "gpt-4o",
-      temperature: 0.2,
+      temperature: 0.1,
+      response_format: { type: "json_object" }, // ← JSON強制
       messages: [
         { role: "user", content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: dataUrl } }
-          ]
-        }
+          { type: "text", text: promptFull },
+          { type: "image_url", image_url: { url: dataUrl } }
+        ]}
       ]
     });
 
-    const raw = (completion.choices?.[0]?.message?.content || "").trim();
+    let parsed = {};
+    try { parsed = JSON.parse((full.choices?.[0]?.message?.content || "{}").trim()); } catch {}
 
-    // 1) JSON抽出を試す → 2) ダメなら行パース
-    let parsed = extractFirstJson(raw);
-    if (!parsed) {
-      const fb = parseLinesFallback(raw);
-      parsed = { items: fb.items, total: fb.total };
-    }
-
-    // 正規化・補完
-    const items = (parsed.items || []).map(i => {
-      const name = String(i?.name || "商品").slice(0, 120);
+    // 正規化
+    let items = Array.isArray(parsed.items) ? parsed.items.map((i, idx) => {
+      const name = String(i?.name || `商品${idx+1}`).slice(0, 120);
       const qty = intLoose(i?.qty) || 1;
       let unit = i?.unit_price != null ? intLoose(i.unit_price) : null;
-      let sub = i?.subtotal != null ? intLoose(i.subtotal) : null;
+      let sub  = i?.subtotal    != null ? intLoose(i.subtotal)    : null;
       if (unit != null && sub == null) sub = unit * qty;
       if (unit == null && sub != null && qty > 0) unit = Math.round(sub / qty);
       return { name, qty, unit_price: unit, subtotal: sub };
-    }).filter(it => it.qty > 0);
+    }).filter(it => it.qty > 0) : [];
 
     let total = parsed?.total != null ? intLoose(parsed.total) : null;
     if (!total) {
@@ -487,12 +424,52 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
       total = sum > 0 ? sum : null;
     }
 
-    // サマリー（厳格UIなら "?円" を除去する行を有効化）
-    let summary = items.map(it => `${it.name} × ${it.unit_price ?? "?"}円 ×${it.qty}`).join("\n");
-    // summary = summary.replace(/\?円/g, ""); // ← 厳格クライアント向け
+    // ---- 2nd: 品名だけ（JSON強制） ----
+    let rawTrail = null;
+    if (items.length === 0) {
+      const promptNames = `
+写真に写っている「商品の品名」だけを日本語で最大5件まで列挙してください。
+出力はこのJSONだけ:
+{"names":["<品名1>","<品名2>"]}`.trim();
 
-    // ここで422は返さず、空でも200
-    return res.json({ items, total, summary, raw });
+      const namesOnly = await openai.chat.completions.create({
+        model: "gpt-4o",
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "user", content: [
+            { type: "text", text: promptNames },
+            { type: "image_url", image_url: { url: dataUrl } }
+          ]}
+        ]
+      });
+
+      const js = (namesOnly.choices?.[0]?.message?.content || "{}").trim();
+      rawTrail = js;
+      try {
+        const { names = [] } = JSON.parse(js);
+        if (Array.isArray(names) && names.length) {
+          items = names.slice(0, 5).map((nm, i) => ({
+            name: String(nm || `商品${i+1}`).slice(0,120),
+            qty: 1,
+            unit_price: null,
+            subtotal: null
+          }));
+        }
+      } catch {}
+    }
+
+    // summary（* 区切り、単価不明は?）
+    const summary = items.length
+      ? items.map(it => `${it.name} * ${it.unit_price ?? "?"}円 * ${it.qty}`).join("\n")
+      : "";
+
+    // 空でも200で返す（UIの価格パッドが続行）
+    return res.json({
+      items, total, summary,
+      raw: rawTrail ? (full.choices?.[0]?.message?.content + "\n---\n" + rawTrail) : (full.choices?.[0]?.message?.content || "")
+    });
+
   } catch (e) {
     console.error("analyze-item error", e?.response?.data || e);
     if (e?.code === "LIMIT_FILE_SIZE") return res.status(413).json({ error: "file_too_large" });
