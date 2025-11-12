@@ -1,84 +1,420 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>FleaPay｜出店者UI（全部入り・AI常時有効）</title>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/modern-normalize/2.0.0/modern-normalize.min.css" rel="stylesheet">
-<style>
-  :root{ --bg:#f7f7fb; --panel:#fff; --text:#222; --sub:#666; --brand:#5a6bff; --ok:#1a9b63; --err:#e5484d; --bd:#e6e6ee; }
-  body{ background:var(--bg); color:var(--text); font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",Arial,sans-serif }
-  .wrap{ max-width:880px; margin:20px auto; padding:0 16px }
-  header{ display:flex; align-items:center; justify-content:space-between; margin:8px 0 12px }
-  .modeSwitch{ display:flex; gap:8px }
-  .chip{ display:inline-flex; align-items:center; gap:.4em; padding:8px 12px; border-radius:999px; border:1px solid var(--bd); background:#fff; cursor:pointer }
-  .chip.active{ background:var(--brand); border-color:var(--brand); color:#fff }
-  .card{ background:var(--panel); border:1px solid var(--bd); border-radius:16px; padding:20px; margin:14px 0; box-shadow:0 2px 10px rgba(0,0,0,.04) }
-  h1{ font-size:1.4rem; margin:0 }
-  h2{ font-size:1.1rem; margin:0 0 8px }
-  label{ display:block; font-size:.9rem; color:var(--sub); margin:6px 0 6px }
-  input,textarea{ width:100%; padding:12px 14px; border:1px solid var(--bd); border-radius:12px; background:#fff; outline:none; font:inherit }
-  textarea{ min-height:110px; white-space:pre-wrap }
-  .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
-  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:.5em; padding:12px 16px; border-radius:999px; border:1px solid var(--bd); background:#fff; cursor:pointer }
-  .btn.primary{ background:var(--brand); border-color:var(--brand); color:#fff }
-  .btn.ghost{ background:#fff }
-  .btn.warn{ background:#fff3d6; border-color:#ffd27a }
-  .btn:disabled{ opacity:.6; cursor:not-allowed }
-  .msg{ padding:12px 14px; border-radius:12px; margin:10px 0; border:1px solid transparent }
-  .msg.ok{ background:#e9f7ef; color:#0f6b43; border-color:#c9eedc }
-  .msg.err{ background:#fff1f1; color:#a1161b; border-color:#ffd7d9 }
-  .qrbox{ display:flex; flex-direction:column; align-items:center; gap:12px; padding:16px; border:1px dashed var(--bd); border-radius:14px; background:#fff }
-  .hint{ font-size:.82rem; color:#888 }
-  .right{ display:flex; justify-content:flex-end }
-  .grid3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px }
-  .preset .btn{ padding:18px 12px; font-size:1.1rem }
-  .kbd{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.8rem; padding:2px 6px; border:1px solid var(--bd); border-radius:6px; background:#fff }
+  <!-- =========================================================
+       FleaPay｜出店者UI（こども/おとな）
+       ・AIは常時ON（/api/analyze-item）
+       ・撮影→自動で次画面遷移
+       ・読み込みオーバーレイ
+       ・商品明細（AI or 手動）
+       ・金額プリセット＋テンキー
+       ・同画面確認＋旧分離確認ステップ（残置）
+       ・大人モーダル確認→登録
+       ・固定QR（購入者提示用）
+       ・デバッグログ（HTTP/本文）
+       ========================================================= -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FleaPay｜出店者UI（全部入り・AI常時有効・ロング版）</title>
 
-  /* こどもモード */
-  #kidApp{ display:none }
-  #kidApp.active{ display:block }
-  .kid-screen{ display:none; flex-direction:column; align-items:center; justify-content:center; gap:18px; text-align:center }
-  .kid-screen.active{ display:flex !important }
-  .kid-h1{ font-size:1.8rem }
-  .kid-big{ font-size:1.4rem; padding:18px 24px; border-radius:20px }
-  .kid-preset{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; width:100% }
-  .kid-preset .btn{ height:80px; font-size:1.4rem }
-  .kid-qr{ width:260px; height:260px; background:#fff; border:4px solid #000; border-radius:12px; display:flex; align-items:center; justify-content:center }
-  .kid-hint{ font-size:1rem; color:#333 }
-  .divider{ height:1px; background:#eee; margin:12px 0 }
-  .fileinput{ display:none }
+  <!-- Normalize -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/modern-normalize/2.0.0/modern-normalize.min.css"
+        integrity="sha512-LC1aJ7fRkY7O0l6D4J0m0qH2P0Q8rj3bJv9V3nX8v9M3h7Ww4H0r+g8fV2r1uVhWwWqM0B3C1qfKq1QwqQv7xQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"/>
 
-  /* 確認モーダル（大人共通） */
-  .overlay{ position:fixed; inset:0; background:rgba(0,0,0,.4); display:none; align-items:center; justify-content:center; padding:16px; z-index:9999 }
-  .overlay.show{ display:flex }
-  .modal{ width:min(560px,100%); background:#fff; border-radius:18px; border:1px solid var(--bd); box-shadow:0 10px 30px rgba(0,0,0,.18); padding:18px }
-  .modal h3{ margin:0 0 8px; font-size:1.25rem }
-  .list{ margin:8px 0 12px; padding-left:0; list-style:none }
-  .list li{ padding:6px 0; border-bottom:1px dashed #eee }
-  .rowbtn{ display:flex; gap:10px; justify-content:flex-end; margin-top:12px }
-  .ck{ display:flex; align-items:center; gap:8px; margin-top:6px }
-  .priceXL{ font-size:1.6rem; font-weight:700 }
+  <style>
+    /* ========== 基本トークン ========== */
+    :root{
+      --bg:#f7f7fb;
+      --panel:#fff;
+      --text:#222;
+      --sub:#666;
+      --brand:#5a6bff;
+      --ok:#1a9b63;
+      --err:#e5484d;
+      --bd:#e6e6ee;
+      --muted:#888;
+    }
 
-  /* テンキー */
-  .numpad{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:6px }
-  .numpad .btn{ height:64px; font-size:1.3rem }
+    /* ========== ベース ========== */
+    html,body{
+      background:var(--bg);
+      color:var(--text);
+      font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",Arial,sans-serif;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      text-rendering:optimizeLegibility;
+    }
 
-  /* 読み込みオーバーレイ */
-  .loading-ol{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; background:rgba(255,255,255,.94); z-index:10000 }
-  .loading-ol.show{ display:flex }
-  .spinner{ width:72px; height:72px; border-radius:50%; border:8px solid #e5e7eb; border-top-color:var(--brand); animation:spin 1s linear infinite; margin-bottom:16px }
-  @keyframes spin{ to{ transform:rotate(360deg) } }
+    .wrap{
+      max-width:960px;
+      margin:20px auto;
+      padding:0 16px;
+    }
 
-  /* デバッグ */
-  details.debug{ margin-top:12px }
-  details.debug pre{ white-space:pre-wrap; font-family:ui-monospace,Consolas,monospace; background:#fff; border:1px solid #eee; border-radius:10px; padding:10px }
-</style>
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin:8px 0 14px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .brand h1{
+      margin:0;
+      font-size:1.45rem;
+      font-weight:750;
+      letter-spacing:.02em;
+    }
+
+    .modeSwitch{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:.5em;
+      padding:10px 14px;
+      border-radius:999px;
+      border:1px solid var(--bd);
+      background:#fff;
+      cursor:pointer;
+      user-select:none;
+      transition:.15s ease;
+      font-weight:600;
+    }
+
+    .chip.active{
+      background:var(--brand);
+      border-color:var(--brand);
+      color:#fff;
+      box-shadow:0 2px 8px rgba(90,107,255,.25);
+    }
+
+    .card{
+      background:var(--panel);
+      border:1px solid var(--bd);
+      border-radius:16px;
+      padding:20px;
+      margin:14px 0;
+      box-shadow:0 2px 10px rgba(0,0,0,.04);
+    }
+
+    h2{
+      margin:0 0 8px;
+      font-size:1.15rem;
+      letter-spacing:.01em;
+    }
+
+    label{
+      display:block;
+      font-size:.92rem;
+      color:var(--sub);
+      margin:6px 0 6px;
+    }
+
+    input, textarea{
+      width:100%;
+      padding:12px 14px;
+      border:1px solid var(--bd);
+      border-radius:12px;
+      background:#fff;
+      outline:none;
+      font:inherit;
+    }
+
+    textarea{
+      min-height:120px;
+      white-space:pre-wrap;
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:.5em;
+      padding:12px 16px;
+      border-radius:999px;
+      border:1px solid var(--bd);
+      background:#fff;
+      cursor:pointer;
+      user-select:none;
+      transition:.12s ease;
+      font-weight:650;
+    }
+
+    .btn:hover{ transform:translateY(-1px); }
+
+    .btn:active{ transform:translateY(0); }
+
+    .btn.primary{
+      background:var(--brand);
+      border-color:var(--brand);
+      color:#fff;
+      box-shadow:0 2px 8px rgba(90,107,255,.25);
+    }
+
+    .btn.ghost{ background:#fff; }
+
+    .btn.warn{
+      background:#fff3d6;
+      border-color:#ffd27a;
+    }
+
+    .btn:disabled{
+      opacity:.62;
+      cursor:not-allowed;
+      transform:none;
+      box-shadow:none;
+    }
+
+    .msg{
+      padding:12px 14px;
+      border-radius:12px;
+      margin:10px 0;
+      border:1px solid transparent;
+      font-weight:600;
+    }
+
+    .msg.ok{
+      background:#e9f7ef;
+      color:#0f6b43;
+      border-color:#c9eedc;
+    }
+
+    .msg.err{
+      background:#fff1f1;
+      color:#a1161b;
+      border-color:#ffd7d9;
+    }
+
+    .hint{ font-size:.86rem; color:var(--muted); }
+
+    .qrbox{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:12px;
+      padding:16px;
+      border:1px dashed var(--bd);
+      border-radius:14px;
+      background:#fff;
+    }
+
+    .divider{
+      height:1px;
+      background:#eee;
+      margin:12px 0;
+    }
+
+    .kbd{
+      font-family:ui-monospace,Menlo,Consolas,monospace;
+      font-size:.84rem;
+      padding:2px 6px;
+      border:1px solid var(--bd);
+      border-radius:6px;
+      background:#fff;
+    }
+
+    /* ========== こどもモード ========== */
+    #kidApp{ display:none }
+    #kidApp.active{ display:block }
+
+    .kid-screen{
+      display:none;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:18px;
+      text-align:center;
+    }
+
+    .kid-screen.active{ display:flex !important }
+
+    .kid-h1{
+      font-size:1.85rem;
+      font-weight:800;
+      letter-spacing:.01em;
+    }
+
+    .kid-big{
+      font-size:1.35rem;
+      padding:18px 24px;
+      border-radius:20px;
+    }
+
+    .kid-preset{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:12px;
+      width:100%;
+    }
+
+    .kid-preset .btn{
+      height:80px;
+      font-size:1.35rem;
+    }
+
+    .kid-qr{
+      width:260px;
+      height:260px;
+      background:#fff;
+      border:4px solid #000;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+
+    .kid-hint{ font-size:1rem; color:#333 }
+
+    .fileinput{ display:none }
+
+    /* ========== モーダル・オーバーレイ ========== */
+    .overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.45);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      z-index:9999;
+      backdrop-filter:saturate(1.1) blur(2px);
+    }
+
+    .overlay.show{ display:flex }
+
+    .modal{
+      width:min(600px,100%);
+      background:#fff;
+      border-radius:18px;
+      border:1px solid var(--bd);
+      box-shadow:0 12px 30px rgba(0,0,0,.18);
+      padding:18px;
+    }
+
+    .modal h3{
+      margin:0 0 8px;
+      font-size:1.28rem;
+      letter-spacing:.01em;
+    }
+
+    .list{
+      margin:8px 0 12px;
+      padding-left:0;
+      list-style:none;
+      max-height:240px;
+      overflow:auto;
+      border:1px dashed #eee;
+      border-radius:10px;
+      padding:10px;
+      background:#fff;
+    }
+
+    .rowbtn{
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      margin-top:12px;
+    }
+
+    .ck{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-top:6px;
+      font-size:1rem;
+    }
+
+    .priceXL{
+      font-size:1.6rem;
+      font-weight:800;
+      letter-spacing:.02em;
+    }
+
+    /* ========== テンキー ========== */
+    .numpad{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+      margin-top:8px;
+    }
+
+    .numpad .btn{
+      height:64px;
+      font-size:1.25rem;
+    }
+
+    /* ========== 読み込みオーバーレイ ========== */
+    .loading-ol{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      background:rgba(255,255,255,.94);
+      z-index:10000;
+    }
+
+    .loading-ol.show{ display:flex }
+
+    .spinner{
+      width:72px;
+      height:72px;
+      border-radius:50%;
+      border:8px solid #e5e7eb;
+      border-top-color:var(--brand);
+      animation:spin 1s linear infinite;
+      margin-bottom:16px;
+    }
+
+    @keyframes spin{ to{ transform:rotate(360deg) } }
+
+    /* ========== デバッグ ========== */
+    details.debug{ margin-top:12px }
+    details.debug pre{
+      white-space:pre-wrap;
+      font-family:ui-monospace,Consolas,monospace;
+      background:#fff;
+      border:1px solid #eee;
+      border-radius:10px;
+      padding:10px;
+      min-height:64px;
+    }
+  </style>
 </head>
+
 <body>
   <div class="wrap">
+    <!-- ========== ヘッダー ========== -->
     <header>
-      <h1>FleaPay｜出店者UI</h1>
+      <div class="brand">
+        <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" fill="#5a6bff" opacity=".12"/>
+          <path d="M6 13.5c2 2 4 2 6 0s4-2 6 0" stroke="#5a6bff" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+        <h1>FleaPay｜出店者UI</h1>
+      </div>
       <div class="modeSwitch" role="tablist" aria-label="モードきりかえ">
         <button class="chip active" id="tabKid" role="tab" aria-selected="true">🧒 こども</button>
         <button class="chip" id="tabAdult" role="tab" aria-selected="false">👤 おとな</button>
@@ -87,10 +423,11 @@
 
     <!-- ========== こどもモード ========== -->
     <div id="kidApp" class="active" aria-label="こども もーど">
+      <!-- 出店者ID -->
       <div class="card" style="padding:12px 16px">
         <label for="sellerIdKid">🆔 しゅってんしゃID（おとなが いれる）</label>
         <input id="sellerIdKid" placeholder="seller-test01" aria-label="しゅってんしゃ アイディー">
-        <div class="hint">※ ?s=ID で初期値。かえるとQRも自動更新。</div>
+        <div class="hint">※ URLの <span class="kbd">?s=&lt;ID&gt;</span> で初期値。変えるとQRも自動更新。</div>
       </div>
 
       <!-- ① 撮影 -->
@@ -109,22 +446,31 @@
         <!-- 明細 -->
         <div style="width:100%;text-align:left">
           <div style="font-weight:700;margin:4px 0 6px">🛍 しょうひん の がいよう</div>
-          <div id="k2-summary-view" class="kid-hint" style="background:#fff;border:1px solid #eee;border-radius:10px;padding:10px;min-height:48px">（しょうひん じょうほう なし）</div>
+          <div id="k2-summary-view"
+               class="kid-hint"
+               style="background:#fff;border:1px solid #eee;border-radius:10px;padding:10px;min-height:56px">（しょうひん じょうほう なし）</div>
+
+          <!-- 手動入力（AIが空の時に表示） -->
           <div id="k2-summary-edit-wrap" style="margin-top:8px;display:none">
             <label style="font-weight:700">✍️ てで いれる（各行「商品名 ×数量」）</label>
             <textarea id="k2-summary-edit" placeholder="カード ×1&#10;キーホルダー ×2"></textarea>
-            <button class="btn" id="k2-summary-apply">このないようで つかう</button>
+            <div class="right" style="margin-top:8px">
+              <button class="btn" id="k2-summary-apply">このないようで つかう</button>
+            </div>
           </div>
         </div>
 
-        <!-- 金額 -->
-        <div class="kid-preset" style="margin-top:10px">
+        <!-- 金額プリセット -->
+        <div class="kid-preset" style="margin-top:12px">
           <button class="btn" data-kid-price="500">500えん</button>
           <button class="btn" data-kid-price="1000">1,000えん</button>
           <button class="btn" data-kid-price="1500">1,500えん</button>
         </div>
-        <button class="btn" id="k-more" style="margin-top:6px">ほか（ていれい ばんごう）</button>
-        <div id="k-amtView" class="kid-hint">いま：—</div>
+
+        <!-- テンキー -->
+        <button class="btn" id="k-more" style="margin-top:8px">ほか（ていれい ばんごう）</button>
+
+        <div id="k-amtView" class="kid-hint" style="margin-top:4px">いま：—</div>
 
         <div class="divider"></div>
 
@@ -132,23 +478,27 @@
         <div style="width:100%;text-align:left">
           <div style="font-weight:700;margin:4px 0 6px">🧾 かくにん</div>
           <div class="kid-hint"><strong>ごうけい：</strong><span id="k2-sum">—</span></div>
+
           <label class="ck" style="font-size:1.05rem">
-            <input type="checkbox" id="k2-adult"> 👤 おとな に みてもらった
+            <input type="checkbox" id="k2-adult">
+            <span>👤 おとな に みてもらった</span>
           </label>
+
           <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px">
             <button class="btn primary kid-big" id="k2-go" disabled>はい（QRへ）</button>
           </div>
         </div>
 
+        <!-- デバッグ -->
         <details class="debug">
           <summary>🔧 デバッグ</summary>
           <div>analyze: <code>/api/analyze-item</code></div>
-          <div>pending: <code id="dbg-pending-url">/api/pending/start</code></div>
+          <div>pending: <code>/api/pending/start</code></div>
           <pre id="dbg-log">（ログなし）</pre>
         </details>
       </div>
 
-      <!-- ③ 旧：独立確認画面（非常用に残置） -->
+      <!-- ③ 旧：独立確認（非常用に残置） -->
       <div id="k-step3" class="card kid-screen">
         <div class="kid-h1">🧾 かくにん（旧）</div>
         <div id="k-listWrap" class="hint" style="width:100%;text-align:left"></div>
@@ -173,25 +523,34 @@
 
     <!-- ========== おとなモード ========== -->
     <div id="adultApp" style="display:none" aria-label="おとな もーど">
+      <!-- AI解析 -->
       <div class="card">
         <h2>1. 出店者・AI解析</h2>
+
         <label for="sellerId">出店者ID（sellerPublicId）</label>
         <input id="sellerId" placeholder="seller-test01" aria-label="出店者ID">
+
         <div class="row" style="margin-top:8px">
           <div>
+            <label>画像ファイル</label>
             <input id="file" type="file" accept="image/*" capture="environment">
             <div style="display:flex;gap:10px;margin-top:8px">
-              <button class="btn primary" id="btnAnalyze">AIで商品名・金額を解析</button>
+              <button class="btn primary" id="btnAnalyze">AIで解析</button>
               <button class="btn ghost" id="btnClearPreview">プレビュー消去</button>
             </div>
             <div id="aiMsg" class="msg" style="display:none"></div>
           </div>
-          <figure class="preview" id="preview" hidden><img id="previewImg" alt="preview" style="max-width:100%;border-radius:12px"></figure>
+
+          <figure class="preview" id="preview" hidden>
+            <img id="previewImg" alt="preview" style="max-width:100%;border-radius:12px">
+          </figure>
         </div>
       </div>
 
+      <!-- 金額/明細 -->
       <div class="card">
         <h2>2. 合計金額・商品概要</h2>
+
         <div class="row">
           <div>
             <label for="amount">合計金額（円）</label>
@@ -199,17 +558,19 @@
           </div>
           <div>
             <label>プリセット</label>
-            <div class="grid3 preset">
+            <div class="kid-preset">
               <button class="btn" data-preset="500">¥500</button>
               <button class="btn" data-preset="1000">¥1,000</button>
               <button class="btn" data-preset="1500">¥1,500</button>
             </div>
           </div>
         </div>
+
         <label for="summary">商品概要（各行「商品名 ×数量」）</label>
         <textarea id="summary" placeholder="りんごジュース ×1&#10;クッキー ×2"></textarea>
       </div>
 
+      <!-- 登録 → モーダル確認 -->
       <div class="card">
         <h2>3. 金額を登録（確認画面あり）</h2>
         <div style="display:flex;gap:10px;margin-bottom:8px">
@@ -219,6 +580,7 @@
         <div id="msg" class="msg" style="display:none"></div>
       </div>
 
+      <!-- 固定QR -->
       <div class="card" id="qrCard">
         <h2>4. 固定QR（購入者提示用）</h2>
         <div class="qrbox">
@@ -230,7 +592,7 @@
     </div>
   </div>
 
-  <!-- 共通：確認モーダル（大人・子ども旧画面共用） -->
+  <!-- ========== 共通：確認モーダル（大人/子ども旧） ========== -->
   <div class="overlay" id="confirmOverlay" aria-modal="true" role="dialog">
     <div class="modal">
       <h3>🧾 内容をかくにん</h3>
@@ -247,229 +609,385 @@
     </div>
   </div>
 
-  <!-- テンキー（子ども ほか） -->
+  <!-- ========== テンキー ========== -->
   <div class="overlay" id="numpadOverlay" aria-modal="true" role="dialog">
     <div class="modal">
       <h3>🔢 きんがく を いれてね</h3>
       <input id="npDisplay" inputmode="numeric" aria-label="きんがく" readonly>
       <div class="numpad">
-        <button class="btn" data-np="1">1</button><button class="btn" data-np="2">2</button><button class="btn" data-np="3">3</button>
-        <button class="btn" data-np="4">4</button><button class="btn" data-np="5">5</button><button class="btn" data-np="6">6</button>
-        <button class="btn" data-np="7">7</button><button class="btn" data-np="8">8</button><button class="btn" data-np="9">9</button>
-        <button class="btn" id="npClear">C</button><button class="btn" data-np="0">0</button><button class="btn primary" id="npOk">OK</button>
+        <button class="btn" data-np="1">1</button>
+        <button class="btn" data-np="2">2</button>
+        <button class="btn" data-np="3">3</button>
+        <button class="btn" data-np="4">4</button>
+        <button class="btn" data-np="5">5</button>
+        <button class="btn" data-np="6">6</button>
+        <button class="btn" data-np="7">7</button>
+        <button class="btn" data-np="8">8</button>
+        <button class="btn" data-np="9">9</button>
+        <button class="btn" id="npClear">C</button>
+        <button class="btn" data-np="0">0</button>
+        <button class="btn primary" id="npOk">OK</button>
       </div>
     </div>
   </div>
 
-  <!-- 読み込みオーバーレイ -->
+  <!-- ========== 読み込みオーバーレイ ========== -->
   <div class="loading-ol" id="loadingOverlay" role="alert" aria-live="assertive">
     <div class="spinner" aria-hidden="true"></div>
     <div style="font-size:1.25rem;margin-bottom:4px">よみこみちゅう…</div>
     <div class="hint">そのまま まってね</div>
   </div>
 
+  <!-- ========== QR ========== -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- ========== アプリ本体 ========== -->
   <script>
-  const $=s=>document.querySelector(s);
-  const params=new URLSearchParams(location.search);
-  const CHECKOUT_PATH='/checkout-matsuri.html';
+    /* ------------------ ユーティリティ短縮 ------------------ */
+    const $ = s => document.querySelector(s);
+    const params = new URLSearchParams(location.search);
 
-  /* ✅ 常時AI有効 */
-  const ENDPOINT_ANALYZE='/api/analyze-item';
-  const ENDPOINT_PENDING='/api/pending/start';
+    /* ------------------ エンドポイント（固定） ------------------ */
+    const ENDPOINT_ANALYZE = '/api/analyze-item';   // 画像→items/total/summary
+    const ENDPOINT_PENDING = '/api/pending/start';  // ペンディング登録
+    const CHECKOUT_PATH    = '/checkout.html';      // 購入者画面
 
-  // 共有モデル
-  const model={ sellerId: params.get('s')||'', amount:0, summary:'', lastLog:'' };
-  const fx={ ok(){try{navigator.vibrate?.(30);}catch{}}, ng(){try{navigator.vibrate?.([40,40,40]);}catch{}} };
+    /* ------------------ 状態 ------------------ */
+    const model = {
+      sellerId: params.get('s') || '',
+      amount:   0,
+      summary:  '',
+      lastLog:  ''
+    };
 
-  // 起動
-  (function init(){
-    $('#sellerIdKid').value=model.sellerId; $('#sellerId').value=model.sellerId;
+    const fx = {
+      ok(){ try{ navigator.vibrate?.(24); }catch{} },
+      ng(){ try{ navigator.vibrate?.([40,40]); }catch{} }
+    };
 
-    // タブ切替
-    $('#tabKid').onclick=()=>switchMode('kid');
-    $('#tabAdult').onclick=()=>switchMode('adult');
-
-    // ID同期
-    $('#sellerIdKid').addEventListener('input',e=>syncSellerId(e.target.value));
-    $('#sellerId').addEventListener('input',e=>syncSellerId(e.target.value));
-
-    // 子ども：撮影（iOS対策で input も）
-    const fileEl=$('#kidFile');
-    $('#k-take').addEventListener('click',()=>fileEl.click());
-    fileEl.addEventListener('change',onKidPhotoTaken,{passive:true});
-    fileEl.addEventListener('input', onKidPhotoTaken,{passive:true});
-
-    // 子ども：金額プリセット・テンキー
-    document.querySelectorAll('[data-kid-price]').forEach(b=>b.addEventListener('click',()=>{ setKidAmount(+b.dataset.kidPrice); }));
-    $('#k-more').addEventListener('click',openNumpad);
-
-    // 子ども：同画面確認
-    $('#k2-adult').addEventListener('change',e=>$('#k2-go').disabled=!e.target.checked);
-    $('#k2-go').addEventListener('click',async ()=>{ if(!requireBasics())return; const ok=await performRegister(model.sellerId,model.amount,model.summary); if(ok){ goKid(4); fx.ok(); } });
-
-    // 子ども：旧確認も残置
-    $('#k-back').addEventListener('click',()=>goKid(2));
-    $('#k-adult').addEventListener('change',e=>$('#k-go').disabled=!e.target.checked);
-    $('#k-go').addEventListener('click',async ()=>{ if(!requireBasics())return; const ok=await performRegister(model.sellerId,model.amount,model.summary); if(ok){ goKid(4); fx.ok(); } });
-
-    // 手動明細
-    $('#k2-summary-apply').addEventListener('click',()=>{ model.summary=$('#k2-summary-edit').value.trim(); updateKidPanels(); });
-
-    // 大人：AI解析
-    $('#btnAnalyze').addEventListener('click',onAnalyze);
-    $('#file').addEventListener('change',e=>{const f=e.target.files?.[0]; if(!f)return; $('#previewImg').src=URL.createObjectURL(f); $('#preview').hidden=false;});
-    $('#btnClearPreview').addEventListener('click',()=>{$('#preview').hidden=true; $('#previewImg').src=''; $('#aiMsg').style.display='none';});
-
-    // 大人：登録（モーダル確認経由）
-    $('#btnRegister').addEventListener('click',()=>openConfirm(getAdultValues()));
-    $('#btnEdit').addEventListener('click',()=>$('#confirmOverlay').classList.remove('show'));
-    $('#adultCheck').addEventListener('change',e=>$('#btnConfirm').disabled=!e.target.checked);
-    $('#btnConfirm').addEventListener('click',async ()=>{
-      const {sellerId,amount,summary}=getAdultValues();
-      const ok=await performRegister(sellerId,amount,summary);
-      if(ok) $('#confirmOverlay').classList.remove('show');
-    });
-
-    // テンキー
-    document.querySelectorAll('[data-np]').forEach(b=>b.addEventListener('click',()=>{$('#npDisplay').value += b.dataset.np;}));
-    $('#npClear').onclick=()=>$('#npDisplay').value='';
-    $('#npOk').onclick=()=>{ const v=parseInt($('#npDisplay').value||'0',10); setKidAmount(v); $('#numpadOverlay').classList.remove('show'); };
-
-    // QR
-    setQR('#qrcode'); setQR('#k-qrcode');
-    $('#openBuyer').onclick=()=>window.open(buildBuyerUrl(),'_blank');
-    $('#k-open').onclick=()=>window.open(buildBuyerUrl(),'_blank');
-
-    // エラーハンドラ
-    window.addEventListener('error',ev=>logDebug('JS Error: '+ev.message));
-    window.addEventListener('unhandledrejection',ev=>logDebug('Promise Rejection: '+(ev.reason?.message||ev.reason)));
-
-    switchMode('kid');
-  })();
-
-  // モード切替
-  function switchMode(type){
-    const kid=type==='kid';
-    $('#tabKid').classList.toggle('active',kid);
-    $('#tabAdult').classList.toggle('active',!kid);
-    $('#kidApp').classList.toggle('active',kid);
-    $('#kidApp').style.display=kid?'block':'none';
-    $('#adultApp').style.display=kid?'none':'block';
-  }
-
-  // 画面遷移（子ども）
-  function goKid(n){
-    [1,2,3,4].forEach(i=>$('#k-step'+i)?.classList.remove('active'));
-    const sec=$('#k-step'+n); if(sec){ sec.classList.add('active'); window.scrollTo({top:0,behavior:'smooth'}); }
-    else{ logDebug('goKid: k-step'+n+' が見つかりません'); }
-  }
-
-  // 子ども：撮影→先に遷移→裏でAI
-  async function onKidPhotoTaken(e){
-    const f=e.target.files?.[0];
-    if(!f){ kidMsg('err','しゃしんを えらんでね'); fx.ng(); return; }
-    goKid(2);
-    setLoading(true);
-    $('#k2-summary-edit-wrap').style.display='none';
-    kidMsg('ok','しゃしんを うけとりました。いま しらべています…');
-    let ok=false;
-    try{
-      const fd=new FormData(); fd.append('file',f,f.name);
-      const res=await fetch(ENDPOINT_ANALYZE,{method:'POST',body:fd});
-      const text=await res.text(); logDebug(`analyze status ${res.status}\n${text}`);
-      let j={}; try{ j=JSON.parse(text); }catch{}
-      if(j.summary) model.summary=j.summary;
-      if(j.amount)  model.amount=Number(j.amount)||0;
-      ok=res.ok;
-    }catch(err){
-      logDebug('analyze error: '+(err?.message||err));
-    }finally{
-      $('#k2-summary-edit-wrap').style.display = model.summary ? 'none' : 'block';
-      if(!ok){ kidMsg('err','AIの けっかが とれません。てで いれてね。'); }
-      updateKidPanels();
-      setLoading(false);
+    /* ------------------ 共通関数 ------------------ */
+    function setText(sel, txt){ const el=$(sel); if(el) el.textContent = txt; }
+    function setHTML(sel, html){ const el=$(sel); if(el) el.innerHTML = html; }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, m => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[m]));
     }
-  }
+    function kidMsg(type, text){ const el=$('#k-aiMsg'); if(!el) return; el.className='msg '+type; el.textContent=text; el.style.display='block'; }
+    function showMsg(type, text){ const el=$('#msg'); if(!el) return; el.className='msg '+type; el.textContent=text; el.style.display='block'; }
+    function setLoading(v){ $('#loadingOverlay')?.classList.toggle('show', !!v); }
+    function logDebug(s){
+      model.lastLog = (model.lastLog ? model.lastLog + '\\n' : '') + s;
+      const box = $('#dbg-log');
+      if (box) box.textContent = model.lastLog;
+      console.log('[DBG]', s);
+    }
+    function flash(sel){
+      const el=$(sel); if(!el) return;
+      const org=el.style.boxShadow;
+      el.style.boxShadow='0 0 0 3px #c9eedc,0 6px 24px rgba(0,0,0,.12)';
+      setTimeout(()=>el.style.boxShadow=org, 900);
+    }
 
-  // 子ども：表示更新
-  function setKidAmount(v){
-    if(!Number.isFinite(v)||v<100||v>1_000_000){ kidMsg('err','きんがくを いれてね（100〜1,000,000）'); fx.ng(); return; }
-    model.amount=v; updateKidPanels(); fx.ok();
-  }
-  function updateKidPanels(){
-    const summaryHtml = model.summary?.trim() ? `<pre style="margin:0">${escapeHtml(model.summary)}</pre>` : '（しょうひん じょうほう なし）';
-    $('#k2-summary-view').innerHTML = summaryHtml;
-    $('#k-amtView').textContent = 'いま：' + (model.amount?('¥'+model.amount.toLocaleString()):'—');
-    $('#k2-sum').textContent   = model.amount?('¥'+model.amount.toLocaleString()):'—';
-    // 旧ステップ3も同期
-    $('#k-listWrap').innerHTML = summaryHtml;
-    $('#k-sum').textContent    = model.amount?('¥'+model.amount.toLocaleString()):'—';
-    // 確認チェックをリセット
-    $('#k2-adult').checked=false; $('#k2-go').disabled=true;
-    $('#k-adult').checked=false;  $('#k-go').disabled=true;
-  }
+    // 空/非JSON/422でも落ちないfetch
+    async function fetchJsonSafe(url, opts={}){
+      const ac=new AbortController();
+      const to=setTimeout(()=>ac.abort(), 15000);
+      try{
+        const res = await fetch(url, { ...opts, signal: ac.signal });
+        const ct  = res.headers.get('content-type') || '';
+        const text= await res.text();
+        let data  = null;
+        if (text && ct.includes('application/json')) {
+          try{ data = JSON.parse(text); }catch{}
+        }
+        return { res, data, text, ct };
+      } finally { clearTimeout(to); }
+    }
 
-  // 大人：AI
-  async function onAnalyze(){
-    const f=$('#file').files?.[0];
-    if(!f){ showMsg('err','画像を選んでください'); return; }
-    try{
-      const fd=new FormData(); fd.append('file',f,f.name);
-      const res=await fetch(ENDPOINT_ANALYZE,{method:'POST',body:fd});
-      const text=await res.text(); logDebug(`adult analyze status ${res.status}\n${text}`);
-      let j={}; try{ j=JSON.parse(text);}catch{}
-      if(j.summary){ $('#summary').value=j.summary; model.summary=j.summary; }
-      if(j.amount){ $('#amount').value=j.amount; model.amount=Number(j.amount)||0; }
-      showMsg('ok','AI解析が完了しました');
-    }catch(e){ showMsg('err','AI解析に失敗しました'); logDebug('adult analyze error: '+(e?.message||e)); }
-  }
+    /* ------------------ 画面切替/QR ------------------ */
+    function switchMode(kid){
+      $('#tabKid').classList.toggle('active', kid);
+      $('#tabAdult').classList.toggle('active', !kid);
+      $('#kidApp').classList.toggle('active', kid);
+      $('#kidApp').style.display = kid ? 'block' : 'none';
+      $('#adultApp').style.display = kid ? 'none' : 'block';
+    }
+    function goKid(n){
+      [1,2,3,4].forEach(i => $('#k-step'+i)?.classList.remove('active'));
+      const next = $('#k-step'+n);
+      if (next) { next.classList.add('active'); window.scrollTo({top:0,behavior:'smooth'}); }
+      else { logDebug('goKid: k-step'+n+' が見つかりません'); }
+    }
+    function buildBuyerUrl(){
+      return `${location.origin}${CHECKOUT_PATH}?s=${encodeURIComponent(model.sellerId||'')}`;
+    }
+    function setQR(sel){
+      const el=$(sel); if(!el) return;
+      el.innerHTML='';
+      new QRCode(el, { text: buildBuyerUrl(), width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+    }
+    function syncSellerId(v){
+      model.sellerId = (v||'').trim();
+      setQR('#qrcode'); setQR('#k-qrcode');
+    }
 
-  // 大人：値取得→確認モーダル
-  function getAdultValues(){
-    const sellerId=($('#sellerId').value||$('#sellerIdKid').value||'').trim();
-    const amount=parseInt(($('#amount').value||model.amount||'').toString().replace(/[^\d]/g,''),10);
-    const summary=($('#summary').value||model.summary||'').trim();
-    model.sellerId=sellerId; model.amount=amount||0; model.summary=summary;
-    return {sellerId,amount,summary};
-  }
-  function openConfirm({sellerId,amount,summary}){
-    if(!sellerId){ showMsg('err','出店者IDを入力してください'); return; }
-    if(!Number.isInteger(amount)||amount<100){ showMsg('err','金額が正しくありません'); return; }
-    const lines=(summary||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-    const list=$('#confirmList'); list.innerHTML='';
-    if(lines.length===0){ list.innerHTML='<div>（商品情報なし）</div>'; }
-    else{ list.innerHTML=lines.map(l=>'🛍 '+escapeHtml(l)).join('<br>'); }
-    $('#confirmPrice').textContent='¥'+amount.toLocaleString();
-    $('#adultCheck').checked=false; $('#btnConfirm').disabled=true;
-    $('#confirmOverlay').classList.add('show');
-  }
-
-  // 登録API
-  async function performRegister(sellerId,amount,summary){
-    try{
-      const res=await fetch(ENDPOINT_PENDING,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sellerId,amount,summary})});
-      const text=await res.text(); logDebug(`pending status ${res.status}\n${text}`);
-      if(!res.ok) throw new Error('登録APIエラー');
-      showMsg('ok','登録しました。購入者側に反映されます。');
-      flash('#qrCard'); setQR('#qrcode'); setQR('#k-qrcode');
+    /* ------------------ 子ども：UI更新 ------------------ */
+    function setKidAmount(v){
+      if(!Number.isFinite(v) || v<100 || v>1_000_000){
+        kidMsg('err','きんがくを いれてね（100〜1,000,000）'); fx.ng(); return;
+      }
+      model.amount = v;
+      updateKidPanels();
       fx.ok();
-      return true;
-    }catch(e){ showMsg('err',e.message||'登録失敗'); fx.ng(); return false; }
-  }
+    }
 
-  // 共通
-  function switchMode(t){ const kid=t==='kid'; $('#tabKid').classList.toggle('active',kid); $('#tabAdult').classList.toggle('active',!kid); $('#kidApp').classList.toggle('active',kid); $('#kidApp').style.display=kid?'block':'none'; $('#adultApp').style.display=kid?'none':'block'; }
-  function buildBuyerUrl(){ return `${location.origin}${CHECKOUT_PATH}?s=${encodeURIComponent(model.sellerId||'')}`; }
-  function setQR(selector){ const el=document.querySelector(selector); if(!el) return; el.innerHTML=''; new QRCode(el,{text:buildBuyerUrl(),width:200,height:200,correctLevel:QRCode.CorrectLevel.M}); }
-  function syncSellerId(v){ model.sellerId=v.trim(); $('#sellerId').value=model.sellerId; $('#sellerIdKid').value=model.sellerId; setQR('#qrcode'); setQR('#k-qrcode'); }
-  function showMsg(type,text){ const el=$('#msg'); if(!el) return; el.className='msg '+type; el.textContent=text; el.style.display='block'; }
-  function kidMsg(type,text){ const el=$('#k-aiMsg'); if(!el) return; el.className='msg '+type; el.textContent=text; el.style.display='block'; }
-  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
-  function setLoading(v){ $('#loadingOverlay').classList.toggle('show', !!v); }
-  function logDebug(s){ model.lastLog=(model.lastLog?model.lastLog+'\n':'')+s; const box=$('#dbg-log'); if(box) box.textContent=model.lastLog; console.log('[DBG]',s); }
-  function flash(sel){ const el=$(sel); if(!el)return; const org=el.style.boxShadow; el.style.boxShadow='0 0 0 3px #c9eedc,0 6px 24px rgba(0,0,0,.12)'; setTimeout(()=>el.style.boxShadow=org,900); }
-  function openNumpad(){ $('#npDisplay').value=''; $('#numpadOverlay').classList.add('show'); }
+    function updateKidPanels(){
+      const summaryHtml = model.summary?.trim()
+        ? `<pre style="margin:0">${escapeHtml(model.summary)}</pre>`
+        : '（しょうひん じょうほう なし）';
+
+      setHTML('#k2-summary-view', summaryHtml);
+      setText('#k-amtView', 'いま：' + (model.amount ? ('¥'+model.amount.toLocaleString()) : '—'));
+      setText('#k2-sum',     model.amount ? ('¥'+model.amount.toLocaleString()) : '—');
+
+      // 旧ステップ3も同期
+      setHTML('#k-listWrap', summaryHtml);
+      setText('#k-sum', model.amount ? ('¥'+model.amount.toLocaleString()) : '—');
+
+      // 確認チェックを毎回リセット
+      const a1=$('#k2-adult'); if(a1){ a1.checked=false; $('#k2-go').disabled=true; }
+      const a2=$('#k-adult');  if(a2){ a2.checked=false;  $('#k-go').disabled=true; }
+    }
+
+    function requireBasics(){
+      if(!model.sellerId){ kidMsg('err','しゅってんしゃID を いれてね'); return false; }
+      if(!Number.isInteger(model.amount) || model.amount<100){ kidMsg('err','きんがく を えらんでね'); return false; }
+      return true;
+    }
+
+    /* ------------------ 子ども：撮影→AI ------------------ */
+    async function onKidPhotoTaken(e){
+      const f = e.target.files?.[0];
+      if(!f){ kidMsg('err','しゃしんを えらんでね'); fx.ng(); return; }
+
+      // 先に必ず遷移（UX）
+      goKid(2);
+      setLoading(true);
+      $('#k2-summary-edit-wrap').style.display='none';
+      kidMsg('ok','しゃしんを うけとりました。いま しらべています…');
+
+      try{
+        const fd=new FormData();
+        fd.append('file', f, f.name); // サーバは "file" を期待
+
+        const {res, data, text} = await fetchJsonSafe(ENDPOINT_ANALYZE, { method:'POST', body:fd });
+        logDebug(`analyze ${res.status}\n${text||'(empty body)'}`);
+
+        if(res.ok){
+          // サーバの仕様：{ items[], total, summary }（空なら422になる場合あり）
+          const items  = Array.isArray(data?.items) ? data.items : [];
+          const totalN = Number.isInteger(data?.total) ? Number(data.total) : null;
+
+          if (typeof data?.summary === 'string' && data.summary.trim()){
+            model.summary = data.summary.trim();
+          } else if (items.length){
+            // 予防：itemsからsummary生成
+            model.summary = items.map(it=>{
+              const nm = (it?.name||'商品');
+              const qt = Number(it?.qty)||1;
+              const un = Number.isInteger(it?.unit_price) ? it.unit_price : '?';
+              return `${nm} × ${un}円 ×${qt}`;
+            }).join('\\n');
+          }
+
+          if (Number.isInteger(totalN)) model.amount = totalN;
+
+          if (!model.summary && !model.amount){
+            kidMsg('err','AIの けっかが ありません。てで いれてね。');
+            $('#k2-summary-edit-wrap').style.display='block';
+          }else{
+            kidMsg('ok','AIの けっかを はんえいしました');
+          }
+        } else if (res.status===422){
+          kidMsg('err','AIが よみとれませんでした（empty）。てで いれてね。');
+          $('#k2-summary-edit-wrap').style.display='block';
+        } else {
+          kidMsg('err','AIの よみこみで えらーが でました。てで いれてね。');
+          $('#k2-summary-edit-wrap').style.display='block';
+        }
+      } catch(err){
+        kidMsg('err','AIエラー: '+(err?.message||err));
+        $('#k2-summary-edit-wrap').style.display='block';
+      } finally {
+        updateKidPanels();
+        setLoading(false);
+      }
+    }
+
+    /* ------------------ 大人：AI ------------------ */
+    async function onAnalyzeAdult(){
+      const f=$('#file').files?.[0];
+      if(!f){ showMsg('err','画像を選んでください'); return; }
+
+      try{
+        const fd=new FormData();
+        fd.append('file', f, f.name);
+
+        const {res, data, text} = await fetchJsonSafe(ENDPOINT_ANALYZE, { method:'POST', body:fd });
+        logDebug(`adult analyze ${res.status}\n${text||'(empty body)'}`);
+
+        if(res.ok){
+          if (typeof data?.summary === 'string') {
+            $('#summary').value = data.summary.trim();
+            model.summary = data.summary.trim();
+          }
+          if (Number.isInteger(data?.total)) {
+            $('#amount').value = String(data.total);
+            model.amount = data.total;
+          }
+          showMsg('ok','AI解析が完了しました');
+        }else{
+          showMsg('err', res.status===422 ? 'AIが読み取れません（empty）' : `AIエラー: HTTP ${res.status}`);
+        }
+      }catch(e){
+        showMsg('err','AIエラー: '+(e?.message||e));
+      }
+    }
+
+    /* ------------------ 登録（子/大共通） ------------------ */
+    async function performRegister(sellerId, amount, summary){
+      try{
+        if(!sellerId) throw new Error('出店者IDは必須です');
+        if(!Number.isInteger(amount) || amount < 100) throw new Error('金額が正しくありません（100円以上）');
+
+        const body = JSON.stringify({ sellerId, amount, summary });
+        const {res, data, text} = await fetchJsonSafe(ENDPOINT_PENDING, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body
+        });
+        logDebug(`pending ${res.status}\n${text||'(empty body)'}`);
+
+        if (res.ok){
+          showMsg('ok','登録しました。購入者側に反映されます。');
+          flash('#qrCard');
+          setQR('#qrcode'); setQR('#k-qrcode');
+          fx.ok();
+          return true;
+        }
+
+        const serverMsg = (data?.error || data?.message || text || '').trim();
+        showMsg('err', serverMsg || `登録エラー: HTTP ${res.status}`);
+        fx.ng();
+        return false;
+
+      }catch(e){
+        showMsg('err', e.message || '登録エラー');
+        fx.ng();
+        return false;
+      }
+    }
+
+    /* ------------------ 大人：値の吸い上げ＆モーダル ------------------ */
+    function getAdultValues(){
+      const sellerId = ($('#sellerId').value || $('#sellerIdKid').value || '').trim();
+      const amount   = parseInt(($('#amount').value || model.amount || '').toString().replace(/[^\d]/g,''), 10);
+      const summary  = ($('#summary').value || model.summary || '').trim();
+
+      model.sellerId = sellerId;
+      model.amount   = Number.isFinite(amount) ? amount : 0;
+      model.summary  = summary;
+
+      return { sellerId, amount: model.amount, summary };
+    }
+
+    function openConfirm({sellerId,amount,summary}){
+      if(!sellerId){ showMsg('err','出店者IDを入力してください'); return; }
+      if(!Number.isInteger(amount)||amount<100){ showMsg('err','金額が正しくありません'); return; }
+
+      const lines = (summary||'').split(/\\r?\\n/).map(s=>s.trim()).filter(Boolean);
+      $('#confirmList').innerHTML = lines.length ? lines.map(l=>'🛍 '+escapeHtml(l)).join('<br>') : '（商品情報なし）';
+      $('#confirmPrice').textContent = '¥'+amount.toLocaleString();
+
+      $('#adultCheck').checked=false;
+      $('#btnConfirm').disabled=true;
+      $('#confirmOverlay').classList.add('show');
+    }
+
+    /* ------------------ 起動処理 ------------------ */
+    (function init(){
+      // タブ
+      $('#tabKid').onclick = () => switchMode(true);
+      $('#tabAdult').onclick = () => switchMode(false);
+
+      // ID同期
+      $('#sellerIdKid').value = model.sellerId;
+      $('#sellerIdKid').addEventListener('input', e => syncSellerId(e.target.value));
+
+      // 撮影（iOS対策：change/input両対応）
+      const fileEl = $('#kidFile');
+      $('#k-take').addEventListener('click', () => fileEl.click());
+      fileEl.addEventListener('change', onKidPhotoTaken, { passive:true });
+      fileEl.addEventListener('input',  onKidPhotoTaken, { passive:true });
+
+      // 金額プリセット
+      document.querySelectorAll('[data-kid-price]').forEach(b=>b.addEventListener('click',()=> setKidAmount(+b.dataset.kidPrice)));
+
+      // テンキー
+      $('#k-more').addEventListener('click', ()=> { $('#npDisplay').value=''; $('#numpadOverlay').classList.add('show'); });
+      document.querySelectorAll('[data-np]').forEach(b=>b.addEventListener('click',()=> $('#npDisplay').value += b.dataset.np ));
+      $('#npClear').onclick = ()=> $('#npDisplay').value='';
+      $('#npOk').onclick    = ()=> { const v=parseInt($('#npDisplay').value||'0',10); if(Number.isFinite(v)) setKidAmount(v); $('#numpadOverlay').classList.remove('show'); };
+
+      // 明細手動
+      $('#k2-summary-apply').addEventListener('click', ()=> { model.summary=$('#k2-summary-edit').value.trim(); updateKidPanels(); });
+
+      // 同画面確認→登録
+      $('#k2-adult').addEventListener('change', e => $('#k2-go').disabled = !e.target.checked);
+      $('#k2-go').addEventListener('click', async ()=>{
+        if(!requireBasics()) return;
+        const ok = await performRegister(model.sellerId, model.amount, model.summary);
+        if(ok) goKid(4);
+      });
+
+      // 旧確認ステップ（残置）
+      $('#k-back').addEventListener('click', ()=> goKid(2));
+      $('#k-adult').addEventListener('change', e => $('#k-go').disabled = !e.target.checked);
+      $('#k-go').addEventListener('click', async ()=>{
+        if(!requireBasics()) return;
+        const ok = await performRegister(model.sellerId, model.amount, model.summary);
+        if(ok) goKid(4);
+      });
+
+      // 大人：AI
+      $('#btnAnalyze').addEventListener('click', onAnalyzeAdult);
+      $('#file').addEventListener('change', e=>{ const f=e.target.files?.[0]; if(!f) return; $('#previewImg').src=URL.createObjectURL(f); $('#preview').hidden=false; });
+      $('#btnClearPreview').addEventListener('click', ()=> { $('#preview').hidden=true; $('#previewImg').src=''; $('#aiMsg').style.display='none'; });
+
+      // 大人：登録（モーダル確認）
+      $('#btnRegister').addEventListener('click', ()=> openConfirm(getAdultValues()));
+      $('#btnReset').addEventListener('click', ()=> { $('#amount').value=''; $('#summary').value=''; showMsg('ok','クリアしました'); });
+
+      // モーダル操作
+      $('#btnEdit').onclick = ()=> $('#confirmOverlay').classList.remove('show');
+      $('#adultCheck').onchange = e => $('#btnConfirm').disabled = !e.target.checked;
+      $('#btnConfirm').onclick = async ()=>{
+        const {sellerId,amount,summary}=getAdultValues();
+        const ok = await performRegister(sellerId, amount, summary);
+        if(ok) $('#confirmOverlay').classList.remove('show');
+      };
+
+      // QR
+      setQR('#qrcode'); setQR('#k-qrcode');
+
+      // エラーハンドリング
+      window.addEventListener('error', ev => logDebug('JS Error: '+ev.message));
+      window.addEventListener('unhandledrejection', ev => logDebug('Promise Rejection: '+(ev.reason?.message||ev.reason)));
+
+      // 既定はこども
+      switchMode(true);
+    })();
   </script>
 </body>
 </html>
