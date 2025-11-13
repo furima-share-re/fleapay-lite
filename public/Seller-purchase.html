@@ -160,10 +160,12 @@
     /* ========== 画像プレビュー ========== */
     .img-preview{
       width:100%;
-      max-width:300px;
-      border-radius:8px;
+      max-width:320px;
+      max-height:220px;
+      border-radius:16px;
       margin:0 auto;
       display:block;
+      object-fit:cover;
     }
 
     /* ========== ローディングオーバーレイ ========== */
@@ -451,31 +453,36 @@
         「ぜんぶで いくら？」だけ いれてね。
       </p>
 
-      <div style="font-weight:700;margin-top:4px;margin-bottom:4px">ごうけい 金額</div>
+      <div style="font-weight:700;margin-top:4px;margin-bottom:2px">ごうけい 金額</div>
       <div id="k3-total-display"
            style="background:#f3f4f6;border-radius:10px;border:2px solid #d1d5db;padding:14px 12px;font-size:2rem;font-weight:700;text-align:right;min-height:44px">
         ¥0
       </div>
 
-      <!-- ① 丸ボタンで きんがく をえらぶ -->
-      <div class="pp-circle-row">
-        <button class="btn pp-circle" data-total-preset="500">
-          <div>500</div><div style="font-size:.9rem">えん</div>
-        </button>
-        <button class="btn pp-circle" data-total-preset="1000">
-          <div>1,000</div><div style="font-size:.9rem">えん</div>
-        </button>
-        <button class="btn pp-circle" data-total-preset="1500">
-          <div>1,500</div><div style="font-size:.9rem">えん</div>
-        </button>
+      <!-- ① ボタンをおすと「ほかの きんがく」ゾーンをひらく -->
+      <div class="mt-8">
+        <button class="btn pp-other-btn" id="k3-other">きんがく を えらぶ</button>
       </div>
 
-      <!-- ② ほかの金額(テンキーをひらく) -->
-      <button class="btn pp-other-btn" id="k3-other">ほか の きんがく</button>
-
-      <!-- ③ テンキー(はじめは かくしておく) -->
+      <!-- ② ほかの金額＋テンキー（はじめは かくしておく） -->
       <div id="k3-keypad" class="pp-keypad-wrap hidden">
+
+        <!-- 商品名 -->
+        <div id="k3-item-title" style="font-size:.9rem;color:#4b5563;margin-bottom:4px"></div>
+
+        <!-- プリセット：500 / 1000 / AIきんがく -->
+        <div class="pp-preset">
+          <button class="btn" data-total-preset="500">¥500</button>
+          <button class="btn" data-total-preset="1000">¥1,000</button>
+          <button class="btn" id="k3-ai-btn" data-total-preset="0" disabled style="opacity:.4">
+            AI きんがく
+          </button>
+        </div>
+
+        <!-- 入力中の数字（テキスト金額はここだけ） -->
         <div id="k3-total-input" class="pp-display">0</div>
+
+        <!-- テンキー -->
         <div class="pp-grid">
           <button class="btn pp-btn" data-total-key="1">1</button>
           <button class="btn pp-btn" data-total-key="2">2</button>
@@ -580,7 +587,7 @@
       console.log(msg, data);
       const logEl = $('#debug-log');
       if(logEl){
-        logEl.textContent += msg + '\\n' + (typeof data==='object' ? JSON.stringify(data,null,2) : data) + '\\n\\n';
+        logEl.textContent += msg + '\n' + (typeof data==='object' ? JSON.stringify(data,null,2) : data) + '\n\n';
         logEl.scrollTop = logEl.scrollHeight;
       }
     }
@@ -630,11 +637,11 @@
         '一':1, '二':2, '三':3, '四':4, '五':5,
         '六':6, '七':7, '八':8, '九':9, '十':10
       };
-      text = text.replace(/(\\d+)\\s*(まい|枚|こ|個|つ|本|ほん)/gi, ' ×$1');
-      text = text.replace(/([一二三四五六七八九十])\\s*(まい|枚|こ|個|つ|本|ほん)/gi, (m, num) => {
+      text = text.replace(/(\d+)\s*(まい|枚|こ|個|つ|本|ほん)/gi, ' ×$1');
+      text = text.replace(/([一二三四五六七八九十])\s*(まい|枚|こ|個|つ|本|ほん)/gi, (m, num) => {
         return ' ×' + (kanjiNum[num] || 1);
       });
-      if(/×\\d+/.test(text)){
+      if(/×\d+/.test(text)){
         return text.trim();
       }
       return text.trim() + ' ×1';
@@ -686,7 +693,7 @@
         if(!ta) return;
         text = text.replace(/[。、]/g, ' ');
         const line = parseJapaneseQuantity(text);
-        ta.value = (ta.value ? ta.value + '\\n' : '') + line;
+        ta.value = (ta.value ? ta.value + '\n' : '') + line;
         fx.ok();
         log('音声認識結果', {original: text, parsed: line});
       };
@@ -706,19 +713,37 @@
       photo: null,        // Base64画像
       summary: '',        // 商品明細テキスト（ざっくり）
       items: [],          // 互換性維持用（1件だけ詰める）
-      totalAmount: 0
+      totalAmount: 0,     // 画面で決めた ごうけい金額
+      aiAmount: null      // ★ AIが読んだ ごうけい金額
     };
 
     /* ========== カメラ起動 ========== */
     let stream = null;
     async function startCamera(){
       try{
+        if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+          alert('このスマホでは カメラが つかえません');
+          return;
+        }
         stream = await navigator.mediaDevices.getUserMedia({
-          video:{ facingMode:'environment', width:1280, height:720 }
+          video:{ facingMode:'environment', width:1280, height:720 },
+          audio:false
         });
         const video = $('#camera-preview');
         video.srcObject = stream;
         log('カメラ起動', 'OK');
+
+        // 🔦 使える端末ではライトONを試す（失敗しても無視）
+        try{
+          const track = stream.getVideoTracks()[0];
+          const caps  = track.getCapabilities && track.getCapabilities();
+          if(caps && caps.torch){
+            await track.applyConstraints({ advanced:[{ torch:true }] });
+            log('torch', 'ON適用');
+          }
+        }catch(e){
+          log('torch unsupported', e.message || e);
+        }
       }catch(err){
         log('カメラエラー', err.message);
         alert('カメラが使えません: '+err.message);
@@ -754,18 +779,28 @@
         const fd = new FormData();
         fd.append('image', blob, 'capture.jpg');
         log('AI解析リクエスト送信', 'image/jpeg');
-        const res = await fetch('/api/analyze-item', {
-          method:'POST',
-          body: fd
-        });
+
+        const res  = await fetch('/api/analyze-item', { method:'POST', body: fd });
         const json = await res.json();
         log('AI解析レスポンス', json);
+
+        // ① 商品テキスト
         if(json.summary){
           model.summary = json.summary.trim();
         }else{
           model.summary = '';
         }
+
+        // ② 金額（ごうけい）
+        if(typeof json.amount === 'number' && json.amount > 0){
+          model.aiAmount = json.amount;
+        }else{
+          model.aiAmount = null;
+        }
+
         updateKidPanels();
+        updateTotalItemTitle();
+        updateAiAmountUI();
       }catch(err){
         log('AI解析エラー', err.message);
         alert('AI解析でエラーが発生しました');
@@ -781,6 +816,7 @@
         : '（しょうひん じょうほう なし）';
       $('#k2-summary-view').innerHTML = summaryHtml;
       $('#k2-summary-edit').value = model.summary || '';
+      updateTotalItemTitle();
     }
 
     /* ========== 明細編集トグル ========== */
@@ -826,18 +862,24 @@
       fx.ok();
       $('#kid-step2').classList.add('hidden');
       $('#kid-step3').classList.remove('hidden');
-      // summary はそのまま・金額は0から
-      totalInput = '0';
+      // summary はそのまま・金額は AI金額があれば それ を初期値に
+      if(model.aiAmount && model.aiAmount > 0){
+        totalInput = String(model.aiAmount);
+      }else{
+        totalInput = '0';
+      }
       updateTotalDisplay();
+      updateTotalItemTitle();
+      updateAiAmountUI();
       const kp = $('#k3-keypad');
-      if(kp) kp.classList.add('hidden');
+      if(kp) kp.classList.add('hidden');   // 開いたままなら閉じる
     });
 
     /* ========== ごうけい金額用パッド ========== */
     let totalInput = '0';
 
     function updateTotalDisplay(){
-      const n = parseInt(totalInput.replace(/[^\\d]/g,''),10) || 0;
+      const n = parseInt(totalInput.replace(/[^\d]/g,''),10) || 0;
       $('#k3-total-input').textContent = totalInput || '0';
       $('#k3-total-display').textContent = '¥' + n.toLocaleString('ja-JP');
       model.totalAmount = n;
@@ -857,6 +899,35 @@
       updateTotalDisplay();
     }
 
+    // ★ 商品名ラベル更新
+    function updateTotalItemTitle(){
+      const el = $('#k3-item-title');
+      if(!el) return;
+      const firstLine = (model.summary || '')
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean)[0];
+      el.textContent = firstLine || '';
+    }
+
+    // ★ AIきんがくボタンの表示を更新
+    function updateAiAmountUI(){
+      const btn  = $('#k3-ai-btn');
+      if(!btn) return;
+      if(model.aiAmount && model.aiAmount > 0){
+        const y = model.aiAmount.toLocaleString('ja-JP');
+        btn.textContent          = `AI：¥${y}`;
+        btn.dataset.totalPreset  = String(model.aiAmount);
+        btn.disabled             = false;
+        btn.style.opacity        = '1';
+      }else{
+        btn.textContent          = 'AI きんがく';
+        btn.dataset.totalPreset  = '0';
+        btn.disabled             = true;
+        btn.style.opacity        = '.4';
+      }
+    }
+
     function setupTotalPad(){
       // テンキー
       $$('#kid-step3 .pp-btn').forEach(btn=>{
@@ -865,8 +936,8 @@
           handleTotalKey(key);
         });
       });
-      // 丸ボタンのプリセット金額
-      $$('#kid-step3 [data-total-preset]').forEach(btn=>{
+      // ほかのきんがくエリア内のプリセット金額(500/1000/AI)
+      $$('#k3-keypad [data-total-preset]').forEach(btn=>{
         btn.addEventListener('click', e=>{
           const v = parseInt(e.currentTarget.dataset.totalPreset,10) || 0;
           totalInput = String(v);
@@ -880,6 +951,8 @@
         other.addEventListener('click', ()=>{
           const kp = $('#k3-keypad');
           if(kp) kp.classList.remove('hidden');
+          updateTotalItemTitle();
+          updateAiAmountUI();
           fx.ok();
         });
       }
@@ -952,7 +1025,7 @@
         // items が空なら、summary＋合計から1行だけ作る
         let items = model.items && model.items.length ? model.items : [];
         if(items.length === 0){
-          const firstLine = (model.summary || '').split('\\n').map(s=>s.trim()).filter(Boolean)[0] || 'まとめて';
+          const firstLine = (model.summary || '').split('\n').map(s=>s.trim()).filter(Boolean)[0] || 'まとめて';
           items = [{
             name: firstLine,
             qty: 1,
@@ -1003,6 +1076,7 @@
     /* ========== 初期化 ========== */
     startCamera();
     setupTotalPad();
+    updateAiAmountUI();      // ★ 最初はAIボタンOFF表示
     log('アプリ起動', 'v1.0-simple-total');
   </script>
 </body>
