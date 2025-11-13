@@ -355,6 +355,48 @@ app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
   }
 });
 
+// ====== 初期構築用: 一時SQL実行API(超危険) ======
+app.post("/api/admin/bootstrap_sql", requireAdmin, async (req, res) => {
+  try {
+    // 環境変数でON/OFF制御
+    if (process.env.ADMIN_BOOTSTRAP_SQL_ENABLED !== "true") {
+      return res.status(403).json({ error: "bootstrap_sql_disabled" });
+    }
+
+    const { sql } = req.body || {};
+    if (!sql || typeof sql !== "string" || !sql.trim()) {
+      return res.status(400).json({ error: "sql_required" });
+    }
+
+    const trimmed = sql.trim();
+    const lower = trimmed.toLowerCase();
+
+    // 最低限の自衛(本当に危険なものだけ弾く)
+    if (lower.includes("drop database")) {
+      return res.status(400).json({ error: "drop_database_not_allowed" });
+    }
+
+    // 実行(複数ステートメントも基本OK:最後の結果だけ返る想定)
+    const result = await pool.query(trimmed);
+
+    console.log("[BOOTSTRAP_SQL]", {
+      by: "admin",
+      length: trimmed.length,
+      rowCount: result?.rowCount ?? null
+    });
+
+    res.json({
+      ok: true,
+      rowCount: result?.rowCount ?? null,
+      fields: (result?.fields || []).map(f => f.name),
+      rows: result?.rows || []
+    });
+  } catch (e) {
+    console.error("bootstrap_sql error", e);
+    res.status(500).json({ error: "internal_error", detail: e.message });
+  }
+});
+
 // ====== 出店者画面:候補金額 ======
 app.get("/api/purchase/options", async (req, res) => {
   try {
