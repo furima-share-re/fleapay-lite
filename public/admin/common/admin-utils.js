@@ -1,246 +1,266 @@
-/**
- * FleaPay 管理画面共通ユーティリティ v2.0
- * 既存admin.htmlの優秀な関数を継承・拡張
- */
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ダッシュボード | Fleapay Admin</title>
+  
+  <!-- セキュリティヘッダ -->
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  
+  <!-- 共通スタイル・スクリプト -->
+  <link rel="stylesheet" href="common/admin-base.css">
+  <script src="common/admin-utils.js"></script>
+</head>
+<body>
+  <!-- 共通ヘッダー -->
+  <header class="admin-header">
+    <div>
+      <span style="font-weight: 700; color: var(--fleapay-blue);">Fleapay Admin</span>
+      <span class="env-badge">ENV</span>
+    </div>
+    <div>
+      <span style="font-size: 13px; color: var(--fleapay-gray);">admin@fleapay.jp ▼</span>
+    </div>
+  </header>
 
-class AdminAPI {
-  constructor() {
-    this.baseURL = '/api';
-    this.adminToken = this.getStoredAdminToken();
-  }
+  <div class="admin-container">
+    <!-- 共通サイドバー -->
+    <nav class="admin-sidebar">
+      <ul class="nav-menu">
+        <li><a href="admin-dashboard.html" class="nav-item active" data-page="dashboard">📊 ダッシュボード</a></li>
+        <li><a href="admin-sellers.html" class="nav-item" data-page="sellers">👥 出店者</a></li>
+        <li><a href="admin-frames.html" class="nav-item" data-page="frames">🎨 AIフレーム</a></li>
+        <li><a href="admin-payments.html" class="nav-item" data-page="payments">💳 決済・CB管理</a></li>
+      </ul>
+    </nav>
 
-  getStoredAdminToken() {
-    return localStorage.getItem('fleapay_admin_token') || 
-           sessionStorage.getItem('fleapay_admin_token');
-  }
+    <!-- メインコンテンツ -->
+    <main class="admin-content">
+      <!-- 🆕 エラー表示エリア追加 -->
+      <div id="errorMessage" style="display: none; padding: 12px; background: #fef2f2; color: #8B2635; border-radius: 8px; margin-bottom: 16px;">
+      </div>
 
-  getCsrfToken() {
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    return meta ? meta.content : null;
-  }
+      <section>
+        <div class="sec-title-row">
+          <h1>ダッシュボード</h1>
+          <span class="pill">ホーム</span>
+        </div>
+        
+        <!-- フィルタ -->
+        <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+          <select id="periodFilter" style="padding: 8px; border-radius: 8px;">
+            <option value="today">今日</option>
+            <option value="week">今週</option>
+            <option value="month">今月</option>
+          </select>
+          <select id="eventFilter" style="padding: 8px; border-radius: 8px;">
+            <option value="all">全イベント</option>
+            <option value="oi-flea">大井フリマ</option>
+          </select>
+          <button id="refreshBtn" class="ghost">🔄 更新</button>
+        </div>
+      </section>
 
-  async request(endpoint, options = {}) {
-    const headers = {
-      'Content-Type': 'application/json',
-      ...options.headers
-    };
+      <!-- メトリクス表示 -->
+      <div class="grid">
+        <section>
+          <h2>今日の決済サマリ</h2>
+          <div style="font-size: 28px; font-weight: 700; color: var(--fleapay-blue); margin: 12px 0;">
+            <span id="paymentCount">-</span><span style="font-size: 16px; margin-left: 4px;">件</span>
+          </div>
+          <div style="font-size: 14px; color: var(--fleapay-gray);">
+            売上合計: <span id="totalRevenue">-</span><br>
+            純売上: <span id="netRevenue">-</span>
+          </div>
+        </section>
+        
+        <section>
+          <h2>チャージバック / 返金</h2>
+          <div style="font-size: 28px; font-weight: 700; color: var(--warning-amber); margin: 12px 0;">
+            <span id="disputeCount">-</span><span style="font-size: 16px; margin-left: 4px;">件</span>
+          </div>
+          <div style="font-size: 14px; color: var(--fleapay-gray);">
+            返金: <span id="refundCount">-</span>件<br>
+            期限間近: <span id="urgentCount" style="color: var(--error-maroon);">-</span>件
+          </div>
+        </section>
+      </div>
 
-    const csrf = this.getCsrfToken();
-    if (csrf) headers['X-CSRF-Token'] = csrf;
-    
-    if (options.adminToken || this.adminToken) {
-      headers['x-admin-token'] = options.adminToken || this.adminToken;
-    }
+      <!-- アラート -->
+      <section>
+        <h2>最近のアラート</h2>
+        <div id="alertsList">
+          <div style="padding: 12px; color: var(--fleapay-gray); text-align: center;">
+            読み込み中...
+          </div>
+        </div>
+      </section>
 
-    try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
-        ...options,
-        headers
-      });
+      <!-- 出店者アクティビティ -->
+      <section>
+        <h2>出店者アクティビティ</h2>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: var(--fleapay-cream);">
+                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #eee;">出店者ID</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #eee;">店名</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #eee;">ステータス</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #eee;">最終利用</th>
+              </tr>
+            </thead>
+            <tbody id="recentSellers">
+              <tr>
+                <td colspan="4" style="padding: 20px; text-align: center; color: var(--fleapay-gray);">
+                  読み込み中...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
 
-      const text = await response.text();
-      let data;
-      try { data = JSON.parse(text); } catch { data = text; }
+  <script>
+    // 🆕 デバッグモード
+    const DEBUG = true;
 
-      if (!response.ok) {
-        const error = new Error(this.getErrorMessage(response.status, data));
-        error.status = response.status;
-        error.data = data;
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      this.logError('API Request failed', { endpoint, error });
-      throw error;
-    }
-  }
-
-  getErrorMessage(status, data) {
-    if (data && data.error) return data.error;
-    
-    const messages = {
-      400: 'リクエスト内容が不正です。入力内容を確認してください。',
-      401: '認証エラーです。ログインし直してください。',
-      403: 'アクセス権限がありません。管理者に確認してください。',
-      404: 'APIエンドポイントが見つかりません。',
-      429: 'リクエストが多すぎます。時間をおいて再度お試しください。',
-      500: 'サーバー側でエラーが発生しました。時間をおいて再度お試しください。'
-    };
-    
-    return messages[status] || `HTTP ${status} エラーが発生しました。`;
-  }
-
-  logError(message, context = {}) {
-    console.error(`[AdminAPI] ${message}`, context);
-    // 本番環境では外部ログサービスに送信
-    if (window.location.hostname !== 'localhost') {
-      // Sentry, LogRocket等への送信
-    }
-  }
-}
-
-class AdminUI {
-  static showSpinner(buttonId, show = true) {
-    const btn = document.getElementById(buttonId);
-    if (!btn) return;
-    
-    btn.disabled = show;
-    
-    let spinner = btn.querySelector('.admin-spinner');
-    if (!spinner && show) {
-      spinner = document.createElement('span');
-      spinner.className = 'admin-spinner';
-      spinner.innerHTML = '<span class="spinner"></span>';
-      btn.appendChild(spinner);
-    }
-    
-    if (spinner) {
-      spinner.style.display = show ? 'inline-flex' : 'none';
-    }
-  }
-
-  static showMessage(containerId, type, message, duration = 5000) {
-    const container = document.getElementById(containerId);
-    if (!container) {
-      // フォールバック：トースト通知を作成
-      this.showToast(message, type);
-      return;
-    }
-
-    container.className = type === 'success' ? 'ok' : 'err';
-    container.textContent = message;
-    container.style.display = 'block';
-
-    if (duration > 0) {
-      setTimeout(() => {
-        container.style.display = 'none';
-      }, duration);
-    }
-  }
-
-  static showToast(message, type = 'info', duration = 4000) {
-    const toast = document.createElement('div');
-    toast.className = `admin-toast admin-toast-${type}`;
-    toast.textContent = message;
-    
-    Object.assign(toast.style, {
-      position: 'fixed',
-      top: '20px',
-      right: '20px',
-      padding: '12px 16px',
-      borderRadius: '8px',
-      backgroundColor: type === 'success' ? '#2D5B3F' : '#8B2635',
-      color: '#fff',
-      zIndex: '1000',
-      fontSize: '14px',
-      maxWidth: '300px',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-    });
-
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-      toast.remove();
-    }, duration);
-  }
-
-  static async copyToClipboard(text) {
-    try {
-      await navigator.clipboard.writeText(text);
-      this.showToast('コピーしました', 'success');
-      return true;
-    } catch (error) {
-      console.error('Clipboard copy failed:', error);
-      this.showToast('コピーに失敗しました', 'error');
-      return false;
-    }
-  }
-
-  static formatDate(dateString, options = {}) {
-    const defaultOptions = {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    };
-    
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ja-JP', { ...defaultOptions, ...options });
-  }
-
-  static formatCurrency(amount, currency = 'JPY') {
-    return new Intl.NumberFormat('ja-JP', {
-      style: 'currency',
-      currency
-    }).format(amount);
-  }
-}
-
-// バリデーション（既存admin.htmlから継承）
-const AdminValidators = {
-  accountId: (id) => /^acct_[A-Za-z0-9]+$/.test(id),
-  publicId: (id) => /^[a-zA-Z0-9_-]{3,50}$/.test(id),
-  email: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-};
-
-// ページナビゲーション管理
-class AdminNavigation {
-  constructor() {
-    this.currentPage = this.getPageFromURL();
-    this.init();
-  }
-
-  getPageFromURL() {
-    const path = window.location.pathname;
-    const match = path.match(/admin-(\w+)\.html$/);
-    return match ? match[1] : 'dashboard';
-  }
-
-  init() {
-    this.updateActiveNav();
-    this.setupEventListeners();
-  }
-
-  updateActiveNav() {
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.classList.remove('active');
-      if (item.dataset.page === this.currentPage) {
-        item.classList.add('active');
-      }
-    });
-  }
-
-  setupEventListeners() {
-    document.addEventListener('click', (e) => {
-      if (e.target.matches('.nav-item')) {
-        e.preventDefault();
-        const page = e.target.dataset.page;
-        if (page) {
-          window.location.href = `admin-${page}.html`;
+    // 🆕 認証トークンを初期化（開発環境用）
+    function initAdminToken() {
+      const token = adminAPI.getStoredAdminToken();
+      
+      if (!token) {
+        // 開発環境用のデフォルトトークンを設定
+        const defaultToken = 'admin-devtoken';
+        
+        if (DEBUG) {
+          console.warn('[Admin] 認証トークンが見つかりません。デフォルトトークンを使用します。');
+          console.log('[Admin] Token:', defaultToken);
+        }
+        
+        // sessionStorageに保存
+        sessionStorage.setItem('fleapay_admin_token', defaultToken);
+        adminAPI.adminToken = defaultToken;
+        
+        adminUI.showToast('開発モード: デフォルト認証を使用', 'info');
+      } else {
+        if (DEBUG) {
+          console.log('[Admin] 認証トークン:', token);
         }
       }
+    }
+
+    // ダッシュボード固有の初期化
+    document.addEventListener('DOMContentLoaded', async () => {
+      initAdminToken();
+      await loadDashboardData();
+      setupEventListeners();
+      startAutoRefresh();
     });
-  }
-}
 
-// グローバルインスタンス
-window.adminAPI = new AdminAPI();
-window.adminUI = AdminUI;
-window.adminValidators = AdminValidators;
+    async function loadDashboardData() {
+      try {
+        if (DEBUG) console.log('[Dashboard] データ取得開始...');
+        
+        // 🔧 修正: エンドポイントパスを確認
+        const data = await adminAPI.request('/admin/dashboard');
+        
+        if (DEBUG) console.log('[Dashboard] データ取得成功:', data);
+        
+        updateMetrics(data);
+        hideError();
+        
+      } catch (error) {
+        console.error('[Dashboard] データ取得エラー:', error);
+        
+        // 詳細なエラー表示
+        let errorMessage = 'ダッシュボードデータの取得に失敗しました';
+        
+        if (error.status === 401) {
+          errorMessage = '認証エラー: 管理者トークンが無効です';
+        } else if (error.status === 404) {
+          errorMessage = 'APIエンドポイントが見つかりません (/api/admin/dashboard)';
+        } else if (error.message) {
+          errorMessage = `エラー: ${error.message}`;
+        }
+        
+        showError(errorMessage);
+        adminUI.showToast(errorMessage, 'error');
+        
+        // 🆕 デモデータを表示（開発用）
+        if (DEBUG) {
+          console.log('[Dashboard] デモデータを表示します');
+          updateMetrics({
+            paymentCount: 0,
+            totalRevenue: 0,
+            netRevenue: 0,
+            disputeCount: 0,
+            refundCount: 0
+          });
+        }
+      }
+    }
 
-// 初期化
-document.addEventListener('DOMContentLoaded', () => {
-  new AdminNavigation();
-  
-  // 環境表示
-  const envBadge = document.querySelector('.env-badge');
-  if (envBadge) {
-    const hostname = window.location.hostname;
-    const env = hostname.includes('localhost') || hostname.includes('dev') ? 'development' :
-                hostname.includes('stg') ? 'staging' : 'production';
-    envBadge.className = `env-badge env-${env}`;
-    envBadge.textContent = env.toUpperCase();
-  }
-});
+    function updateMetrics(data) {
+      document.getElementById('paymentCount').textContent = data.paymentCount || 0;
+      document.getElementById('totalRevenue').textContent = adminUI.formatCurrency(data.totalRevenue || 0);
+      document.getElementById('netRevenue').textContent = adminUI.formatCurrency(data.netRevenue || 0);
+      document.getElementById('disputeCount').textContent = data.disputeCount || 0;
+      document.getElementById('refundCount').textContent = data.refundCount || 0;
+      document.getElementById('urgentCount').textContent = data.urgentCount || 0;
+      
+      // アラートリストの更新
+      const alertsList = document.getElementById('alertsList');
+      if (data.disputeCount > 0) {
+        alertsList.innerHTML = `
+          <div class="err" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>⚠️ チャージバック ${data.disputeCount}件</strong><br>
+              <small>対応が必要な案件があります</small>
+            </div>
+            <button class="small" onclick="location.href='admin-payments.html?status=disputed'">対応</button>
+          </div>
+        `;
+      } else {
+        alertsList.innerHTML = `
+          <div style="padding: 12px; color: var(--fleapay-gray); text-align: center;">
+            現在アラートはありません
+          </div>
+        `;
+      }
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+    }
+
+    function hideError() {
+      const errorDiv = document.getElementById('errorMessage');
+      errorDiv.style.display = 'none';
+    }
+
+    function setupEventListeners() {
+      document.getElementById('refreshBtn').addEventListener('click', () => {
+        loadDashboardData();
+        adminUI.showToast('データを更新しています...', 'info', 2000);
+      });
+      
+      document.getElementById('periodFilter').addEventListener('change', loadDashboardData);
+    }
+
+    function startAutoRefresh() {
+      // 5分ごとに自動更新
+      setInterval(() => {
+        if (DEBUG) console.log('[Dashboard] 自動更新...');
+        loadDashboardData();
+      }, 300000);
+    }
+  </script>
+</body>
+</html>
