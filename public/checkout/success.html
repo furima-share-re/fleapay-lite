@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FleaPay｜お支払い完了</title>
+  <title>Fleapay｜決済完了</title>
   <link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
   <style>
     :root{
@@ -13,7 +13,7 @@
       --paper:rgba(255,255,240,.90);
       --paper-stroke:rgba(30,40,40,.16);
       --ink:#234236;
-      --gold:#ffd88a;
+      --gold:#f6c86b;
       --lamp-core:#fff6cc;
       --leaf1:#9ed0b8;
       --leaf2:#6fb59a;
@@ -26,6 +26,8 @@
       background: radial-gradient(120% 100% at 50% -10%, #274d6a 0%, var(--night1) 40%, var(--night2) 100%);
       overflow:hidden;
     }
+
+    /* 星空 */
     .stars{position:fixed; inset:0; z-index:0; pointer-events:none;}
     .stars::before,.stars::after{content:""; position:absolute; inset:0; background:
       radial-gradient(2px 2px at 10% 20%, rgba(255,255,255,.9), transparent 50%),
@@ -38,17 +40,20 @@
     .stars::after{filter:blur(1px); opacity:.6; animation-duration:9s}
     @keyframes twinkle{0%,100%{opacity:.5}50%{opacity:1}}
 
-    .scene{position:fixed; inset:0; perspective:800px; overflow:hidden}
+    .scene{position:fixed; inset:0; perspective:800px; overflow:hidden; z-index:1;}
     .layer{position:absolute; inset:0; transform-style:preserve-3d}
     .parallax{ transform: translate3d(calc(var(--px,0)*var(--depth,0)), calc(var(--py,0)*var(--depth,0)), 0) }
 
+    /* 町並み */
     .town{ position:absolute; inset:auto -10vw 0 -10vw; height:60vh; filter: drop-shadow(0 -6px 24px rgba(0,0,0,.35)); }
     .town svg{ width:120vw; height:100%; display:block }
 
+    /* 旗 */
     .flags{ position:absolute; left:-5vw; right:-5vw; top:14vh; height:80px; z-index:4; pointer-events:none }
     .flags:before{content:""; position:absolute; left:0; right:0; top:34px; height:2px; background:rgba(250,250,250,.2)}
     .flag{ position:absolute; top:36px; width:0; height:0; border-left:12px solid transparent; border-right:12px solid transparent; border-top:16px solid rgba(255,255,255,.35); filter:drop-shadow(0 1px 1px rgba(0,0,0,.2)); animation: sway 4.6s ease-in-out infinite }
 
+    /* ちょうちん */
     .lantern{ position:absolute; width:54px; height:68px; border-radius:28px/34px; background:
         radial-gradient(50% 35% at 50% 45%, var(--lamp-core) 0%, rgba(255,230,150,.75) 40%, rgba(255,160,60,.35) 75%, rgba(0,0,0,0) 100%);
       box-shadow: 0 0 18px 6px rgba(255,190,90,.55), inset 0 0 10px rgba(255,255,255,.5);
@@ -59,62 +64,185 @@
     @keyframes swing{0%{transform:rotate(0)}50%{transform:rotate(2.6deg)}100%{transform:rotate(0)}}
     @keyframes sway{0%{transform:translateY(0)}50%{transform:translateY(2px)}100%{transform:translateY(0)}}
 
+    /* テーブル */
     .table{ position:absolute; left:50%; bottom:12vh; transform:translateX(-50%); width:min(92vw,980px); height:30vh; z-index:7 }
     .table svg{ width:100%; height:100% }
 
+    /* 値札 */
     .tag{ position:absolute; width:72px; height:96px; background:rgba(255,255,240,.9); border:1px solid rgba(60,70,50,.18); border-radius:6px; box-shadow:0 6px 12px rgba(0,0,0,.12); transform-origin: top center; z-index:8 }
     .tag:before{content:""; position:absolute; top:-16px; left:calc(50% - 1px); width:2px; height:18px; background:rgba(90,70,40,.5)}
     .tag span{ display:block; text-align:center; font-weight:900; color:#2e5a44; padding-top:14px }
 
+    /* 花びら */
     .petal{ position:absolute; width:10px; height:6px; background: radial-gradient(ellipse at 60% 40%, rgba(255,212,212,.95), rgba(255,120,150,.4)); border-radius:60% 40% 60% 40%; filter: blur(.2px); pointer-events:none; opacity:0; animation: fall linear forwards }
-    @keyframes fall{ 0%{ transform: translate(var(--sx), 110vh) rotate(0deg); opacity:0 }
-                     10%{ opacity:.9 }
-                     70%{ opacity:1 }
-                     100%{ transform: translate(calc(var(--sx) + var(--dx)), -10vh) rotate(540deg); opacity:0 } }
+    @keyframes fall{
+      0%{ transform: translate(var(--sx), -10vh) rotate(0deg); opacity:0 }
+      10%{ opacity:.9 }
+      70%{ opacity:1 }
+      100%{ transform: translate(calc(var(--sx) + var(--dx)), 110vh) rotate(540deg); opacity:0 }
+    }
 
+    /* カード */
     .card-wrap{position:relative; z-index:10; display:grid; place-items:center; height:100vh; padding:24px}
-    .card{ position:relative; width:min(92vw,760px); padding:48px 56px; text-align:center; background:var(--paper); border-radius:26px;
-      box-shadow: 0 24px 68px rgba(0,0,0,.35), 0 0 0 1px var(--paper-stroke) inset; backdrop-filter: blur(4px) saturate(1.05); }
-    h1{ font-size: clamp(28px,4.4vw,50px); line-height:1.22; font-weight:900; margin-bottom:12px; color:#205a3e }
-    p.lead{ font-size: clamp(16px,2.6vw,22px); color: rgba(30,40,40,.88); font-weight:700; margin-bottom:22px }
-    .badge{ display:inline-flex; align-items:center; gap:10px; padding:12px 20px; border-radius:999px; font-weight:900; color:#063b2a;
-      background: linear-gradient(135deg,#5ac18e,#b0ffb4); box-shadow:0 10px 22px rgba(20,100,60,.23); animation:breathe 3.6s ease-in-out infinite }
-    @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
-    .actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:20px }
-    .btn{ padding:11px 16px; border-radius:14px; border:1px solid rgba(16,60,40,.14); background:rgba(255,255,255,.75); font-weight:700; cursor:pointer; box-shadow:0 6px 14px rgba(30,80,60,.14); transition:.25s }
-    .btn:hover{ transform:translateY(-2px); box-shadow:0 10px 20px rgba(30,80,60,.22) }
-
-    .frame{ position:absolute; inset:5% 5%; border:12px solid rgba(255,255,255,.7); border-radius:18px; box-shadow:0 0 0 1px rgba(255,255,255,.9) inset, 0 8px 26px rgba(0,0,0,.12); pointer-events:none }
-    .frame.hide{ display:none }
+    .card{
+      position:relative;
+      width:min(92vw,760px);
+      padding:48px 56px;
+      text-align:center;
+      background:var(--paper);
+      border-radius:26px;
+      box-shadow: 0 24px 68px rgba(0,0,0,.35), 0 0 0 1px var(--paper-stroke) inset;
+      backdrop-filter: blur(4px) saturate(1.05);
+      border: 2px solid rgba(246,200,107,.6);
+      background-image:
+        linear-gradient(130deg, rgba(246,200,107,.95), transparent 40%),
+        radial-gradient(circle at top left, rgba(255,255,255,.6), transparent 60%);
+      background-blend-mode: soft-light, normal;
+    }
+    h1{
+      font-size: clamp(28px,4.4vw,50px);
+      line-height:1.22;
+      font-weight:900;
+      margin-bottom:12px;
+      color:#205a3e;
+    }
+    p.lead{
+      font-size: clamp(16px,2.6vw,22px);
+      color: rgba(30,40,40,.9);
+      font-weight:700;
+      margin-bottom:22px;
+    }
 
     .notice {
-      background: rgba(255,255,255,0.85);
+      background: rgba(255,255,255,0.92);
       border: 1px solid rgba(60,70,50,0.2);
       border-radius: 14px;
       padding: 14px 18px;
-      margin-bottom: 24px;
+      margin-bottom: 18px;
       font-size: 15px;
       color: #234236;
       box-shadow: 0 4px 10px rgba(0,0,0,0.08);
       line-height: 1.6;
+      text-align:left;
+    }
+    .notice strong{
+      font-weight:900;
     }
     .notice small {
       display:block;
       margin-top:4px;
       color: rgba(60,60,60,0.8);
+      font-size: 12px;
     }
 
-    .lang{ position:fixed; right:12px; bottom:12px; z-index:20; display:flex; gap:8px }
-    .lang button{ font:inherit; padding:6px 9px; border-radius:12px; border:1px solid rgba(20,60,40,.18); background:rgba(255,255,255,.78); cursor:pointer }
+    .experience {
+      font-size: 13px;
+      margin-top: 6px;
+      margin-bottom: 16px;
+      color: rgba(40,60,60,.9);
+    }
 
-    @media(max-width:520px){ .card{padding:34px 22px} }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:12px 20px;
+      border-radius:999px;
+      font-weight:900;
+      color:#063b2a;
+      background: linear-gradient(135deg,#5ac18e,#b0ffb4);
+      box-shadow:0 10px 22px rgba(20,100,60,.23);
+      animation:breathe 3.6s ease-in-out infinite;
+      margin-bottom:10px;
+    }
+    @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+
+    .meta{
+      font-size:12px;
+      color:rgba(50,60,60,.9);
+      margin-top:10px;
+      line-height:1.5;
+    }
+
+    .hashtag{
+      margin-top:10px;
+      font-size:13px;
+      color:rgba(50,60,70,.9);
+    }
+
+    .actions{
+      display:flex;
+      gap:12px;
+      justify-content:center;
+      flex-wrap:wrap;
+      margin-top:20px;
+    }
+    .btn{
+      padding:11px 16px;
+      border-radius:14px;
+      border:1px solid rgba(16,60,40,.14);
+      background:rgba(255,255,255,.85);
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 6px 14px rgba(30,80,60,.14);
+      transition:.25s;
+      font-size:14px;
+    }
+    .btn:hover{
+      transform:translateY(-2px);
+      box-shadow:0 10px 20px rgba(30,80,60,.22);
+    }
+
+    .frame{
+      position:absolute;
+      inset:5% 5%;
+      border-radius:18px;
+      pointer-events:none;
+      border: 12px solid rgba(246,200,107,.85);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,.95) inset,
+        0 8px 26px rgba(0,0,0,.18);
+      mix-blend-mode:soft-light;
+    }
+    .frame.hide{ display:none }
+
+    .lang{
+      position:fixed;
+      right:12px;
+      bottom:12px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+    }
+    .lang button{
+      font:inherit;
+      padding:6px 9px;
+      border-radius:12px;
+      border:1px solid rgba(20,60,40,.18);
+      background:rgba(255,255,255,.86);
+      cursor:pointer;
+      font-size:12px;
+    }
+    .lang button.active{
+      background:#205a3e;
+      color:#fff;
+      border-color:#205a3e;
+    }
+
+    @media(max-width:520px){
+      .card{padding:34px 22px}
+      .notice{text-align:left; font-size:14px;}
+    }
   </style>
 </head>
 <body>
   <div class="stars"></div>
+
   <div class="scene">
     <div class="flags parallax" style="--depth:.02" aria-hidden="true" id="flags"></div>
+
     <div class="layer parallax" style="--depth:.03" id="lanterns" aria-hidden="true"></div>
+
     <div class="layer town parallax" style="--depth:.01" aria-hidden="true">
       <svg viewBox="0 0 1200 600" preserveAspectRatio="none">
         <defs>
@@ -138,6 +266,7 @@
         </g>
       </svg>
     </div>
+
     <div class="layer table parallax" style="--depth:.06" aria-hidden="true">
       <svg viewBox="0 0 1200 420">
         <rect x="0" y="250" width="1200" height="170" fill="#6e503d"/>
@@ -151,6 +280,7 @@
         </g>
       </svg>
     </div>
+
     <div class="layer parallax" style="--depth:.09" aria-hidden="true">
       <div class="tag" style="left:22%; top:40%; animation:swing 3.6s ease-in-out infinite .2s"><span>¥1,200</span></div>
       <div class="tag" style="left:62%; top:38%; animation:swing 4.2s ease-in-out infinite .6s"><span>¥850</span></div>
@@ -162,41 +292,191 @@
 
   <div class="card-wrap">
     <article class="card parallax" style="--depth:.12">
-      <h1 data-i18n="title">お支払い ありがとうございます</h1>
-      <p class="lead" data-i18n="body">古い街並みのフリマで、やさしい取引がひとつ生まれました。処理は完了しました。</p>
+      <h1 data-i18n="title">決済が完了しました</h1>
+
+      <p class="lead" data-i18n="body">
+        古い街並みのフリマで、ひとつのやさしい取引が生まれました。<br>
+        Fleapayでのご購入、ありがとうございます。
+      </p>
+
+      <div class="badge">
+        <span>✓</span>
+        <span data-i18n="badge">Payment Completed / 決済完了</span>
+        <span>✓</span>
+      </div>
 
       <div class="notice">
-        <p>✅ 決済が完了しました。<br>
-        この画面を出店スタッフにお見せください。<br>
-        <small>※商品お渡し後の返品・交換はご遠慮ください。</small></p>
+        <p data-i18n="notice">
+          <strong>✅ 決済が完了しました。</strong><br>
+          この画面を出店スタッフにお見せください。<br>
+          <small>※商品お渡し後の返品・交換はご遠慮ください。</small>
+        </p>
       </div>
 
-      <div class="badge"><span>✓</span>&nbsp;<span data-i18n="badge">決済完了</span>&nbsp;<span>✓</span></div>
+      <p class="experience" data-i18n="experience">
+        今日の体験：『買う』を自分でできました。小さな「できた！」が、フリマを学びの場所に変えていきます。
+      </p>
+
+      <p class="meta" data-i18n="meta">
+        Thanks for supporting local creators & flea market culture.<br>
+        ※必要に応じて、スタッフから決済IDの確認をお願いする場合があります。
+      </p>
+
+      <p class="hashtag" data-i18n="hashtag">
+        #Fleapay で旅の思い出やフリマの発見をシェアしませんか？
+      </p>
+
       <div class="actions">
-        <button class="btn" id="photoBtn" data-i18n="photo">思い出モード（フレームON/OFF）</button>
-        <button class="btn" id="backBtn" data-i18n="back">前の画面へ戻る</button>
+        <button class="btn" id="photoBtn" data-i18n="photo">
+          旅の記念を残す（フォトフレーム ON/OFF）
+        </button>
+        <button class="btn" id="backBtn" data-i18n="back">
+          前の画面へ戻る
+        </button>
       </div>
+
       <div class="frame hide" id="frame"></div>
     </article>
   </div>
 
   <div class="lang" aria-label="Language">
-    <button data-lang="ja">日本語</button>
+    <button data-lang="ja" class="active">日本語</button>
     <button data-lang="en">EN</button>
     <button data-lang="zh">中文</button>
   </div>
 
   <script>
+    // パララックス
     const root = document.documentElement;
-    const setParallax=(x,y)=>{ root.style.setProperty('--px', x.toFixed(2)+'px'); root.style.setProperty('--py', y.toFixed(2)+'px'); }
-    addEventListener('mousemove', e=>{ const cx=innerWidth/2, cy=innerHeight/2; setParallax((e.clientX-cx)*-0.02, (e.clientY-cy)*-0.02); });
-    addEventListener('deviceorientation', e=>{ setParallax(-(e.gamma||0)*1.2, -(e.beta||0)*.8); });
+    const setParallax = (x,y)=>{
+      root.style.setProperty('--px', x.toFixed(2)+'px');
+      root.style.setProperty('--py', y.toFixed(2)+'px');
+    };
+    addEventListener('mousemove', e=>{
+      const cx=innerWidth/2, cy=innerHeight/2;
+      setParallax((e.clientX-cx)*-0.02, (e.clientY-cy)*-0.02);
+    }, {passive:true});
+    addEventListener('deviceorientation', e=>{
+      setParallax(-(e.gamma||0)*1.2, -(e.beta||0)*.8);
+    });
 
+    // ランタン生成
     const lanternHost = document.getElementById('lanterns');
-    const flagHost = document.getElementById('flags');
     function addLantern(x,delay=0){
-      const l=document.createElement('div'); l.className='lantern parallax'; l.style.left=x+'%'; l.style.top=(14+Math.random()*10)+'vh';
-      l.style.animationDelay=delay+'s'; l.style.setProperty('--depth', (.02+Math.random()*.03).toFixed(3));
+      const l=document.createElement('div');
+      l.className='lantern parallax';
+      l.style.left=x+'%';
+      l.style.top=(14+Math.random()*10)+'vh';
+      l.style.animationDelay=delay+'s';
+      l.style.setProperty('--depth', (.02+Math.random()*.03).toFixed(3));
       lanternHost.appendChild(l);
     }
-    [18,32,46,60,74,88].
+    [18,32,46,60,74,88].forEach((x,i)=>addLantern(x,i*0.4));
+
+    // 旗生成
+    const flagHost = document.getElementById('flags');
+    function addFlag(x){
+      const f=document.createElement('div');
+      f.className='flag';
+      f.style.left=x+'%';
+      f.style.setProperty('--depth', (.01+Math.random()*.02).toFixed(3));
+      flagHost.appendChild(f);
+    }
+    [8,22,36,50,64,78,92].forEach(addFlag);
+
+    // 花びら
+    const petalHost = document.getElementById('petals');
+    function spawnPetal(){
+      const p = document.createElement('div');
+      p.className = 'petal';
+      const startX = Math.random()*100;
+      const drift = (Math.random()*40-20);
+      p.style.setProperty('--sx', startX+'vw');
+      p.style.setProperty('--dx', drift+'vw');
+      p.style.animationDuration = (10+Math.random()*10)+'s';
+      petalHost.appendChild(p);
+      setTimeout(()=>petalHost.removeChild(p), 20000);
+    }
+    for(let i=0;i<18;i++) spawnPetal();
+    setInterval(spawnPetal, 1200);
+
+    // フォトフレーム ON/OFF
+    const frameEl = document.getElementById('frame');
+    const photoBtn = document.getElementById('photoBtn');
+    photoBtn.addEventListener('click', ()=>{
+      frameEl.classList.toggle('hide');
+    });
+
+    // 戻るボタン
+    const backBtn = document.getElementById('backBtn');
+    backBtn.addEventListener('click', ()=>{
+      if (window.history.length>1){
+        window.history.back();
+      } else {
+        window.location.href = '/';
+      }
+    });
+
+    // 多言語対応
+    const dict = {
+      ja:{
+        title: "決済が完了しました",
+        body: "古い街並みのフリマで、ひとつのやさしい取引が生まれました。<br>Fleapayでのご購入、ありがとうございます。",
+        badge: "Payment Completed / 決済完了",
+        notice: "<strong>✅ 決済が完了しました。</strong><br>この画面を出店スタッフにお見せください。<br><small>※商品お渡し後の返品・交換はご遠慮ください。</small>",
+        experience: "今日の体験：『買う』を自分でできました。小さな「できた！」が、フリマを学びの場所に変えていきます。",
+        meta: "Thanks for supporting local creators & flea market culture.<br>※必要に応じて、スタッフから決済IDの確認をお願いする場合があります。",
+        hashtag: "#Fleapay で旅の思い出やフリマの発見をシェアしませんか？",
+        photo: "旅の記念を残す（フォトフレーム ON/OFF）",
+        back: "前の画面へ戻る"
+      },
+      en:{
+        title: "Payment Completed",
+        body: "A warm moment was created in this flea market street.<br>Thank you for your purchase with Fleapay.",
+        badge: "Payment Completed",
+        notice: "<strong>✅ Your payment has been completed.</strong><br>Please show this screen to the shop staff.<br><small>*Refunds and exchanges are not available after receiving your item.</small>",
+        experience: "Today's experience: You made a purchase by yourself. Small “I did it!” moments turn the flea market into a place of learning.",
+        meta: "Thank you for supporting local creators and flea market culture.<br>*Staff may ask you to confirm your payment ID if necessary.",
+        hashtag: "Share your travel memories and flea market discoveries with #Fleapay",
+        photo: "Save your memory (Photo frame ON/OFF)",
+        back: "Go back to previous page"
+      },
+      zh:{
+        title: "付款已完成",
+        body: "在这条老街的跳蚤市集中，诞生了一次温暖的交易。<br>感谢您使用 Fleapay 购物。",
+        badge: "付款完成",
+        notice: "<strong>✅ 付款已完成。</strong><br>请将此画面出示给摊主。<br><small>※领取商品后，恕不接受退换。</small>",
+        experience: "今天的体验：自己完成了一次“购买”。这些小小的“我做到了”，会让市集变成充满学习的地方。",
+        meta: "感谢您支持本地创作者与跳蚤市集文化。<br>※如有需要，工作人员可能会请您确认付款编号。",
+        hashtag: "欢迎使用 #Fleapay 分享您的旅途与市集发现。",
+        photo: "留下旅途回忆（相框 开/关）",
+        back: "返回上一页"
+      }
+    };
+
+    function applyLang(lang){
+      const t = dict[lang] || dict.ja;
+      document.querySelectorAll('[data-i18n]').forEach(el=>{
+        const key = el.getAttribute('data-i18n');
+        if(t[key] !== undefined){
+          el.innerHTML = t[key];
+        }
+      });
+      document.querySelectorAll('.lang button').forEach(btn=>{
+        btn.classList.toggle('active', btn.getAttribute('data-lang')===lang);
+      });
+      document.documentElement.lang = lang;
+    }
+
+    document.querySelectorAll('.lang button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const lang = btn.getAttribute('data-lang');
+        applyLang(lang);
+      });
+    });
+
+    // 初期言語（日本語）
+    applyLang('ja');
+  </script>
+</body>
+</html>

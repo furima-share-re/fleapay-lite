@@ -1,500 +1,467 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💫 キャンセルしました</title>
-    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;900&family=Kosugi+Maru&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleapay｜決済が完了していません</title>
+  <link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --night1:#0f2740;
+      --night2:#193e5b;
+      --paper:rgba(255,255,240,.94);
+      --paper-stroke:rgba(30,40,40,.16);
+      --ink:#233238;
+      --accent:#ffb88a;
+      --accent-soft:#ffe1c6;
+      --lamp-core:#fff6cc;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family:'Yusei Magic','M PLUS Rounded 1c',system-ui,-apple-system,Segoe UI,Roboto,'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
+      color:var(--ink);
+      background: radial-gradient(120% 100% at 50% -10%, #243c5a 0%, var(--night1) 40%, var(--night2) 100%);
+      overflow:hidden;
+    }
 
-        body {
-            font-family: 'M PLUS Rounded 1c', 'Kosugi Maru', sans-serif;
-            background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 50%, #c471f5 100%);
-            background-size: 400% 400%;
-            animation: gradientShift 15s ease infinite;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            position: relative;
-        }
+    /* 星空 */
+    .stars{position:fixed; inset:0; z-index:0; pointer-events:none;}
+    .stars::before,.stars::after{content:""; position:absolute; inset:0; background:
+      radial-gradient(2px 2px at 10% 20%, rgba(255,255,255,.75), transparent 50%),
+      radial-gradient(1.6px 1.6px at 40% 35%, rgba(255,255,255,.6), transparent 60%),
+      radial-gradient(1.8px 1.8px at 70% 15%, rgba(255,255,255,.7), transparent 60%),
+      radial-gradient(1.6px 1.6px at 85% 48%, rgba(255,255,255,.65), transparent 60%),
+      radial-gradient(1.7px 1.7px at 28% 66%, rgba(255,255,255,.7), transparent 60%);
+      animation: twinkle 7s ease-in-out infinite;
+    }
+    .stars::after{filter:blur(1px); opacity:.6; animation-duration:10s}
+    @keyframes twinkle{0%,100%{opacity:.4}50%{opacity:.9}}
 
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
+    .scene{position:fixed; inset:0; perspective:800px; overflow:hidden; z-index:1;}
+    .layer{position:absolute; inset:0; transform-style:preserve-3d}
+    .parallax{ transform: translate3d(calc(var(--px,0)*var(--depth,0)), calc(var(--py,0)*var(--depth,0)), 0) }
 
-        /* 雨粒アニメーション */
-        .rain {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            overflow: hidden;
-        }
+    /* 町並み */
+    .town{ position:absolute; inset:auto -10vw 0 -10vw; height:60vh; filter: drop-shadow(0 -6px 24px rgba(0,0,0,.35)); }
+    .town svg{ width:120vw; height:100%; display:block }
 
-        .raindrop {
-            position: absolute;
-            width: 2px;
-            height: 30px;
-            background: linear-gradient(to bottom, transparent, rgba(173, 216, 230, 0.6));
-            animation: rainfall linear infinite;
-        }
+    /* 旗 */
+    .flags{ position:absolute; left:-5vw; right:-5vw; top:14vh; height:80px; z-index:4; pointer-events:none }
+    .flags:before{content:""; position:absolute; left:0; right:0; top:34px; height:2px; background:rgba(250,250,250,.15)}
+    .flag{ position:absolute; top:36px; width:0; height:0; border-left:12px solid transparent; border-right:12px solid transparent; border-top:16px solid rgba(255,255,255,.3); filter:drop-shadow(0 1px 1px rgba(0,0,0,.18)); animation: sway 5s ease-in-out infinite }
 
-        @keyframes rainfall {
-            0% {
-                transform: translateY(-10vh);
-                opacity: 0.8;
-            }
-            100% {
-                transform: translateY(110vh);
-                opacity: 0;
-            }
-        }
+    /* ちょうちん */
+    .lantern{ position:absolute; width:50px; height:64px; border-radius:26px/32px; background:
+        radial-gradient(50% 35% at 50% 45%, var(--lamp-core) 0%, rgba(255,230,150,.7) 40%, rgba(255,160,60,.28) 75%, rgba(0,0,0,0) 100%);
+      box-shadow: 0 0 16px 6px rgba(255,190,90,.45), inset 0 0 9px rgba(255,255,255,.5);
+      transform-origin: top center; animation: swing 4s ease-in-out infinite;
+      mix-blend-mode: screen; z-index:5; opacity:.9 }
+    .lantern::before{content:""; position:absolute; top:-18px; left:calc(50% - 1px); width:2px; height:20px; background:rgba(180,180,180,.6)}
 
-        /* 浮遊する泡 */
-        .bubble {
-            position: absolute;
-            border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.2));
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
-            animation: bubbleFloat linear infinite;
-        }
+    @keyframes swing{0%{transform:rotate(0)}50%{transform:rotate(2deg)}100%{transform:rotate(0)}}
+    @keyframes sway{0%{transform:translateY(0)}50%{transform:translateY(2px)}100%{transform:translateY(0)}}
 
-        @keyframes bubbleFloat {
-            0% {
-                transform: translateY(110vh) scale(0);
-                opacity: 0;
-            }
-            10% {
-                opacity: 0.6;
-            }
-            90% {
-                opacity: 0.6;
-            }
-            100% {
-                transform: translateY(-10vh) scale(1);
-                opacity: 0;
-            }
-        }
+    /* テーブル */
+    .table{ position:absolute; left:50%; bottom:12vh; transform:translateX(-50%); width:min(92vw,980px); height:30vh; z-index:7 }
+    .table svg{ width:100%; height:100% }
 
-        /* メインカード */
-        .container {
-            position: relative;
-            z-index: 10;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 40px;
-            padding: 60px 80px;
-            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.3),
-                        0 0 0 1px rgba(255, 255, 255, 0.8) inset;
-            max-width: 600px;
-            text-align: center;
-            animation: slideIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            backdrop-filter: blur(10px);
-        }
+    /* 花びら（少なめ：落ち着きトーン） */
+    .petal{ position:absolute; width:9px; height:5px; background: radial-gradient(ellipse at 60% 40%, rgba(255,212,212,.9), rgba(230,130,150,.45)); border-radius:60% 40% 60% 40%; filter: blur(.2px); pointer-events:none; opacity:0; animation: fall linear forwards }
+    @keyframes fall{
+      0%{ transform: translate(var(--sx), -10vh) rotate(0deg); opacity:0 }
+      10%{ opacity:.9 }
+      70%{ opacity:.85 }
+      100%{ transform: translate(calc(var(--sx) + var(--dx)), 110vh) rotate(420deg); opacity:0 }
+    }
 
-        @keyframes slideIn {
-            0% {
-                opacity: 0;
-                transform: translateY(-50px) scale(0.8);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
+    /* カード */
+    .card-wrap{position:relative; z-index:10; display:grid; place-items:center; height:100vh; padding:24px}
+    .card{
+      position:relative;
+      width:min(92vw,760px);
+      padding:44px 52px;
+      text-align:center;
+      background:var(--paper);
+      border-radius:26px;
+      box-shadow: 0 22px 60px rgba(0,0,0,.32), 0 0 0 1px var(--paper-stroke) inset;
+      backdrop-filter: blur(4px) saturate(1.02);
+      border: 2px solid rgba(210,170,130,.55);
+      background-image:
+        linear-gradient(135deg, rgba(255,235,215,.85), transparent 45%),
+        radial-gradient(circle at top left, rgba(255,255,255,.6), transparent 60%);
+      background-blend-mode: soft-light, normal;
+    }
+    h1{
+      font-size: clamp(26px,4vw,40px);
+      line-height:1.4;
+      font-weight:900;
+      margin-bottom:10px;
+      color:#3b3a30;
+    }
+    p.lead{
+      font-size: clamp(15px,2.4vw,20px);
+      color: rgba(40,50,50,.95);
+      font-weight:700;
+      margin-bottom:18px;
+    }
 
-        /* キャラクターアイコン */
-        .character {
-            font-size: 120px;
-            animation: sway 2s ease-in-out infinite;
-            display: inline-block;
-            margin-bottom: 20px;
-            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.2));
-        }
+    .status{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 18px;
+      border-radius:999px;
+      font-weight:900;
+      color:#5c2a24;
+      background: linear-gradient(135deg,#ffd1ba,#ff9a8b);
+      box-shadow:0 8px 20px rgba(150,60,40,.28);
+      margin-bottom:14px;
+    }
 
-        @keyframes sway {
-            0%, 100% {
-                transform: rotate(-10deg);
-            }
-            50% {
-                transform: rotate(10deg);
-            }
-        }
+    .notice{
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(90,80,60,0.18);
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      font-size: 14px;
+      color: #3a3a36;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+      line-height: 1.7;
+      text-align:left;
+    }
+    .notice strong{font-weight:900;}
+    .notice small{
+      display:block;
+      margin-top:4px;
+      color: rgba(70,70,70,0.85);
+      font-size: 12px;
+    }
 
-        /* タイトル */
-        h1 {
-            font-size: 42px;
-            font-weight: 900;
-            background: linear-gradient(45deg, #9b59b6, #6c5ce7, #a29bfe);
-            background-size: 300% 300%;
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: gradientText 3s ease infinite;
-            margin-bottom: 25px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-            line-height: 1.5;
-        }
+    .tips{
+      margin-bottom: 12px;
+      font-size:13px;
+      color:rgba(60,60,60,.9);
+      text-align:left;
+      line-height:1.6;
+    }
+    .tips ul{padding-left:1.2em; margin-top:4px;}
+    .tips li{margin-bottom:2px;}
 
-        @keyframes gradientText {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
+    .encourage{
+      font-size:13px;
+      margin-top:4px;
+      margin-bottom: 14px;
+      color:rgba(70,70,70,.95);
+    }
 
-        /* メッセージ */
-        p {
-            font-size: 24px;
-            color: #666;
-            margin-bottom: 40px;
-            font-weight: 700;
-            animation: fadeIn 1s ease-in 0.5s both;
-        }
+    .actions{
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+    .btn{
+      padding:10px 16px;
+      border-radius:13px;
+      border:1px solid rgba(16,60,40,.14);
+      background:rgba(255,255,255,.9);
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 6px 14px rgba(30,80,60,.14);
+      transition:.22s;
+      font-size:14px;
+      min-width:130px;
+    }
+    .btn-primary{
+      background:linear-gradient(135deg,#ffb88a,#ff9a8b);
+      color:#4a2a18;
+      border-color:rgba(200,120,80,.7);
+    }
+    .btn:hover{
+      transform:translateY(-2px);
+      box-shadow:0 10px 20px rgba(30,80,60,.22);
+    }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+    .meta{
+      font-size:12px;
+      color:rgba(80,80,80,.9);
+      margin-top:12px;
+      line-height:1.6;
+    }
 
-        /* 励ましメッセージ */
-        .encourage {
-            font-size: 20px;
-            color: #888;
-            margin-top: 20px;
-            font-weight: 500;
-            animation: fadeIn 1.2s ease-in 0.8s both;
-        }
+    .lang{
+      position:fixed;
+      right:12px;
+      bottom:12px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+    }
+    .lang button{
+      font:inherit;
+      padding:6px 9px;
+      border-radius:12px;
+      border:1px solid rgba(20,60,40,.18);
+      background:rgba(255,255,255,.9);
+      cursor:pointer;
+      font-size:12px;
+    }
+    .lang button.active{
+      background:#3b3a30;
+      color:#fff;
+      border-color:#3b3a30;
+    }
 
-        /* リトライボタン */
-        .retry-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 18px 40px;
-            border-radius: 50px;
-            font-size: 22px;
-            font-weight: 900;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-            animation: pulse 2s ease-in-out infinite;
-            margin-top: 20px;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-
-        .retry-button:hover {
-            transform: scale(1.1);
-            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.05);
-            }
-        }
-
-        /* ステータスバッジ */
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: linear-gradient(135deg, #f093fb, #f5576c);
-            color: white;
-            padding: 14px 30px;
-            border-radius: 50px;
-            font-size: 20px;
-            font-weight: 900;
-            box-shadow: 0 8px 25px rgba(245, 87, 108, 0.4);
-            animation: wobble 3s ease-in-out infinite;
-        }
-
-        @keyframes wobble {
-            0%, 100% {
-                transform: rotate(0deg);
-            }
-            25% {
-                transform: rotate(-5deg);
-            }
-            75% {
-                transform: rotate(5deg);
-            }
-        }
-
-        /* デコレーション */
-        .decoration {
-            position: absolute;
-            font-size: 40px;
-            animation: float 3s ease-in-out infinite;
-            opacity: 0.6;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-15px) rotate(15deg); }
-        }
-
-        .deco1 { top: 20px; left: 30px; animation-delay: 0s; }
-        .deco2 { top: 40px; right: 40px; animation-delay: 0.5s; }
-        .deco3 { bottom: 50px; left: 50px; animation-delay: 1s; }
-        .deco4 { bottom: 30px; right: 60px; animation-delay: 1.5s; }
-
-        /* ハートビート */
-        .heartbeat {
-            font-size: 30px;
-            display: inline-block;
-            animation: heartbeat 1.5s ease-in-out infinite;
-        }
-
-        @keyframes heartbeat {
-            0%, 100% {
-                transform: scale(1);
-            }
-            10%, 30% {
-                transform: scale(1.3);
-            }
-            20%, 40% {
-                transform: scale(1);
-            }
-        }
-
-        /* レスポンシブ */
-        @media (max-width: 768px) {
-            .container {
-                padding: 40px 30px;
-                margin: 20px;
-            }
-            
-            h1 {
-                font-size: 32px;
-            }
-            
-            .character {
-                font-size: 80px;
-            }
-            
-            p {
-                font-size: 20px;
-            }
-            
-            .retry-button {
-                font-size: 18px;
-                padding: 14px 30px;
-            }
-            
-            .encourage {
-                font-size: 18px;
-            }
-        }
-
-        /* ホバー効果 */
-        .container:hover {
-            transform: scale(1.02);
-            transition: transform 0.3s ease;
-        }
-
-        /* 波紋エフェクト */
-        .ripple {
-            position: absolute;
-            border: 3px solid rgba(147, 112, 219, 0.5);
-            border-radius: 50%;
-            animation: rippleExpand 3s ease-out infinite;
-        }
-
-        @keyframes rippleExpand {
-            0% {
-                width: 100px;
-                height: 100px;
-                top: 50%;
-                left: 50%;
-                margin-top: -50px;
-                margin-left: -50px;
-                opacity: 1;
-            }
-            100% {
-                width: 600px;
-                height: 600px;
-                top: 50%;
-                left: 50%;
-                margin-top: -300px;
-                margin-left: -300px;
-                opacity: 0;
-            }
-        }
-
-        /* キラキラ */
-        .twinkle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: white;
-            border-radius: 50%;
-            box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.9);
-            animation: twinkleAnim 2s ease-in-out infinite;
-        }
-
-        @keyframes twinkleAnim {
-            0%, 100% {
-                opacity: 0;
-                transform: scale(0);
-            }
-            50% {
-                opacity: 1;
-                transform: scale(1.5);
-            }
-        }
-    </style>
+    @media(max-width:520px){
+      .card{padding:32px 22px}
+      .notice,.tips{font-size:13px;}
+    }
+  </style>
 </head>
 <body>
-    <!-- 雨粒エフェクト -->
-    <div class="rain" id="rain"></div>
+  <div class="stars"></div>
 
-    <!-- 泡エフェクト -->
-    <div class="rain" id="bubbles"></div>
+  <div class="scene">
+    <div class="flags parallax" style="--depth:.02" aria-hidden="true" id="flags"></div>
 
-    <!-- メインコンテナ -->
-    <div class="container">
-        <!-- 波紋エフェクト -->
-        <div class="ripple" style="animation-delay: 0s;"></div>
-        <div class="ripple" style="animation-delay: 1s;"></div>
-        <div class="ripple" style="animation-delay: 2s;"></div>
+    <div class="layer parallax" style="--depth:.03" id="lanterns" aria-hidden="true"></div>
 
-        <!-- デコレーション -->
-        <div class="decoration deco1">💙</div>
-        <div class="decoration deco2">💫</div>
-        <div class="decoration deco3">🌟</div>
-        <div class="decoration deco4">💜</div>
-
-        <!-- キャラクター -->
-        <div class="character">😢</div>
-
-        <!-- タイトル -->
-        <h1>お支払いを<br>キャンセルしました。</h1>
-
-        <!-- ステータス -->
-        <div class="status-badge">
-            <span>✕</span>
-            <span>決済キャンセル</span>
-        </div>
-
-        <!-- メッセージ -->
-        <p>再度お試しください。</p>
-
-        <!-- 励まし -->
-        <div class="encourage">
-            大丈夫です <span class="heartbeat">💖</span> いつでもお待ちしています！
-        </div>
-
-        <!-- リトライボタン -->
-        <a href="#" class="retry-button" onclick="window.history.back(); return false;">
-            <span>🔄</span>
-            <span>もう一度試す</span>
-            <span>✨</span>
-        </a>
+    <div class="layer town parallax" style="--depth:.01" aria-hidden="true">
+      <svg viewBox="0 0 1200 600" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="fog-cancel" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#263d54" stop-opacity=".95"/>
+            <stop offset="100%" stop-color="#172d44" stop-opacity="1"/>
+          </linearGradient>
+          <linearGradient id="window-cancel" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#ffd0a0"/>
+            <stop offset="100%" stop-color="#ffb07a"/>
+          </linearGradient>
+        </defs>
+        <path d="M0 360 C 120 330, 220 350, 300 340 S 520 350, 620 330 S 880 350, 980 340 S 1100 350, 1200 360 V600 H0 Z" fill="url(#fog-cancel)"/>
+        <g opacity=".82">
+          <rect x="90"  y="380" width="14" height="18" fill="url(#window-cancel)"></rect>
+          <rect x="140" y="400" width="10" height="14" fill="url(#window-cancel)"></rect>
+          <rect x="280" y="395" width="12" height="16" fill="url(#window-cancel)"></rect>
+          <rect x="520" y="390" width="16" height="20" fill="url(#window-cancel)"></rect>
+          <rect x="800" y="400" width="12" height="16" fill="url(#window-cancel)"></rect>
+          <rect x="980" y="388" width="14" height="18" fill="url(#window-cancel)"></rect>
+        </g>
+      </svg>
     </div>
+  </div>
 
-    <script>
-        // 雨粒を生成
-        function createRain() {
-            const rainContainer = document.getElementById('rain');
-            const dropCount = 40;
+  <div id="petals" aria-hidden="true"></div>
 
-            for (let i = 0; i < dropCount; i++) {
-                const drop = document.createElement('div');
-                drop.className = 'raindrop';
-                drop.style.left = Math.random() * 100 + '%';
-                drop.style.animationDuration = (Math.random() * 1 + 0.5) + 's';
-                drop.style.animationDelay = Math.random() * 2 + 's';
-                drop.style.opacity = Math.random() * 0.5 + 0.3;
-                rainContainer.appendChild(drop);
-            }
+  <div class="card-wrap">
+    <article class="card parallax" style="--depth:.12">
+      <h1 data-i18n="title">決済は完了していません</h1>
+
+      <p class="lead" data-i18n="body">
+        お支払いがキャンセルされました。<br>
+        カードや金額をご確認のうえ、必要であればもう一度お試しください。
+      </p>
+
+      <div class="status" data-i18n="status">
+        <span>✕</span>
+        <span>Payment Not Completed / 決済未完了</span>
+      </div>
+
+      <div class="notice">
+        <p data-i18n="notice">
+          <strong>この画面が表示されている場合、決済は行われていません。</strong><br>
+          商品はまだお受け取りいただけません。<br>
+          <small>再度お支払いを行うか、出店スタッフにご相談ください。</small>
+        </p>
+      </div>
+
+      <div class="tips" data-i18n="tips">
+        <strong>うまくいかない場合のチェック例：</strong>
+        <ul>
+          <li>電波状況（Wi-Fi / 電波）が弱くなっていないか</li>
+          <li>カード番号や有効期限の入力に誤りがないか</li>
+          <li>ご利用カードの限度額・残高に余裕があるか</li>
+        </ul>
+      </div>
+
+      <p class="encourage" data-i18n="encourage">
+        今日は購入まで、あと少しでした。<br>
+        「また試してみよう」という気持ちが、次の『できた！』につながります。
+      </p>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="retryBtn" data-i18n="retry">
+          もう一度試す
+        </button>
+        <button class="btn" id="homeBtn" data-i18n="home">
+          トップに戻る
+        </button>
+      </div>
+
+      <p class="meta" data-i18n="meta">
+        This transaction has not been charged.<br>
+        If you are unsure, please ask the flea market staff.
+      </p>
+    </article>
+  </div>
+
+  <div class="lang" aria-label="Language">
+    <button data-lang="ja" class="active">日本語</button>
+    <button data-lang="en">EN</button>
+    <button data-lang="zh">中文</button>
+  </div>
+
+  <script>
+    // パララックス
+    const root = document.documentElement;
+    const setParallax = (x,y)=>{
+      root.style.setProperty('--px', x.toFixed(2)+'px');
+      root.style.setProperty('--py', y.toFixed(2)+'px');
+    };
+    addEventListener('mousemove', e=>{
+      const cx=innerWidth/2, cy=innerHeight/2;
+      setParallax((e.clientX-cx)*-0.02, (e.clientY-cy)*-0.02);
+    }, {passive:true});
+    addEventListener('deviceorientation', e=>{
+      setParallax(-(e.gamma||0)*1.2, -(e.beta||0)*.8);
+    });
+
+    // ちょうちん
+    const lanternHost = document.getElementById('lanterns');
+    function addLantern(x,delay=0){
+      const l=document.createElement('div');
+      l.className='lantern parallax';
+      l.style.left=x+'%';
+      l.style.top=(15+Math.random()*9)+'vh';
+      l.style.animationDelay=delay+'s';
+      l.style.setProperty('--depth', (.02+Math.random()*.03).toFixed(3));
+      lanternHost.appendChild(l);
+    }
+    [20,34,48,62,76,88].forEach((x,i)=>addLantern(x,i*0.45));
+
+    // 旗
+    const flagHost = document.getElementById('flags');
+    function addFlag(x){
+      const f=document.createElement('div');
+      f.className='flag';
+      f.style.left=x+'%';
+      f.style.setProperty('--depth', (.01+Math.random()*.02).toFixed(3));
+      flagHost.appendChild(f);
+    }
+    [10,26,42,58,74,90].forEach(addFlag);
+
+    // 花びら（控えめ）
+    const petalHost = document.getElementById('petals');
+    function spawnPetal(){
+      const p = document.createElement('div');
+      p.className = 'petal';
+      const startX = Math.random()*100;
+      const drift = (Math.random()*30-15);
+      p.style.setProperty('--sx', startX+'vw');
+      p.style.setProperty('--dx', drift+'vw');
+      p.style.animationDuration = (12+Math.random()*8)+'s';
+      petalHost.appendChild(p);
+      setTimeout(()=>petalHost.removeChild(p), 20000);
+    }
+    for(let i=0;i<10;i++) spawnPetal();
+    setInterval(spawnPetal, 1800);
+
+    // ボタン
+    const retryBtn = document.getElementById('retryBtn');
+    const homeBtn  = document.getElementById('homeBtn');
+
+    retryBtn.addEventListener('click', ()=>{
+      if (window.history.length>1){
+        window.history.back();
+      } else {
+        window.location.href = '/';
+      }
+    });
+
+    homeBtn.addEventListener('click', ()=>{
+      window.location.href = '/';
+    });
+
+    // 多言語
+    const dict = {
+      ja:{
+        title: "決済は完了していません",
+        body: "お支払いがキャンセルされました。<br>カードや金額をご確認のうえ、必要であればもう一度お試しください。",
+        status: "✕ Payment Not Completed / 決済未完了",
+        notice: "<strong>この画面が表示されている場合、決済は行われていません。</strong><br>商品はまだお受け取りいただけません。<br><small>再度お支払いを行うか、出店スタッフにご相談ください。</small>",
+        tips: "<strong>うまくいかない場合のチェック例：</strong><ul><li>電波状況（Wi-Fi / 電波）が弱くなっていないか</li><li>カード番号や有効期限の入力に誤りがないか</li><li>ご利用カードの限度額・残高に余裕があるか</li></ul>",
+        encourage: "今日は購入まで、あと少しでした。<br>「また試してみよう」という気持ちが、次の『できた！』につながります。",
+        retry: "もう一度試す",
+        home: "トップに戻る",
+        meta: "この取引では請求は行われていません。<br>不明な点があれば、フリマのスタッフにお声がけください。"
+      },
+      en:{
+        title: "Payment Not Completed",
+        body: "Your payment has been cancelled.<br>Please check your card details and amount, then try again if you wish.",
+        status: "✕ Payment Not Completed",
+        notice: "<strong>If you see this screen, your payment has not been processed.</strong><br>You cannot receive the item yet.<br><small>Please try the payment again, or ask the flea market staff for help.</small>",
+        tips: "<strong>If payment keeps failing, please check:</strong><ul><li>Network connection (Wi-Fi / mobile signal)</li><li>Card number and expiry date are correct</li><li>Enough balance or credit limit on your card</li></ul>",
+        encourage: "You were very close to completing your purchase today.<br>Trying again next time will lead to your next “I did it!”.",
+        retry: "Try again",
+        home: "Back to top",
+        meta: "No charge has been made for this transaction.<br>If you are unsure, please ask the flea market staff."
+      },
+      zh:{
+        title: "付款尚未完成",
+        body: "您的付款已被取消。<br>请确认卡片与金额，如有需要可以重新尝试。",
+        status: "✕ 付款未完成",
+        notice: "<strong>如果您看到此画面，说明尚未成功扣款。</strong><br>目前还不能领取商品。<br><small>请重新进行付款，或向摊主／工作人员咨询。</small>",
+        tips: "<strong>反复失败时，可检查以下项目：</strong><ul><li>网络状况（Wi-Fi / 信号）是否良好</li><li>卡号及有效期输入是否正确</li><li>卡片额度或余额是否充足</li></ul>",
+        encourage: "今天离成功购买只差一点点。<br>“再试一次”的心情，会带来下一次的「我做到了！」。",
+        retry: "再试一次",
+        home: "返回首页",
+        meta: "本次交易尚未扣款。<br>如有疑问，请向市集工作人员确认。"
+      }
+    };
+
+    function setText(el, html){
+      if(!el) return;
+      // status だけはアイコン＋テキストのため少し処理
+      if(el.dataset.i18n === 'status' && html.startsWith('✕')){
+        const parts = html.split(' ');
+        el.innerHTML = '';
+        const icon = document.createElement('span');
+        icon.textContent = '✕';
+        const text = document.createElement('span');
+        text.textContent = html.replace(/^✕\s*/, '');
+        el.appendChild(icon);
+        el.appendChild(text);
+      }else{
+        el.innerHTML = html;
+      }
+    }
+
+    function applyLang(lang){
+      const t = dict[lang] || dict.ja;
+      document.querySelectorAll('[data-i18n]').forEach(el=>{
+        const key = el.getAttribute('data-i18n');
+        if(t[key] !== undefined){
+          setText(el, t[key]);
         }
+      });
+      document.querySelectorAll('.lang button').forEach(btn=>{
+        btn.classList.toggle('active', btn.getAttribute('data-lang')===lang);
+      });
+      document.documentElement.lang = lang;
+    }
 
-        // 泡を生成
-        function createBubbles() {
-            const bubbleContainer = document.getElementById('bubbles');
-            const bubbleCount = 20;
+    document.querySelectorAll('.lang button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const lang = btn.getAttribute('data-lang');
+        applyLang(lang);
+      });
+    });
 
-            for (let i = 0; i < bubbleCount; i++) {
-                const bubble = document.createElement('div');
-                bubble.className = 'bubble';
-                const size = Math.random() * 40 + 20;
-                bubble.style.width = size + 'px';
-                bubble.style.height = size + 'px';
-                bubble.style.left = Math.random() * 100 + '%';
-                bubble.style.animationDuration = (Math.random() * 8 + 6) + 's';
-                bubble.style.animationDelay = Math.random() * 5 + 's';
-                bubbleContainer.appendChild(bubble);
-            }
-        }
-
-        // キラキラを生成
-        function createTwinkles() {
-            const container = document.querySelector('.container');
-            const twinkleCount = 15;
-
-            for (let i = 0; i < twinkleCount; i++) {
-                const twinkle = document.createElement('div');
-                twinkle.className = 'twinkle';
-                twinkle.style.left = Math.random() * 100 + '%';
-                twinkle.style.top = Math.random() * 100 + '%';
-                twinkle.style.animationDelay = Math.random() * 2 + 's';
-                twinkle.style.animationDuration = (Math.random() * 1 + 1.5) + 's';
-                container.appendChild(twinkle);
-            }
-        }
-
-        // 初期化
-        window.addEventListener('load', () => {
-            createRain();
-            createBubbles();
-            createTwinkles();
-        });
-
-        // クリックでエフェクト追加
-        document.querySelector('.container').addEventListener('click', (e) => {
-            if (e.target.closest('.retry-button')) return;
-            
-            const container = document.querySelector('.container');
-            for (let i = 0; i < 8; i++) {
-                const twinkle = document.createElement('div');
-                twinkle.className = 'twinkle';
-                twinkle.style.left = Math.random() * 100 + '%';
-                twinkle.style.top = Math.random() * 100 + '%';
-                container.appendChild(twinkle);
-                
-                setTimeout(() => twinkle.remove(), 2000);
-            }
-        });
-
-        // リトライボタンのホバーエフェクト
-        const retryBtn = document.querySelector('.retry-button');
-        retryBtn.addEventListener('mouseenter', () => {
-            const character = document.querySelector('.character');
-            character.textContent = '😊';
-        });
-        
-        retryBtn.addEventListener('mouseleave', () => {
-            const character = document.querySelector('.character');
-            character.textContent = '😢';
-        });
-    </script>
+    // 初期言語（日本語）
+    applyLang('ja');
+  </script>
 </body>
 </html>
