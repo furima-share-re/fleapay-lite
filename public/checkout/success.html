@@ -538,10 +538,23 @@
       frameEl.classList.toggle('hide');
     });
 
-    // 写真保存(実装側で実画像がある場合に差し替え可)
+    // ====== 写真保存（ローカルへダウンロード） ======
     const savePhotoBtn = document.getElementById('savePhotoBtn');
-    savePhotoBtn.addEventListener('click', ()=>{
-      alert('写真の保存は、この画面のスクリーンショットでもご利用いただけます。実装に応じてダウンロード処理を追加できます。');
+    savePhotoBtn.addEventListener('click', () => {
+      // 表示中の <img> を取得
+      const img = photoPreview.querySelector('img');
+      if (!img || !img.src) {
+        alert('保存できる写真がありません。写真を撮影 or 加工してからお試しください。');
+        return;
+      }
+
+      // ダウンロード用リンクを作成して自動クリック
+      const link = document.createElement('a');
+      link.href = img.src; // dataURL または blob URL
+      link.download = `fleapay-photo-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     });
 
     // --- 自分で写真を撮影 → AIでフォトフレームを適用する暫定処理 ---
