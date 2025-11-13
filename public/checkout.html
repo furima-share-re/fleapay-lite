@@ -97,7 +97,8 @@
       background:linear-gradient(135deg,var(--shin-ai),var(--hakken));
       -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
     .fx{margin-top:6px;font-size:12px;color:#64748b}
-    .summary{margin:10px 0 0;font-size:13px;color:#334155}
+    .summary{margin:6px 0 0;font-size:13px;color:#334155;white-space:pre-line}
+    .summary-title{margin:6px 0 0;font-size:13px;font-weight:700;color:#0f172a}
 
     /* ==== Loading shimmer ==== */
     .loading{position:relative;color:transparent}
@@ -125,6 +126,9 @@
     .security-badges{display:flex;justify-content:center;gap:16px;margin:16px 0;flex-wrap:wrap}
     .security-badge{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e7f3ff;border-radius:999px;padding:8px 12px;font-size:12px;color:var(--shin-ai);box-shadow:0 2px 8px rgba(0,0,0,.05)}
     .security-icon{width:16px;height:16px;color:#10b981}
+
+    .note-block{margin-top:12px;font-size:11px;color:#64748b;line-height:1.6}
+    .note-block p{margin:2px 0}
 
     /* ==== Themes by time ==== */
     .theme-evening{background-image:radial-gradient(1200px 700px at 80% -10%, rgba(255,212,163,.18) 0%, transparent 60%),
@@ -169,6 +173,7 @@
           <div id="amount" class="price loading" aria-label="合計金額">—</div>
         </div>
         <div id="fx" class="fx muted" aria-live="polite"></div>
+        <p class="summary-title" data-lang-content data-lang-key="summaryTitle">🛍 ご購入内容（出店者が確認済みです）</p>
         <p id="summary" class="summary muted loading"></p>
       </section>
 
@@ -196,6 +201,11 @@
           </svg>
           <span id="payLabel">Pay Now</span>
         </button>
+        <div class="note-block" aria-live="polite">
+          <p data-lang-content data-lang-key="confirm1">・間違いがないかご確認ください</p>
+          <p data-lang-content data-lang-key="confirm2">・商品受け取り後の返品・交換はできません</p>
+          <p data-lang-content data-lang-key="safety">🔒 この決済は Stripe の国際基準で保護されています。カード情報は FleaPay には保存されません。</p>
+        </div>
         <div class="brands" aria-hidden="true">
           <div class="brand-icon">Visa</div>
           <div class="brand-icon">Mastercard</div>
@@ -205,7 +215,9 @@
       </div>
 
       <footer class="center mt24 muted" style="font-size:12px">
-        <span data-lang-content data-lang-key="note">表示の外貨換算は参考値です。最終決済はJPYで行われます。</span>
+        <span data-lang-content data-lang-key="note">
+          表示の外貨換算は参考値です。実際の決済はすべて日本円（JPY）で行われます。この画面は、出店者から受け取った商品の支払い画面です。
+        </span>
       </footer>
     </div>
   </div>
@@ -229,7 +241,11 @@
         fetching: '最新の金額を取得しています…',
         ssl: 'SSL暗号化',
         stripe: 'Stripe認証',
-        note: '表示の外貨換算は参考値です。最終決済はJPYで行われます。'
+        summaryTitle: '🛍 ご購入内容（出店者が確認済みです）',
+        confirm1: '・間違いがないかご確認ください',
+        confirm2: '・商品受け取り後の返品・交換はできません',
+        safety: '🔒 この決済は Stripe の国際基準で保護されています。カード情報は FleaPay には保存されません。',
+        note: '表示の外貨換算は参考値です。実際の決済はすべて日本円（JPY）で行われます。この画面は、出店者から受け取った商品の支払い画面です。'
       },
       en: { 
         welcome: 'Welcome!',
@@ -238,7 +254,11 @@
         fetching: 'Fetching latest amount…',
         ssl: 'SSL encryption',
         stripe: 'Powered by Stripe',
-        note: 'Any foreign currency shown is indicative. Payment is settled in JPY.'
+        summaryTitle: '🛍 Items to purchase (confirmed by seller)',
+        confirm1: '・Please check that the items and amount are correct.',
+        confirm2: '・Returns or exchanges are not available after you receive the item.',
+        safety: '🔒 Payments are processed securely by Stripe. Your card details are not stored by FleaPay.',
+        note: 'Any foreign currency shown is indicative only. Your payment is charged in Japanese yen (JPY). This is the payment screen for the items you selected from the seller.'
       },
       zh: { 
         welcome: '欢迎光临！',
@@ -247,7 +267,11 @@
         fetching: '正在获取最新金额…',
         ssl: 'SSL 加密',
         stripe: 'Stripe 保障',
-        note: '外币换算仅供参考，最终以日元结算。'
+        summaryTitle: '🛍 购买内容（已由摊主确认）',
+        confirm1: '・请确认商品和金额是否正确。',
+        confirm2: '・商品领取后无法退货或换货。',
+        safety: '🔒 本次支付由 Stripe 安全处理，您的卡信息不会保存在 FleaPay。',
+        note: '画面上的外币换算仅供参考，实际扣款货币为日元（JPY）。此画面为您向摊主购买商品的支付页面。'
       }
     };
     let currentLang = 'ja';
