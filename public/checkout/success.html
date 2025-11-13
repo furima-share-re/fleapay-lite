@@ -210,6 +210,12 @@
       margin-top:10px;
       flex-wrap:wrap;
     }
+    .photo-helper{
+      margin-top:6px;
+      font-size:11px;
+      color:rgba(60,70,70,.8);
+      line-height:1.5;
+    }
     .btn-sub{
       padding:7px 14px;
       border-radius:999px;
@@ -223,6 +229,10 @@
       align-items:center;
       gap:6px;
       transition:.22s;
+    }
+    .btn-sub.is-busy{
+      opacity:.7;
+      pointer-events:none;
     }
     .btn-sub:hover{
       transform:translateY(-1px);
@@ -391,16 +401,22 @@
       </div>
 
       <section class="photo-section">
-        <p class="photo-label" data-i18n="photoLabel">AIで加工した記念写真</p>
+        <p class="photo-label" data-i18n="photoLabel">自分で撮った写真をAIでかわいく加工</p>
         <div class="photo-preview" id="photoPreview">
           <!-- 実装側で img を差し込む想定 -->
           <span data-i18n="photoPlaceholder">
-            ここに、購入時に撮影した写真をもとにした<br>フォトフレーム画像が表示されます。
+            ① 下のボタンから写真をえらぶ / とる<br>② 「AIでかわいく加工」を押すと、桜フレームつきの記念写真がここに表示されます。
           </span>
           <div class="frame hide" id="frame"></div>
         </div>
 
         <div class="photo-controls">
+          <button class="btn-sub" id="selectPhotoBtn">
+            <span>📸</span><span data-i18n="selectPhoto">写真をえらぶ / とる</span>
+          </button>
+          <button class="btn-sub" id="runAiBtn">
+            <span>✨</span><span data-i18n="runAi">AIでかわいく加工</span>
+          </button>
           <button class="btn-sub" id="photoFrameToggle">
             <span>🎀</span><span data-i18n="photoFrameToggle">フォトフレーム ON / OFF</span>
           </button>
@@ -408,6 +424,19 @@
             <span>💾</span><span data-i18n="savePhoto">写真を保存する</span>
           </button>
         </div>
+
+        <!-- 購入者が自分で写真を撮る / 選ぶための input -->
+        <input
+          type="file"
+          id="photoInput"
+          accept="image/*"
+          capture="environment"
+          style="display:none"
+        />
+
+        <p class="photo-helper" data-i18n="photoHelper">
+          ※写真はAI加工のために一時的に送信されますが、サーバーには保存されません。完成した画像はお客さまの端末にだけ保存されます。
+        </p>
       </section>
 
       <!-- ▼ SNS共有エリア：今は非表示。再開時は sns-disabled を外す -->
@@ -515,6 +544,84 @@
       alert('写真の保存は、この画面のスクリーンショットでもご利用いただけます。実装に応じてダウンロード処理を追加できます。');
     });
 
+    // --- 自分で写真を撮影 → AIでフォトフレームを適用する暫定処理 ---
+    const photoPreview = document.getElementById('photoPreview');
+    const photoInput = document.getElementById('photoInput');
+    const selectPhotoBtn = document.getElementById('selectPhotoBtn');
+    const runAiBtn = document.getElementById('runAiBtn');
+
+    let originalPhotoUrl = null;
+    let processedPhotoUrl = null;
+
+    function setPreviewImage(url){
+      let img = photoPreview.querySelector('img');
+      const placeholder = photoPreview.querySelector('span');
+      if(!img){
+        img = document.createElement('img');
+        photoPreview.appendChild(img);
+      }
+      img.src = url;
+      if(placeholder) placeholder.style.display = 'none';
+    }
+
+    // 写真をえらぶ / とる
+    if(selectPhotoBtn && photoInput){
+      selectPhotoBtn.addEventListener('click', ()=>{
+        photoInput.click();
+      });
+
+      photoInput.addEventListener('change', ()=>{
+        const file = photoInput.files && photoInput.files[0];
+        if(!file) return;
+        if(originalPhotoUrl){
+          URL.revokeObjectURL(originalPhotoUrl);
+        }
+        originalPhotoUrl = URL.createObjectURL(file);
+        processedPhotoUrl = null;
+        frameEl.classList.add('hide');
+        setPreviewImage(originalPhotoUrl);
+      });
+    }
+
+    // AIでかわいく加工する → /api/photo-frame を呼び出し
+    if(runAiBtn){
+      runAiBtn.addEventListener('click', async ()=>{
+        const file = photoInput && photoInput.files && photoInput.files[0];
+        if(!file){
+          alert('まず「写真をえらぶ / とる」ボタンから写真を選択してください。');
+          return;
+        }
+        if(runAiBtn.classList.contains('is-busy')) return;
+        runAiBtn.classList.add('is-busy');
+        runAiBtn.disabled = true;
+
+        try{
+          const fd = new FormData();
+          fd.append('image', file);
+
+          const res = await fetch('/api/photo-frame', {
+            method: 'POST',
+            body: fd
+          });
+          if(!res.ok) throw new Error('ai_failed');
+
+          const blob = await res.blob();
+          if(processedPhotoUrl){
+            URL.revokeObjectURL(processedPhotoUrl);
+          }
+          processedPhotoUrl = URL.createObjectURL(blob);
+          setPreviewImage(processedPhotoUrl);
+          frameEl.classList.remove('hide');
+        }catch(e){
+          console.error(e);
+          alert('AIでの写真加工に失敗しました。電波状況などをご確認のうえ、もう一度お試しください。');
+        }finally{
+          runAiBtn.classList.remove('is-busy');
+          runAiBtn.disabled = false;
+        }
+      });
+    }
+
     // 多言語対応
     const dict = {
       ja:{
@@ -522,8 +629,11 @@
         title: "決済が完了しました",
         lead: "この画面を出店スタッフにお見せください。",
         notice: "<strong>✅ 決済が完了しました。</strong><br>出店スタッフが商品をお渡しします。<br><small>※商品お渡し後の返品・交換はご遠慮ください。</small>",
-        photoLabel: "AIで加工した記念写真",
-        photoPlaceholder: "ここに、購入時に撮影した写真をもとにした<br>フォトフレーム画像が表示されます。",
+        photoLabel: "自分で撮った写真をAIでかわいく加工",
+        photoPlaceholder: "① 下のボタンから写真をえらぶ / とる<br>② 「AIでかわいく加工」を押すと、桜フレームつきの記念写真がここに表示されます。",
+        selectPhoto: "写真をえらぶ / とる",
+        runAi: "AIでかわいく加工",
+        photoHelper: "※写真はAI加工のために一時的に送信されますが、サーバーには保存されません。完成した画像はお客さまの端末にだけ保存されます。",
         photoFrameToggle: "フォトフレーム ON / OFF",
         savePhoto: "写真を保存する",
         shareTitle: "旅のフリマ体験を、SNSでシェアしませんか？",
@@ -538,8 +648,11 @@
         title: "Payment Completed",
         lead: "Please show this screen to the shop staff.",
         notice: "<strong>✅ Your payment has been completed.</strong><br>The staff will hand you your item.<br><small>*Refunds and exchanges are not available after receiving your item.</small>",
-        photoLabel: "Your AI-framed memory photo",
-        photoPlaceholder: "Your commemorative photo with a Japanese-style frame<br>will appear here.",
+        photoLabel: "Take your own photo & let AI make it cute",
+        photoPlaceholder: "1) Take or choose a photo below<br>2) Tap "Make it cute with AI" and your framed memory photo will appear here.",
+        selectPhoto: "Choose / take a photo",
+        runAi: "Make it cute with AI",
+        photoHelper: "Your photo is sent to AI only for processing and is not stored on the server. The final image is saved only on your device.",
         photoFrameToggle: "Photo frame ON / OFF",
         savePhoto: "Save photo",
         shareTitle: "Share your flea market moment on SNS!",
@@ -554,8 +667,11 @@
         title: "付款已完成",
         lead: "请将此画面出示给摊主。",
         notice: "<strong>✅ 付款已完成。</strong><br>摊主会为您递上商品。<br><small>※领取商品后，恕不接受退换。</small>",
-        photoLabel: "AI 生成的纪念照片",
-        photoPlaceholder: "这里会显示基于您刚才拍摄照片的<br>和风相框图片。",
+        photoLabel: "用自己的照片，让 AI 打造成可爱的纪念照",
+        photoPlaceholder: "① 点击下方按钮拍照或选择照片<br>② 点"用 AI 可爱化"，带樱花相框的纪念照会显示在这里。",
+        selectPhoto: "选择 / 拍摄照片",
+        runAi: "用 AI 可爱化",
+        photoHelper: "照片仅用于 AI 处理，不会保存在服务器上。完成后的图片只会保存在您的设备中。",
         photoFrameToggle: "相框 开 / 关",
         savePhoto: "保存照片",
         shareTitle: "要不要在 SNS 上分享这次市集体验？",
