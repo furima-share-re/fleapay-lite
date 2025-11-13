@@ -72,7 +72,7 @@ async function resolveSellerAccountId(sellerId, provided) {
 // 出店者用URL(販売画面/購入画面/ダッシュボード)を一括生成
 function buildSellerUrls(publicId, stripeAccountId) {
   const base = (BASE_URL || "").replace(/\/+$/, "");
-  const sellerUrl = `${base}/Seller-purchase.html?s=${encodeURIComponent(publicId)}`;
+  const sellerUrl = `${base}/seller-purchase.html?s=${encodeURIComponent(publicId)}`;
   const checkoutUrl = `${base}/checkout.html?s=${encodeURIComponent(publicId)}${
     stripeAccountId ? `&acct=${encodeURIComponent(stripeAccountId)}` : ""
   }`;
@@ -625,7 +625,7 @@ app.get("/api/seller/summary", async (req, res) => {
     const todayNet  = Number(rowToday.net || 0);
     const todayGross= Number(rowToday.gross || 0);
     const yestNet   = Number(rowYest.net || 0);
-    const yestGross = Number(rowYest.gross || 0);
+    const yestGross = Number(rowYest.grass || 0);
     const totalNet  = Number(rowTotal.net || 0);
     const totalGross= Number(rowTotal.gross || 0);
 
