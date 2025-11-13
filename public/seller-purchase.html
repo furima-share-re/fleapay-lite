@@ -9,7 +9,7 @@
        ・金額は「ごうけい金額」を1つだけ入力
        ・ステップ4 / おとな確認も「summary＋合計」のみ
        
-       【パッチ適用済み v3 - OCR最適化版】
+       【パッチ適用済み v3 - OCR最適化版 + UX改善パッチ】
        1. 撮影画面フルスクリーン化（カメラ全画面＋オーバーレイUI）
        2. 送信データ強化（not_found対策・デバッグ強化）
        3. /api/pending/start エンドポイントへの変更
@@ -21,6 +21,10 @@
           - コントラスト＆明るさ補正
           - JPEG品質向上（0.95）
           - 向き自動補正（縦横）
+       6. ★UX改善パッチ★
+          - 初期状態でボタンを無効化
+          - 価格入力クリア機能
+          - エラーメッセージ改善
        ========================================================= -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -427,7 +431,8 @@
       </div>
     </div>
     
-    <button class="btn" id="nextToConfirm">👀 さいしゅう かくにん</button>
+    <!-- 最初は金額が 0 なのでボタンは無効にしておく -->
+    <button class="btn" id="nextToConfirm" disabled>👀 さいしゅう かくにん</button>
   </div>
   
   <!-- ========== Step4: 最終確認（保護者チェック） ========== -->
@@ -737,6 +742,10 @@
       itemSummary.textContent = '（AI で しょうひん を にんしき できませんでした）';
     }
     
+    // 初期状態：ボタン無効＆金額クリア
+    nextBtn.disabled = true;
+    totalPriceInput.value = '';
+    
     // 価格入力フォーカス演出
     totalPriceInput.addEventListener('focus', () => {
       priceWrapper.classList.add('focused');
@@ -770,7 +779,7 @@
     
     const summary = (aiAnalysisResult && aiAnalysisResult.summary) 
                     ? aiAnalysisResult.summary 
-                    : '（みぎょう）';
+                    : '（しょうひん じょうほう なし）';
     confirmSummary.textContent = summary;
     
     const totalVal = parseInt(document.getElementById('totalPriceInput').value, 10) || 0;
@@ -893,7 +902,7 @@
   
   /* ========== 初期化 ========== */
   document.addEventListener('DOMContentLoaded', () => {
-    debugLog('=== App Initialized (OCR Optimized) ===');
+    debugLog('=== App Initialized (OCR Optimized + UX Patch) ===');
     sellerId = getSellerIdFromURL();
     initCamera();
   });
