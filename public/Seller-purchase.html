@@ -479,8 +479,8 @@
           </button>
         </div>
 
-        <!-- 入力中の数字（テキスト金額はここだけ） -->
-        <div id="k3-total-input" class="pp-display">0</div>
+        <!-- 入力中の数字（テキスト金額は内部用に残しつつ、非表示にする） -->
+        <div id="k3-total-input" class="pp-display hidden">0</div>
 
         <!-- テンキー -->
         <div class="pp-grid">
@@ -1033,9 +1033,18 @@
           }];
         }
         const payload = {
+          // 撮影した写真
           photo: model.photo,
+          // 商品のテキスト概要（AI＋手入力）
+          summary: model.summary || '',
+          // 将来用・互換用に1行だけでも items を入れておく
           items,
-          totalAmount: model.totalAmount
+          // 画面で決めた合計金額（整数）
+          totalAmount: model.totalAmount || 0,
+          // amount というフィールド名を使っている旧API向け保険
+          amount: model.totalAmount || 0,
+          // AIが読んだ金額（あれば）
+          aiAmount: model.aiAmount || null
         };
         log('登録リクエスト送信', payload);
         const res = await fetch('/api/register-sale', {
