@@ -1,188 +1,379 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>お支払い</title>
+  <title>FleaPay – Checkout</title>
+  <!-- Brand Fonts: Nunito Sans + Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Nunito+Sans:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
-    :root { --gap: 14px; }
-    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background:#fafafa; color:#111;}
-    .wrap { max-width: 560px; margin: 6vh auto; padding: 24px; background:#fff; border-radius: 16px; box-shadow: 0 10px 24px rgba(0,0,0,.08); }
-    h1 { font-size: 20px; margin: 0 0 8px; }
-    .sub { color:#666; font-size: 14px; margin-bottom: 20px; }
-    .row { display: grid; gap: var(--gap); }
-    .amounts { display:grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); margin-top: 6px;}
-    button.amount { padding: 14px 10px; border:1px solid #e5e5e5; background:#fff; border-radius: 12px; font-size: 18px; cursor:pointer; transition: transform .02s ease, box-shadow .15s ease; }
-    button.amount:hover { box-shadow: 0 6px 14px rgba(0,0,0,.06); }
-    button.amount:disabled, button.primary:disabled { opacity:.6; cursor:not-allowed; }
-    .flex { display:flex; align-items:center; gap: 10px; }
-    .muted { color:#777; font-size: 13px; }
-    .primary { margin-top: 6px; width: 100%; padding: 14px 16px; font-size: 16px; border:0; border-radius: 12px; background:#111; color:#fff; cursor:pointer; }
-    .error { background:#fff3f3; color:#a40000; border:1px solid #ffd6d6; padding:12px; border-radius: 10px; margin-top:12px; }
-    .hidden { display:none; }
-    .ttl { font-size: 12px; color:#666; }
-    .footer { margin-top: 18px; display:flex; justify-content:space-between; align-items:center; }
-    .small { font-size: 12px; color:#888; }
+    /* =====================
+       FleaPay Brand Tokens
+       (v5.0 aligned)
+       ===================== */
+    :root{
+      /* Core */
+      --shin-ai:#1B365D;       /* 深藍 – trust */
+      --kinari:#FBF7F0;        /* 生成り – warmth */
+      --sumi:#1A1A1A;          /* 墨 – body */
+      --usuzumi:#666666;       /* 薄墨 – helper */
+      /* Triggers */
+      --hakken:#E63946;        /* 発見レッド – CTA only */
+      --kintsugi:#B8902E;      /* 金継ぎゴールド – accent */
+      /* UI state */
+      --ok:#2D5B3F;
+      --warn:#B8860B;
+      --err:#8B2635;
+      /* Effect */
+      --card-shadow:0 10px 30px rgba(27,54,93,.10);
+      --radius-xl:20px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: "Nunito Sans", "Noto Sans JP", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--sumi);
+      background: var(--kinari);
+      background-image: radial-gradient(1200px 700px at 80% -10%, rgba(230,57,70,.06) 0%, transparent 60%),
+                        radial-gradient(1200px 700px at -20% 110%, rgba(27,54,93,.08) 0%, transparent 60%);
+    }
+    /* 和紙の微細ノイズ */
+    body::before{
+      content:"";position:fixed;inset:0;pointer-events:none;opacity:.25;z-index:-1;
+      background-image: radial-gradient(circle at 25% 25%, rgba(255,255,255,.9) 1px, transparent 1px),
+                        radial-gradient(circle at 75% 75%, rgba(27,54,93,.12) 1px, transparent 1px);
+      background-size:60px 60px,80px 80px;
+    }
+
+    .container{max-width:640px;margin:0 auto;padding:20px}
+
+    /* ==== App Bar with Brand Logo ==== */
+    .appbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .logo{display:flex;gap:8px;align-items:baseline;user-select:none}
+    .logo__wordmark{
+      font-family:"Nunito Sans", system-ui;
+      font-weight:900;letter-spacing:.03em;line-height:1;
+      color:var(--shin-ai);
+    }
+    .logo__wordmark .pay{color:var(--kintsugi)} /* 金継ぎは文字装飾のみに使用 */
+    .logo__sparkle{font-size:14px;opacity:.9;margin-left:2px}
+    .app-actions{display:flex;gap:8px}
+
+    /* Language toggle */
+    .lang-switch{display:flex;gap:4px;background:rgba(255,255,255,.6);border:1px solid rgba(27,54,93,.15);border-radius:999px;padding:3px}
+    .lang-btn{width:34px;height:34px;border:0;background:transparent;border-radius:50%;font-size:14px;cursor:pointer}
+    .lang-btn:focus-visible{outline:3px solid rgba(230,57,70,.45)}
+    .lang-btn.active{background:rgba(27,54,93,.08)}
+
+    /* ==== Card ==== */
+    .card{
+      position:relative;background:#fff;border:1px solid rgba(27,54,93,.12);
+      border-radius:var(--radius-xl);padding:20px;box-shadow:var(--card-shadow);overflow:hidden
+    }
+
+    /* Sakura minimal accents (2% rule) */
+    .card::after{content:"🌸";position:absolute;bottom:40px;right:24px;font-size:16px;opacity:.45;animation:sway 4s ease-in-out infinite}
+    @keyframes sway{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-6px) rotate(5deg)}}
+
+    .header{padding:8px 0 12px}
+    .header h1{margin:8px 0 2px;font-size:24px;letter-spacing:.04em;color:var(--shin-ai)}
+    .sub-message{margin:0;color:var(--usuzumi);font-size:14px}
+
+    /* ==== Price Box (Value Typography) ==== */
+    .priceBox{
+      background:linear-gradient(180deg,#fff, #fafbff);
+      border:2px solid transparent;border-radius:var(--radius-xl);padding:22px 18px;position:relative;overflow:hidden;margin:10px 0 14px
+    }
+    .priceBox::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;opacity:.9;
+      background:linear-gradient(90deg,var(--hakken) 0%, #ff8a65 25%, var(--shin-ai) 50%, #5c7cfa 75%, var(--hakken) 100%)}
+
+    .priceHead{display:grid;grid-template-columns:auto 1fr;align-items:end;gap:10px}
+    .ccy{font-size:12px;letter-spacing:.12em;color:#475569;border:1px solid rgba(27,54,93,.15);border-radius:999px;padding:4px 8px;background:#fff}
+    .price{font-weight:900;font-size:48px;letter-spacing:1px;line-height:1;margin:8px 0;
+      background:linear-gradient(135deg,var(--shin-ai),var(--hakken));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .fx{margin-top:6px;font-size:12px;color:#64748b}
+    .summary{margin:10px 0 0;font-size:13px;color:#334155}
+
+    /* ==== Loading shimmer ==== */
+    .loading{position:relative;color:transparent}
+    .loading::after{content:"";position:absolute;inset:0;border-radius:6px;background:linear-gradient(90deg,#eef2f7 25%,#f7f9fc 37%,#eef2f7 63%);background-size:400% 100%;animation:shimmer 1.2s infinite}
+    @keyframes shimmer{0%{background-position:100% 0}100%{background-position:0 0}}
+
+    .progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,#ff7a5a,#ffb06b);box-shadow:0 0 10px rgba(255,122,90,.6);transition:width .3s ease;z-index:9999}
+    body.loading .progress{width:65%}
+    body.ready .progress{width:100%;transition:width .4s ease .2s}
+
+    /* ==== CTA Button (Impulse Typography) ==== */
+    .btn{width:100%;border:0;border-radius:12px;padding:14px 16px;background:linear-gradient(135deg,var(--shin-ai) 0%, #243B6B 100%);
+      color:#fff;font-size:18px;font-weight:900;letter-spacing:.04em;position:relative;overflow:hidden;box-shadow:0 8px 25px rgba(27,54,93,.25);
+      cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .12s ease, box-shadow .12s ease}
+    .btn:disabled{opacity:.6;cursor:not-allowed;filter:grayscale(.15)}
+    .btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 35px rgba(27,54,93,.32)}
+    .btn.heartbeat{animation:heartbeat 0.8s ease-in-out infinite}
+    @keyframes heartbeat{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
+    .btn:focus-visible{outline:3px solid rgba(230,57,70,.6);outline-offset:2px}
+
+    .brands{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:10px;flex-wrap:wrap}
+    .brand-icon{padding:4px 8px;font-size:11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;color:#64748b}
+
+    /* ==== Trust Badges ==== */
+    .security-badges{display:flex;justify-content:center;gap:16px;margin:16px 0;flex-wrap:wrap}
+    .security-badge{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e7f3ff;border-radius:999px;padding:8px 12px;font-size:12px;color:var(--shin-ai);box-shadow:0 2px 8px rgba(0,0,0,.05)}
+    .security-icon{width:16px;height:16px;color:#10b981}
+
+    /* ==== Themes by time ==== */
+    .theme-evening{background-image:radial-gradient(1200px 700px at 80% -10%, rgba(255,212,163,.18) 0%, transparent 60%),
+                                     radial-gradient(1200px 700px at -20% 110%, rgba(230,238,249,.25) 0%, transparent 60%)}
+    .theme-night{background:#0f172a;color:#f8fafc}
+    .theme-night .card{background:rgba(255,255,255,.96);backdrop-filter:blur(10px)}
+
+    /* Helpers */
+    .muted{color:#64748b}
+    .center{text-align:center}
+    .mt8{margin-top:8px}.mt16{margin-top:16px}.mt24{margin-top:24px}
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <h1>お支払い</h1>
-    <div id="sellerLabel" class="sub">出店者の金額候補を取得しています…</div>
-
-    <div class="row">
-      <div>
-        <div class="muted">金額を選択</div>
-        <div id="amounts" class="amounts"></div>
-        <div id="ttlRow" class="ttl hidden">この候補は <span id="ttl"></span> で更新されます</div>
+<body class="loading">
+  <div class="progress" aria-hidden="true"></div>
+  <div class="container">
+    <div class="appbar" role="banner">
+      <div class="logo" aria-label="FleaPay">
+        <div class="logo__wordmark" style="font-size:20px">
+          Flea<span class="pay">Pay</span>
+        </div>
+        <span class="logo__sparkle" aria-hidden="true">✨</span>
       </div>
-
-      <button id="payBtn" class="primary" disabled>この金額で支払う</button>
-
-      <div id="error" class="error hidden"></div>
+      <div class="app-actions">
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button class="lang-btn active" data-lang="ja" aria-label="日本語">🇯🇵</button>
+          <button class="lang-btn" data-lang="en" aria-label="English">🇺🇸</button>
+          <button class="lang-btn" data-lang="zh" aria-label="中文">🇨🇳</button>
+        </div>
+      </div>
     </div>
 
-    <div class="footer">
-      <span class="small">手数料：プラットフォーム10%込み（Checkoutで表示されます）</span>
-      <span class="small" id="accountBadge"></span>
+    <div class="card" role="main">
+      <header class="header">
+        <h1 class="welcome-message" data-lang-content data-lang-key="welcome">いらっしゃいませ！</h1>
+        <p class="sub-message" data-lang-content data-lang-key="enjoy">フリマとお祭りをお楽しみください 🎆</p>
+      </header>
+
+      <section class="priceBox" id="priceBox" aria-live="polite">
+        <div class="priceHead">
+          <span class="ccy">JPY</span>
+          <div id="amount" class="price loading" aria-label="合計金額">—</div>
+        </div>
+        <div id="fx" class="fx muted" aria-live="polite"></div>
+        <p id="summary" class="summary muted loading"></p>
+      </section>
+
+      <div class="security-badges">
+        <div class="security-badge">
+          <svg class="security-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span data-lang-content data-lang-key="ssl">SSL暗号化</span>
+        </div>
+        <div class="security-badge">
+          <svg class="security-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+            <circle cx="12" cy="16" r="1" fill="currentColor"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span data-lang-content data-lang-key="stripe">Stripe認証</span>
+        </div>
+      </div>
+
+      <div class="mt8">
+        <button id="payBtn" class="btn heartbeat" disabled>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18">
+            <path d="M5 12h14M13 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span id="payLabel">Pay Now</span>
+        </button>
+        <div class="brands" aria-hidden="true">
+          <div class="brand-icon">Visa</div>
+          <div class="brand-icon">Mastercard</div>
+          <div class="brand-icon">Apple Pay</div>
+          <div class="brand-icon">Google Pay</div>
+        </div>
+      </div>
+
+      <footer class="center mt24 muted" style="font-size:12px">
+        <span data-lang-content data-lang-key="note">表示の外貨換算は参考値です。最終決済はJPYで行われます。</span>
+      </footer>
     </div>
   </div>
 
-  <script type="module">
-    const $ = (sel) => document.querySelector(sel);
-    const params = new URLSearchParams(location.search);
-    const sellerPublicId = params.get("s");      // 例: "seller-abc123"（公開ID）
-    const sellerAccountId = params.get("acct");  // 例: "acct_1XYZ..."（Stripe Connectアカウント）
+  <script>
+    // ---- Time-based theme ----
+    (function(){
+      const hour = new Date().getHours();
+      let timeTheme = 'day';
+      if (hour >= 18 || hour < 6) timeTheme = 'night';
+      else if (hour >= 16) timeTheme = 'evening';
+      document.body.classList.add('theme-' + timeTheme);
+    })();
 
-    const fmtJPY = (n) => new Intl.NumberFormat("ja-JP", { style:"currency", currency:"JPY" }).format(n);
-
-    const state = { selectedAmount: null, pending: [], ttlSec: 0, timer: null };
-
-    // 事前チェック
-    if (!sellerPublicId) {
-      showError("URL に ?s=<sellerPublicId> を指定してください。例: /checkout.html?s=seller-abc123&acct=acct_XXXX");
-    }
-    if (!sellerAccountId) {
-      showError("URL に ?acct=<Stripe Connect AccountId> を指定してください。例: &acct=acct_XXXX");
-    }
-    $("#accountBadge").textContent = sellerAccountId ? `Connect: ${sellerAccountId}` : "";
-
-    // 初期ロード
-    if (sellerPublicId && sellerAccountId) {
-      loadOptions().catch((e)=>showError(e?.message || "金額候補の取得に失敗しました"));
-    }
-
-    async function loadOptions() {
-      $("#sellerLabel").textContent = `出店者: ${sellerPublicId}`;
-      $("#payBtn").disabled = true;
-
-      const res = await fetch(`/api/purchase/options?s=${encodeURIComponent(sellerPublicId)}`);
-      if (!res.ok) throw new Error(`金額候補APIがエラーを返しました (${res.status})`);
-      const json = await res.json(); // { pending: number[], presets: number[], ttl_min: number }
-      const { pending = [], presets = [], ttl_min = 5 } = json || {};
-
-      // pending上位3件（重複排除・最大3件）。不足分はpresetsから補完
-      const uniq = (arr) => [...new Set(arr)];
-      let amounts = uniq(pending).slice(0, 3);
-      for (const p of presets) {
-        if (amounts.length >= 3) break;
-        if (!amounts.includes(p)) amounts.push(p);
+    // ---- i18n ----
+    const languages = {
+      ja: { 
+        welcome: 'いらっしゃいませ！',
+        enjoy: 'フリマとお祭りをお楽しみください 🎆',
+        pay: '{amount} を支払う',
+        fetching: '最新の金額を取得しています…',
+        ssl: 'SSL暗号化',
+        stripe: 'Stripe認証',
+        note: '表示の外貨換算は参考値です。最終決済はJPYで行われます。'
+      },
+      en: { 
+        welcome: 'Welcome!',
+        enjoy: 'Enjoy the flea market & festival 🎆',
+        pay: 'Pay {amount}',
+        fetching: 'Fetching latest amount…',
+        ssl: 'SSL encryption',
+        stripe: 'Powered by Stripe',
+        note: 'Any foreign currency shown is indicative. Payment is settled in JPY.'
+      },
+      zh: { 
+        welcome: '欢迎光临！',
+        enjoy: '祝您在集市和祭典玩得开心 🎆',
+        pay: '支付 {amount}',
+        fetching: '正在获取最新金额…',
+        ssl: 'SSL 加密',
+        stripe: 'Stripe 保障',
+        note: '外币换算仅供参考，最终以日元结算。'
       }
-      if (amounts.length === 0) throw new Error("有効な金額候補がありません。出店者側で金額を登録してください。");
+    };
+    let currentLang = 'ja';
 
-      state.pending = amounts;
-      renderAmounts(amounts);
-
-      // TTLカウントダウン
-      startTTL(ttl_min);
-    }
-
-    function renderAmounts(amounts) {
-      const box = $("#amounts");
-      box.innerHTML = "";
-      for (const a of amounts) {
-        const b = document.createElement("button");
-        b.className = "amount";
-        b.textContent = fmtJPY(a);
-        b.dataset.amount = String(a);
-        b.addEventListener("click", () => selectAmount(a, b));
-        box.appendChild(b);
-      }
-    }
-
-    function selectAmount(amount, btn) {
-      state.selectedAmount = amount;
-      // 見た目の選択状態
-      document.querySelectorAll("button.amount").forEach(el => {
-        el.style.borderColor = el === btn ? "#111" : "#e5e5e5";
-        el.style.boxShadow = el === btn ? "0 6px 14px rgba(0,0,0,.08)" : "none";
-        el.style.transform = el === btn ? "translateY(-1px)" : "none";
+    function switchLanguage(lang) {
+      currentLang = languages[lang] ? lang : 'ja';
+      document.querySelectorAll('[data-lang-content]').forEach(el => {
+        const key = el.dataset.langKey;
+        if (languages[currentLang] && languages[currentLang][key]) {
+          el.textContent = languages[currentLang][key];
+        }
       });
-      $("#payBtn").disabled = false;
-      $("#error").classList.add("hidden");
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === currentLang);
+      });
+      if (window.__amountInt) updatePayLabel(window.__amountInt);
     }
 
-    $("#payBtn").addEventListener("click", async () => {
-      try {
-        if (!state.selectedAmount) {
-          showError("金額を選択してください。");
-          return;
-        }
-        disableUI(true);
+    // URL param
+    function getParam(name){
+      const url = new URL(location.href);
+      return url.searchParams.get(name);
+    }
 
-        const payload = {
-          amount: state.selectedAmount,
-          sellerAccountId: sellerAccountId,
-          description: `フリマお支払い（${sellerPublicId}）`
-        };
+    // Formatting
+    function formatJPY(n){
+      return new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY'}).format(n);
+    }
 
-        const res = await fetch("/api/checkout/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (!res.ok || data.error) {
-          throw new Error(data.error || `Checkout作成に失敗しました (${res.status})`);
-        }
-        // Checkout へ遷移
-        location.href = data.url;
-      } catch (e) {
-        showError(e?.message || "エラーが発生しました。もう一度お試しください。");
-        disableUI(false);
+    function updatePayLabel(amount) {
+      const t = languages[currentLang]?.pay || 'Pay {amount}';
+      const label = t.replace('{amount}', formatJPY(amount));
+      document.getElementById('payLabel').textContent = label;
+    }
+
+    // FX (static indicative only)
+    function updateFx(amount){
+      const USD = 0.0065;  // approx
+      const EUR = 0.0060;  // approx
+      const usd = (amount * USD).toFixed(2);
+      const eur = (amount * EUR).toFixed(2);
+      const fx = document.getElementById('fx');
+      fx.textContent = `≈ USD ${usd} / EUR ${eur}`;
+    }
+
+    async function fetchLatest() {
+      const s = getParam('s') || '';
+      const amountEl = document.getElementById('amount');
+      const summaryEl = document.getElementById('summary');
+      const payBtn = document.getElementById('payBtn');
+
+      amountEl.classList.add('loading');
+      summaryEl.classList.add('loading');
+      summaryEl.textContent = languages[currentLang].fetching;
+
+      if(!s){
+        amountEl.classList.remove('loading');
+        summaryEl.classList.remove('loading');
+        amountEl.textContent = '—';
+        summaryEl.textContent = 'sellerId is missing';
+        return;
       }
-    });
 
-    function startTTL(ttl_min) {
-      if (state.timer) clearInterval(state.timer);
-      // 「更新目安」を分→秒でカウントダウン（UX用）
-      state.ttlSec = Math.max(1, Math.floor(ttl_min * 60));
-      $("#ttlRow").classList.remove("hidden");
-      state.timer = setInterval(() => {
-        state.ttlSec -= 1;
-        if (state.ttlSec <= 0) {
-          clearInterval(state.timer);
-          $("#ttl").textContent = "まもなく更新（再取得中…）";
-          // 自動で最新を取り直す
-          loadOptions().catch(()=>{/* 見た目はそのまま */});
-        } else {
-          const m = Math.floor(state.ttlSec / 60);
-          const s = state.ttlSec % 60;
-          $("#ttl").textContent = `${String(m).padStart(1,"0")}:${String(s).padStart(2,"0")}`;
+      try{
+        const resp = await fetch(`/api/price/latest?s=${encodeURIComponent(s)}`);
+        if(!resp.ok) throw new Error('not found');
+        const data = await resp.json();
+        const amount = Number(data.amount);
+        window.__amountInt = amount;
+        amountEl.textContent = formatJPY(amount);
+        amountEl.classList.remove('loading');
+
+        const summary = String(data.summary || '');
+        summaryEl.textContent = summary;
+        summaryEl.classList.remove('loading');
+
+        updatePayLabel(amount);
+        updateFx(amount);
+        payBtn.disabled = false;
+      }catch(err){
+        amountEl.classList.remove('loading');
+        summaryEl.classList.remove('loading');
+        amountEl.textContent = '—';
+        summaryEl.textContent = 'Amount expired or not found';
+        document.getElementById('payBtn').disabled = true;
+      } finally {
+        document.body.classList.remove('loading');
+        document.body.classList.add('ready');
+      }
+    }
+
+    async function startCheckout(){
+      const s = getParam('s') || '';
+      const summaryText = document.getElementById('summary').textContent || '';
+      const payBtn = document.getElementById('payBtn');
+      payBtn.disabled = true;
+
+      try{
+        const resp = await fetch('/api/checkout/session', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ latest:true, sellerId:s, summary:summaryText })
+        });
+        const data = await resp.json();
+        if(data?.url){
+          location.href = data.url;
+        }else{
+          alert('Failed to create checkout session.');
+          payBtn.disabled = false;
         }
-      }, 1000);
+      }catch(e){
+        console.error(e);
+        alert('Network error.');
+        payBtn.disabled = false;
+      }
     }
 
-    function disableUI(disabled) {
-      $("#payBtn").disabled = disabled;
-      document.querySelectorAll("button.amount").forEach(b => b.disabled = disabled);
-    }
-
-    function showError(msg) {
-      const e = $("#error");
-      e.textContent = msg;
-      e.classList.remove("hidden");
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.lang-btn').forEach(btn => btn.addEventListener('click', () => switchLanguage(btn.dataset.lang)));
+      document.getElementById('payBtn').addEventListener('click', startCheckout);
+      const ua = navigator.language || 'ja';
+      if(ua.startsWith('en')) switchLanguage('en');
+      else if(ua.startsWith('zh')) switchLanguage('zh');
+      else switchLanguage('ja');
+      fetchLatest();
+    });
   </script>
 </body>
 </html>

@@ -274,6 +274,17 @@
         <div class="kid-qr"><div id="k-qrcode"></div></div>
         <button class="btn kid-big" id="k-open">おきゃくさま ページを ひらく</button>
         <div class="hint">このQR/リンクはこてい。最新の登録金額が自動反映。</div>
+
+        <!-- こども店長ルール（シンプル版） -->
+        <div class="kid-hint" style="margin-top:16px;font-size:1.15rem;font-weight:700;">
+          🧒「<strong>おきゃくさん の スマホ</strong>に
+          <span style="color:#1a9b63">✅ おかいもの かんりょう</span> が でて、
+          <br>きんがく が <strong>おなじ</strong>だったら、
+          <br>しょうひん を わたしてね！」
+          <br><br>
+          💡 すうじ が ちがう とき や、へんな がめん の とき は、
+          <br>かならず おとな を よんでね。
+        </div>
       </div>
     </div>
 
@@ -344,6 +355,15 @@
           <button class="btn" id="openBuyer">購入者用ページを開く</button>
         </div>
         <p class="hint">このQR/リンクは固定です。金額は「ペンディング登録」した最新の値が購入者側で自動反映されます。</p>
+
+        <!-- こども店長ルール（大人向け説明） -->
+        <div class="hint" style="margin-top:12px;font-size:0.95rem;color:#444;">
+          🧒 <strong>こども店長ルール：</strong><br>
+          お客さまのスマホに
+          <span style="color:#1a9b63">「✅ おかいもの かんりょう」</span> と
+          <strong>同じ金額</strong> が表示されたら、商品を渡してOK。<br>
+          金額が違う・エラー画面などの場合は、商品を渡さず大人が確認します。
+        </div>
       </div>
     </div>
   </div>
@@ -489,7 +509,8 @@
     }
 
     /* ------------------ 価格パッド ------------------ */
-    function getSavedPrice(name){ try{ const map = JSON.parse(localStorage.getItem('fp_last_prices')||'{}'); return map[name]||null; }catch{return null;}}
+    function getSavedPrice(name){ try{ const map = JSON.parse(localStorage.getItem('fp_last_prices')||'{}'); return map[name]||null; }catch{return null;}
+    }
     function savePrice(name, price){ try{ const map = JSON.parse(localStorage.getItem('fp_last_prices')||'{}'); map[name]=price; localStorage.setItem('fp_last_prices', JSON.stringify(map)); }catch{} }
 
     function renderPricePad(items){
