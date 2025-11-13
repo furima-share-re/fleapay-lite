@@ -78,7 +78,7 @@
     .btn.warn{ background:#fff3d6; border-color:#ffd27a; }
     .btn:disabled{ opacity:.62; cursor:not-allowed; transform:none; box-shadow:none; }
 
-    .msg{ padding:12px 14px; border-radius:12px; margin:10px 0; border:1px solid transparent; font-weight:600; }
+    .msg{ padding:12px 14px; border-radius:12px; margin:10px 0; border:1px solid透明; font-weight:600; }
     .msg.ok{ background:#e9f7ef; color:#0f6b43; border-color:#c9eedc; }
     .msg.err{ background:#fff1f1; color:#a1161b; border-color:#ffd7d9; }
 
@@ -174,11 +174,11 @@
 
     <!-- ========== こどもモード ========== -->
     <div id="kidApp" class="active" aria-label="こども もーど">
-      <!-- 出店者ID -->
-      <div class="card" style="padding:12px 16px">
-        <label for="sellerIdKid">🆔 しゅってんしゃID（おとなが いれる）</label>
-        <input id="sellerIdKid" placeholder="seller-test01" aria-label="しゅってんしゃ アイディー">
-        <div class="hint">※ URLの <span class="kbd">?s=&lt;ID&gt;</span> で初期値。変えるとQRも自動更新。</div>
+      <!-- 出店者ID（表示のみ・編集不可） -->
+      <div class="card" style="padding:8px 14px">
+        <p id="sellerIdKidDisplay" class="hint" style="margin:0;font-size:.85rem;">
+          🆔 しゅってんしゃID：よみこみちゅう…
+        </p>
       </div>
 
       <!-- ① 撮影 -->
@@ -278,12 +278,11 @@
         <!-- こども店長ルール（シンプル版） -->
         <div class="kid-hint" style="margin-top:16px;font-size:1.15rem;font-weight:700;">
           🧒「<strong>おきゃくさん の スマホ</strong>に
-          <span style="color:#1a9b63">✅ おかいもの かんりょう</span> が でて、
-          <br>きんがく が <strong>おなじ</strong>だったら、
-          <br>しょうひん を わたしてね！」
-          <br><br>
-          💡 すうじ が ちがう とき や、へんな がめん の とき は、
-          <br>かならず おとな を よんでね。
+          <span style="color:#1a9b63">✅ おかいもの かんりょう</span> が でて、<br>
+          きんがく が <strong>おなじ</strong>だったら、<br>
+          しょうひん を わたしてね！」<br><br>
+          💡 すうじ が ちがう とき や、へんな がめん の とき は、<br>
+          かならず おとな を よんでね。
         </div>
       </div>
     </div>
@@ -483,39 +482,92 @@
       else { logDebug('goKid: k-step'+n+' が見つかりません'); }
     }
     function buildBuyerUrl(){ return `${location.origin}${CHECKOUT_PATH}?s=${encodeURIComponent(model.sellerId||'')}`; }
-    function setQR(sel){ const el=$(sel); if(!el) return; el.innerHTML=''; new QRCode(el, { text: buildBuyerUrl(), width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M }); }
-    function syncSellerId(v){ model.sellerId = (v||'').trim(); setQR('#qrcode'); setQR('#k-qrcode'); }
+    function setQR(sel){
+      const el=$(sel); if(!el) return;
+      el.innerHTML='';
+      new QRCode(el, {
+        text: buildBuyerUrl(),
+        width: 200,
+        height: 200,
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+
+    function syncSellerId(v){
+      model.sellerId = (v||'').trim();
+      const disp = $('#sellerIdKidDisplay');
+      if (disp) {
+        disp.textContent = model.sellerId
+          ? `🆔 しゅってんしゃID：${model.sellerId}`
+          : '🆔 しゅってんしゃID：みぎうえのURLを かくにん';
+      }
+      setQR('#qrcode');
+      setQR('#k-qrcode');
+    }
 
     /* ------------------ 子ども：UI更新 ------------------ */
     function setKidAmount(v){
-      if(!Number.isFinite(v) || v<100 || v>1_000_000){ kidMsg('err','きんがくを いれてね（100〜1,000,000）'); fx.ng(); return; }
-      model.amount = v; updateKidPanels(); fx.ok();
+      if(!Number.isFinite(v) || v<100 || v>1_000_000){
+        kidMsg('err','きんがくを いれてね（100〜1,000,000）');
+        fx.ng();
+        return;
+      }
+      model.amount = v;
+      updateKidPanels();
+      fx.ok();
     }
 
     function updateKidPanels(){
-      const summaryHtml = model.summary?.trim() ? `<pre style="margin:0">${escapeHtml(model.summary)}</pre>` : '（しょうひん じょうほう なし）';
+      const summaryHtml = model.summary?.trim()
+        ? `<pre style="margin:0">${escapeHtml(model.summary)}</pre>`
+        : '（しょうひん じょうほう なし）';
       setHTML('#k2-summary-view', summaryHtml);
+
       setText('#k-amtView', 'いま：' + (model.amount ? ('¥'+model.amount.toLocaleString()) : '—'));
       setText('#k2-sum',     model.amount ? ('¥'+model.amount.toLocaleString()) : '—');
-      setHTML('#k-listWrap', summaryHtml); setText('#k-sum', model.amount ? ('¥'+model.amount.toLocaleString()) : '—');
-      const a1=$('#k2-adult'); if(a1){ a1.checked=false; $('#k2-go').disabled=true; }
-      const a2=$('#k-adult');  if(a2){ a2.checked=false;  $('#k-go').disabled=true; }
+
+      setHTML('#k-listWrap', summaryHtml);
+      setText('#k-sum', model.amount ? ('¥'+model.amount.toLocaleString()) : '—');
+
+      const a1=$('#k2-adult');
+      if(a1){ a1.checked=false; $('#k2-go').disabled=true; }
+      const a2=$('#k-adult');
+      if(a2){ a2.checked=false;  $('#k-go').disabled=true; }
     }
 
     function requireBasics(){
-      if(!model.sellerId){ kidMsg('err','しゅってんしゃID を いれてね'); return false; }
-      if(!Number.isInteger(model.amount) || model.amount<100){ kidMsg('err','きんがく を えらんでね'); return false; }
+      if(!model.sellerId){
+        kidMsg('err','しゅってんしゃID がありません（URLの ?s= を かくにん）');
+        return false;
+      }
+      if(!Number.isInteger(model.amount) || model.amount<100){
+        kidMsg('err','きんがく を えらんでね');
+        return false;
+      }
       return true;
     }
 
     /* ------------------ 価格パッド ------------------ */
-    function getSavedPrice(name){ try{ const map = JSON.parse(localStorage.getItem('fp_last_prices')||'{}'); return map[name]||null; }catch{return null;}
+    function getSavedPrice(name){
+      try{
+        const map = JSON.parse(localStorage.getItem('fp_last_prices')||'{}');
+        return map[name]||null;
+      }catch{return null;}
     }
-    function savePrice(name, price){ try{ const map = JSON.parse(localStorage.getItem('fp_last_prices')||'{}'); map[name]=price; localStorage.setItem('fp_last_prices', JSON.stringify(map)); }catch{} }
+    function savePrice(name, price){
+      try{
+        const map = JSON.parse(localStorage.getItem('fp_last_prices')||'{}');
+        map[name]=price;
+        localStorage.setItem('fp_last_prices', JSON.stringify(map));
+      }catch{}
+    }
 
     function renderPricePad(items){
-      const wrap = $('#k2-pricepad'); const body = $('#k2-pricepad-body'); if(!wrap||!body) return;
+      const wrap = $('#k2-pricepad');
+      const body = $('#k2-pricepad-body');
+      if(!wrap||!body) return;
       const quick = [100,200,300,500,800,1000,1200,1500,2000,3000,5000];
+
       body.innerHTML = items.map(it=>{
         const last = getSavedPrice(it.name);
         const btns = [...quick, last].filter(v=>Number.isInteger(v)).filter((v,i,a)=>a.indexOf(v)===i);
@@ -524,7 +576,7 @@
             <div class="pp-title">${escapeHtml(it.name)}</div>
             <div class="pp-row">
               <div class="pp-quick">
-                ${btns.map(v=>`<button class=\"btn\" data-id=\"${it.id}\" data-v=\"${v}\">¥${v}</button>`).join('')}
+                ${btns.map(v=>`<button class="btn" data-id="${it.id}" data-v="${v}">¥${v}</button>`).join('')}
               </div>
               <div class="pp-row">
                 <input type="number" min="0" step="1" placeholder="価格" id="pp-price-${it.id}" style="width:120px" />
@@ -542,9 +594,20 @@
 
       wrap.onclick = (e)=>{
         const t=e.target;
-        if(t.matches('[data-id][data-v]')){ const id=t.getAttribute('data-id'); $('#pp-price-'+id).value = t.getAttribute('data-v'); }
-        if(t.matches('[data-pp-plus]')){ const id=t.getAttribute('data-pp-plus'); const el=$('#pp-qty-'+id); el.value = Math.max(1, (+el.value||1)+1); }
-        if(t.matches('[data-pp-minus]')){ const id=t.getAttribute('data-pp-minus'); const el=$('#pp-qty-'+id); el.value = Math.max(1, (+el.value||1)-1); }
+        if(t.matches('[data-id][data-v]')){
+          const id=t.getAttribute('data-id');
+          $('#pp-price-'+id).value = t.getAttribute('data-v');
+        }
+        if(t.matches('[data-pp-plus]')){
+          const id=t.getAttribute('data-pp-plus');
+          const el=$('#pp-qty-'+id);
+          el.value = Math.max(1, (+el.value||1)+1);
+        }
+        if(t.matches('[data-pp-minus]')){
+          const id=t.getAttribute('data-pp-minus');
+          const el=$('#pp-qty-'+id);
+          el.value = Math.max(1, (+el.value||1)-1);
+        }
       };
 
       $('#k2-pricepad-cancel').onclick = ()=>{ wrap.style.display='none'; };
@@ -553,32 +616,49 @@
         items.forEach(it=>{
           const pv = parseInt(($('#pp-price-'+it.id).value||'').replace(/\D/g,''),10);
           const qv = parseInt($('#pp-qty-'+it.id).value||'1',10);
-          if(Number.isFinite(pv)) { it.unit_price = Math.floor(pv); savePrice(it.name, it.unit_price); }
+          if(Number.isFinite(pv)) {
+            it.unit_price = Math.floor(pv);
+            savePrice(it.name, it.unit_price);
+          }
           it.qty = Math.max(1, Math.floor(qv||1));
           if(!Number.isFinite(it.unit_price)) unresolved.push(it.name);
         });
-        if(unresolved.length){ alert(unresolved[0]+' の価格を入力してください'); return; }
+        if(unresolved.length){
+          alert(unresolved[0]+' の価格を入力してください');
+          return;
+        }
         wrap.style.display='none';
         finalizeFromItems(items);
       };
     }
 
     function finalizeFromItems(items){
-      // summary（* 区切り）と合計
       const summary = items.map(it=>`${it.name} * ${it.unit_price}円 * ${it.qty}`).join("\n");
       const total   = items.reduce((s,it)=> s + (it.unit_price*it.qty), 0);
-      model.summary = summary; model.amount = total; updateKidPanels(); fx.ok();
+      model.summary = summary;
+      model.amount  = total;
+      updateKidPanels();
+      fx.ok();
     }
 
     /* ------------------ 子ども：撮影→AI ------------------ */
     async function onKidPhotoTaken(e){
-      const f = e.target.files?.[0]; if(!f){ kidMsg('err','しゃしんを えらんでね'); fx.ng(); return; }
+      const f = e.target.files?.[0];
+      if(!f){
+        kidMsg('err','しゃしんを えらんでね');
+        fx.ng();
+        return;
+      }
 
       // 先に必ず遷移（UX）
-      goKid(2); setLoading(true); $('#k2-summary-edit-wrap').style.display='none'; kidMsg('ok','しゃしんを うけとりました。いま しらべています…');
+      goKid(2);
+      setLoading(true);
+      $('#k2-summary-edit-wrap').style.display='none';
+      kidMsg('ok','しゃしんを うけとりました。いま しらべています…');
 
       try{
-        const fd=new FormData(); fd.append('file', f, f.name); // サーバは "file" を期待
+        const fd=new FormData();
+        fd.append('file', f, f.name); // サーバは "file" を期待
         const {res, data, text} = await fetchJsonSafe(ENDPOINT_ANALYZE, { method:'POST', body:fd });
         logDebug(`analyze ${res.status}\n${text||'(empty body)'}`);
 
@@ -587,15 +667,23 @@
           const totalN = Number.isInteger(data?.total) ? Number(data.total) : null;
 
           // items を内部形式へ
-          model.items = items.map((it,i)=>({ id:i, name:String(it?.name||`商品${i+1}`), qty: (parseInt(it?.qty,10)||1), unit_price: Number.isInteger(it?.unit_price)? it.unit_price : null }));
+          model.items = items.map((it,i)=>({
+            id:i,
+            name:String(it?.name||`商品${i+1}`),
+            qty: (parseInt(it?.qty,10)||1),
+            unit_price: Number.isInteger(it?.unit_price)? it.unit_price : null
+          }));
 
           // サーバ summary があれば採用（なければ後で生成）
           if (typeof data?.summary === 'string' && data.summary.trim()){
             model.summary = data.summary.trim();
-          } else { model.summary = ''; }
+          } else {
+            model.summary = '';
+          }
 
           // total があれば採用
-          if (Number.isInteger(totalN)) model.amount = totalN; else model.amount = 0;
+          if (Number.isInteger(totalN)) model.amount = totalN;
+          else model.amount = 0;
 
           // 値札なし: 単価欠けの行がある → 価格パッドで補完
           const need = model.items.filter(x=>!Number.isFinite(x.unit_price));
@@ -622,52 +710,105 @@
       } catch(err){
         kidMsg('err','AIエラー: '+(err?.message||err));
         $('#k2-summary-edit-wrap').style.display='block';
-      } finally { updateKidPanels(); setLoading(false); }
+      } finally {
+        updateKidPanels();
+        setLoading(false);
+      }
     }
 
     /* ------------------ 大人：AI ------------------ */
     async function onAnalyzeAdult(){
-      const f=$('#file').files?.[0]; if(!f){ showMsg('err','画像を選んでください'); return; }
+      const f=$('#file').files?.[0];
+      if(!f){
+        showMsg('err','画像を選んでください');
+        return;
+      }
       try{
-        const fd=new FormData(); fd.append('file', f, f.name);
+        const fd=new FormData();
+        fd.append('file', f, f.name);
         const {res, data, text} = await fetchJsonSafe(ENDPOINT_ANALYZE, { method:'POST', body:fd });
         logDebug(`adult analyze ${res.status}\n${text||'(empty body)'}`);
         if(res.ok){
-          if (typeof data?.summary === 'string') { $('#summary').value = data.summary.trim(); model.summary = data.summary.trim(); }
-          if (Number.isInteger(data?.total)) { $('#amount').value = String(data.total); model.amount = data.total; }
+          if (typeof data?.summary === 'string') {
+            $('#summary').value = data.summary.trim();
+            model.summary = data.summary.trim();
+          }
+          if (Number.isInteger(data?.total)) {
+            $('#amount').value = String(data.total);
+            model.amount = data.total;
+          }
           showMsg('ok','AI解析が完了しました');
-        }else{ showMsg('err', res.status===422 ? 'AIが読み取れません（empty）' : `AIエラー: HTTP ${res.status}`); }
-      }catch(e){ showMsg('err','AIエラー: '+(e?.message||e)); }
+        }else{
+          showMsg('err', res.status===422 ? 'AIが読み取れません（empty）' : `AIエラー: HTTP ${res.status}`);
+        }
+      }catch(e){
+        showMsg('err','AIエラー: '+(e?.message||e));
+      }
     }
 
     /* ------------------ 登録（子/大共通） ------------------ */
     async function performRegister(sellerId, amount, summary){
       try{
-        if(!sellerId) throw new Error('出店者IDは必須です');
+        if(!sellerId) throw new Error('出店者IDは必須です（URLの ?s= を確認）');
         if(!Number.isInteger(amount) || amount < 100) throw new Error('金額が正しくありません（100円以上）');
+
         const body = JSON.stringify({ sellerId, amount, summary });
-        const {res, data, text} = await fetchJsonSafe(ENDPOINT_PENDING, { method:'POST', headers:{ 'Content-Type':'application/json' }, body });
+        const {res, data, text} = await fetchJsonSafe(ENDPOINT_PENDING, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body
+        });
         logDebug(`pending ${res.status}\n${text||'(empty body)'}`);
-        if (res.ok){ showMsg('ok','登録しました。購入者側に反映されます。'); flash('#qrCard'); setQR('#qrcode'); setQR('#k-qrcode'); fx.ok(); return true; }
-        const serverMsg = (data?.error || data?.message || text || '').trim(); showMsg('err', serverMsg || `登録エラー: HTTP ${res.status}`); fx.ng(); return false;
-      }catch(e){ showMsg('err', e.message || '登録エラー'); fx.ng(); return false; }
+
+        if (res.ok){
+          showMsg('ok','登録しました。購入者側に反映されます。');
+          flash('#qrCard');
+          setQR('#qrcode');
+          setQR('#k-qrcode');
+          fx.ok();
+          return true;
+        }
+        const serverMsg = (data?.error || data?.message || text || '').trim();
+        showMsg('err', serverMsg || `登録エラー: HTTP ${res.status}`);
+        fx.ng();
+        return false;
+      }catch(e){
+        showMsg('err', e.message || '登録エラー');
+        fx.ng();
+        return false;
+      }
     }
 
     /* ------------------ 大人：値の吸い上げ＆モーダル ------------------ */
     function getAdultValues(){
-      const sellerId = ($('#sellerId').value || $('#sellerIdKid').value || '').trim();
+      const sellerId = ($('#sellerId').value || model.sellerId || '').trim();
       const amount   = parseInt(($('#amount').value || model.amount || '').toString().replace(/[^\d]/g,''), 10);
       const summary  = ($('#summary').value || model.summary || '').trim();
-      model.sellerId = sellerId; model.amount = Number.isFinite(amount) ? amount : 0; model.summary = summary; return { sellerId, amount: model.amount, summary };
+
+      model.sellerId = sellerId;
+      model.amount   = Number.isFinite(amount) ? amount : 0;
+      model.summary  = summary;
+
+      return { sellerId, amount: model.amount, summary };
     }
 
     function openConfirm({sellerId,amount,summary}){
-      if(!sellerId){ showMsg('err','出店者IDを入力してください'); return; }
-      if(!Number.isInteger(amount)||amount<100){ showMsg('err','金額が正しくありません'); return; }
+      if(!sellerId){
+        showMsg('err','出店者IDを入力するか、URLの ?s= を設定してください');
+        return;
+      }
+      if(!Number.isInteger(amount)||amount<100){
+        showMsg('err','金額が正しくありません');
+        return;
+      }
       const lines = (summary||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-      $('#confirmList').innerHTML = lines.length ? lines.map(l=>'🛍 '+escapeHtml(l)).join('<br>') : '（商品情報なし）';
+      $('#confirmList').innerHTML = lines.length
+        ? lines.map(l=>'🛍 '+escapeHtml(l)).join('<br>')
+        : '（商品情報なし）';
       $('#confirmPrice').textContent = '¥'+amount.toLocaleString();
-      $('#adultCheck').checked=false; $('#btnConfirm').disabled=true; $('#confirmOverlay').classList.add('show');
+      $('#adultCheck').checked=false;
+      $('#btnConfirm').disabled=true;
+      $('#confirmOverlay').classList.add('show');
     }
 
     /* ------------------ 起動処理 ------------------ */
@@ -676,8 +817,8 @@
       $('#tabKid').onclick = () => switchMode(true);
       $('#tabAdult').onclick = () => switchMode(false);
 
-      // ID同期
-      $('#sellerIdKid').value = model.sellerId; $('#sellerIdKid').addEventListener('input', e => syncSellerId(e.target.value));
+      // 出店者ID（URL から読み込み・表示のみ）
+      syncSellerId(model.sellerId);
 
       // 撮影（iOS対策：change/input両対応）
       const fileEl = $('#kidFile');
@@ -686,42 +827,82 @@
       fileEl.addEventListener('input',  onKidPhotoTaken, { passive:true });
 
       // 金額プリセット
-      document.querySelectorAll('[data-kid-price]').forEach(b=>b.addEventListener('click',()=> setKidAmount(+b.dataset.kidPrice)));
+      document.querySelectorAll('[data-kid-price]').forEach(b=>{
+        b.addEventListener('click',()=> setKidAmount(+b.dataset.kidPrice));
+      });
 
       // テンキー
-      $('#k-more').addEventListener('click', ()=> { $('#npDisplay').value=''; $('#numpadOverlay').classList.add('show'); });
-      document.querySelectorAll('[data-np]').forEach(b=>b.addEventListener('click',()=> $('#npDisplay').value += b.dataset.np ));
+      $('#k-more').addEventListener('click', ()=>{
+        $('#npDisplay').value='';
+        $('#numpadOverlay').classList.add('show');
+      });
+      document.querySelectorAll('[data-np]').forEach(b=>{
+        b.addEventListener('click',()=> $('#npDisplay').value += b.dataset.np );
+      });
       $('#npClear').onclick = ()=> $('#npDisplay').value='';
-      $('#npOk').onclick    = ()=> { const v=parseInt($('#npDisplay').value||'0',10); if(Number.isFinite(v)) setKidAmount(v); $('#numpadOverlay').classList.remove('show'); };
+      $('#npOk').onclick    = ()=>{
+        const v=parseInt($('#npDisplay').value||'0',10);
+        if(Number.isFinite(v)) setKidAmount(v);
+        $('#numpadOverlay').classList.remove('show');
+      };
 
       // 明細手動
-      $('#k2-summary-apply').addEventListener('click', ()=> { model.summary=$('#k2-summary-edit').value.trim(); updateKidPanels(); });
+      $('#k2-summary-apply').addEventListener('click', ()=>{
+        model.summary=$('#k2-summary-edit').value.trim();
+        updateKidPanels();
+      });
 
       // 同画面確認→登録
       $('#k2-adult').addEventListener('change', e => $('#k2-go').disabled = !e.target.checked);
-      $('#k2-go').addEventListener('click', async ()=>{ if(!requireBasics()) return; const ok = await performRegister(model.sellerId, model.amount, model.summary); if(ok) goKid(4); });
+      $('#k2-go').addEventListener('click', async ()=>{
+        if(!requireBasics()) return;
+        const ok = await performRegister(model.sellerId, model.amount, model.summary);
+        if(ok) goKid(4);
+      });
 
       // 旧確認ステップ（残置）
       $('#k-back').addEventListener('click', ()=> goKid(2));
       $('#k-adult').addEventListener('change', e => $('#k-go').disabled = !e.target.checked);
-      $('#k-go').addEventListener('click', async ()=>{ if(!requireBasics()) return; const ok = await performRegister(model.sellerId, model.amount, model.summary); if(ok) goKid(4); });
+      $('#k-go').addEventListener('click', async ()=>{
+        if(!requireBasics()) return;
+        const ok = await performRegister(model.sellerId, model.amount, model.summary);
+        if(ok) goKid(4);
+      });
 
       // 大人：AI
       $('#btnAnalyze').addEventListener('click', onAnalyzeAdult);
-      $('#file').addEventListener('change', e=>{ const f=e.target.files?.[0]; if(!f) return; $('#preview').hidden=false; $('#previewImg').src=URL.createObjectURL(f); });
-      $('#btnClearPreview').addEventListener('click', ()=> { $('#preview').hidden=true; $('#previewImg').src=''; $('#aiMsg').style.display='none'; });
+      $('#file').addEventListener('change', e=>{
+        const f=e.target.files?.[0];
+        if(!f) return;
+        $('#preview').hidden=false;
+        $('#previewImg').src=URL.createObjectURL(f);
+      });
+      $('#btnClearPreview').addEventListener('click', ()=>{
+        $('#preview').hidden=true;
+        $('#previewImg').src='';
+        $('#aiMsg').style.display='none';
+      });
 
       // 大人：登録（モーダル確認）
       $('#btnRegister').addEventListener('click', ()=> openConfirm(getAdultValues()));
-      $('#btnReset').addEventListener('click', ()=> { $('#amount').value=''; $('#summary').value=''; showMsg('ok','クリアしました'); });
+      $('#btnReset').addEventListener('click', ()=>{
+        $('#amount').value='';
+        $('#summary').value='';
+        showMsg('ok','クリアしました');
+      });
 
       // モーダル操作
       $('#btnEdit').onclick = ()=> $('#confirmOverlay').classList.remove('show');
       $('#adultCheck').onchange = e => $('#btnConfirm').disabled = !e.target.checked;
-      $('#btnConfirm').onclick = async ()=>{ const {sellerId,amount,summary}=getAdultValues(); const ok = await performRegister(sellerId, amount, summary); if(ok) $('#confirmOverlay').classList.remove('show'); };
+      $('#btnConfirm').onclick = async ()=>{
+        const {sellerId,amount,summary}=getAdultValues();
+        const ok = await performRegister(sellerId, amount, summary);
+        if(ok) $('#confirmOverlay').classList.remove('show');
+      };
 
-      // QR
-      setQR('#qrcode'); setQR('#k-qrcode');
+      // QR 初期表示
+      setQR('#qrcode');
+      setQR('#k-qrcode');
 
       // エラーハンドリング
       window.addEventListener('error', ev => logDebug('JS Error: '+ev.message));
