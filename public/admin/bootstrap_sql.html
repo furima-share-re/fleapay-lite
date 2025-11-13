@@ -103,6 +103,28 @@
       color:#777;
       margin-top:4px;
     }
+
+    /* 追加：左右レイアウト */
+    .main-flex{
+      display:flex;
+      gap:14px;
+      margin-top:14px;
+    }
+    .panel{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .panel textarea{
+      flex:1;
+      min-height:0; /* flex内で縮むため */
+    }
+
+    .panel pre{
+      flex:1;
+      min-height:0;
+    }
   </style>
 </head>
 <body>
@@ -117,22 +139,35 @@
     <label for="adminToken">Admin Token (x-admin-token)</label>
     <input id="adminToken" type="password" placeholder="環境変数 ADMIN_TOKEN と同じ値" />
 
-    <label for="sql">SQL</label>
-    <div class="preset-bar">
-      <button type="button" class="preset-btn" data-preset="tables">publicテーブル一覧</button>
-      <button type="button" class="preset-btn" data-preset="columns">カラム一覧</button>
-      <button type="button" class="preset-btn" data-preset="truncate_sample">TRUNCATEサンプル(要編集)</button>
-    </div>
-    <textarea id="sql" placeholder="例:&#10;CREATE TABLE test (...);&#10;DELETE FROM pending_charges WHERE ...;"></textarea>
+    <!-- 左右レイアウト開始 -->
+    <div class="main-flex">
 
-    <button id="runBtn">SQLを実行する</button>
-    <div class="small">
-      ※複数ステートメントを流す場合は自己責任でお願いします。<br>
-      ※SELECT文の結果は下のJSONに表示されます。
-    </div>
+      <!-- 左パネル：SQL入力 -->
+      <div class="panel">
+        <label for="sql">SQL</label>
+        <div class="preset-bar">
+          <button type="button" class="preset-btn" data-preset="tables">publicテーブル一覧</button>
+          <button type="button" class="preset-btn" data-preset="columns">カラム一覧</button>
+          <button type="button" class="preset-btn" data-preset="truncate_sample">TRUNCATEサンプル(要編集)</button>
+        </div>
+        <textarea id="sql" placeholder="例:&#10;CREATE TABLE test (...);&#10;DELETE FROM pending_charges WHERE ...;"></textarea>
 
-    <div id="status" class="status"></div>
-    <pre id="result"></pre>
+        <button id="runBtn">SQLを実行する</button>
+        <div class="small">
+          ※複数ステートメントを流す場合は自己責任でお願いします。<br>
+          ※SELECT文の結果は右側に表示されます。
+        </div>
+      </div>
+
+      <!-- 右パネル：ステータス＋実行結果 -->
+      <div class="panel">
+        <label>実行結果</label>
+        <div id="status" class="status"></div>
+        <pre id="result"></pre>
+      </div>
+
+    </div>
+    <!-- 左右レイアウト終了 -->
   </div>
 
   <script>
