@@ -82,12 +82,12 @@
       100%{ transform: translate(calc(var(--sx) + var(--dx)), 110vh) rotate(540deg); opacity:0 }
     }
 
-    /* カード */
+    /* カードコンテナ */
     .card-wrap{position:relative; z-index:10; display:grid; place-items:center; height:100vh; padding:24px}
     .card{
       position:relative;
       width:min(92vw,760px);
-      padding:48px 56px;
+      padding:32px 24px 30px;
       text-align:center;
       background:var(--paper);
       border-radius:26px;
@@ -100,30 +100,47 @@
       background-blend-mode: soft-light, normal;
     }
     h1{
-      font-size: clamp(28px,4.4vw,50px);
+      font-size: clamp(26px,4.2vw,42px);
       line-height:1.22;
       font-weight:900;
-      margin-bottom:12px;
+      margin-bottom:6px;
       color:#205a3e;
     }
     p.lead{
-      font-size: clamp(16px,2.6vw,22px);
+      font-size: 14px;
       color: rgba(30,40,40,.9);
       font-weight:700;
-      margin-bottom:22px;
+      margin-bottom:14px;
     }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 16px;
+      border-radius:999px;
+      font-weight:900;
+      color:#063b2a;
+      background: linear-gradient(135deg,#5ac18e,#b0ffb4);
+      box-shadow:0 8px 18px rgba(20,100,60,.23);
+      animation:breathe 3.6s ease-in-out infinite;
+      margin-bottom:12px;
+      font-size:13px;
+    }
+    @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
 
     .notice {
       background: rgba(255,255,255,0.92);
       border: 1px solid rgba(60,70,50,0.2);
       border-radius: 14px;
-      padding: 14px 18px;
-      margin-bottom: 18px;
-      font-size: 15px;
+      padding: 10px 14px;
+      margin: 0 auto 14px;
+      font-size: 13px;
       color: #234236;
       box-shadow: 0 4px 10px rgba(0,0,0,0.08);
       line-height: 1.6;
       text-align:left;
+      max-width: 520px;
     }
     .notice strong{
       font-weight:900;
@@ -132,79 +149,135 @@
       display:block;
       margin-top:4px;
       color: rgba(60,60,60,0.8);
-      font-size: 12px;
+      font-size: 11px;
     }
 
-    .experience {
-      font-size: 13px;
-      margin-top: 6px;
-      margin-bottom: 16px;
-      color: rgba(40,60,60,.9);
+    /* 写真エリア */
+    .photo-section{
+      margin: 10px auto 16px;
+      max-width: 520px;
+      text-align:center;
     }
-
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-      padding:12px 20px;
-      border-radius:999px;
-      font-weight:900;
-      color:#063b2a;
-      background: linear-gradient(135deg,#5ac18e,#b0ffb4);
-      box-shadow:0 10px 22px rgba(20,100,60,.23);
-      animation:breathe 3.6s ease-in-out infinite;
-      margin-bottom:10px;
-    }
-    @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
-
-    .meta{
-      font-size:12px;
-      color:rgba(50,60,60,.9);
-      margin-top:10px;
-      line-height:1.5;
-    }
-
-    .hashtag{
-      margin-top:10px;
+    .photo-label{
       font-size:13px;
-      color:rgba(50,60,70,.9);
-    }
-
-    .actions{
-      display:flex;
-      gap:12px;
-      justify-content:center;
-      flex-wrap:wrap;
-      margin-top:20px;
-    }
-    .btn{
-      padding:11px 16px;
-      border-radius:14px;
-      border:1px solid rgba(16,60,40,.14);
-      background:rgba(255,255,255,.85);
       font-weight:700;
-      cursor:pointer;
-      box-shadow:0 6px 14px rgba(30,80,60,.14);
-      transition:.25s;
-      font-size:14px;
+      margin-bottom:6px;
+      color:#244636;
     }
-    .btn:hover{
-      transform:translateY(-2px);
-      box-shadow:0 10px 20px rgba(30,80,60,.22);
+    .photo-preview{
+      position:relative;
+      width:100%;
+      padding-top:62%;
+      border-radius:16px;
+      background:rgba(255,255,255,0.96);
+      border:1px solid rgba(50,60,60,.16);
+      box-shadow:0 8px 18px rgba(0,0,0,.10);
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .photo-preview span{
+      font-size:12px;
+      color:rgba(60,70,70,.8);
+      padding:0 12px;
+    }
+    .photo-preview img{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:cover;
     }
 
     .frame{
       position:absolute;
-      inset:5% 5%;
-      border-radius:18px;
+      inset:6%;
+      border-radius:14px;
       pointer-events:none;
-      border: 12px solid rgba(246,200,107,.85);
+      border: 10px solid rgba(246,200,107,.88);
       box-shadow:
         0 0 0 1px rgba(255,255,255,.95) inset,
         0 8px 26px rgba(0,0,0,.18);
       mix-blend-mode:soft-light;
     }
     .frame.hide{ display:none }
+
+    .photo-controls{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      margin-top:10px;
+      flex-wrap:wrap;
+    }
+    .btn-sub{
+      padding:7px 14px;
+      border-radius:999px;
+      border:1px solid rgba(16,60,40,.16);
+      background:rgba(255,255,255,.9);
+      font-size:12px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 4px 10px rgba(30,80,60,.14);
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      transition:.22s;
+    }
+    .btn-sub:hover{
+      transform:translateY(-1px);
+      box-shadow:0 7px 16px rgba(30,80,60,.20);
+    }
+
+    /* シェアエリア */
+    .share-title{
+      margin-top:6px;
+      font-size:13px;
+      color:rgba(30,50,50,.95);
+    }
+    .hashtag{
+      margin-top:6px;
+      font-size:12px;
+      color:rgba(50,60,70,.9);
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .btn{
+      padding:11px 16px;
+      border-radius:14px;
+      border:1px solid rgba(16,60,40,.14);
+      background:rgba(255,255,255,.9);
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 6px 14px rgba(30,80,60,.14);
+      transition:.25s;
+      font-size:13px;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .btn.primary{
+      background:linear-gradient(135deg,#256f4d,#3bbf87);
+      color:#f8fffb;
+      border-color:rgba(10,60,40,.3);
+    }
+    .btn:hover{
+      transform:translateY(-2px);
+      box-shadow:0 10px 20px rgba(30,80,60,.22);
+    }
+
+    .meta{
+      font-size:11px;
+      color:rgba(50,60,60,.9);
+      margin-top:12px;
+      line-height:1.5;
+    }
 
     .lang{
       position:fixed;
@@ -230,8 +303,9 @@
     }
 
     @media(max-width:520px){
-      .card{padding:34px 22px}
-      .notice{text-align:left; font-size:14px;}
+      .card{padding:28px 18px 22px}
+      .notice{text-align:left; font-size:12px;}
+      .actions{gap:8px}
     }
   </style>
 </head>
@@ -292,50 +366,70 @@
 
   <div class="card-wrap">
     <article class="card parallax" style="--depth:.12">
-      <h1 data-i18n="title">決済が完了しました</h1>
-
-      <p class="lead" data-i18n="body">
-        古い街並みのフリマで、ひとつのやさしい取引が生まれました。<br>
-        Fleapayでのご購入、ありがとうございます。
-      </p>
-
       <div class="badge">
         <span>✓</span>
         <span data-i18n="badge">Payment Completed / 決済完了</span>
         <span>✓</span>
       </div>
 
+      <h1 data-i18n="title">決済が完了しました</h1>
+
+      <p class="lead" data-i18n="lead">
+        この画面を出店スタッフにお見せください。
+      </p>
+
       <div class="notice">
         <p data-i18n="notice">
           <strong>✅ 決済が完了しました。</strong><br>
-          この画面を出店スタッフにお見せください。<br>
+          出店スタッフが商品をお渡しします。<br>
           <small>※商品お渡し後の返品・交換はご遠慮ください。</small>
         </p>
       </div>
 
-      <p class="experience" data-i18n="experience">
-        今日の体験：『買う』を自分でできました。小さな「できた！」が、フリマを学びの場所に変えていきます。
+      <section class="photo-section">
+        <p class="photo-label" data-i18n="photoLabel">AIで加工した記念写真</p>
+        <div class="photo-preview" id="photoPreview">
+          <!-- 実装側で img を差し込む想定 -->
+          <span data-i18n="photoPlaceholder">
+            ここに、購入時に撮影した写真をもとにした<br>フォトフレーム画像が表示されます。
+          </span>
+          <div class="frame hide" id="frame"></div>
+        </div>
+
+        <div class="photo-controls">
+          <button class="btn-sub" id="photoFrameToggle">
+            <span>🎀</span><span data-i18n="photoFrameToggle">フォトフレーム ON / OFF</span>
+          </button>
+          <button class="btn-sub" id="savePhotoBtn">
+            <span>💾</span><span data-i18n="savePhoto">写真を保存する</span>
+          </button>
+        </div>
+      </section>
+
+      <p class="share-title" data-i18n="shareTitle">
+        旅のフリマ体験を、SNSでシェアしませんか？
+      </p>
+
+      <div class="actions">
+        <button class="btn primary" id="shareInsta">
+          <span>📸</span><span data-i18n="shareInsta">Instagramでシェア</span>
+        </button>
+        <button class="btn" id="shareTiktok">
+          <span>🎵</span><span data-i18n="shareTiktok">TikTokでシェア</span>
+        </button>
+        <button class="btn" id="shareX">
+          <span>✕</span><span data-i18n="shareX">Xでシェア</span>
+        </button>
+      </div>
+
+      <p class="hashtag" data-i18n="hashtag">
+        #Fleapay #TokyoFleaMarket #JapanFinds をつけて、旅の宝物をシェアしましょう。
       </p>
 
       <p class="meta" data-i18n="meta">
         Thanks for supporting local creators & flea market culture.<br>
         ※必要に応じて、スタッフから決済IDの確認をお願いする場合があります。
       </p>
-
-      <p class="hashtag" data-i18n="hashtag">
-        #Fleapay で旅の思い出やフリマの発見をシェアしませんか？
-      </p>
-
-      <div class="actions">
-        <button class="btn" id="photoBtn" data-i18n="photo">
-          旅の記念を残す（フォトフレーム ON/OFF）
-        </button>
-        <button class="btn" id="backBtn" data-i18n="back">
-          前の画面へ戻る
-        </button>
-      </div>
-
-      <div class="frame hide" id="frame"></div>
     </article>
   </div>
 
@@ -400,57 +494,69 @@
     for(let i=0;i<18;i++) spawnPetal();
     setInterval(spawnPetal, 1200);
 
-    // フォトフレーム ON/OFF
+    // フレーム ON/OFF
     const frameEl = document.getElementById('frame');
-    const photoBtn = document.getElementById('photoBtn');
-    photoBtn.addEventListener('click', ()=>{
+    const frameToggleBtn = document.getElementById('photoFrameToggle');
+    frameToggleBtn.addEventListener('click', ()=>{
       frameEl.classList.toggle('hide');
     });
 
-    // 戻るボタン
-    const backBtn = document.getElementById('backBtn');
-    backBtn.addEventListener('click', ()=>{
-      if (window.history.length>1){
-        window.history.back();
-      } else {
-        window.location.href = '/';
-      }
+    // 写真保存（実装側で実画像がある場合に差し替え可）
+    const savePhotoBtn = document.getElementById('savePhotoBtn');
+    savePhotoBtn.addEventListener('click', ()=>{
+      // 実際の画像URLがある場合は a[download] を生成して保存処理を書く
+      alert('写真の保存は、この画面のスクリーンショットでもご利用いただけます。実装に応じてダウンロード処理を追加できます。');
     });
 
     // 多言語対応
     const dict = {
       ja:{
-        title: "決済が完了しました",
-        body: "古い街並みのフリマで、ひとつのやさしい取引が生まれました。<br>Fleapayでのご購入、ありがとうございます。",
         badge: "Payment Completed / 決済完了",
-        notice: "<strong>✅ 決済が完了しました。</strong><br>この画面を出店スタッフにお見せください。<br><small>※商品お渡し後の返品・交換はご遠慮ください。</small>",
-        experience: "今日の体験：『買う』を自分でできました。小さな「できた！」が、フリマを学びの場所に変えていきます。",
-        meta: "Thanks for supporting local creators & flea market culture.<br>※必要に応じて、スタッフから決済IDの確認をお願いする場合があります。",
-        hashtag: "#Fleapay で旅の思い出やフリマの発見をシェアしませんか？",
-        photo: "旅の記念を残す（フォトフレーム ON/OFF）",
-        back: "前の画面へ戻る"
+        title: "決済が完了しました",
+        lead: "この画面を出店スタッフにお見せください。",
+        notice: "<strong>✅ 決済が完了しました。</strong><br>出店スタッフが商品をお渡しします。<br><small>※商品お渡し後の返品・交換はご遠慮ください。</small>",
+        photoLabel: "AIで加工した記念写真",
+        photoPlaceholder: "ここに、購入時に撮影した写真をもとにした<br>フォトフレーム画像が表示されます。",
+        photoFrameToggle: "フォトフレーム ON / OFF",
+        savePhoto: "写真を保存する",
+        shareTitle: "旅のフリマ体験を、SNSでシェアしませんか？",
+        shareInsta: "Instagramでシェア",
+        shareTiktok: "TikTokでシェア",
+        shareX: "Xでシェア",
+        hashtag: "#Fleapay #TokyoFleaMarket #JapanFinds をつけて、旅の宝物をシェアしましょう。",
+        meta: "Thanks for supporting local creators & flea market culture.<br>※必要に応じて、スタッフから決済IDの確認をお願いする場合があります。"
       },
       en:{
-        title: "Payment Completed",
-        body: "A warm moment was created in this flea market street.<br>Thank you for your purchase with Fleapay.",
         badge: "Payment Completed",
-        notice: "<strong>✅ Your payment has been completed.</strong><br>Please show this screen to the shop staff.<br><small>*Refunds and exchanges are not available after receiving your item.</small>",
-        experience: "Today's experience: You made a purchase by yourself. Small “I did it!” moments turn the flea market into a place of learning.",
-        meta: "Thank you for supporting local creators and flea market culture.<br>*Staff may ask you to confirm your payment ID if necessary.",
-        hashtag: "Share your travel memories and flea market discoveries with #Fleapay",
-        photo: "Save your memory (Photo frame ON/OFF)",
-        back: "Go back to previous page"
+        title: "Payment Completed",
+        lead: "Please show this screen to the shop staff.",
+        notice: "<strong>✅ Your payment has been completed.</strong><br>The staff will hand you your item.<br><small>*Refunds and exchanges are not available after receiving your item.</small>",
+        photoLabel: "Your AI-framed memory photo",
+        photoPlaceholder: "Your commemorative photo with a Japanese-style frame<br>will appear here.",
+        photoFrameToggle: "Photo frame ON / OFF",
+        savePhoto: "Save photo",
+        shareTitle: "Share your flea market moment on SNS!",
+        shareInsta: "Share on Instagram",
+        shareTiktok: "Share on TikTok",
+        shareX: "Share on X",
+        hashtag: "Share your travel treasure with #Fleapay #TokyoFleaMarket #JapanFinds",
+        meta: "Thank you for supporting local creators and flea market culture.<br>*Staff may ask you to confirm your payment ID if necessary."
       },
       zh:{
-        title: "付款已完成",
-        body: "在这条老街的跳蚤市集中，诞生了一次温暖的交易。<br>感谢您使用 Fleapay 购物。",
         badge: "付款完成",
-        notice: "<strong>✅ 付款已完成。</strong><br>请将此画面出示给摊主。<br><small>※领取商品后，恕不接受退换。</small>",
-        experience: "今天的体验：自己完成了一次“购买”。这些小小的“我做到了”，会让市集变成充满学习的地方。",
-        meta: "感谢您支持本地创作者与跳蚤市集文化。<br>※如有需要，工作人员可能会请您确认付款编号。",
-        hashtag: "欢迎使用 #Fleapay 分享您的旅途与市集发现。",
-        photo: "留下旅途回忆（相框 开/关）",
-        back: "返回上一页"
+        title: "付款已完成",
+        lead: "请将此画面出示给摊主。",
+        notice: "<strong>✅ 付款已完成。</strong><br>摊主会为您递上商品。<br><small>※领取商品后，恕不接受退换。</small>",
+        photoLabel: "AI 生成的纪念照片",
+        photoPlaceholder: "这里会显示基于您刚才拍摄照片的<br>和风相框图片。",
+        photoFrameToggle: "相框 开 / 关",
+        savePhoto: "保存照片",
+        shareTitle: "要不要在 SNS 上分享这次市集体验？",
+        shareInsta: "分享到 Instagram",
+        shareTiktok: "分享到 TikTok",
+        shareX: "分享到 X",
+        hashtag: "欢迎使用 #Fleapay #TokyoFleaMarket #JapanFinds 分享您的旅途收获。",
+        meta: "感谢您支持本地创作者与跳蚤市集文化。<br>※如有需要，工作人员可能会请您确认付款编号。"
       }
     };
 
@@ -475,8 +581,50 @@
       });
     });
 
-    // 初期言語（日本語）
-    applyLang('ja');
+    // 初期言語（ブラウザからある程度推定）
+    (function initLang(){
+      const nav = navigator.language || 'ja';
+      if(nav.startsWith('en')) applyLang('en');
+      else if(nav.startsWith('zh')) applyLang('zh');
+      else applyLang('ja');
+    })();
+
+    // シェア処理（簡易版）
+    function buildShareText(lang){
+      const t = dict[lang] || dict.ja;
+      return {
+        text: t.shareTitle.replace(/<br>/g,' ') || '',
+        hashtags: "#Fleapay #TokyoFleaMarket #JapanFinds"
+      };
+    }
+
+    function getLangFromHtml(){
+      const lang = document.documentElement.lang;
+      if(lang === 'en' || lang === 'zh' || lang === 'ja') return lang;
+      return 'ja';
+    }
+
+    function tryShare(target){
+      const lang = getLangFromHtml();
+      const s = buildShareText(lang);
+      const url = window.location.origin || '';
+
+      const textBase = s.text + ' ' + s.hashtags;
+
+      if(navigator.share){
+        navigator.share({
+          title: 'Fleapay',
+          text: textBase + ' [' + target + ']',
+          url
+        }).catch(()=>{ /* user cancelled */ });
+      }else{
+        alert(textBase + "\n\nこのテキストをコピーして、" + target + " に貼り付けてください。");
+      }
+    }
+
+    document.getElementById('shareInsta').addEventListener('click', ()=>tryShare('Instagram'));
+    document.getElementById('shareTiktok').addEventListener('click', ()=>tryShare('TikTok'));
+    document.getElementById('shareX').addEventListener('click', ()=>tryShare('X'));
   </script>
 </body>
 </html>
