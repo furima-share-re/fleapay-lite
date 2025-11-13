@@ -81,6 +81,23 @@
       overflow-x:auto;
       max-height:420px;
     }
+    .preset-bar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin:6px 0 4px;
+    }
+    .preset-btn{
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid #ccc;
+      background:#fafafa;
+      font-size:11px;
+      cursor:pointer;
+    }
+    .preset-btn:hover{
+      background:#e3f2fd;
+    }
     .small{
       font-size:11px;
       color:#777;
@@ -101,6 +118,11 @@
     <input id="adminToken" type="password" placeholder="環境変数 ADMIN_TOKEN と同じ値" />
 
     <label for="sql">SQL</label>
+    <div class="preset-bar">
+      <button type="button" class="preset-btn" data-preset="tables">publicテーブル一覧</button>
+      <button type="button" class="preset-btn" data-preset="columns">カラム一覧</button>
+      <button type="button" class="preset-btn" data-preset="truncate_sample">TRUNCATEサンプル(要編集)</button>
+    </div>
     <textarea id="sql" placeholder="例:&#10;CREATE TABLE test (...);&#10;DELETE FROM pending_charges WHERE ...;"></textarea>
 
     <button id="runBtn">SQLを実行する</button>
@@ -120,6 +142,49 @@
       const btn        = document.getElementById("runBtn");
       const statusEl   = document.getElementById("status");
       const resultEl   = document.getElementById("result");
+
+      // 初期構築時によく使うSQLプリセット
+      const presets = {
+        // publicスキーマのテーブル一覧
+        tables: [
+          "-- publicスキーマのテーブル一覧",
+          "SELECT table_name",
+          "FROM information_schema.tables",
+          "WHERE table_schema = 'public'",
+          "ORDER BY table_name;"
+        ].join("\n"),
+
+        // publicスキーマのカラム一覧
+        columns: [
+          "-- publicスキーマのカラム一覧",
+          "SELECT table_name, column_name, data_type",
+          "FROM information_schema.columns",
+          "WHERE table_schema = 'public'",
+          "ORDER BY table_name, ordinal_position;"
+        ].join("\n"),
+
+        // データ全消し用TRUNCATEサンプル(テーブル名は環境に合わせて編集してから実行)
+        truncate_sample: [
+          "-- 初期構築時にデータを全消しするTRUNCATEサンプル",
+          "-- 必要なテーブル名に編集してから実行してください。",
+          "TRUNCATE TABLE",
+          "  sellers,",
+          "  orders,",
+          "  order_items,",
+          "  payments",
+          "RESTART IDENTITY CASCADE;"
+        ].join("\n")
+      };
+
+      // プリセットボタンのクリック時に textarea に展開
+      document.querySelectorAll(".preset-btn").forEach(function (el) {
+        el.addEventListener("click", function () {
+          const key = el.getAttribute("data-preset");
+          if (!key || !presets[key]) return;
+          sqlInput.value = presets[key];
+          statusEl.textContent = "プリセットSQLを展開しました: " + key;
+        });
+      });
 
       async function runSql(e){
         e.preventDefault();
