@@ -625,7 +625,7 @@ app.get("/api/seller/summary", async (req, res) => {
     const todayNet  = Number(rowToday.net || 0);
     const todayGross= Number(rowToday.gross || 0);
     const yestNet   = Number(rowYest.net || 0);
-    const yestGross = Number(rowYest.grass || 0);
+    const yestGross = Number(rowYest.gross || 0);
     const totalNet  = Number(rowTotal.net || 0);
     const totalGross= Number(rowTotal.gross || 0);
 
