@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fleapay｜出店者用ダッシュボード</title>
+
+  <style>
+    :root {
+      --bg:#f7f7fb;
+      --panel:#ffffff;
+      --border:#e3e3ef;
+      --text:#222222;
+      --sub:#555555;
+      --muted:#777777;
+      --brand:#5a6bff;
+      --ok:#1a9b63;
+      --warn:#f59e0b;
+      --danger:#e11d48;
+      --badge:#eef0ff;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      font-family:system-ui,-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+    }
+
+    .wrap {
+      max-width:720px;
+      margin:0 auto;
+      padding:12px 12px 64px;
+    }
+
+    header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding:8px 4px 12px;
+    }
+
+    .brand {
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .brand-logo {
+      width:28px;
+      height:28px;
+      border-radius:999px;
+      background:radial-gradient(circle at 30% 30%, #fff 0, #fff 35%, #5a6bff 100%);
+    }
+
+    .brand-title {
+      margin:0;
+      font-size:1.1rem;
+      font-weight:700;
+      letter-spacing:.03em;
+    }
+
+    .brand-sub {
+      font-size:.75rem;
+      color:var(--sub);
+    }
+
+    .user-chip {
+      font-size:.8rem;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#fff;
+      color:var(--sub);
+      max-width:50%;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      overflow:hidden;
+    }
+
+    .card {
+      background:var(--panel);
+      border-radius:16px;
+      border:1px solid var(--border);
+      padding:14px 14px 16px;
+      margin-bottom:12px;
+      box-shadow:0 2px 8px rgba(0,0,0,.04);
+    }
+
+    .card-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:8px;
+    }
+
+    .card-title {
+      font-size:.98rem;
+      font-weight:700;
+    }
+
+    .card-sub {
+      font-size:.8rem;
+      color:var(--muted);
+    }
+
+    .pill {
+      font-size:.75rem;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#f9fafb;
+      color:var(--sub);
+    }
+
+    .kpi-row {
+      display:flex;
+      gap:8px;
+      margin-top:6px;
+    }
+
+    .kpi {
+      flex:1;
+      padding:10px 10px;
+      border-radius:12px;
+      background:#f9f9ff;
+      border:1px solid #e4e6ff;
+    }
+
+    .kpi-label {
+      font-size:.75rem;
+      color:var(--muted);
+      margin-bottom:4px;
+    }
+
+    .kpi-value {
+      font-size:1.2rem;
+      font-weight:750;
+    }
+
+    .kpi-note {
+      font-size:.75rem;
+      color:var(--muted);
+      margin-top:2px;
+    }
+
+    .hint {
+      font-size:.78rem;
+      color:var(--muted);
+      margin-top:4px;
+    }
+
+    .list {
+      margin:6px 0 0;
+      padding:0;
+      list-style:none;
+    }
+
+    .tx-item {
+      padding:8px 0;
+      border-bottom:1px solid #f0f0f5;
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      align-items:flex-start;
+      cursor:pointer;
+    }
+
+    .tx-item:last-child {
+      border-bottom:none;
+    }
+
+    .tx-main {
+      flex:1;
+    }
+
+    .tx-top {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      margin-bottom:2px;
+      flex-wrap:wrap;
+    }
+
+    .tx-time {
+      font-size:.8rem;
+      color:var(--muted);
+    }
+
+    .tx-title {
+      font-size:.9rem;
+    }
+
+    .tx-sub {
+      font-size:.78rem;
+      color:var(--muted);
+    }
+
+    .tx-amt {
+      font-size:.95rem;
+      font-weight:700;
+      text-align:right;
+      white-space:nowrap;
+    }
+
+    .badge {
+      font-size:.7rem;
+      padding:2px 6px;
+      border-radius:999px;
+      background:var(--badge);
+      color:var(--sub);
+      border:1px solid rgba(90,107,255,0.15);
+    }
+
+    .badge-ok {
+      background:#e6f7f0;
+      color:var(--ok);
+      border-color:#b6e3c9;
+    }
+
+    .badge-refund {
+      background:#f3f4f6;
+      color:#4b5563;
+      border-color:#d1d5db;
+    }
+
+    .badge-cb-pending {
+      background:#fffbeb;
+      color:#92400e;
+      border-color:#fbbf24;
+    }
+
+    .badge-cb-lost {
+      background:#fef2f2;
+      color:#b91c1c;
+      border-color:#fecaca;
+    }
+
+    .tx-detail {
+      margin-top:4px;
+      font-size:.78rem;
+      color:var(--muted);
+      display:none;
+    }
+    .tx-item.expanded .tx-detail { display:block; }
+
+    .notice-item {
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:#fff;
+      margin-bottom:8px;
+    }
+
+    .notice-title {
+      font-size:.9rem;
+      font-weight:700;
+      margin-bottom:4px;
+    }
+
+    .notice-meta {
+      font-size:.78rem;
+      color:var(--muted);
+      margin-bottom:4px;
+    }
+
+    .notice-body {
+      font-size:.82rem;
+      line-height:1.5;
+    }
+
+    .notice-important {
+      border-left:4px solid var(--warn);
+      padding-left:8px;
+      background:linear-gradient(to right, rgba(245,158,11,0.05), transparent);
+    }
+
+    .field {
+      margin-bottom:10px;
+    }
+
+    .field-label {
+      font-size:.8rem;
+      color:var(--sub);
+      margin-bottom:4px;
+    }
+
+    .field-value {
+      font-size:.9rem;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:#f9fafb;
+    }
+
+    .nav {
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:0;
+      border-top:1px solid #ddddee;
+      background:#ffffff;
+      display:flex;
+      justify-content:space-around;
+      padding:6px 0 4px;
+      z-index:100;
+    }
+
+    .nav-btn {
+      flex:1;
+      text-align:center;
+      font-size:.72rem;
+      padding:4px 0;
+      color:var(--sub);
+      background:none;
+      border:none;
+      cursor:pointer;
+    }
+
+    .nav-btn span {
+      display:block;
+      margin-top:2px;
+    }
+
+    .nav-btn.active {
+      color:var(--brand);
+      font-weight:700;
+    }
+
+    .nav-icon {
+      font-size:1.1rem;
+    }
+
+    .section {
+      display:none;
+    }
+    .section.active {
+      display:block;
+    }
+
+    button:focus-visible,
+    .nav-btn:focus-visible {
+      outline:2px solid var(--brand);
+      outline-offset:2px;
+      border-radius:999px;
+    }
+
+    @media (min-width:768px){
+      .wrap { padding:16px 16px 72px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true"></div>
+        <div>
+          <p class="brand-title">Fleapay</p>
+          <p class="brand-sub">出店者用 ダッシュボード</p>
+        </div>
+      </div>
+      <div class="user-chip" id="shop-name">出店者</div>
+    </header>
+
+    <!-- ホーム -->
+    <section id="sec-home" class="section active">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">きょうの うりあげ</div>
+            <div class="card-sub" id="today-label">きょう の うりあげ</div>
+          </div>
+          <div class="pill">リアルタイム更新</div>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi">
+            <div class="kpi-label">売上合計（返金・チャージバック反映後）</div>
+            <div class="kpi-value" id="kpi-total">¥—</div>
+            <div class="kpi-note">純売上</div>
+          </div>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi">
+            <div class="kpi-label">決済回数</div>
+            <div class="kpi-value" id="kpi-count">—件</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">平均客単価</div>
+            <div class="kpi-value" id="kpi-avg">¥—</div>
+          </div>
+        </div>
+
+        <div class="hint" id="home-hint">
+          出店者IDから、きょうの うりあげ を じっさいの データで ひょうじします。
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">さいきんの けっさい</div>
+          <div class="card-sub">3件だけ ひょうじ</div>
+        </div>
+        <ul class="list" id="recent-list">
+          <!-- JSで差し込み -->
+        </ul>
+        <div class="hint" id="recent-hint">
+          Stripe 決済のテストデータから さいしんの けっさい を ひょうじします。
+        </div>
+      </div>
+    </section>
+
+    <!-- 取引履歴 -->
+    <section id="sec-tx" class="section">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">取引履歴</div>
+          <div class="card-sub">きょう ＋ さいきん</div>
+        </div>
+        <ul class="list" id="tx-list">
+          <!-- JSで差し込み -->
+        </ul>
+      </div>
+    </section>
+
+    <!-- おしらせ（ダミー文言のまま） -->
+    <section id="sec-notice" class="section">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">おしらせ</div>
+          <div class="card-sub">返金・チャージバックなど</div>
+        </div>
+
+        <div class="notice-item notice-important">
+          <div class="notice-title">重要：チャージバック対応は Fleapay が おこないます。</div>
+          <div class="notice-meta">出店者さまの 操作は不要です。</div>
+          <div class="notice-body">
+            カード会社からの 返金・チャージバックに ついては、Fleapay運営側で いっかつ で 対応します。<br>
+            出店者さま側での ボタン操作や、むずかしい てつづき は ありません。
+          </div>
+        </div>
+
+        <div class="hint">
+          返金やチャージバックが発生したときは、この画面やメールなどで「結果だけ」をお知らせする設計です。
+        </div>
+      </div>
+    </section>
+
+    <!-- お店情報（固定文言のまま・あとでAPI連携してもOK） -->
+    <section id="sec-shop" class="section">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">お店の じょうほう</div>
+          <div class="card-sub">かんたん プロフィール</div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">お店の名前</div>
+          <div class="field-value" id="shop-display">（あとで設定予定）</div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">レシートの ひょうじ げんご</div>
+          <div class="field-value">自動（おすすめ）</div>
+        </div>
+
+        <div class="hint">
+          くわしい設定や 返金・チャージバックの処理は、すべてFleapay運営が 行います。
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ボトムナビ -->
+  <nav class="nav" aria-label="画面きりかえ">
+    <button class="nav-btn active" data-target="sec-home">
+      <div class="nav-icon">🏠</div>
+      <span>ホーム</span>
+    </button>
+    <button class="nav-btn" data-target="sec-tx">
+      <div class="nav-icon">📜</div>
+      <span>取引</span>
+    </button>
+    <button class="nav-btn" data-target="sec-notice">
+      <div class="nav-icon">🔔</div>
+      <span>おしらせ</span>
+    </button>
+    <button class="nav-btn" data-target="sec-shop">
+      <div class="nav-icon">🏪</div>
+      <span>お店</span>
+    </button>
+  </nav>
+
+  <script>
+    // タブ切り替え
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const sections   = document.querySelectorAll('.section');
+
+    navButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        sections.forEach(sec => {
+          sec.classList.toggle('active', sec.id === targetId);
+        });
+        navButtons.forEach(b => b.classList.toggle('active', b === btn));
+        window.scrollTo({ top:0, behavior:'instant' });
+      });
+    });
+
+    // ====== ダッシュボード用API連携 (/api/seller/summary?s=publicId) ======
+    (function(){
+      const $ = s => document.querySelector(s);
+      const params = new URLSearchParams(location.search);
+      const sellerId = params.get("s") || "";
+
+      const shopNameEl   = $("#shop-name");
+      const shopDisplayEl= $("#shop-display");
+      const todayLabelEl = $("#today-label");
+      const kpiTotalEl   = $("#kpi-total");
+      const kpiCountEl   = $("#kpi-count");
+      const kpiAvgEl     = $("#kpi-avg");
+      const homeHintEl   = $("#home-hint");
+      const recentListEl = $("#recent-list");
+      const recentHintEl = $("#recent-hint");
+      const txListEl     = $("#tx-list");
+
+      function formatYen(n){
+        if (!Number.isFinite(n)) return "¥—";
+        return "¥" + n.toLocaleString("ja-JP");
+      }
+
+      function formatTime(date){
+        return date.toLocaleTimeString("ja-JP",{ hour:"2-digit", minute:"2-digit" });
+      }
+
+      function formatDateJp(date){
+        const w = ["日","月","火","水","木","金","土"][date.getDay()];
+        return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日（${w}）`;
+      }
+
+      async function loadSummary(){
+        if (!sellerId){
+          if (homeHintEl) homeHintEl.textContent = "URLに ?s=出店者ID が ひつようです。";
+          return;
+        }
+
+        try{
+          const res = await fetch(`/api/seller/summary?s=${encodeURIComponent(sellerId)}`);
+          const data = await res.json();
+
+          if (!res.ok){
+            console.error("summary error", data);
+            if (homeHintEl) homeHintEl.textContent = "売上データ取得でエラーが発生しました。";
+            return;
+          }
+
+          // 店名
+          if (shopNameEl)   shopNameEl.textContent   = data.displayName || data.sellerId || "出店者";
+          if (shopDisplayEl)shopDisplayEl.textContent= data.displayName || data.sellerId || "出店者";
+
+          // きょうの日付
+          const nowJst = new Date(new Date().toLocaleString("en-US",{ timeZone:"Asia/Tokyo" }));
+          if (todayLabelEl) todayLabelEl.textContent = formatDateJp(nowJst) + " の うりあげ";
+
+          // KPI（純売上）
+          const total = Number(data.salesToday || 0);
+          const count = Number(data.countToday || 0);
+          const avg   = Number(data.avgToday || 0);
+          if (kpiTotalEl) kpiTotalEl.textContent = formatYen(total);
+          if (kpiCountEl) kpiCountEl.textContent = `${count}件`;
+          if (kpiAvgEl)   kpiAvgEl.textContent   = formatYen(avg || 0);
+
+          if (homeHintEl) {
+            if (count === 0) {
+              homeHintEl.textContent = "きょうの けっさい は まだ ありません。さいしょの 1件を お待ちしています。";
+            } else {
+              homeHintEl.textContent = "きょうの うりあげ を Stripe の テストデータから ひょうじ中です。";
+            }
+          }
+
+          // さいきんの決済（3件まで）
+          const recent = (data.recent || []).slice(0,3);
+          if (recentListEl){
+            recentListEl.innerHTML = "";
+            if (recent.length === 0){
+              const li = document.createElement("li");
+              li.className = "tx-item";
+              li.innerHTML = `
+                <div class="tx-main">
+                  <div class="tx-title">まだ けっさい は ありません</div>
+                  <div class="tx-sub">テスト決済があると ここに ひょうじされます。</div>
+                </div>
+              `;
+              recentListEl.appendChild(li);
+            } else {
+              for (const tx of recent){
+                const li = document.createElement("li");
+                li.className = "tx-item";
+                const created = tx.created ? new Date(tx.created * 1000) : null;
+                const timeStr = created ? formatTime(created) : "";
+                const summary = (tx.summary || "商品のおかいもの").split("\n")[0];
+
+                li.innerHTML = `
+                  <div class="tx-main">
+                    <div class="tx-top">
+                      <span class="badge badge-ok">通常</span>
+                      <span class="tx-time">${timeStr}</span>
+                    </div>
+                    <div class="tx-title">${summary}</div>
+                    <div class="tx-sub">タップで くわしく みる</div>
+                    <div class="tx-detail">
+                      ${tx.summary ? tx.summary.replace(/\n/g,"<br>") : ""}
+                    </div>
+                  </div>
+                  <div class="tx-amt">${formatYen(tx.net_amount ?? tx.amount)}</div>
+                `;
+                li.addEventListener("click", () => {
+                  li.classList.toggle("expanded");
+                });
+                recentListEl.appendChild(li);
+              }
+            }
+          }
+
+          if (recentHintEl) {
+            recentHintEl.textContent = "Stripe のテスト決済が さいしん3件まで ひょうじされます。";
+          }
+
+          // 取引履歴（最大20件）
+          if (txListEl){
+            txListEl.innerHTML = "";
+            const list = data.recent || [];
+            if (!list.length){
+              const li = document.createElement("li");
+              li.className = "tx-item";
+              li.innerHTML = `
+                <div class="tx-main">
+                  <div class="tx-title">まだ 取引がありません</div>
+                  <div class="tx-sub">きょうの決済や さいきんの決済がここに表示されます。</div>
+                </div>
+              `;
+              txListEl.appendChild(li);
+            } else {
+              for (const tx of list){
+                const li = document.createElement("li");
+                li.className = "tx-item";
+                const created = tx.created ? new Date(tx.created * 1000) : null;
+                const timeStr = created ? formatTime(created) : "";
+                const dateStr = created
+                  ? `${created.getFullYear()}-${String(created.getMonth()+1).padStart(2,"0")}-${String(created.getDate()).padStart(2,"0")}`
+                  : "";
+                const summary = (tx.summary || "商品のおかいもの").replace(/\n/g," / ");
+
+                li.innerHTML = `
+                  <div class="tx-main">
+                    <div class="tx-top">
+                      <span class="badge badge-ok">${tx.status || "通常"}</span>
+                      <span class="tx-time">${timeStr} / ${dateStr}</span>
+                    </div>
+                    <div class="tx-title">${summary}</div>
+                    <div class="tx-sub">決済ID: ${tx.id}</div>
+                    <div class="tx-detail">
+                      金額：${formatYen(tx.amount)} / 純売上：${formatYen(tx.net_amount)}<br>
+                      ステータス：${tx.status}
+                    </div>
+                  </div>
+                  <div class="tx-amt">${formatYen(tx.net_amount ?? tx.amount)}</div>
+                `;
+                li.addEventListener("click", () => {
+                  li.classList.toggle("expanded");
+                });
+                txListEl.appendChild(li);
+              }
+            }
+          }
+
+        } catch (e){
+          console.error("loadSummary error", e);
+          if (homeHintEl) homeHintEl.textContent = "通信エラーが発生しました。ネットワークを確認してください。";
+        }
+      }
+
+      loadSummary();
+    })();
+  </script>
+</body>
+</html>
