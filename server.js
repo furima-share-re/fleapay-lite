@@ -1390,52 +1390,92 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
   }
 });
 
-// ====== AIフォトフレーム生成 ======
-app.post("/api/photo-frame", upload.single("image"), async (req, res) => {
+// ====== AI生活感除去 / 値札消し ======
+app.post("/api/photo-clean", upload.single("image"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "no_image" });
+    const f = req.file;
+    if (!f || !f.buffer) {
+      return res.status(400).json({ error: "file_required" });
     }
 
-    const imageBuffer = req.file.buffer;
-    const base64Image = imageBuffer.toString("base64");
+    const prompt = `
+      Remove all price tags, numeric price labels, stickers, receipts,
+      and any objects that look like "price information".
+      Also remove background clutter such as bags, boxes, and other people's hands.
+      Lightly enhance brightness (+10%) and saturation (+6%).
+      Keep the original product exactly unchanged.
+      DO NOT modify faces, items, or colors unnaturally.
+      Output should look like a natural photo ready for SNS.
+    `;
 
-    const messages = [
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "この画像を美しいフォトフレームで装飾してください。"
-          },
-          {
-            type: "image_url",
-            image_url: {
-              url: `data:image/jpeg;base64,${base64Image}`
-            }
-          }
-        ]
-      }
-    ];
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages,
-      max_tokens: 1000
+    const result = await openai.images.edits({
+      model: "gpt-image-1",
+      image: f.buffer,
+      prompt,
+      size: "1024x1536",
+      response_format: "b64_json"
     });
 
-    const resultText = completion.choices[0]?.message?.content || "";
+    const buf = Buffer.from(result.data[0].b64_json, "base64");
+    res.set("Content-Type", "image/png");
+    res.send(buf);
 
-    // 実際の画像生成ロジックはここに実装
-    // 現在はプレースホルダーとしてテキストレスポンスのみ返す
-    res.json({
-      success: true,
-      message: resultText,
-      note: "実際の画像生成は未実装です"
-    });
   } catch (e) {
-    console.error("photo-frame error", e);
-    res.status(500).json(sanitizeError(e, isDevelopment));
+    console.error("photo-clean error", e);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ====== AIフォトフレーム生成API(暫定版・DB不要) ======
+app.post("/api/photo-frame", upload.single("image"), async (req, res) => {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: "OPENAI_API_KEY not set" });
+    }
+
+    const f = req.file;
+    if (!f || !f.buffer) {
+      return res.status(400).json({ error: "file_required" });
+    }
+
+    const prompt =
+      process.env.OPENAI_PROMPT_PHOTO_FRAME ||
+      "Cute up this photo with a soft pink sakura frame. Keep the original person as they are.";
+
+    // mime は一応判定だけしておく(今は jpeg 固定で返す)
+    let mime = f.mimetype || "image/jpeg";
+    const name = (f.originalname || "").toLowerCase();
+    if (mime === "application/octet-stream") {
+      if (name.endsWith(".png")) mime = "image/png";
+      else if (name.endsWith(".webp")) mime = "image/webp";
+      else if (name.endsWith(".heic")) mime = "image/heic";
+      else mime = "image/jpeg";
+    }
+
+    // ★ gpt-image-1 には「data:～」ではなく素の base64 文字列を渡す
+    const base64Image = f.buffer.toString("base64");
+
+    const result = await openai.images.generate({
+      model: process.env.AI_MODEL_IMAGE || "gpt-image-1",
+      prompt,
+      size: "1024x1536",
+      n: 1,
+      response_format: "b64_json",
+      image: base64Image
+    });
+
+    const b64 = result.data[0].b64_json;
+    const buf = Buffer.from(b64, "base64");
+
+    res.set("Content-Type", "image/jpeg");
+    res.send(buf);
+  } catch (e) {
+    console.error("photo-frame error", e?.response?.data || e);
+    const detail =
+      e?.response?.data?.error?.message ||
+      e?.message ||
+      "unknown_error";
+    res.status(500).json({ error: "internal_error", detail });
   }
 });
 
