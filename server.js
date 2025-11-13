@@ -69,6 +69,17 @@ async function resolveSellerAccountId(sellerId, provided) {
   return r.rows[0]?.stripe_account_id || null;
 }
 
+// 出店者用URL(販売画面/購入画面/ダッシュボード)を一括生成
+function buildSellerUrls(publicId, stripeAccountId) {
+  const base = (BASE_URL || "").replace(/\/+$/, "");
+  const sellerUrl = `${base}/Seller-purchase.html?s=${encodeURIComponent(publicId)}`;
+  const checkoutUrl = `${base}/checkout.html?s=${encodeURIComponent(publicId)}${
+    stripeAccountId ? `&acct=${encodeURIComponent(stripeAccountId)}` : ""
+  }`;
+  const dashboardUrl = `${base}/seller-dashboard.html?s=${encodeURIComponent(publicId)}`;
+  return { sellerUrl, checkoutUrl, dashboardUrl };
+}
+
 // JSTの日付境界(0:00)を求めるヘルパー
 function jstDayBounds() {
   const nowUtc = new Date();
@@ -330,15 +341,13 @@ app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
     const row = rows[0];
 
     // 出店者・購入者向けURLからはトークンを排除(public_id のみ)
-    const sellerUrl = `${BASE_URL}/Seller-purchase.html?s=${encodeURIComponent(row.public_id)}`;
-    const checkoutUrl = `${BASE_URL}/checkout.html?s=${encodeURIComponent(row.public_id)}${row.stripe_account_id ? `&acct=${encodeURIComponent(row.stripe_account_id)}` : ""}`;
-    const dashboardUrl = `${BASE_URL}/seller-dashboard.html?s=${encodeURIComponent(row.public_id)}`;
+    const urls = buildSellerUrls(row.public_id, row.stripe_account_id || null);
 
     res.json({
       publicId: row.public_id,
       stripeAccountId: row.stripe_account_id || null,
       apiToken: row.api_token, // 管理者用。フロントURLには出さない。
-      urls: { sellerUrl, checkoutUrl, dashboardUrl }
+      urls
     });
   } catch (e) {
     console.error("issue_token", e);
@@ -543,10 +552,15 @@ app.get("/api/seller/summary", async (req, res) => {
     if (!sellerId) return res.status(400).json({ error: "sellerId required" });
 
     const sellerRow = await pool.query(
-      `select public_id, display_name from sellers where public_id=$1 limit 1`,
+      `select public_id, display_name, stripe_account_id
+         from sellers
+        where public_id=$1
+        limit 1`,
       [sellerId]
     );
     const displayName = sellerRow.rows[0]?.display_name || sellerId;
+    const stripeAccountId = sellerRow.rows[0]?.stripe_account_id || null;
+    const urls = buildSellerUrls(sellerId, stripeAccountId);
 
     const { todayStart, tomorrowStart, yesterdayStart } = jstDayBounds();
 
@@ -580,7 +594,7 @@ app.get("/api/seller/summary", async (req, res) => {
       ),
       pool.query(
         `select
-            split_part(coalesce(summary,''), E'\n', 1) as item_key,
+            split_part(coalesce(summary,''), E'\\n', 1) as item_key,
             coalesce(sum(net_amount),0) as net,
             count(*) as count
          from payments
@@ -667,7 +681,10 @@ app.get("/api/seller/summary", async (req, res) => {
         avg: totalCount ? Math.round(totalNet / totalCount) : 0,
         since: firstAt ? new Date(firstAt).toISOString() : null
       },
-      topItems
+      topItems,
+
+      // 出店者用URLセット(販売画面 / 購入画面 / ダッシュボード)
+      urls
     });
   } catch (e) {
     console.error("seller/summary error", e);
@@ -882,6 +899,55 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
     console.error("analyze-item error", e?.response?.data || e);
     if (e?.code === "LIMIT_FILE_SIZE") return res.status(413).json({ error: "file_too_large" });
     res.status(500).json({ error: "internal_error", detail: e?.response?.data?.error?.message || e.message });
+  }
+});
+
+// ====== AIフォトフレーム生成API(暫定版・DB不要) ======
+app.post("/api/photo-frame", upload.single("image"), async (req, res) => {
+  try {
+    if (!process.env.OPENAI_API_KEY)
+      return res.status(500).json({ error: "OPENAI_API_KEY not set" });
+
+    const f = req.file;
+    if (!f || !f.buffer)
+      return res.status(400).json({ error: "file_required" });
+
+    // ---- プロンプトを環境変数から取得(今回の追加ポイント) ----
+    const prompt = process.env.OPENAI_PROMPT_PHOTO_FRAME || "Please beautify the photo.";
+
+    // ---- MIME判定(analyze-item と同じロジック) ----
+    let mime = f.mimetype || "image/jpeg";
+    const name = (f.originalname || "").toLowerCase();
+    if (mime === "application/octet-stream") {
+      if (name.endsWith(".png")) mime = "image/png";
+      else if (name.endsWith(".webp")) mime = "image/webp";
+      else if (name.endsWith(".heic")) mime = "image/heic";
+      else mime = "image/jpeg";
+    }
+    const dataUrl = `data:${mime};base64,${f.buffer.toString("base64")}`;
+
+    // ---- OpenAI 画像生成(フォトフレーム加工) ----
+    const result = await openai.images.generate({
+      model: process.env.AI_MODEL_IMAGE || "gpt-image-1",
+      prompt,
+      size: "1080x1440",
+      response_format: "b64_json",
+      // 入力画像をモデルに渡す(gpt-image-1 は img2img サポート)
+      image: dataUrl
+    });
+
+    const b64 = result.data[0].b64_json;
+    const buf = Buffer.from(b64, "base64");
+
+    res.set("Content-Type", "image/jpeg");
+    return res.send(buf);
+
+  } catch (e) {
+    console.error("photo-frame error", e?.response?.data || e);
+    res.status(500).json({
+      error: "internal_error",
+      detail: e?.response?.data?.error?.message || e.message
+    });
   }
 });
 
