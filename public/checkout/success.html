@@ -439,10 +439,10 @@
         </p>
       </section>
 
-      <!-- ▼ SNS共有エリア：今は非表示。再開時は sns-disabled を外す -->
+      <!-- ▼ SNS共有エリア:今は非表示。再開時は sns-disabled を外す -->
       <div class="sns-section sns-disabled" id="snsSection">
         <p class="share-title" data-i18n="shareTitle">
-          旅のフリマ体験を、SNSでシェアしませんか？
+          旅のフリマ体験を、SNSでシェアしませんか?
         </p>
 
         <div class="actions">
@@ -538,7 +538,7 @@
       frameEl.classList.toggle('hide');
     });
 
-    // 写真保存（実装側で実画像がある場合に差し替え可）
+    // 写真保存(実装側で実画像がある場合に差し替え可)
     const savePhotoBtn = document.getElementById('savePhotoBtn');
     savePhotoBtn.addEventListener('click', ()=>{
       alert('写真の保存は、この画面のスクリーンショットでもご利用いただけます。実装に応じてダウンロード処理を追加できます。');
@@ -636,7 +636,7 @@
         photoHelper: "※写真はAI加工のために一時的に送信されますが、サーバーには保存されません。完成した画像はお客さまの端末にだけ保存されます。",
         photoFrameToggle: "フォトフレーム ON / OFF",
         savePhoto: "写真を保存する",
-        shareTitle: "旅のフリマ体験を、SNSでシェアしませんか？",
+        shareTitle: "旅のフリマ体験を、SNSでシェアしませんか?",
         shareInsta: "Instagramでシェア",
         shareTiktok: "TikTokでシェア",
         shareX: "Xでシェア",
@@ -649,7 +649,7 @@
         lead: "Please show this screen to the shop staff.",
         notice: "<strong>✅ Your payment has been completed.</strong><br>The staff will hand you your item.<br><small>*Refunds and exchanges are not available after receiving your item.</small>",
         photoLabel: "Take your own photo & let AI make it cute",
-        photoPlaceholder: "1) Take or choose a photo below<br>2) Tap "Make it cute with AI" and your framed memory photo will appear here.",
+        photoPlaceholder: "1) Take or choose a photo below<br>2) Tap 『Make it cute with AI』 and your framed memory photo will appear here.",
         selectPhoto: "Choose / take a photo",
         runAi: "Make it cute with AI",
         photoHelper: "Your photo is sent to AI only for processing and is not stored on the server. The final image is saved only on your device.",
@@ -666,20 +666,20 @@
         badge: "付款完成",
         title: "付款已完成",
         lead: "请将此画面出示给摊主。",
-        notice: "<strong>✅ 付款已完成。</strong><br>摊主会为您递上商品。<br><small>※领取商品后，恕不接受退换。</small>",
-        photoLabel: "用自己的照片，让 AI 打造成可爱的纪念照",
-        photoPlaceholder: "① 点击下方按钮拍照或选择照片<br>② 点"用 AI 可爱化"，带樱花相框的纪念照会显示在这里。",
+        notice: "<strong>✅ 付款已完成。</strong><br>摊主会为您递上商品。<br><small>※领取商品后,恕不接受退换。</small>",
+        photoLabel: "用自己的照片,让 AI 打造成可爱的纪念照",
+        photoPlaceholder: "① 点击下方按钮拍照或选择照片<br>② 点击「用 AI 可爱化」,带樱花相框的纪念照会显示在这里。",
         selectPhoto: "选择 / 拍摄照片",
         runAi: "用 AI 可爱化",
-        photoHelper: "照片仅用于 AI 处理，不会保存在服务器上。完成后的图片只会保存在您的设备中。",
+        photoHelper: "照片仅用于 AI 处理,不会保存在服务器上。完成后的图片只会保存在您的设备中。",
         photoFrameToggle: "相框 开 / 关",
         savePhoto: "保存照片",
-        shareTitle: "要不要在 SNS 上分享这次市集体验？",
+        shareTitle: "要不要在 SNS 上分享这次市集体验?",
         shareInsta: "分享到 Instagram",
         shareTiktok: "分享到 TikTok",
         shareX: "分享到 X",
         hashtag: "欢迎使用 #Fleapay #TokyoFleaMarket #JapanFinds 分享您的旅途收获。",
-        meta: "感谢您支持本地创作者与跳蚤市集文化。<br>※如有需要，工作人员可能会请您确认付款编号。"
+        meta: "感谢您支持本地创作者与跳蚤市集文化。<br>※如有需要,工作人员可能会请您确认付款编号。"
       }
     };
 
@@ -704,7 +704,7 @@
       });
     });
 
-    // 初期言語（ブラウザからある程度推定）
+    // 初期言語(ブラウザからある程度推定)
     (function initLang(){
       const nav = navigator.language || 'ja';
       if(nav.startsWith('en')) applyLang('en');
@@ -712,7 +712,7 @@
       else applyLang('ja');
     })();
 
-    // シェア処理（将来SNS連携用の土台として残す）
+    // シェア処理(将来SNS連携用の土台として残す)
     function buildShareText(lang){
       const t = dict[lang] || dict.ja;
       return {
@@ -734,7 +734,7 @@
 
       const textBase = s.text + ' ' + s.hashtags;
 
-      // 将来：ここを「各SNSアプリを開く処理」に差し替える想定
+      // 将来:ここを「各SNSアプリを開く処理」に差し替える想定
       if(navigator.share){
         navigator.share({
           title: 'Fleapay',
