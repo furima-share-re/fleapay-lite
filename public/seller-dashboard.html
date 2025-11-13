@@ -297,6 +297,37 @@
       background:#f9fafb;
     }
 
+    /* 販売画面リンク＆QR表示 */
+    .qr-box{
+      margin-top:6px;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px dashed var(--border);
+      background:#f9fafb;
+      text-align:center;
+    }
+    .qr-img{
+      width:160px;
+      max-width:60%;
+      margin:6px auto 4px;
+      display:block;
+    }
+    .qr-url{
+      font-size:.78rem;
+      word-break:break-all;
+      color:var(--sub);
+      text-decoration:none;
+    }
+    .qr-url-btn{
+      margin-top:6px;
+      font-size:.78rem;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#fff;
+      cursor:pointer;
+    }
+
     .nav {
       position:fixed;
       left:0;
@@ -470,6 +501,25 @@
           <div class="field-value">自動（おすすめ）</div>
         </div>
 
+        <div class="field">
+          <div class="field-label">販売画面（店員さん用）</div>
+          <div class="field-value">
+            <div class="qr-box">
+              <img id="purchase-qr" class="qr-img" alt="販売画面QRコード" />
+              <a id="purchase-url" class="qr-url" href="#" target="_blank" rel="noopener">
+                販売画面URL をよみこみ中…
+              </a>
+              <button type="button" class="qr-url-btn" id="copy-purchase-url">
+                URLをコピー
+              </button>
+            </div>
+            <div class="hint">
+              このQRは「販売画面（Seller-purchase.htm）」への固定リンクです。<br>
+              店員さん専用として、レジ用スマホなどで読み取ってください。
+            </div>
+          </div>
+        </div>
+
         <div class="hint">
           くわしい設定や 返金・チャージバックの処理は、すべてFleapay運営が 行います。
         </div>
@@ -529,6 +579,9 @@
       const recentListEl = $("#recent-list");
       const recentHintEl = $("#recent-hint");
       const txListEl     = $("#tx-list");
+      const purchaseUrlEl = $("#purchase-url");
+      const purchaseQrEl  = $("#purchase-qr");
+      const copyBtnEl     = $("#copy-purchase-url");
 
       function formatYen(n){
         if (!Number.isFinite(n)) return "¥—";
@@ -558,6 +611,36 @@
             console.error("summary error", data);
             if (homeHintEl) homeHintEl.textContent = "売上データ取得でエラーが発生しました。";
             return;
+          }
+
+          // 販売画面（Seller-purchase.htm）の固定URLを生成
+          // 実ファイル名に合わせてパスは調整してください（例: /Seller-purchase.htm, /seller-purchase.html など）
+          const baseUrl = `${location.origin.replace(/\/$/,"")}/Seller-purchase.htm`;
+          const purchaseUrl = sellerId
+            ? `${baseUrl}?s=${encodeURIComponent(sellerId)}`
+            : baseUrl;
+
+          // 販売画面URLリンク
+          if (purchaseUrlEl){
+            purchaseUrlEl.textContent = purchaseUrl;
+            purchaseUrlEl.href = purchaseUrl;
+          }
+
+          // 販売画面QR（外部のQR生成APIを利用）
+          if (purchaseQrEl){
+            const qrApi = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=";
+            purchaseQrEl.src = qrApi + encodeURIComponent(purchaseUrl);
+          }
+
+          // コピー ボタン
+          if (copyBtnEl){
+            copyBtnEl.onclick = () => {
+              navigator.clipboard?.writeText(purchaseUrl).then(()=>{
+                alert("販売画面のURLをコピーしました");
+              }).catch(()=>{
+                alert("コピーに失敗しました。手動でコピーしてください。");
+              });
+            };
           }
 
           // 店名
