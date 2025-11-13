@@ -24,7 +24,7 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
 const PENDING_TTL_MIN = Number(process.env.PENDING_TTL_MIN || 30);
 const BASE_URL = (process.env.BASE_URL || "").replace(/\/+$/, "");
 
-// ====== multer（10MB、拡張子ゆるめ、メモリ格納） ======
+// ====== multer(10MB、拡張子ゆるめ、メモリ格納) ======
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }
@@ -69,7 +69,7 @@ async function resolveSellerAccountId(sellerId, provided) {
   return r.rows[0]?.stripe_account_id || null;
 }
 
-// JSTの日付境界（0:00）を求めるヘルパー
+// JSTの日付境界(0:00)を求めるヘルパー
 function jstDayBounds() {
   const nowUtc = new Date();
   const jstString = nowUtc.toLocaleString("en-US", { timeZone: "Asia/Tokyo" });
@@ -88,7 +88,7 @@ function jstDayBounds() {
 // ====== CORS / 以降のミドルウェア ======
 app.use(cors());
 
-// Stripe webhook は raw body 必須（json より前） ======
+// Stripe webhook は raw body 必須(json より前) ======
 app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
@@ -102,7 +102,7 @@ app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (r
   try {
     const t = event.type;
 
-    // --- 決済成功：payment_intent.succeeded ---
+    // --- 決済成功:payment_intent.succeeded ---
     if (t === "payment_intent.succeeded") {
       const pi = event.data.object;
       const sellerId = pi.metadata?.sellerId || "";
@@ -152,7 +152,7 @@ app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (r
       }
     }
 
-    // --- 返金：charge.refunded / charge.refund.updated ---
+    // --- 返金:charge.refunded / charge.refund.updated ---
     if (t === "charge.refunded" || t === "charge.refund.updated") {
       const ch = event.data.object;
       const piId = ch.payment_intent || null;
@@ -184,7 +184,7 @@ app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (r
       }
     }
 
-    // --- チャージバック発生：charge.dispute.created ---
+    // --- チャージバック発生:charge.dispute.created ---
     if (t === "charge.dispute.created") {
       const dispute = event.data.object;
       const chargeId = dispute.charge || null;
@@ -208,7 +208,7 @@ app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (r
       }
     }
 
-    // --- チャージバッククローズ：charge.dispute.closed ---
+    // --- チャージバッククローズ:charge.dispute.closed ---
     if (t === "charge.dispute.closed") {
       const dispute = event.data.object;
       const chargeId = dispute.charge || null;
@@ -293,13 +293,13 @@ async function initDb() {
     create index if not exists payments_seller_time_idx
       on payments (seller_public_id, created_at desc);
   `);
-  // 古い環境向けのカラム追加（安全に）。
+  // 古い環境向けのカラム追加(安全に)。
   await pool.query(`alter table if exists pending_charges add column if not exists summary text;`);
   console.log("DB init done");
 }
 initDb().catch(e => console.error("DB init error", e));
 
-// ====== 認証（管理API用） ======
+// ====== 認証(管理API用) ======
 function requireAdmin(req, res, next) {
   const t = req.header("x-admin-token");
   if (!t || t !== ADMIN_TOKEN) return res.status(401).json({ error: "unauthorized" });
@@ -307,7 +307,7 @@ function requireAdmin(req, res, next) {
 }
 
 // ====== 管理API ======
-// セキュリティ観点から、URLにはトークンを出さない（?t=sk_seller_... をやめる）
+// セキュリティ観点から、URLにはトークンを出さない(?t=sk_seller_... をやめる)
 app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
   const { publicId, email, displayName, stripeAccountId, rotate } = req.body || {};
   if (!publicId) return res.status(400).json({ error: "publicId required" });
@@ -329,7 +329,7 @@ app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
     ]);
     const row = rows[0];
 
-    // 出店者・購入者向けURLからはトークンを排除（public_id のみ）
+    // 出店者・購入者向けURLからはトークンを排除(public_id のみ)
     const sellerUrl = `${BASE_URL}/Seller-purchase.html?s=${encodeURIComponent(row.public_id)}`;
     const checkoutUrl = `${BASE_URL}/checkout.html?s=${encodeURIComponent(row.public_id)}${row.stripe_account_id ? `&acct=${encodeURIComponent(row.stripe_account_id)}` : ""}`;
     const dashboardUrl = `${BASE_URL}/seller-dashboard.html?s=${encodeURIComponent(row.public_id)}`;
@@ -346,7 +346,7 @@ app.post("/api/admin/sellers/issue_token", requireAdmin, async (req, res) => {
   }
 });
 
-// ====== 出店者画面：候補金額 ======
+// ====== 出店者画面:候補金額 ======
 app.get("/api/purchase/options", async (req, res) => {
   try {
     const sellerId = req.query.s;
@@ -405,7 +405,7 @@ app.post("/api/pending/start", async (req, res) => {
   }
 });
 
-// ====== 購入者ページ：最新金額 ======
+// ====== 購入者ページ:最新金額 ======
 app.get("/api/price/latest", async (req, res) => {
   try {
     const sellerId = String(req.query.s || "");
@@ -429,7 +429,7 @@ app.get("/api/price/latest", async (req, res) => {
   }
 });
 
-// ====== Checkout セッション作成（複数明細対応 + 旧互換） ======
+// ====== Checkout セッション作成(複数明細対応 + 旧互換) ======
 app.post("/api/checkout/session", async (req, res) => {
   try {
     if (!isSameOrigin(req)) return res.status(403).json({ error: "forbidden_origin" });
@@ -536,7 +536,7 @@ app.post("/api/checkout/session", async (req, res) => {
   }
 });
 
-// ====== 出店者ダッシュボード用：売上サマリーAPI ======
+// ====== 出店者ダッシュボード用:売上サマリーAPI ======
 app.get("/api/seller/summary", async (req, res) => {
   try {
     const sellerId = String(req.query.s || "");
@@ -618,7 +618,7 @@ app.get("/api/seller/summary", async (req, res) => {
     const firstAt = firstRes.rows[0]?.first_at || null;
 
     const topItems = topItemsRes.rows.map(r => ({
-      key: r.item_key || "（不明）",
+      key: r.item_key || "(不明)",
       net: Number(r.net || 0),
       count: Number(r.count || 0)
     }));
@@ -637,7 +637,7 @@ app.get("/api/seller/summary", async (req, res) => {
       sellerId,
       displayName,
 
-      // 既存フロント向けのショートカット（純売上ベース）
+      // 既存フロント向けのショートカット(純売上ベース)
       salesToday: todayNet,
       countToday: todayCount,
       avgToday: todayCount ? Math.round(todayNet / todayCount) : 0,
@@ -675,7 +675,92 @@ app.get("/api/seller/summary", async (req, res) => {
   }
 });
 
-// ====== AI画像解析（軽量・即導入の強化版） ======
+// ====== 一時版:Stripe から直接取得するダッシュボードAPI ======
+app.get("/api/seller/summary-stripe", async (req, res) => {
+  try {
+    const sellerId = String(req.query.s || "");
+    if (!sellerId) return res.status(400).json({ error: "sellerId required" });
+
+    // 出店者名だけDBから取得(なければIDのまま)
+    let displayName = sellerId;
+    try {
+      const sellerRow = await pool.query(
+        `select public_id, display_name from sellers where public_id=$1 limit 1`,
+        [sellerId]
+      );
+      if (sellerRow.rows[0]?.display_name)
+        displayName = sellerRow.rows[0].display_name;
+    } catch (e) {
+      console.warn("summary-stripe: seller lookup error (fallback to ID)", e.message);
+    }
+
+    // JST 今日 の開始/終了をUNIX秒で
+    const { todayStart, tomorrowStart } = jstDayBounds();
+    const gte = Math.floor(todayStart.getTime() / 1000);
+    const lt  = Math.floor(tomorrowStart.getTime() / 1000);
+
+    // PaymentIntent Search API で当日分だけ取得
+    const escSeller = sellerId.replace(/"/g, '\\"');
+    const query = [
+      `status:"succeeded"`,
+      `metadata["sellerId"]:"${escSeller}"`,
+      `created>=${gte}`,
+      `created<${lt}`
+    ].join(" AND ");
+
+    const search = await stripe.paymentIntents.search({
+      query,
+      limit: 100
+    });
+
+    const list = search.data || [];
+
+    let gross = 0;
+    for (const pi of list) {
+      const amt =
+        typeof pi.amount_received === "number" ? pi.amount_received :
+        typeof pi.amount === "number" ? pi.amount : 0;
+      gross += amt;
+    }
+
+    const countToday = list.length;
+    const salesToday = gross;
+    const avgToday = countToday ? Math.round(salesToday / countToday) : 0;
+
+    const recent = [...list]
+      .sort((a, b) => (b.created || 0) - (a.created || 0))
+      .slice(0, 20)
+      .map(pi => {
+        const amt =
+          typeof pi.amount_received === "number" ? pi.amount_received :
+          typeof pi.amount === "number" ? pi.amount : 0;
+        return {
+          id: pi.id,
+          amount: amt,
+          net_amount: amt, // 一時版のため返金・チャージバックは未反映
+          currency: pi.currency || "jpy",
+          status: pi.status || "succeeded",
+          summary: pi.metadata?.summary || pi.description || "",
+          created: typeof pi.created === "number" ? pi.created : null
+        };
+      });
+
+    res.json({
+      mode: "stripeDirect",
+      sellerId,
+      displayName,
+      salesToday,
+      countToday,
+      avgToday,
+      recent
+    });
+  } catch (e) {
+    console.error("seller/summary-stripe error", e);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ====== AI画像解析(軽量・即導入の強化版) ======
 app.post("/api/analyze-item", upload.any(), async (req, res) => {
   try {
     if (!process.env.OPENAI_API_KEY)
@@ -686,9 +771,9 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
       return res.status(400).json({ error: "file_required" });
 
     // --- helpers ---
-    const zen2han = (s) => String(s || "").replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+    const zen2han = (s) => String(s || "").replace(/[0-9]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
     const intLoose = (s) => {
-      const t = zen2han(String(s)).replace(/[,，\s￥¥円]/g, "");
+      const t = zen2han(String(s)).replace(/[,、\s¥¥円]/g, "");
       const n = Number(t);
       return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
     };
@@ -705,10 +790,10 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
     })();
     const dataUrl = `data:${MIME};base64,${f.buffer.toString("base64")}`;
 
-    // ---- 1st: 価格・数量まで（JSON強制） ----
+    // ---- 1st: 価格・数量まで(JSON強制) ----
     const promptFull = `
-画像からテキストをOCRし、「品名」「数量」「単価（円）」「小計（円）」「合計（円）」を可能な限り抽出してください。
-出力はこのJSONだけ（説明文なし）:
+画像からテキストをOCRし、「品名」「数量」「単価(円)」「小計(円)」「合計(円)」を可能な限り抽出してください。
+出力はこのJSONだけ(説明文なし):
 {
   "items":[{"name":"<商品名>","qty":<整数>,"unit_price":<整数|null>,"subtotal":<整数|null>}],
   "total":<整数|null>
@@ -747,7 +832,7 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
       total = sum > 0 ? sum : null;
     }
 
-    // ---- 2nd: 品名だけ（JSON強制） ----
+    // ---- 2nd: 品名だけ(JSON強制) ----
     let rawTrail = null;
     if (items.length === 0) {
       const promptNames = `
@@ -782,12 +867,12 @@ app.post("/api/analyze-item", upload.any(), async (req, res) => {
       } catch {}
     }
 
-    // summary（* 区切り、単価不明は?）
+    // summary(* 区切り、単価不明は?)
     const summary = items.length
       ? items.map(it => `${it.name} * ${it.unit_price ?? "?"}円 * ${it.qty}`).join("\n")
       : "";
 
-    // 空でも200で返す（UIの価格パッドが続行）
+    // 空でも200で返す(UIの価格パッドが続行)
     return res.json({
       items, total, summary,
       raw: rawTrail ? (full.choices?.[0]?.message?.content + "\n---\n" + rawTrail) : (full.choices?.[0]?.message?.content || "")
