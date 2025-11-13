@@ -514,7 +514,7 @@
               </button>
             </div>
             <div class="hint">
-              このQRは「販売画面（Seller-purchase.htm）」への固定リンクです。<br>
+              このQRは「販売画面（seller-purchase.html）」への固定リンクです。<br>
               店員さん専用として、レジ用スマホなどで読み取ってください。
             </div>
           </div>
@@ -613,20 +613,21 @@
             return;
           }
 
-          // 販売画面（Seller-purchase.htm）の固定URLを生成
-          // 実ファイル名に合わせてパスは調整してください（例: /Seller-purchase.htm, /seller-purchase.html など）
-          const baseUrl = `${location.origin.replace(/\/$/,"")}/Seller-purchase.htm`;
+          // 販売画面URL（実ファイルに合わせて修正）
+          const baseUrl = `${location.origin.replace(/\/$/,"")}/seller-purchase.html`;
+
+          // 末尾の ?s=ID を付ける
           const purchaseUrl = sellerId
             ? `${baseUrl}?s=${encodeURIComponent(sellerId)}`
             : baseUrl;
 
-          // 販売画面URLリンク
+          // URLリンク
           if (purchaseUrlEl){
             purchaseUrlEl.textContent = purchaseUrl;
             purchaseUrlEl.href = purchaseUrl;
           }
 
-          // 販売画面QR（外部のQR生成APIを利用）
+          // QR生成
           if (purchaseQrEl){
             const qrApi = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=";
             purchaseQrEl.src = qrApi + encodeURIComponent(purchaseUrl);
