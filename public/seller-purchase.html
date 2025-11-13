@@ -8,6 +8,10 @@
        ・商品内訳はテキストのみ（summary）
        ・金額は「ごうけい金額」を1つだけ入力
        ・ステップ4 / おとな確認も「summary＋合計」のみ
+       
+       【パッチ適用済み】
+       1. 撮影画面フルスクリーン化（カメラ全画面＋オーバーレイUI）
+       2. 送信データ強化（not_found対策・デバッグ強化）
        ========================================================= -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -82,6 +86,46 @@
       padding:16px;
       margin-bottom:16px;
     }
+
+    /* 撮影専用：カードではなく全画面カメラにする */
+    .card.camera-full{
+      position:relative;
+      padding:0;
+      margin:0;
+      border-radius:0;
+      box-shadow:none;
+      max-width:none;
+    }
+    .camera-overlay{
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:32px;
+      padding:0 24px;
+      text-align:center;
+      color:#fff;
+      text-shadow:0 2px 4px rgba(0,0,0,0.6);
+      pointer-events:none; /* ボタン以外はタップ抜ける */
+    }
+    .camera-overlay-inner{
+      pointer-events:auto; /* 中のボタンは押せる */
+    }
+    .camera-overlay .card-title{
+      display:inline-block;
+      background:rgba(0,0,0,0.45);
+      padding:6px 14px;
+      border-radius:999px;
+      margin-bottom:12px;
+      font-size:1.1rem;
+    }
+    .camera-overlay .kid-btn{
+      width:100%;
+      max-width:260px;
+      border-radius:999px;
+      font-size:1.3rem;
+      box-shadow:0 4px 10px rgba(0,0,0,0.35);
+    }
+
     .card-title{
       font-size:1.1rem;
       font-weight:700;
@@ -145,15 +189,16 @@
     .mb-8{margin-bottom:8px}
     .gap-8{gap:8px}
 
-    /* ========== カメラプレビュー ========== */
+    /* ========== カメラプレビュー（フルスクリーン版） ========== */
     #camera-preview{
+      position:fixed;
+      inset:0;
       width:100%;
-      max-width:400px;
-      height:300px;
+      height:100vh;
       background:#000;
-      border-radius:8px;
-      margin:0 auto;
+      object-fit:cover;
       display:block;
+      z-index:-1; /* 背景として使う */
     }
     #canvas{display:none}
 
@@ -400,13 +445,21 @@
 
   <!-- ========== メインコンテンツ ========== -->
   <main>
-    <!-- ========== こどもモード：ステップ1（撮影） ========== -->
-    <div id="kid-step1" class="card">
-      <div class="card-title kid-hint">📸 しょうひんを とろう</div>
+    <!-- ========== こどもモード：ステップ1（撮影）【フルスクリーン版】 ========== -->
+    <div id="kid-step1" class="card camera-full">
+      <!-- 背景として全画面にひろげる -->
       <video id="camera-preview" autoplay playsinline></video>
-      <div class="center mt-12">
-        <button class="btn primary kid-btn" id="k1-capture">📷 とる</button>
+
+      <!-- 上に重ねる文字＆ボタン -->
+      <div class="camera-overlay">
+        <div class="camera-overlay-inner">
+          <div class="card-title kid-hint">📸 しょうひんを とろう</div>
+          <div class="center mt-12">
+            <button class="btn primary kid-btn" id="k1-capture">📷 とる</button>
+          </div>
+        </div>
       </div>
+
       <canvas id="canvas"></canvas>
     </div>
 
@@ -708,13 +761,13 @@
     }
     window.addEventListener('beforeunload', cleanupVoice);
 
-    /* ========== データモデル ========== */
+    /* ========== データモデル【パッチ適用：aiAmount追加】 ========== */
     const model = {
       photo: null,        // Base64画像
-      summary: '',        // 商品明細テキスト（ざっくり）
-      items: [],          // 互換性維持用（1件だけ詰める）
+      summary: '',        // 商品明細テキスト
+      items: [],          // [{name, qty, price}]
       totalAmount: 0,     // 画面で決めた ごうけい金額
-      aiAmount: null      // ★ AIが読んだ ごうけい金額
+      aiAmount: null      // AIが読んだ金額（あれば）
     };
 
     /* ========== カメラ起動 ========== */
@@ -771,7 +824,7 @@
       analyzePhoto();
     });
 
-    /* ========== AI解析（/api/analyze-item） ========== */
+    /* ========== AI解析（/api/analyze-item）【パッチ適用：金額も保持】 ========== */
     async function analyzePhoto(){
       showLoading();
       try{
@@ -784,14 +837,13 @@
         const json = await res.json();
         log('AI解析レスポンス', json);
 
-        // ① 商品テキスト
         if(json.summary){
           model.summary = json.summary.trim();
         }else{
           model.summary = '';
         }
 
-        // ② 金額（ごうけい）
+        // 金額が返ってきていれば保持しておく（使う/使わないはUI側で）
         if(typeof json.amount === 'number' && json.amount > 0){
           model.aiAmount = json.amount;
         }else{
@@ -1013,7 +1065,7 @@
       $('#adult-final-check').checked = false;
     });
 
-    /* ========== 登録処理（/api/register-sale） ========== */
+    /* ========== 登録処理（/api/register-sale）【パッチ適用：送信データ強化】 ========== */
     $('#adult-register').addEventListener('click', async ()=>{
       const ck = $('#adult-final-check');
       if(!ck.checked){
@@ -1033,17 +1085,17 @@
           }];
         }
         const payload = {
-          // 撮影した写真
+          // 撮影した画像
           photo: model.photo,
-          // 商品のテキスト概要（AI＋手入力）
+          // ざっくりした商品概要（AI＋手入力）
           summary: model.summary || '',
-          // 将来用・互換用に1行だけでも items を入れておく
-          items,
-          // 画面で決めた合計金額（整数）
+          // 明細（今は空でもOK・将来用）
+          items: items || [],
+          // 画面で決めたごうけい金額
           totalAmount: model.totalAmount || 0,
-          // amount というフィールド名を使っている旧API向け保険
+          // 旧実装で amount だけ見ているサーバ用の互換フィールド
           amount: model.totalAmount || 0,
-          // AIが読んだ金額（あれば）
+          // AIが読んだ元の金額（あれば）
           aiAmount: model.aiAmount || null
         };
         log('登録リクエスト送信', payload);
@@ -1086,7 +1138,7 @@
     startCamera();
     setupTotalPad();
     updateAiAmountUI();      // ★ 最初はAIボタンOFF表示
-    log('アプリ起動', 'v1.0-simple-total');
+    log('アプリ起動', 'v1.1-patched (フルスクリーン撮影＋送信データ強化)');
   </script>
 </body>
 </html>

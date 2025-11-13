@@ -563,7 +563,7 @@
       });
     });
 
-    // ====== ダッシュボード用API連携 (/api/seller/summary?s=publicId) ======
+    // ====== ダッシュボード用API連携 (/api/seller/summary2?s=publicId) ======
     (function(){
       const $ = s => document.querySelector(s);
       const params = new URLSearchParams(location.search);
@@ -604,7 +604,7 @@
         }
 
         try{
-          const res = await fetch(`/api/seller/summary?s=${encodeURIComponent(sellerId)}`);
+          const res = await fetch(`/api/seller/summary2?s=${encodeURIComponent(sellerId)}`);
           const data = await res.json();
 
           if (!res.ok){
