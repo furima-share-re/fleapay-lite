@@ -3,19 +3,15 @@
 <head>
   <!-- =========================================================
        FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
+       ★フリマ実態に合わせて簡略化版
        ・AIは常時ON（/api/analyze-item）
-       ・「品名のみ」抽出でもOK → 価格パッドで単価/数量を補完
-       ・撮影→自動で次画面遷移 / 読み込みオーバーレイ
-       ・商品明細（AI or 手動 or 価格パッド）
-       ・金額プリセット＋テンキー
-       ・同画面確認＋旧分離確認ステップ（残置）
-       ・大人モーダル確認→登録
-       ・固定QR（購入者提示用）
-       ・デバッグログ（HTTP/本文）
+       ・商品内訳はテキストのみ（summary）
+       ・金額は「ごうけい金額」を1つだけ入力
+       ・ステップ4 / おとな確認も「summary＋合計」のみ
        ========================================================= -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FleaPay｜出店者UI（値札なし対応版・改善版）</title>
+  <title>FleaPay｜出店者UI（シンプル価格版）</title>
 
   <!-- Normalize -->
   <link rel="stylesheet"
@@ -241,7 +237,7 @@
       padding:14px 20px;
     }
 
-    /* ========== 価格パッド ========== */
+    /* ========== 価格パッド（合計専用） ========== */
     .pp-grid{
       display:grid;
       grid-template-columns:repeat(3,1fr);
@@ -281,18 +277,9 @@
       border-radius:8px;
       padding:16px;
       text-align:right;
-      font-size:2rem;
+      font-size:1.6rem;
       font-weight:700;
-      min-height:60px;
-    }
-    .pp-qty{
-      display:flex;
-      align-items:center;
-      gap:6px;
-    }
-    .pp-qty input{
-      width:72px;
-      text-align:center;
+      min-height:50px;
     }
 
     /* ========== チェックボックス行 ========== */
@@ -384,7 +371,7 @@
              style="background:#fff;border:1px solid #eee;border-radius:10px;padding:10px;min-height:56px">（しょうひん じょうほう なし）</div>
 
         <div id="k2-summary-edit-wrap" style="margin-top:8px;display:none">
-          <label style="font-weight:700">🎤 こえ でも いれられます（各行「商品名 ×数量」）</label>
+          <label style="font-weight:700">🎤 こえ でも いれられます（各行「商品名 ×数量」でも ざっくり でOK）</label>
           <textarea id="k2-summary-edit" placeholder="カード ×1&#10;キーホルダー ×2"></textarea>
           <div class="voice-row">
             <button class="btn" id="k2-voice-start">🎤 こえで いれる</button>
@@ -402,16 +389,46 @@
       </div>
 
       <div class="mt-12 center">
-        <button class="btn primary kid-btn" id="k2-next">✅ つぎへ（かくにん）</button>
+        <button class="btn primary kid-btn" id="k2-next">✅ つぎへ（おかね）</button>
       </div>
     </div>
 
-    <!-- ========== こどもモード：ステップ3（価格パッド） ========== -->
+    <!-- ========== こどもモード：ステップ3（ごうけい金額だけ入力） ========== -->
     <div id="kid-step3" class="card hidden">
-      <div class="card-title kid-hint">💰 ねだんを いれよう</div>
+      <div class="card-title kid-hint">💰 ごうけいの ねだんを いれよう</div>
 
-      <div id="k3-items-wrap">
-        <!-- 動的生成 -->
+      <p class="kid-hint" style="font-size:.98rem;margin-bottom:8px">
+        こまかい たんか や ざいこ は いりません。<br>
+        「ぜんぶで いくら？」だけ いれてね。
+      </p>
+
+      <div style="font-weight:700;margin-top:4px;margin-bottom:4px">ごうけい 金額</div>
+      <div id="k3-total-display"
+           style="background:#f3f4f6;border-radius:10px;border:2px solid #d1d5db;padding:14px 12px;font-size:2rem;font-weight:700;text-align:right;min-height:44px">
+        ¥0
+      </div>
+
+      <div class="pp-preset">
+        <button class="btn" data-total-preset="500">¥500</button>
+        <button class="btn" data-total-preset="1000">¥1,000</button>
+        <button class="btn" data-total-preset="2000">¥2,000</button>
+        <button class="btn" data-total-preset="5000">¥5,000</button>
+      </div>
+
+<div class="pp-display price-input" data-idx="${idx}">0</div>
+      <div class="pp-grid">
+        <button class="btn pp-btn" data-total-key="1">1</button>
+        <button class="btn pp-btn" data-total-key="2">2</button>
+        <button class="btn pp-btn" data-total-key="3">3</button>
+        <button class="btn pp-btn" data-total-key="4">4</button>
+        <button class="btn pp-btn" data-total-key="5">5</button>
+        <button class="btn pp-btn" data-total-key="6">6</button>
+        <button class="btn pp-btn" data-total-key="7">7</button>
+        <button class="btn pp-btn" data-total-key="8">8</button>
+        <button class="btn pp-btn" data-total-key="9">9</button>
+        <button class="btn pp-btn" data-total-key="C">C</button>
+        <button class="btn pp-btn" data-total-key="0">0</button>
+        <button class="btn pp-btn" data-total-key="OK">✓</button>
       </div>
 
       <div class="mt-12 center">
@@ -502,7 +519,7 @@
       console.log(msg, data);
       const logEl = $('#debug-log');
       if(logEl){
-        logEl.textContent += msg + '\n' + (typeof data==='object' ? JSON.stringify(data,null,2) : data) + '\n\n';
+        logEl.textContent += msg + '\\n' + (typeof data==='object' ? JSON.stringify(data,null,2) : data) + '\\n\\n';
         logEl.scrollTop = logEl.scrollHeight;
       }
     }
@@ -526,7 +543,7 @@
       ng(){ try{ navigator.vibrate?.([40,40]); }catch{} }
     };
 
-    /* ------------------ 音声入力（こども用）改善版 ------------------ */
+    /* ------------------ 音声入力（こども用） ------------------ */
     let voiceRec = null;
     let isVoiceRecording = false;
 
@@ -547,28 +564,18 @@
       }
     }
 
-    // 日本語数量表現を数字に変換
     function parseJapaneseQuantity(text){
-      // 漢数字マップ
       const kanjiNum = {
         '一':1, '二':2, '三':3, '四':4, '五':5,
         '六':6, '七':7, '八':8, '九':9, '十':10
       };
-      
-      // 「2まい」「3こ」などをx数字に変換
-      text = text.replace(/(\d+)\s*(まい|枚|こ|個|つ|本|ほん)/gi, ' ×$1');
-      
-      // 「二枚」「三個」などをx数字に変換
-      text = text.replace(/([一二三四五六七八九十])\s*(まい|枚|こ|個|つ|本|ほん)/gi, (m, num, unit) => {
+      text = text.replace(/(\\d+)\\s*(まい|枚|こ|個|つ|本|ほん)/gi, ' ×$1');
+      text = text.replace(/([一二三四五六七八九十])\\s*(まい|枚|こ|個|つ|本|ほん)/gi, (m, num) => {
         return ' ×' + (kanjiNum[num] || 1);
       });
-      
-      // 既に「×数字」形式がある場合はそのまま
-      if(/×\d+/.test(text)){
+      if(/×\\d+/.test(text)){
         return text.trim();
       }
-      
-      // 数量表現がない場合のみ「×1」を追加
       return text.trim() + ' ×1';
     }
 
@@ -578,7 +585,6 @@
         updateVoiceUI('off','このスマホでは おんせいにゅうりょく は つかえません');
         return;
       }
-      
       voiceRec = new SR();
       voiceRec.lang = 'ja-JP';
       voiceRec.interimResults = false;
@@ -590,17 +596,14 @@
         updateVoiceUI('on','きいています…「カード 2まい」などと はなしてね');
         fx.ok();
       };
-      
       voiceRec.onend = () =>{
         isVoiceRecording = false;
         updateVoiceUI('off','もういちど はなすときは、ボタンを おす');
       };
-      
       voiceRec.onerror = (e) =>{
         isVoiceRecording = false;
         console.warn('voice error', e);
         let msg = 'マイクのエラー でも てで つづけられます';
-        
         if(e.error === 'not-allowed'){
           msg = 'マイクのきょか が ひつようです';
         }else if(e.error === 'no-speech'){
@@ -608,11 +611,9 @@
         }else if(e.error === 'audio-capture'){
           msg = 'マイクが みつかりません';
         }
-        
         updateVoiceUI('off', msg);
         fx.ng();
       };
-      
       voiceRec.onresult = (ev)=>{
         let text = '';
         for(let i=0; i<ev.results.length; i++){
@@ -620,29 +621,19 @@
         }
         text = text.trim();
         if(!text) return;
-        
         const ta = $('#k2-summary-edit');
         if(!ta) return;
-        
-        // 句読点を空白に置換して、数量認識を適用
         text = text.replace(/[。、]/g, ' ');
         const line = parseJapaneseQuantity(text);
-        
-        ta.value = (ta.value ? ta.value + '\n' : '') + line;
+        ta.value = (ta.value ? ta.value + '\\n' : '') + line;
         fx.ok();
-        
         log('音声認識結果', {original: text, parsed: line});
       };
     }
 
-    // ページ離脱時のクリーンアップ
     function cleanupVoice(){
       if(voiceRec && isVoiceRecording){
-        try{
-          voiceRec.stop();
-        }catch(e){
-          console.warn('voice cleanup error', e);
-        }
+        try{ voiceRec.stop(); }catch(e){ console.warn('voice cleanup error', e); }
       }
       voiceRec = null;
       isVoiceRecording = false;
@@ -652,8 +643,8 @@
     /* ========== データモデル ========== */
     const model = {
       photo: null,        // Base64画像
-      summary: '',        // 商品明細テキスト
-      items: [],          // [{name, qty, price}]
+      summary: '',        // 商品明細テキスト（ざっくり）
+      items: [],          // 互換性維持用（1件だけ詰める）
       totalAmount: 0
     };
 
@@ -682,22 +673,15 @@
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       model.photo = canvas.toDataURL('image/jpeg', 0.8);
-
       fx.ok();
       log('撮影完了', `${canvas.width}x${canvas.height}`);
-
-      // カメラ停止
       if(stream){
         stream.getTracks().forEach(t => t.stop());
         stream = null;
       }
-
-      // ステップ2へ
       $('#kid-step1').classList.add('hidden');
       $('#kid-step2').classList.remove('hidden');
       $('#k2-photo').src = model.photo;
-
-      // AI解析開始
       analyzePhoto();
     });
 
@@ -708,22 +692,18 @@
         const blob = await (await fetch(model.photo)).blob();
         const fd = new FormData();
         fd.append('image', blob, 'capture.jpg');
-
         log('AI解析リクエスト送信', 'image/jpeg');
-
         const res = await fetch('/api/analyze-item', {
           method:'POST',
           body: fd
         });
         const json = await res.json();
         log('AI解析レスポンス', json);
-
         if(json.summary){
           model.summary = json.summary.trim();
         }else{
           model.summary = '';
         }
-
         updateKidPanels();
       }catch(err){
         log('AI解析エラー', err.message);
@@ -735,7 +715,6 @@
 
     /* ========== こどもパネル更新 ========== */
     function updateKidPanels(){
-      // ステップ2: 商品概要表示
       const summaryHtml = model.summary?.trim()
         ? `<pre>${escapeHtml(model.summary)}</pre>`
         : '（しょうひん じょうほう なし）';
@@ -771,9 +750,7 @@
           alert('このスマホでは おんせいにゅうりょく が つかえません');
           return;
         }
-        if(isVoiceRecording){
-          return; // 既に録音中
-        }
+        if(isVoiceRecording){ return; }
         try{
           voiceRec.start();
         }catch(e){
@@ -783,206 +760,81 @@
       });
     }
 
-    /* ========== ステップ2→3（価格パッドへ） ========== */
+    /* ========== ステップ2→3（ごうけい金額へ） ========== */
     $('#k2-next').addEventListener('click', ()=>{
       fx.ok();
-      
-      // 明細をパース（価格情報も抽出）
-      const lines = (model.summary||'').split('\n').map(l=>l.trim()).filter(l=>l);
-      model.items = [];
-      
-      for(const line of lines){
-        // パターン1: 「商品名 * 価格円 * 数量」（AI解析形式）
-        let m = line.match(/^(.+?)\s*\*\s*([\d,]+)円\s*\*\s*(\d+)/);
-        if(m){
-          const price = parseInt(m[2].replace(/,/g, ''), 10);
-          model.items.push({
-            name: m[1].trim(),
-            qty: parseInt(m[3], 10),
-            price: price
-          });
-          continue;
-        }
-        
-        // パターン2: 「商品名 ×数量」（手動入力形式）
-        m = line.match(/^(.+?)\s*[×xX]\s*(\d+)/);
-        if(m){
-          model.items.push({
-            name: m[1].trim(),
-            qty: parseInt(m[2], 10),
-            price: 0
-          });
-          continue;
-        }
-        
-        // パターン3: 「商品名 価格円」（価格のみ）
-        m = line.match(/^(.+?)\s+([\d,]+)円/);
-        if(m){
-          const price = parseInt(m[2].replace(/,/g, ''), 10);
-          model.items.push({
-            name: m[1].trim(),
-            qty: 1,
-            price: price
-          });
-          continue;
-        }
-        
-        // パターン4: その他（商品名のみ）
-        model.items.push({
-          name: line,
-          qty: 1,
-          price: 0
-        });
-      }
-
-      if(model.items.length===0){
-        alert('しょうひん が ありません。てで いれてください。');
-        return;
-      }
-
       $('#kid-step2').classList.add('hidden');
       $('#kid-step3').classList.remove('hidden');
-      renderPricePad();
+      // summary はそのまま・金額は0から
+      totalInput = '0';
+      updateTotalDisplay();
     });
 
-    /* ========== 価格パッド描画 ========== */
-    function renderPricePad(){
-      const wrap = $('#k3-items-wrap');
-      wrap.innerHTML = '';
+    /* ========== ごうけい金額用パッド ========== */
+    let totalInput = '0';
 
-      model.items.forEach((item, idx)=>{
-        const box = document.createElement('div');
-        box.style.cssText = 'background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:12px';
-        
-        box.innerHTML = `
-          <div style="font-weight:700;margin-bottom:8px">${escapeHtml(item.name)}</div>
-          <div class="pp-qty">
-            <label style="font-size:.9rem">かず:</label>
-            <input type="number" value="${item.qty}" min="1" data-idx="${idx}" class="qty-input"/>
-            <label style="font-size:.9rem;margin-left:8px">たんか:</label>
-            <div style="flex:1;font-size:1.2rem;font-weight:700;text-align:right" data-idx="${idx}" class="price-display">¥0</div>
-          </div>
-          <div class="pp-preset">
-            <button class="btn" data-idx="${idx}" data-val="50">¥50</button>
-            <button class="btn" data-idx="${idx}" data-val="100">¥100</button>
-            <button class="btn" data-idx="${idx}" data-val="200">¥200</button>
-            <button class="btn" data-idx="${idx}" data-val="500">¥500</button>
-          </div>
-          <div class="pp-display" data-idx="${idx}" class="price-input">0</div>
-          <div class="pp-grid">
-            <button class="btn pp-btn" data-idx="${idx}" data-key="1">1</button>
-            <button class="btn pp-btn" data-idx="${idx}" data-key="2">2</button>
-            <button class="btn pp-btn" data-idx="${idx}" data-key="3">3</button>
-            <button class="btn pp-btn" data-idx="${idx}" data-key="4">4</button>
-            <button class="btn pp-btn" data-idx="${idx}" data-key="5">5</button>
-            <button class="btn pp-btn" data-idx="${idx}" data-key="6">6</button>
-            <button class="btn pp-btn" data-idx="${idx}" data-key="7">7</button>
-            <button class="btn pp-btn" data-idx="${idx}" data-key="8">8</button>
-            <button class="btn pp-btn" data-idx="${idx}" data-key="9">9</button>
-            <button class="btn pp-btn" data-idx="${idx}" data-key="C">C</button>
-            <button class="btn pp-btn" data-idx="${idx}" data-key="0">0</button>
-            <button class="btn pp-btn" data-idx="${idx}" data-key="OK">✓</button>
-          </div>
-        `;
-        wrap.appendChild(box);
+    function updateTotalDisplay(){
+      const n = parseInt(totalInput.replace(/[^\\d]/g,''),10) || 0;
+      $('#k3-total-input').textContent = totalInput || '0';
+      $('#k3-total-display').textContent = '¥' + n.toLocaleString('ja-JP');
+      model.totalAmount = n;
+    }
 
-        // イベント
-        box.querySelectorAll('.pp-btn').forEach(btn=>{
-          btn.addEventListener('click', e=>{
-            const i = parseInt(e.target.dataset.idx, 10);
-            const k = e.target.dataset.key;
-            handlePricePad(i, k);
-          });
-        });
-        box.querySelectorAll('.pp-preset button').forEach(btn=>{
-          btn.addEventListener('click', e=>{
-            const i = parseInt(e.target.dataset.idx, 10);
-            const v = parseInt(e.target.dataset.val, 10);
-            model.items[i].price = v;
-            updatePriceDisplay(i);
-            fx.ok();
-          });
-        });
-        box.querySelector('.qty-input').addEventListener('input', e=>{
-          const i = parseInt(e.target.dataset.idx, 10);
-          model.items[i].qty = parseInt(e.target.value, 10) || 1;
-          updatePriceDisplay(i);
+    function handleTotalKey(key){
+      if(key === 'C'){
+        totalInput = '0';
+        fx.ng();
+      }else if(key === 'OK'){
+        fx.ok();
+      }else{
+        if(totalInput === '0') totalInput = '';
+        totalInput += key;
+        fx.ok();
+      }
+      updateTotalDisplay();
+    }
+
+    function setupTotalPad(){
+      $$('#kid-step3 .pp-btn').forEach(btn=>{
+        btn.addEventListener('click', e=>{
+          const key = e.currentTarget.dataset.totalKey;
+          handleTotalKey(key);
         });
       });
-
-      model.items.forEach((_, i) => updatePriceDisplay(i));
+      $$('#kid-step3 .pp-preset button').forEach(btn=>{
+        btn.addEventListener('click', e=>{
+          const v = parseInt(e.currentTarget.dataset.totalPreset,10) || 0;
+          totalInput = String(v);
+          updateTotalDisplay();
+          fx.ok();
+        });
+      });
     }
 
-    function handlePricePad(idx, key){
-      const disp = $$('.pp-display')[idx];
-      let val = disp.textContent.replace(/[^\d]/g,'');
-
-      if(key==='C'){
-        val='0';
-        fx.ng();
-      }else if(key==='OK'){
-        model.items[idx].price = parseInt(val,10)||0;
-        updatePriceDisplay(idx);
-        fx.ok();
-        return;
-      }else{
-        if(val==='0') val='';
-        val += key;
-        fx.ok();
-      }
-
-      disp.textContent = val || '0';
-    }
-
-    function updatePriceDisplay(idx){
-      const item = model.items[idx];
-      const priceDisp = $$('.price-display')[idx];
-      if(priceDisp){
-        priceDisp.textContent = `¥${item.price}`;
-      }
-    }
-
-    /* ========== 価格パッド完了→確認 ========== */
+    /* ========== 価格入力完了→確認 ========== */
     $('#k3-done').addEventListener('click', ()=>{
-      // 未入力チェック
-      const hasZero = model.items.some(it => it.price===0);
-      if(hasZero){
-        if(!confirm('ねだん が 0えん の しょうひん が あります。このまま すすみますか？')){
+      if(!model.totalAmount || model.totalAmount <= 0){
+        if(!confirm('金額が 0えん です。このまま すすみますか？')){
+          fx.ng();
           return;
         }
       }
-
       fx.ok();
       $('#kid-step3').classList.add('hidden');
       $('#kid-step4').classList.remove('hidden');
       renderKidConfirm();
     });
 
-    /* ========== こども確認画面 ========== */
+    /* ========== こども確認画面（summary＋合計だけ） ========== */
     function renderKidConfirm(){
-      let html = '<table style="width:100%;border-collapse:collapse">';
-      html += '<tr style="border-bottom:1px solid #ddd"><th>しょうひん</th><th>かず</th><th>たんか</th><th>ごうけい</th></tr>';
-      
-      let total=0;
-      model.items.forEach(it=>{
-        const sub = it.qty * it.price;
-        total += sub;
-        html += `<tr style="border-bottom:1px solid #eee">
-          <td>${escapeHtml(it.name)}</td>
-          <td style="text-align:center">${it.qty}</td>
-          <td style="text-align:right">¥${it.price}</td>
-          <td style="text-align:right;font-weight:700">¥${sub}</td>
-        </tr>`;
-      });
-      
-      html += `<tr style="font-weight:700;font-size:1.1rem">
-        <td colspan="3" style="text-align:right;padding-top:8px">ごうけい</td>
-        <td style="text-align:right;padding-top:8px">¥${total}</td>
-      </tr>`;
-      html += '</table>';
-
+      let html = '';
+      html += '<div style="font-weight:700;margin-bottom:6px">📝 かいものの ないよう</div>';
+      const s = model.summary?.trim()
+        ? escapeHtml(model.summary)
+        : '（とくに きめていません）';
+      html += `<div style="background:#f3f4f6;border-radius:8px;padding:10px;white-space:pre-wrap;font-size:.95rem">${s}</div>`;
+      html += `<div style="text-align:right;margin-top:12px;font-size:1.2rem;font-weight:700">ごうけい：¥${(model.totalAmount||0).toLocaleString('ja-JP')}</div>`;
       $('#k4-summary').innerHTML = html;
-      model.totalAmount = total;
     }
 
     /* ========== こども→おとなモーダル ========== */
@@ -993,7 +845,6 @@
         fx.ng();
         return;
       }
-
       fx.ok();
       renderAdultModal();
       $('#adult-modal').classList.remove('hidden');
@@ -1001,27 +852,12 @@
 
     /* ========== おとなモーダル描画 ========== */
     function renderAdultModal(){
-      let html = '<table style="width:100%;border-collapse:collapse;font-size:.95rem">';
-      html += '<tr style="border-bottom:1px solid #ddd;font-weight:700"><th>商品</th><th>数量</th><th>単価</th><th>小計</th></tr>';
-      
-      let total=0;
-      model.items.forEach(it=>{
-        const sub = it.qty * it.price;
-        total += sub;
-        html += `<tr style="border-bottom:1px solid #eee">
-          <td>${escapeHtml(it.name)}</td>
-          <td style="text-align:center">${it.qty}</td>
-          <td style="text-align:right">¥${it.price}</td>
-          <td style="text-align:right;font-weight:700">¥${sub}</td>
-        </tr>`;
-      });
-      
-      html += `<tr style="font-weight:700;font-size:1.05rem">
-        <td colspan="3" style="text-align:right;padding-top:8px">合計金額</td>
-        <td style="text-align:right;padding-top:8px">¥${total}</td>
-      </tr>`;
-      html += '</table>';
-
+      let html = '<div style="font-size:.95rem;margin-bottom:8px">以下の内容で登録します。</div>';
+      const s = model.summary?.trim()
+        ? escapeHtml(model.summary)
+        : '商品一覧は入力されていません';
+      html += `<div style="background:#f9fafb;border-radius:8px;padding:10px;white-space:pre-wrap;margin-bottom:12px">${s}</div>`;
+      html += `<div style="text-align:right;font-weight:700;font-size:1.1rem">合計金額：¥${(model.totalAmount||0).toLocaleString('ja-JP')}</div>`;
       $('#adult-summary').innerHTML = html;
     }
 
@@ -1037,17 +873,24 @@
         alert('内容を確認してチェックを入れてください');
         return;
       }
-
       showLoading();
       try{
+        // items が空なら、summary＋合計から1行だけ作る
+        let items = model.items && model.items.length ? model.items : [];
+        if(items.length === 0){
+          const firstLine = (model.summary || '').split('\\n').map(s=>s.trim()).filter(Boolean)[0] || 'まとめて';
+          items = [{
+            name: firstLine,
+            qty: 1,
+            price: model.totalAmount || 0
+          }];
+        }
         const payload = {
           photo: model.photo,
-          items: model.items,
+          items,
           totalAmount: model.totalAmount
         };
-
         log('登録リクエスト送信', payload);
-
         const res = await fetch('/api/register-sale', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
@@ -1055,17 +898,12 @@
         });
         const json = await res.json();
         log('登録レスポンス', json);
-
         if(!json.ok){
           throw new Error(json.error || '登録失敗');
         }
-
-        // 完了画面へ
         $('#adult-modal').classList.add('hidden');
         $('#kid-step4').classList.add('hidden');
         $('#complete-screen').classList.remove('hidden');
-
-        // QRコード生成
         const qrUrl = json.purchaseUrl || 'https://example.com/pay/'+json.saleId;
         $('#qr-url-text').textContent = qrUrl;
         new QRCode($('#qr-code'), {
@@ -1073,7 +911,6 @@
           width: 200,
           height: 200
         });
-
         fx.ok();
       }catch(err){
         log('登録エラー', err.message);
@@ -1091,7 +928,8 @@
 
     /* ========== 初期化 ========== */
     startCamera();
-    log('アプリ起動', 'v1.0-improved');
+    setupTotalPad();
+    log('アプリ起動', 'v1.0-simple-total');
   </script>
 </body>
 </html>
