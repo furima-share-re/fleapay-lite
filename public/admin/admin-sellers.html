@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>出店者管理 | Fleapay Admin</title>
+  
+  <!-- セキュリティヘッダ -->
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  
+  <!-- 共通スタイル・スクリプト -->
+  <link rel="stylesheet" href="common/admin-base.css">
+  <script src="common/admin-utils.js"></script>
+  
+  <style>
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .modal-content {
+      background: #fff;
+      padding: 24px;
+      border-radius: 14px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    
+    .seller-row {
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    
+    .seller-row:hover {
+      background: rgba(27, 54, 93, 0.02);
+    }
+  </style>
+</head>
+<body>
+  <!-- 共通ヘッダー・サイドバー（dashboard.htmlと同じ構造） -->
+  <header class="admin-header">
+    <div>
+      <span style="font-weight: 700; color: var(--fleapay-blue);">Fleapay Admin</span>
+      <span class="env-badge">ENV</span>
+    </div>
+    <div>
+      <span style="font-size: 13px; color: var(--fleapay-gray);">admin@fleapay.jp ▼</span>
+    </div>
+  </header>
+
+  <div class="admin-container">
+    <nav class="admin-sidebar">
+      <ul class="nav-menu">
+        <li><a href="admin-dashboard.html" class="nav-item" data-page="dashboard">📊 ダッシュボード</a></li>
+        <li><a href="admin-sellers.html" class="nav-item" data-page="sellers">👥 出店者</a></li>
+        <li><a href="admin-frames.html" class="nav-item" data-page="frames">🎨 AIフレーム</a></li>
+        <li><a href="admin-payments.html" class="nav-item" data-page="payments">💳 決済・CB管理</a></li>
+      </ul>
+    </nav>
+
+    <main class="admin-content">
+      <section>
+        <div class="sec-title-row">
+          <h1>出店者管理</h1>
+          <button id="newSellerBtn">+ 新規出店者作成</button>
+        </div>
+        
+        <!-- 検索・フィルタ -->
+        <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+          <input type="text" id="searchInput" placeholder="ID・店名・メールで検索" 
+                 style="max-width: 300px;">
+          <select id="statusFilter" style="max-width: 150px;">
+            <option value="">全ステータス</option>
+            <option value="active">利用可</option>
+            <option value="pending">KYC要</option>
+            <option value="restricted">制限中</option>
+          </select>
+          <button id="searchBtn" class="ghost">🔍 検索</button>
+        </div>
+      </section>
+
+      <!-- 出店者一覧 -->
+      <section>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: var(--fleapay-cream);">
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #eee;">出店者ID</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #eee;">店名</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #eee;">メール</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #eee;">Stripe Account</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #eee;">ステータス</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #eee;">最終利用</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #eee;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="sellersTableBody">
+              <!-- 動的に生成される -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div id="loadingIndicator" style="text-align: center; padding: 20px; display: none;">
+          読み込み中...
+        </div>
+      </section>
+
+      <!-- 出店者詳細モーダル -->
+      <div id="sellerModal" class="modal">
+        <div class="modal-content">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 id="modalTitle">出店者詳細</h2>
+            <button id="closeModal" style="background: none; border: none; font-size: 24px; cursor: pointer;">×</button>
+          </div>
+          
+          <form id="sellerForm">
+            <label>公開ID (publicId)
+              <input type="text" id="publicId" required>
+            </label>
+            
+            <label>表示名
+              <input type="text" id="displayName">
+            </label>
+            
+            <label>メールアドレス
+              <input type="email" id="email">
+            </label>
+            
+            <label>Stripe Connect アカウントID
+              <input type="text" id="stripeAccountId" placeholder="acct_1Pxxxxxxx">
+              <span class="field-note">KYC前は空欄で構いません。</span>
+            </label>
+            
+            <label>運営トークン
+              <input type="password" id="adminToken" required>
+            </label>
+            
+            <div style="display: flex; gap: 12px; margin: 20px 0;">
+              <button type="submit" id="saveSellerBtn">保存</button>
+              <button type="button" id="rotateTokenBtn" class="ghost">トークンローテーション</button>
+            </div>
+          </form>
+          
+          <!-- URL表示 -->
+          <div id="urlSection" style="display: none;">
+            <h3>共有URL</h3>
+            <label>出店者画面（seller.html）
+              <div id="sellerUrl" class="box">—</div>
+            </label>
+            <button type="button" class="small ghost" onclick="copySellerUrl()">コピー</button>
+            
+            <label style="margin-top: 12px;">購入画面（checkout.html）
+              <div id="checkoutUrl" class="box">—</div>
+            </label>
+            <button type="button" class="small ghost" onclick="copyCheckoutUrl()">コピー</button>
+          </div>
+          
+          <div id="modalMessage" style="display: none; margin-top: 16px;"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // 出店者管理固有のスクリプト
+    let sellers = [];
+    let currentSeller = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadSellers();
+      setupEventListeners();
+    });
+
+    async function loadSellers(filters = {}) {
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      loadingIndicator.style.display = 'block';
+      
+      try {
+        const data = await adminAPI.request('/admin/sellers');
+        sellers = data.sellers || [];
+        renderSellersTable();
+      } catch (error) {
+        adminUI.showToast('出店者データの取得に失敗しました', 'error');
+      } finally {
+        loadingIndicator.style.display = 'none';
+      }
+    }
+
+    function renderSellersTable() {
+      const tbody = document.getElementById('sellersTableBody');
+      
+      if (sellers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">出店者が見つかりませんでした</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = sellers.map(seller => `
+        <tr class="seller-row" onclick="openSellerModal('${seller.publicId}')" data-seller-id="${seller.publicId}">
+          <td style="padding: 12px; border-bottom: 1px solid #eee;">${seller.publicId}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #eee;">${seller.displayName || '-'}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #eee;">${seller.email || '-'}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #eee;">${seller.stripeAccountId ? seller.stripeAccountId.substring(0, 12) + '...' : '未設定'}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #eee;">${getStatusBadge(seller.status)}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #eee;">${seller.lastUsed ? adminUI.formatDate(seller.lastUsed) : '-'}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #eee;">
+            <button class="small ghost" onclick="event.stopPropagation(); openSellerModal('${seller.publicId}')">編集</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function getStatusBadge(status) {
+      const badges = {
+        active: '<span style="background: #f0f9f4; color: var(--success-green); padding: 2px 8px; border-radius: 12px; font-size: 12px;">利用可</span>',
+        pending: '<span style="background: #fef3c7; color: var(--warning-amber); padding: 2px 8px; border-radius: 12px; font-size: 12px;">KYC要</span>',
+        restricted: '<span style="background: #fef2f2; color: var(--error-maroon); padding: 2px 8px; border-radius: 12px; font-size: 12px;">制限中</span>'
+      };
+      return badges[status] || '<span style="background: #f0f2f5; color: var(--fleapay-gray); padding: 2px 8px; border-radius: 12px; font-size: 12px;">不明</span>';
+    }
+
+    function openSellerModal(publicId = null) {
+      const modal = document.getElementById('sellerModal');
+      const title = document.getElementById('modalTitle');
+      
+      if (publicId) {
+        currentSeller = sellers.find(s => s.publicId === publicId);
+        title.textContent = `出店者編集: ${publicId}`;
+        populateForm(currentSeller);
+      } else {
+        currentSeller = null;
+        title.textContent = '新規出店者作成';
+        document.getElementById('sellerForm').reset();
+      }
+      
+      modal.style.display = 'flex';
+    }
+
+    function populateForm(seller) {
+      if (!seller) return;
+      
+      document.getElementById('publicId').value = seller.publicId || '';
+      document.getElementById('displayName').value = seller.displayName || '';
+      document.getElementById('email').value = seller.email || '';
+      document.getElementById('stripeAccountId').value = seller.stripeAccountId || '';
+      
+      if (seller.urls) {
+        document.getElementById('sellerUrl').textContent = seller.urls.sellerUrl || '—';
+        document.getElementById('checkoutUrl').textContent = seller.urls.checkoutUrl || '—';
+        document.getElementById('urlSection').style.display = 'block';
+      }
+    }
+
+    async function saveSeller(formData) {
+      adminUI.showSpinner('saveSellerBtn');
+      
+      try {
+        const adminToken = formData.get('adminToken');
+        const data = {
+          publicId: formData.get('publicId'),
+          displayName: formData.get('displayName'),
+          email: formData.get('email'),
+          stripeAccountId: formData.get('stripeAccountId'),
+          rotate: false
+        };
+
+        const result = await adminAPI.request('/api/admin/sellers/issue_token', {
+          method: 'POST',
+          body: JSON.stringify(data),
+          adminToken
+        });
+        
+        adminUI.showMessage('modalMessage', 'success', '保存しました');
+        await loadSellers();
+        
+        if (result.urls) {
+          document.getElementById('sellerUrl').textContent = result.urls.sellerUrl || '—';
+          document.getElementById('checkoutUrl').textContent = result.urls.checkoutUrl || '—';
+          document.getElementById('urlSection').style.display = 'block';
+        }
+      } catch (error) {
+        adminUI.showMessage('modalMessage', 'error', error.message);
+      } finally {
+        adminUI.showSpinner('saveSellerBtn', false);
+      }
+    }
+
+    function setupEventListeners() {
+      document.getElementById('newSellerBtn').addEventListener('click', () => {
+        openSellerModal();
+      });
+
+      document.getElementById('closeModal').addEventListener('click', () => {
+        document.getElementById('sellerModal').style.display = 'none';
+      });
+
+      document.getElementById('sellerForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        saveSeller(formData);
+      });
+
+      document.getElementById('searchBtn').addEventListener('click', () => {
+        const searchTerm = document.getElementById('searchInput').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+        loadSellers({ search: searchTerm, status: statusFilter });
+      });
+
+      document.getElementById('rotateTokenBtn').addEventListener('click', async () => {
+        if (!confirm('トークンをローテーションしますか？過去のURLは無効になります。')) return;
+        
+        const formData = new FormData(document.getElementById('sellerForm'));
+        formData.set('rotate', 'true');
+        await saveSeller(formData);
+      });
+    }
+
+    // URL コピー関数
+    window.copySellerUrl = async () => {
+      const text = document.getElementById('sellerUrl').textContent;
+      if (text !== '—') await adminUI.copyToClipboard(text);
+    };
+
+    window.copyCheckoutUrl = async () => {
+      const text = document.getElementById('checkoutUrl').textContent;
+      if (text !== '—') await adminUI.copyToClipboard(text);
+    };
+  </script>
+</body>
+</html>

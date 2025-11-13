@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fleapay Admin</title>
+
+  <!-- セキュリティヘッダ（管理画面必須） -->
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  
+  <!-- JavaScript無効時のフォールバック（アクセシビリティ対応） -->
+  <meta http-equiv="refresh" content="3; url=admin-dashboard.html">
+
+  <style>
+    :root {
+      /* FleaPayブランドカラー統合 */
+      --fleapay-blue: #1B365D;    /* 深藍 - 信頼感 */
+      --fleapay-cream: #FBF7F0;   /* 生成り - 親しみやすさ */
+      --fleapay-gold: #B8902E;    /* 金継ぎ - 特別感 */
+      --fleapay-gray: #666666;    /* 薄墨 - サブテキスト */
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
+                   "Noto Sans JP", sans-serif;
+      background: var(--fleapay-cream);
+      color: var(--fleapay-blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .welcome-container {
+      background: #fff;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      max-width: 480px;
+      width: 100%;
+    }
+
+    .logo {
+      font-size: 48px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--fleapay-blue);
+    }
+
+    .subtitle {
+      margin: 0 0 24px 0;
+      color: var(--fleapay-gray);
+      font-size: 16px;
+    }
+
+    .redirect-message {
+      background: rgba(184, 144, 46, 0.1);
+      border: 1px solid rgba(184, 144, 46, 0.3);
+      border-radius: 12px;
+      padding: 16px;
+      margin: 20px 0;
+      color: var(--fleapay-gold);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .loading-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(184, 144, 46, 0.3);
+      border-radius: 50%;
+      border-top-color: var(--fleapay-gold);
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .manual-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      background: var(--fleapay-blue);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 999px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      margin-top: 16px;
+    }
+
+    .manual-link:hover {
+      background: #0f2847;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(27, 54, 93, 0.3);
+    }
+
+    .version-info {
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+      font-size: 12px;
+      color: var(--fleapay-gray);
+    }
+
+    .security-notice {
+      background: rgba(139, 38, 53, 0.05);
+      border: 1px solid rgba(139, 38, 53, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      color: #8B2635;
+    }
+
+    /* レスポンシブ対応 */
+    @media (max-width: 480px) {
+      .welcome-container {
+        padding: 24px;
+        margin: 12px;
+      }
+      
+      .logo {
+        font-size: 36px;
+      }
+      
+      h1 {
+        font-size: 24px;
+      }
+      
+      .subtitle {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="welcome-container">
+    <span class="logo">🪶</span>
+    
+    <h1>Fleapay Admin</h1>
+    <p class="subtitle">フリマを、"学びとときめき"の場所に。</p>
+    
+    <div class="redirect-message">
+      <span class="loading-spinner"></span>
+      ダッシュボードに移動しています...
+    </div>
+    
+    <!-- JavaScript無効時のフォールバック -->
+    <noscript>
+      <a href="admin-dashboard.html" class="manual-link">
+        📊 ダッシュボードを開く
+      </a>
+    </noscript>
+    
+    <!-- リダイレクト失敗時の手動リンク -->
+    <a href="admin-dashboard.html" class="manual-link" id="manualLink" style="display: none;">
+      📊 ダッシュボードを開く
+    </a>
+    
+    <div class="security-notice">
+      ⚠️ この画面は管理者専用です。不正アクセスは禁止されています。
+    </div>
+    
+    <div class="version-info">
+      FleaPay Admin v2.0<br>
+      Environment: <span id="environment">検出中...</span><br>
+      Build: 2025.11.13
+    </div>
+  </div>
+
+  <script>
+    // 環境検出（本番・ステージング・開発の判別）
+    function detectEnvironment() {
+      const hostname = window.location.hostname;
+      
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('dev')) {
+        return 'Development';
+      } else if (hostname.includes('stg') || hostname.includes('staging')) {
+        return 'Staging';
+      } else {
+        return 'Production';
+      }
+    }
+
+    // 手動リンク表示（リダイレクト失敗時）
+    function showManualLink() {
+      const manualLink = document.getElementById('manualLink');
+      if (manualLink) {
+        manualLink.style.display = 'inline-flex';
+      }
+    }
+
+    // セキュアなリダイレクト実行
+    function performRedirect() {
+      const redirectDelay = 2000; // 2秒後にリダイレクト
+      
+      setTimeout(() => {
+        try {
+          // location.replace を使用（ブラウザ履歴を汚さない）
+          window.location.replace('admin-dashboard.html');
+        } catch (error) {
+          console.error('リダイレクトに失敗しました:', error);
+          showManualLink();
+        }
+      }, redirectDelay);
+      
+      // 5秒後にも手動リンクを表示（安全装置）
+      setTimeout(showManualLink, 5000);
+    }
+
+    // 初期化処理
+    document.addEventListener('DOMContentLoaded', () => {
+      // 環境表示の更新
+      const envElement = document.getElementById('environment');
+      if (envElement) {
+        const env = detectEnvironment();
+        envElement.textContent = env;
+        
+        // 本番環境では警告色で表示
+        if (env === 'Production') {
+          envElement.style.color = '#8B2635';
+          envElement.style.fontWeight = 'bold';
+        }
+      }
+
+      // アクセスログ（開発環境のみ）
+      if (detectEnvironment() === 'Development') {
+        console.log('🪶 FleaPay Admin アクセス:', {
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent.substring(0, 100),
+          referrer: document.referrer || 'direct'
+        });
+      }
+
+      // リダイレクト実行
+      performRedirect();
+    });
+
+    // エラーハンドリング
+    window.addEventListener('error', (e) => {
+      console.error('JavaScript エラー:', e.error);
+      showManualLink();
+    });
+
+    // ページ表示時の処理（ブラウザの戻るボタン対策）
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted) {
+        // ブラウザキャッシュから表示された場合は即座にリダイレクト
+        window.location.replace('admin-dashboard.html');
+      }
+    });
+  </script>
+</body>
+</html>

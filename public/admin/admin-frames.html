@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AIフレーム管理 | Fleapay Admin</title>
+  
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  
+  <link rel="stylesheet" href="common/admin-base.css">
+  <script src="common/admin-utils.js"></script>
+  
+  <style>
+    .frame-preview {
+      width: 120px;
+      height: 160px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f9f9f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--fleapay-gray);
+    }
+    
+    .json-editor {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 12px;
+      min-height: 200px;
+    }
+    
+    .frame-card {
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 12px;
+      padding: 16px;
+      background: #fff;
+      transition: var(--transition-base);
+      cursor: pointer;
+    }
+    
+    .frame-card:hover {
+      box-shadow: var(--shadow-medium);
+    }
+  </style>
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-logo">
+      🪶 Fleapay Admin
+      <span class="env-badge">ENV</span>
+    </div>
+    <div style="font-size: 13px; color: var(--fleapay-gray);">
+      admin@fleapay.jp ▼
+    </div>
+  </header>
+
+  <div class="admin-container">
+    <nav class="admin-sidebar">
+      <ul class="nav-menu">
+        <li><a href="admin-dashboard.html" class="nav-item" data-page="dashboard">📊 ダッシュボード</a></li>
+        <li><a href="admin-sellers.html" class="nav-item" data-page="sellers">👥 出店者</a></li>
+        <li><a href="admin-frames.html" class="nav-item" data-page="frames">🎨 AIフレーム</a></li>
+        <li><a href="admin-payments.html" class="nav-item" data-page="payments">💳 決済・CB管理</a></li>
+      </ul>
+    </nav>
+
+    <main class="admin-content">
+      <section>
+        <div class="sec-title-row">
+          <h1>AIフレーム管理</h1>
+          <button id="newFrameBtn">+ 新規フレーム作成</button>
+        </div>
+        
+        <div class="flex flex-wrap" style="margin-bottom: 20px;">
+          <select id="categoryFilter" style="max-width: 150px;">
+            <option value="">全カテゴリ</option>
+            <option value="Japan">Japan</option>
+            <option value="Seasonal">Seasonal</option>
+            <option value="Event">Event</option>
+          </select>
+          <select id="statusFilter" style="max-width: 150px;">
+            <option value="">全ステータス</option>
+            <option value="active">公開中</option>
+            <option value="draft">下書き</option>
+            <option value="archived">アーカイブ</option>
+          </select>
+          <button id="refreshBtn" class="ghost">🔄 更新</button>
+        </div>
+      </section>
+
+      <section>
+        <div id="framesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+          <!-- 動的に生成される -->
+        </div>
+        
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+          読み込み中...
+        </div>
+      </section>
+
+      <!-- フレーム編集モーダル -->
+      <div id="frameModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+          <div class="modal-header">
+            <h2 id="modalTitle">フレーム編集</h2>
+            <button id="closeModal" class="modal-close">×</button>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 200px; gap: 24px;">
+            <div>
+              <form id="frameForm">
+                <label>フレームID <span style="color: var(--error-maroon);">*</span>
+                  <input type="text" name="frameId" id="frameId" required>
+                  <span class="field-note">半角英数字・ハイフンのみ（例: sakura, summer-2024）</span>
+                </label>
+                
+                <label>表示名 <span style="color: var(--error-maroon);">*</span>
+                  <input type="text" name="displayName" id="displayName" required>
+                </label>
+                
+                <div class="grid">
+                  <label>カテゴリ
+                    <select name="category" id="category">
+                      <option value="Japan">Japan</option>
+                      <option value="Seasonal">Seasonal</option>
+                      <option value="Event">Event</option>
+                      <option value="Special">Special</option>
+                    </select>
+                  </label>
+                  
+                  <label>公開ステータス
+                    <select name="status" id="status">
+                      <option value="active">公開中</option>
+                      <option value="draft">下書き</option>
+                      <option value="archived">アーカイブ</option>
+                    </select>
+                  </label>
+                </div>
+                
+                <label>説明
+                  <textarea name="description" id="description" rows="3" placeholder="フレームの説明（任意）"></textarea>
+                </label>
+                
+                <label>デザインパラメータ（JSON）
+                  <textarea name="metadata" id="metadata" class="json-editor" placeholder='{"bgGradient": ["#FCE8EE", "#FFF8FA"], "petals": {...}}'></textarea>
+                  <span class="field-note">有効なJSON形式で入力してください</span>
+                </label>
+                
+                <div class="flex" style="margin: 20px 0;">
+                  <button type="submit" id="saveFrameBtn">保存</button>
+                  <button type="button" id="previewBtn" class="ghost">プレビュー生成</button>
+                </div>
+              </form>
+            </div>
+            
+            <div>
+              <h3>プレビュー</h3>
+              <div id="framePreview" class="frame-preview">
+                プレビュー未生成
+              </div>
+              <button type="button" id="generatePreviewBtn" class="small ghost" style="width: 100%; margin-top: 8px;">
+                プレビュー更新
+              </button>
+            </div>
+          </div>
+          
+          <div id="modalMessage" style="display: none; margin-top: 16px;"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let frames = [];
+    let currentFrame = null;
+    let currentFilters = {};
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadFrames();
+      setupEventListeners();
+    });
+
+    async function loadFrames(filters = {}) {
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      loadingIndicator.style.display = 'block';
+      
+      try {
+        const queryParams = new URLSearchParams(filters).toString();
+        const data = await adminAPI.request(`/admin/frames${queryParams ? '?' + queryParams : ''}`);
+        
+        frames = data.frames || [];
+        currentFilters = filters;
+        renderFramesGrid();
+      } catch (error) {
+        adminUI.showToast('フレームデータの取得に失敗しました', 'error');
+        loadMockFrames(); // フォールバック
+      } finally {
+        loadingIndicator.style.display = 'none';
+      }
+    }
+
+    function loadMockFrames() {
+      frames = [
+        {
+          frameId: 'sakura',
+          displayName: '桜フレーム',
+          category: 'Japan',
+          status: 'active',
+          description: '日本の桜をモチーフにしたフレーム',
+          metadata: {
+            bgGradient: ['#FCE8EE', '#FFF8FA'],
+            petals: { count: 5, opacity: 0.4 }
+          },
+          usageCount: 1250
+        },
+        {
+          frameId: 'gold',
+          displayName: '金継ぎフレーム',
+          category: 'Japan',
+          status: 'active',
+          description: '金継ぎをモチーフにした価値を表現するフレーム',
+          usageCount: 890
+        }
+      ];
+      renderFramesGrid();
+    }
+
+    function renderFramesGrid() {
+      const grid = document.getElementById('framesGrid');
+      
+      if (frames.length === 0) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;">フレームが見つかりませんでした</div>';
+        return;
+      }
+      
+      grid.innerHTML = frames.map(frame => `
+        <div class="frame-card" onclick="openFrameModal('${frame.frameId}')" data-frame-id="${frame.frameId}">
+          <div class="flex" style="justify-content: space-between; margin-bottom: 12px;">
+            <h3 style="margin: 0; color: var(--fleapay-blue);">${frame.displayName}</h3>
+            ${getStatusBadge(frame.status)}
+          </div>
+          
+          <div class="flex" style="gap: 12px; margin-bottom: 12px;">
+            <div class="frame-preview" style="width: 80px; height: 100px;">
+              ${frame.frameId}
+            </div>
+            <div style="flex: 1;">
+              <p style="margin: 0 0 8px 0; font-size: 13px; color: var(--fleapay-gray);">
+                ${frame.description || 'フレームの説明なし'}
+              </p>
+              <div style="font-size: 12px; color: var(--fleapay-gray);">
+                <div>ID: ${frame.frameId}</div>
+                <div>カテゴリ: ${frame.category}</div>
+                <div>利用回数: ${adminUI.formatNumber(frame.usageCount || 0)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function getStatusBadge(status) {
+      const badges = {
+        active: '<span class="status-badge status-active">公開中</span>',
+        draft: '<span class="status-badge status-pending">下書き</span>',
+        archived: '<span class="status-badge status-neutral">アーカイブ</span>'
+      };
+      return badges[status] || '<span class="status-badge status-neutral">不明</span>';
+    }
+
+    function openFrameModal(frameId = null) {
+      const title = document.getElementById('modalTitle');
+      
+      adminFormHelper.clearFieldErrors();
+      
+      if (frameId) {
+        currentFrame = frames.find(f => f.frameId === frameId);
+        title.textContent = `フレーム編集: ${frameId}`;
+        populateForm(currentFrame);
+      } else {
+        currentFrame = null;
+        title.textContent = '新規フレーム作成';
+        document.getElementById('frameForm').reset();
+        document.getElementById('framePreview').textContent = 'プレビュー未生成';
+      }
+      
+      adminUI.showModal('frameModal');
+    }
+
+    function populateForm(frame) {
+      if (!frame) return;
+      
+      document.getElementById('frameId').value = frame.frameId || '';
+      document.getElementById('displayName').value = frame.displayName || '';
+      document.getElementById('category').value = frame.category || 'Japan';
+      document.getElementById('status').value = frame.status || 'draft';
+      document.getElementById('description').value = frame.description || '';
+      
+      if (frame.metadata) {
+        document.getElementById('metadata').value = JSON.stringify(frame.metadata, null, 2);
+      }
+      
+      updatePreview(frame);
+    }
+
+    function updatePreview(frame) {
+      const preview = document.getElementById('framePreview');
+      
+      if (frame && frame.metadata) {
+        preview.innerHTML = `
+          <div style="font-size: 10px; text-align: center;">
+            <div style="font-weight: bold;">${frame.displayName}</div>
+            <div style="margin: 4px 0;">🎨</div>
+            <div>${frame.category}</div>
+          </div>
+        `;
+        
+        if (frame.metadata.bgGradient && Array.isArray(frame.metadata.bgGradient)) {
+          preview.style.background = `linear-gradient(135deg, ${frame.metadata.bgGradient.join(', ')})`;
+        }
+      } else {
+        preview.textContent = 'プレビュー未生成';
+        preview.style.background = '#f9f9f9';
+      }
+    }
+
+    function setupEventListeners() {
+      document.getElementById('newFrameBtn').addEventListener('click', () => openFrameModal());
+
+      document.getElementById('frameForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        saveFrame(formData);
+      });
+
+      const debouncedFilter = adminUI.debounce(() => {
+        const categoryFilter = document.getElementById('categoryFilter').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+        loadFrames({ category: categoryFilter, status: statusFilter });
+      }, 300);
+
+      document.getElementById('categoryFilter').addEventListener('change', debouncedFilter);
+      document.getElementById('statusFilter').addEventListener('change', debouncedFilter);
+      document.getElementById('refreshBtn').addEventListener('click', () => loadFrames(currentFilters));
+
+      document.getElementById('previewBtn').addEventListener('click', generatePreview);
+      document.getElementById('generatePreviewBtn').addEventListener('click', generatePreview);
+    }
+
+    async function saveFrame(formData) {
+      adminUI.showSpinner('saveFrameBtn');
+      
+      const errors = adminFormHelper.validateForm(document.getElementById('frameForm'), {
+        frameId: [
+          (value) => adminValidators.required(value) || 'フレームIDは必須です',
+          (value) => /^[a-zA-Z0-9-_]{2,30}$/.test(value) || 'フレームIDは半角英数字・ハイフン・アンダースコアのみ、2〜30文字で入力してください'
+        ],
+        displayName: [
+          (value) => adminValidators.required(value) || '表示名は必須です',
+          (value) => adminValidators.maxLength(value, 50) || '表示名は50文字以内で入力してください'
+        ]
+      });
+
+      if (errors.length > 0) {
+        adminFormHelper.showFieldErrors(errors);
+        adminUI.showSpinner('saveFrameBtn', false);
+        return;
+      }
+
+      try {
+        const data = {
+          frameId: formData.get('frameId'),
+          displayName: formData.get('displayName'),
+          category: formData.get('category'),
+          status: formData.get('status'),
+          description: formData.get('description') || undefined,
+          metadata: formData.get('metadata') ? JSON.parse(formData.get('metadata')) : {}
+        };
+
+        await adminAPI.request('/admin/frames', {
+          method: 'POST',
+          body: JSON.stringify(data)
+        });
+        
+        adminUI.showMessage('modalMessage', 'success', currentFrame ? '更新しました' : '作成しました');
+        await loadFrames(currentFilters);
+        
+        setTimeout(() => adminUI.hideModal('frameModal'), 1500);
+        
+      } catch (error) {
+        adminUI.showMessage('modalMessage', 'error', error.message);
+      } finally {
+        adminUI.showSpinner('saveFrameBtn', false);
+      }
+    }
+
+    function generatePreview() {
+      const metadata = document.getElementById('metadata').value.trim();
+      const displayName = document.getElementById('displayName').value.trim();
+      const category = document.getElementById('category').value;
+      
+      if (!metadata) {
+        adminUI.showToast('メタデータを入力してください', 'warning');
+        return;
+      }
+      
+      try {
+        const parsedMetadata = JSON.parse(metadata);
+        const previewData = {
+          displayName: displayName || 'プレビュー',
+          category,
+          metadata: parsedMetadata
+        };
+        
+        updatePreview(previewData);
+        adminUI.showToast('プレビューを更新しました', 'success');
+      } catch (error) {
+        adminUI.showToast('メタデータのJSON形式が正しくありません', 'error');
+      }
+    }
+  </script>
+</body>
+</html>

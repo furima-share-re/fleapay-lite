@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ダッシュボード | Fleapay Admin</title>
+  
+  <!-- セキュリティヘッダ -->
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  
+  <!-- 共通スタイル・スクリプト -->
+  <link rel="stylesheet" href="common/admin-base.css">
+  <script src="common/admin-utils.js"></script>
+</head>
+<body>
+  <!-- 共通ヘッダー -->
+  <header class="admin-header">
+    <div>
+      <span style="font-weight: 700; color: var(--fleapay-blue);">Fleapay Admin</span>
+      <span class="env-badge">ENV</span>
+    </div>
+    <div>
+      <span style="font-size: 13px; color: var(--fleapay-gray);">admin@fleapay.jp ▼</span>
+    </div>
+  </header>
+
+  <div class="admin-container">
+    <!-- 共通サイドバー -->
+    <nav class="admin-sidebar">
+      <ul class="nav-menu">
+        <li><a href="admin-dashboard.html" class="nav-item" data-page="dashboard">📊 ダッシュボード</a></li>
+        <li><a href="admin-sellers.html" class="nav-item" data-page="sellers">👥 出店者</a></li>
+        <li><a href="admin-frames.html" class="nav-item" data-page="frames">🎨 AIフレーム</a></li>
+        <li><a href="admin-payments.html" class="nav-item" data-page="payments">💳 決済・CB管理</a></li>
+      </ul>
+    </nav>
+
+    <!-- メインコンテンツ -->
+    <main class="admin-content">
+      <section>
+        <div class="sec-title-row">
+          <h1>ダッシュボード</h1>
+          <span class="pill">ホーム</span>
+        </div>
+        
+        <!-- フィルタ -->
+        <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+          <select id="periodFilter" style="padding: 8px; border-radius: 8px;">
+            <option value="today">今日</option>
+            <option value="week">今週</option>
+            <option value="month">今月</option>
+          </select>
+          <select id="eventFilter" style="padding: 8px; border-radius: 8px;">
+            <option value="all">全イベント</option>
+            <option value="oi-flea">大井フリマ</option>
+          </select>
+          <button id="refreshBtn" class="ghost">🔄 更新</button>
+        </div>
+      </section>
+
+      <!-- メトリクス表示 -->
+      <div class="grid">
+        <section>
+          <h2>今日の決済サマリ</h2>
+          <div style="font-size: 28px; font-weight: 700; color: var(--fleapay-blue); margin: 12px 0;">
+            <span id="paymentCount">120</span><span style="font-size: 16px; margin-left: 4px;">件</span>
+          </div>
+          <div style="font-size: 14px; color: var(--fleapay-gray);">
+            売上合計: <span id="totalRevenue">¥450,000</span><br>
+            純売上: <span id="netRevenue">¥410,000</span>
+          </div>
+        </section>
+        
+        <section>
+          <h2>チャージバック / 返金</h2>
+          <div style="font-size: 28px; font-weight: 700; color: var(--warning-amber); margin: 12px 0;">
+            <span id="disputeCount">2</span><span style="font-size: 16px; margin-left: 4px;">件</span>
+          </div>
+          <div style="font-size: 14px; color: var(--fleapay-gray);">
+            返金: <span id="refundCount">5件</span><br>
+            期限間近: <span id="urgentCount" style="color: var(--error-maroon);">1件 🔔</span>
+          </div>
+        </section>
+      </div>
+
+      <!-- アラート -->
+      <section>
+        <h2>最近のアラート</h2>
+        <div id="alertsList">
+          <div class="err" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>⚠️ チャージバック 1件（期限まで 3日）</strong><br>
+              <small>seller-abc123 / ¥5,000 / 対応が必要</small>
+            </div>
+            <button class="small">対応</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 出店者アクティビティ -->
+      <section>
+        <h2>出店者アクティビティ</h2>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: var(--fleapay-cream);">
+                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #eee;">出店者ID</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #eee;">店名</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #eee;">ステータス</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 1px solid #eee;">最終利用</th>
+              </tr>
+            </thead>
+            <tbody id="recentSellers">
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">seller-abc123</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">花子商店</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                  <span style="background: #f0f9f4; color: var(--success-green); padding: 2px 8px; border-radius: 12px; font-size: 12px;">利用可</span>
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">2025/11/13 14:30</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // ダッシュボード固有の初期化
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadDashboardData();
+      setupEventListeners();
+      startAutoRefresh();
+    });
+
+    async function loadDashboardData() {
+      try {
+        const data = await adminAPI.request('/admin/dashboard');
+        updateMetrics(data);
+      } catch (error) {
+        adminUI.showToast('ダッシュボードデータの取得に失敗しました', 'error');
+      }
+    }
+
+    function updateMetrics(data) {
+      document.getElementById('paymentCount').textContent = data.paymentCount || 0;
+      document.getElementById('totalRevenue').textContent = adminUI.formatCurrency(data.totalRevenue || 0);
+      document.getElementById('netRevenue').textContent = adminUI.formatCurrency(data.netRevenue || 0);
+    }
+
+    function setupEventListeners() {
+      document.getElementById('refreshBtn').addEventListener('click', loadDashboardData);
+      document.getElementById('periodFilter').addEventListener('change', loadDashboardData);
+    }
+
+    function startAutoRefresh() {
+      setInterval(loadDashboardData, 300000); // 5分ごと
+    }
+  </script>
+</body>
+</html>
