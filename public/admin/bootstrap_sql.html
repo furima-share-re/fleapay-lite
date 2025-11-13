@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>DB 初期構築用 SQL 実行ツール (危険)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      margin:16px;
+      background:#f5f5f5;
+    }
+    .wrap{
+      max-width:960px;
+      margin:0 auto;
+      background:#fff;
+      padding:16px 18px 20px;
+      border-radius:12px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.06);
+    }
+    h1{
+      font-size:20px;
+      margin:0 0 8px;
+    }
+    .danger{
+      border-left:4px solid #d32f2f;
+      background:#ffebee;
+      color:#b71c1c;
+      padding:8px 10px;
+      margin:0 0 12px;
+      font-size:13px;
+    }
+    label{
+      font-size:13px;
+      display:block;
+      margin-top:8px;
+      margin-bottom:4px;
+    }
+    input[type="password"],
+    textarea{
+      width:100%;
+      box-sizing:border-box;
+      font-family:monospace;
+      font-size:13px;
+      padding:8px;
+      border-radius:6px;
+      border:1px solid #ccc;
+    }
+    textarea{
+      min-height:220px;
+      resize:vertical;
+    }
+    button{
+      margin-top:10px;
+      padding:8px 18px;
+      border-radius:999px;
+      border:none;
+      font-size:14px;
+      font-weight:600;
+      cursor:pointer;
+      background:#1976d2;
+      color:#fff;
+    }
+    button:disabled{
+      opacity:0.6;
+      cursor:wait;
+    }
+    .status{
+      margin-top:10px;
+      font-size:13px;
+      color:#555;
+      white-space:pre-wrap;
+    }
+    pre{
+      margin-top:12px;
+      padding:10px;
+      background:#111;
+      color:#eee;
+      border-radius:6px;
+      font-size:12px;
+      overflow-x:auto;
+      max-height:420px;
+    }
+    .small{
+      font-size:11px;
+      color:#777;
+      margin-top:4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>DB 初期構築用 SQL 実行ツール</h1>
+    <div class="danger">
+      ⚠ <b>超・危険なツールです。</b><br>
+      - 本番運用開始後は <b>ADMIN_BOOTSTRAP_SQL_ENABLED を false / 削除</b> して封印してください。<br>
+      - <code>DROP DATABASE</code> などはブロックしますが、<b>テーブル削除・データ削除は普通に実行</b>されます。
+    </div>
+
+    <label for="adminToken">Admin Token (x-admin-token)</label>
+    <input id="adminToken" type="password" placeholder="環境変数 ADMIN_TOKEN と同じ値" />
+
+    <label for="sql">SQL</label>
+    <textarea id="sql" placeholder="例:&#10;CREATE TABLE test (...);&#10;DELETE FROM pending_charges WHERE ...;"></textarea>
+
+    <button id="runBtn">SQLを実行する</button>
+    <div class="small">
+      ※複数ステートメントを流す場合は自己責任でお願いします。<br>
+      ※SELECT文の結果は下のJSONに表示されます。
+    </div>
+
+    <div id="status" class="status"></div>
+    <pre id="result"></pre>
+  </div>
+
+  <script>
+    (function () {
+      const adminInput = document.getElementById("adminToken");
+      const sqlInput   = document.getElementById("sql");
+      const btn        = document.getElementById("runBtn");
+      const statusEl   = document.getElementById("status");
+      const resultEl   = document.getElementById("result");
+
+      async function runSql(e){
+        e.preventDefault();
+        const token = adminInput.value.trim();
+        const sql   = sqlInput.value;
+
+        if (!token){
+          alert("Admin Token を入力してください。");
+          return;
+        }
+        if (!sql.trim()){
+          alert("SQL を入力してください。");
+          return;
+        }
+
+        btn.disabled = true;
+        statusEl.textContent = "実行中...";
+        resultEl.textContent = "";
+
+        try{
+          const res = await fetch("/api/admin/bootstrap_sql", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-admin-token": token
+            },
+            body: JSON.stringify({ sql })
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok){
+            if (res.status === 403 && data?.error === "bootstrap_sql_disabled") {
+              statusEl.textContent = "エラー: この機能は無効化されています。環境変数 ADMIN_BOOTSTRAP_SQL_ENABLED を 'true' に設定してください。";
+            } else {
+              statusEl.textContent = "エラー: " + (data?.error || ("HTTP " + res.status));
+            }
+            resultEl.textContent = JSON.stringify(data, null, 2);
+            return;
+          }
+
+          statusEl.textContent = "OK: rowCount=" + (data.rowCount ?? "null");
+          resultEl.textContent = JSON.stringify(data, null, 2);
+        } catch (err){
+          console.error(err);
+          statusEl.textContent = "実行中にエラーが発生しました: " + err.message;
+        } finally{
+          btn.disabled = false;
+        }
+      }
+
+      btn.addEventListener("click", runSql);
+    })();
+  </script>
+</body>
+</html>
