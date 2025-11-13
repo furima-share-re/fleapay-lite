@@ -9,7 +9,7 @@
        ・金額は「ごうけい金額」を1つだけ入力
        ・ステップ4 / おとな確認も「summary＋合計」のみ
        
-       【パッチ適用済み v3 - OCR最適化版 + UX改善パッチ】
+       【パッチ適用済み v4 - AI total 自動反映パッチ】
        1. 撮影画面フルスクリーン化（カメラ全画面＋オーバーレイUI）
        2. 送信データ強化（not_found対策・デバッグ強化）
        3. /api/pending/start エンドポイントへの変更
@@ -25,6 +25,9 @@
           - 初期状態でボタンを無効化
           - 価格入力クリア機能
           - エラーメッセージ改善
+       7. ★AI total 自動反映パッチ NEW！★
+          - AI解析結果の total を「ごうけい金額」に自動入力
+          - 自動入力時にボタンも有効化
        ========================================================= -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -742,9 +745,21 @@
       itemSummary.textContent = '（AI で しょうひん を にんしき できませんでした）';
     }
     
-    // 初期状態：ボタン無効＆金額クリア
-    nextBtn.disabled = true;
-    totalPriceInput.value = '';
+    // ▼▼ パッチ追加：AI total 自動反映 ▼▼
+    if (aiAnalysisResult && aiAnalysisResult.total) {
+      const autoAmount = parseInt(aiAnalysisResult.total, 10);
+      if (autoAmount > 0) {
+        totalPriceInput.value = autoAmount;
+        nextBtn.disabled = false; // ボタン有効化
+        debugLog(`💰 AI total auto-filled: ${autoAmount}`);
+      }
+    }
+    // ▲▲ パッチ終わり ▲▲
+    
+    // 初期状態：金額が入っていない場合はボタン無効
+    if (!totalPriceInput.value || parseInt(totalPriceInput.value, 10) <= 0) {
+      nextBtn.disabled = true;
+    }
     
     // 価格入力フォーカス演出
     totalPriceInput.addEventListener('focus', () => {
@@ -902,7 +917,7 @@
   
   /* ========== 初期化 ========== */
   document.addEventListener('DOMContentLoaded', () => {
-    debugLog('=== App Initialized (OCR Optimized + UX Patch) ===');
+    debugLog('=== App Initialized (v4 - AI total auto-fill patch) ===');
     sellerId = getSellerIdFromURL();
     initCamera();
   });
