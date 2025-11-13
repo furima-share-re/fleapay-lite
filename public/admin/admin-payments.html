@@ -44,7 +44,7 @@
       <span class="env-badge">ENV</span>
     </div>
     <div style="font-size: 13px; color: var(--fleapay-gray);">
-      admin@fleapay.jp ▼
+      <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5c3d383135321c3a30393d2c3d2572362c">[email&#160;protected]</a> ▼
     </div>
   </header>
 
@@ -121,6 +121,38 @@
           </p>
         </div>
       </div>
+
+      <!-- 今日の決済 -->
+      <section>
+        <p>
+          <span>今日の決済</span>
+          <span data-field="today-payments-count">0件</span>
+        </p>
+
+        <p>
+          <span>純売上:</span>
+          <span data-field="today-net-sales">¥0</span>
+        </p>
+
+        <!-- チャージバック -->
+        <p>
+          <span>チャージバック</span>
+          <span data-field="dispute-count">0件</span>
+        </p>
+
+        <!-- 返金 -->
+        <p>
+          <span>返金</span>
+          <span data-field="refund-count">0件</span><br>
+          <span>返金額:</span>
+          <span data-field="refund-amount">¥0</span>
+        </p>
+
+        <!-- Stripe同期ボタン -->
+        <button type="button" class="btn btn-primary" data-action="stripe-sync">
+          Stripe同期
+        </button>
+      </section>
 
       <!-- 決済一覧 -->
       <section>
@@ -237,7 +269,7 @@
     </main>
   </div>
 
-  <script>
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     let payments = [];
     let currentPayment = null;
     let currentFilters = {};
@@ -492,5 +524,8 @@
       }
     }
   </script>
+
+  <!-- フッターあたりで JS を読み込み -->
+  <script src="/js/admin-payments.js"></script>
 </body>
 </html>
