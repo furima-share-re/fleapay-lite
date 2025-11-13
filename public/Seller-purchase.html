@@ -787,25 +787,52 @@
     $('#k2-next').addEventListener('click', ()=>{
       fx.ok();
       
-      // 明細をパース
+      // 明細をパース（価格情報も抽出）
       const lines = (model.summary||'').split('\n').map(l=>l.trim()).filter(l=>l);
       model.items = [];
       
       for(const line of lines){
-        const m = line.match(/^(.+?)\s*[×xX]\s*(\d+)/);
+        // パターン1: 「商品名 * 価格円 * 数量」（AI解析形式）
+        let m = line.match(/^(.+?)\s*\*\s*([\d,]+)円\s*\*\s*(\d+)/);
+        if(m){
+          const price = parseInt(m[2].replace(/,/g, ''), 10);
+          model.items.push({
+            name: m[1].trim(),
+            qty: parseInt(m[3], 10),
+            price: price
+          });
+          continue;
+        }
+        
+        // パターン2: 「商品名 ×数量」（手動入力形式）
+        m = line.match(/^(.+?)\s*[×xX]\s*(\d+)/);
         if(m){
           model.items.push({
             name: m[1].trim(),
             qty: parseInt(m[2], 10),
             price: 0
           });
-        }else{
-          model.items.push({
-            name: line,
-            qty: 1,
-            price: 0
-          });
+          continue;
         }
+        
+        // パターン3: 「商品名 価格円」（価格のみ）
+        m = line.match(/^(.+?)\s+([\d,]+)円/);
+        if(m){
+          const price = parseInt(m[2].replace(/,/g, ''), 10);
+          model.items.push({
+            name: m[1].trim(),
+            qty: 1,
+            price: price
+          });
+          continue;
+        }
+        
+        // パターン4: その他（商品名のみ）
+        model.items.push({
+          name: line,
+          qty: 1,
+          price: 0
+        });
       }
 
       if(model.items.length===0){
@@ -841,7 +868,7 @@
             <button class="btn" data-idx="${idx}" data-val="200">¥200</button>
             <button class="btn" data-idx="${idx}" data-val="500">¥500</button>
           </div>
-          <div class="pp-display price-input" data-idx="${idx}">0</div>
+          <div class="pp-display" data-idx="${idx}" class="price-input">0</div>
           <div class="pp-grid">
             <button class="btn pp-btn" data-idx="${idx}" data-key="1">1</button>
             <button class="btn pp-btn" data-idx="${idx}" data-key="2">2</button>
