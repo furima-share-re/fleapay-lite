@@ -229,7 +229,6 @@
       box-shadow:0 7px 16px rgba(30,80,60,.20);
     }
 
-    /* シェアエリア */
     .share-title{
       margin-top:6px;
       font-size:13px;
@@ -300,6 +299,11 @@
       background:#205a3e;
       color:#fff;
       border-color:#205a3e;
+    }
+
+    /* SNS一時無効化 */
+    .sns-disabled{
+      display:none !important;
     }
 
     @media(max-width:520px){
@@ -406,25 +410,29 @@
         </div>
       </section>
 
-      <p class="share-title" data-i18n="shareTitle">
-        旅のフリマ体験を、SNSでシェアしませんか？
-      </p>
+      <!-- ▼ SNS共有エリア：今は非表示。再開時は sns-disabled を外す -->
+      <div class="sns-section sns-disabled" id="snsSection">
+        <p class="share-title" data-i18n="shareTitle">
+          旅のフリマ体験を、SNSでシェアしませんか？
+        </p>
 
-      <div class="actions">
-        <button class="btn primary" id="shareInsta">
-          <span>📸</span><span data-i18n="shareInsta">Instagramでシェア</span>
-        </button>
-        <button class="btn" id="shareTiktok">
-          <span>🎵</span><span data-i18n="shareTiktok">TikTokでシェア</span>
-        </button>
-        <button class="btn" id="shareX">
-          <span>✕</span><span data-i18n="shareX">Xでシェア</span>
-        </button>
+        <div class="actions">
+          <button class="btn primary" id="shareInsta">
+            <span>📸</span><span data-i18n="shareInsta">Instagramでシェア</span>
+          </button>
+          <button class="btn" id="shareTiktok">
+            <span>🎵</span><span data-i18n="shareTiktok">TikTokでシェア</span>
+          </button>
+          <button class="btn" id="shareX">
+            <span>✕</span><span data-i18n="shareX">Xでシェア</span>
+          </button>
+        </div>
+
+        <p class="hashtag" data-i18n="hashtag">
+          #Fleapay #TokyoFleaMarket #JapanFinds をつけて、旅の宝物をシェアしましょう。
+        </p>
       </div>
-
-      <p class="hashtag" data-i18n="hashtag">
-        #Fleapay #TokyoFleaMarket #JapanFinds をつけて、旅の宝物をシェアしましょう。
-      </p>
+      <!-- ▲ SNS共有エリア -->
 
       <p class="meta" data-i18n="meta">
         Thanks for supporting local creators & flea market culture.<br>
@@ -504,7 +512,6 @@
     // 写真保存（実装側で実画像がある場合に差し替え可）
     const savePhotoBtn = document.getElementById('savePhotoBtn');
     savePhotoBtn.addEventListener('click', ()=>{
-      // 実際の画像URLがある場合は a[download] を生成して保存処理を書く
       alert('写真の保存は、この画面のスクリーンショットでもご利用いただけます。実装に応じてダウンロード処理を追加できます。');
     });
 
@@ -524,7 +531,7 @@
         shareTiktok: "TikTokでシェア",
         shareX: "Xでシェア",
         hashtag: "#Fleapay #TokyoFleaMarket #JapanFinds をつけて、旅の宝物をシェアしましょう。",
-        meta: "Thanks for supporting local creators & flea market culture.<br>※必要に応じて、スタッフから決済IDの確認をお願いする場合があります。"
+        meta: "Thanks for supporting local creators and flea market culture.<br>※必要に応じて、スタッフから決済IDの確認をお願いする場合があります。"
       },
       en:{
         badge: "Payment Completed",
@@ -589,7 +596,7 @@
       else applyLang('ja');
     })();
 
-    // シェア処理（簡易版）
+    // シェア処理（将来SNS連携用の土台として残す）
     function buildShareText(lang){
       const t = dict[lang] || dict.ja;
       return {
@@ -611,6 +618,7 @@
 
       const textBase = s.text + ' ' + s.hashtags;
 
+      // 将来：ここを「各SNSアプリを開く処理」に差し替える想定
       if(navigator.share){
         navigator.share({
           title: 'Fleapay',
@@ -622,9 +630,19 @@
       }
     }
 
-    document.getElementById('shareInsta').addEventListener('click', ()=>tryShare('Instagram'));
-    document.getElementById('shareTiktok').addEventListener('click', ()=>tryShare('TikTok'));
-    document.getElementById('shareX').addEventListener('click', ()=>tryShare('X'));
+    const shareInstaBtn = document.getElementById('shareInsta');
+    const shareTiktokBtn = document.getElementById('shareTiktok');
+    const shareXBtn = document.getElementById('shareX');
+
+    if(shareInstaBtn){
+      shareInstaBtn.addEventListener('click', ()=>tryShare('Instagram'));
+    }
+    if(shareTiktokBtn){
+      shareTiktokBtn.addEventListener('click', ()=>tryShare('TikTok'));
+    }
+    if(shareXBtn){
+      shareXBtn.addEventListener('click', ()=>tryShare('X'));
+    }
   </script>
 </body>
 </html>
