@@ -548,6 +548,17 @@
   </nav>
 
   <script>
+    // ★ 古い `/summary` を完全に殺す（保険）
+    window.fetch = new Proxy(window.fetch, {
+      apply(target, thisArg, args) {
+        if (typeof args[0] === "string" && args[0].startsWith("summary")) {
+          console.warn("Blocked old summary API:", args[0]);
+          args[0] = "/api/seller/summary" + args[0].slice("summary".length);
+        }
+        return Reflect.apply(target, thisArg, args);
+      }
+    });
+
     // タブ切り替え
     const navButtons = document.querySelectorAll('.nav-btn');
     const sections   = document.querySelectorAll('.section');
