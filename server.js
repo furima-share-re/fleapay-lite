@@ -825,6 +825,74 @@ app.get("/api/admin/dashboard", requireAdmin, async (req, res) => {
   }
 });
 
+// ====== 管理API: Stripeから直接取得する集計API ======
+app.get("/api/admin/stripe/summary", requireAdmin, async (req, res) => {
+  try {
+    // period=today / all を受け取る（とりあえず today がメイン）
+    const period = req.query.period || 'today';
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    let createdFilter = undefined;
+
+    if (period === 'today') {
+      const since = nowSec - 24 * 60 * 60; // 直近24時間
+      createdFilter = { gte: since };
+    }
+
+    // 1) 決済（charge.succeeded）
+    const chargeParams = {
+      limit: 100,
+    };
+    if (createdFilter) chargeParams.created = createdFilter;
+
+    const chargesList = await stripe.charges.list(chargeParams);
+
+    // 成功している決済のみ
+    const succeededCharges = chargesList.data.filter(c => c.status === 'succeeded');
+
+    const grossAmount = succeededCharges.reduce((sum, c) => sum + (c.amount || 0), 0);
+
+    // 2) チャージバック（disputes）
+    const disputeParams = { limit: 100 };
+    if (createdFilter) disputeParams.created = createdFilter;
+
+    const disputesList = await stripe.disputes.list(disputeParams);
+
+    // 3) 返金（refunds）
+    const refundParams = { limit: 100 };
+    if (createdFilter) refundParams.created = createdFilter;
+
+    const refundsList = await stripe.refunds.list(refundParams);
+    const refundAmount = refundsList.data.reduce((sum, r) => sum + (r.amount || 0), 0);
+
+    // 純売上 = 決済合計 - 返金合計
+    const netSales = grossAmount - refundAmount;
+
+    res.json({
+      ok: true,
+      summary: {
+        period,
+        // 今日の決済
+        paymentsCount: succeededCharges.length,
+        paymentsGross: grossAmount,
+        netSales,
+        // チャージバック
+        disputeCount: disputesList.data.length,
+        // 返金
+        refundCount: refundsList.data.length,
+        refundAmount,
+      },
+      // 一覧表示用に、そのまま返しておく（テーブルに出したいとき用）
+      charges: succeededCharges,
+      disputes: disputesList.data,
+      refunds: refundsList.data,
+    });
+  } catch (err) {
+    console.error('[/api/admin/stripe/summary] error', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ====== /api/pending/start (seller-purchase.htmlから呼ばれる) ======
 app.post("/api/pending/start", async (req, res) => {
   try {
