@@ -12,6 +12,11 @@
   <link rel="stylesheet" href="common/admin-base.css">
   <script src="common/admin-utils.js"></script>
   
+  <!-- 🟦 修正1: ADMIN_TOKEN 初期化を追加 -->
+  <script>
+    window.ADMIN_TOKEN = localStorage.getItem("ADMIN_TOKEN") || "";
+  </script>
+  
   <style>
     .payment-status {
       padding: 3px 8px;
@@ -194,7 +199,7 @@
           </div>
           
           <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
-            <!-- 左側：詳細情報 -->
+            <!-- 左側:詳細情報 -->
             <div>
               <div class="card" style="margin-bottom: 16px;">
                 <h3>基本情報</h3>
@@ -238,13 +243,13 @@
               </div>
 
               <div class="card" style="margin-bottom: 16px;">
-                <h3>対応メモ（運営内部用）</h3>
+                <h3>対応メモ(運営内部用)</h3>
                 <textarea id="internalMemo" rows="4" placeholder="対応内容・メモを入力..." style="width: 100%;"></textarea>
                 <button id="saveMemoBtn" class="small" style="margin-top: 8px;">メモを保存</button>
               </div>
             </div>
             
-            <!-- 右側：操作パネル -->
+            <!-- 右側:操作パネル -->
             <div>
               <div class="card" style="margin-bottom: 16px;">
                 <h3>操作</h3>
@@ -492,7 +497,7 @@
     async function processRefund() {
       if (!currentPayment) return;
       
-      if (!confirm(`¥${currentPayment.amount.toLocaleString()} の返金処理を実行しますか？`)) return;
+      if (!confirm(`¥${currentPayment.amount.toLocaleString()} の返金処理を実行しますか?`)) return;
       
       adminUI.showSpinner('refundBtn');
       try {
@@ -525,7 +530,72 @@
     }
   </script>
 
-  <!-- フッターあたりで JS を読み込み -->
-  <script src="/js/admin-payments.js"></script>
+  <!-- 🟦 修正2: admin-payments.js の fetch に認証ヘッダーを付ける -->
+  <script>
+    // Stripe Summary API から直接データ取得
+    async function loadStripeSummary() {
+      const period = document.getElementById('periodFilter')?.value || 'today';
+      
+      try {
+        // 🟢 認証ヘッダーを有効化
+        const res = await fetch(`/api/admin/stripe/summary?period=${encodeURIComponent(period)}`, {
+          headers: {
+            'x-admin-token': window.ADMIN_TOKEN
+          }
+        });
+        
+        if (!res.ok) {
+          throw new Error(`API Error: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        
+        // サマリー更新
+        if (data.summary) {
+          updateSummary(data.summary);
+        }
+        
+        // データフィールド更新
+        document.querySelector('[data-field="today-payments-count"]').textContent = 
+          `${data.summary?.todayPayments || 0}件`;
+        document.querySelector('[data-field="today-net-sales"]').textContent = 
+          adminUI.formatCurrency(data.summary?.todayRevenue || 0);
+        document.querySelector('[data-field="dispute-count"]').textContent = 
+          `${data.summary?.activeDisputes || 0}件`;
+        document.querySelector('[data-field="refund-count"]').textContent = 
+          `${data.summary?.refundCount || 0}件`;
+        document.querySelector('[data-field="refund-amount"]').textContent = 
+          adminUI.formatCurrency(data.summary?.refundAmount || 0);
+        
+      } catch (error) {
+        console.error('Stripe Summary 取得失敗:', error);
+        adminUI.showToast('Stripeデータの取得に失敗しました', 'error');
+      }
+    }
+    
+    // ページ読み込み時とフィルター変更時に実行
+    document.addEventListener('DOMContentLoaded', () => {
+      loadStripeSummary();
+      
+      document.getElementById('periodFilter')?.addEventListener('change', loadStripeSummary);
+    });
+    
+    // Stripe同期ボタン
+    document.querySelector('[data-action="stripe-sync"]')?.addEventListener('click', async (e) => {
+      const btn = e.target;
+      btn.disabled = true;
+      btn.textContent = '同期中...';
+      
+      try {
+        await loadStripeSummary();
+        adminUI.showToast('Stripe同期が完了しました', 'success');
+      } catch (error) {
+        adminUI.showToast('同期に失敗しました', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Stripe同期';
+      }
+    });
+  </script>
 </body>
 </html>
