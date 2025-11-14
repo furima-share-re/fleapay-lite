@@ -462,7 +462,7 @@ async function initDb() {
       on qr_sessions(seller_id);
   `);
 
-  console.log("✅ DB init done (PATCHED v3 - 完全修正版)");
+  console.log("✅ DB init done (PATCHED v3.1 - OpenAI API修正版)");
 }
 
 initDb().catch(e => console.error("DB init error", e));
@@ -1039,7 +1039,7 @@ app.post("/api/pending/start", async (req, res) => {
   }
 });
 
-// ====== AIフォトフレーム生成API（修正版） ======
+// ====== 🔥 AIフォトフレーム生成API（OpenAI v2 対応版・パッチ適用済み） ======
 app.post("/api/photo-frame", upload.single("image"), async (req, res) => {
   try {
     if (!process.env.OPENAI_API_KEY) {
@@ -1070,12 +1070,13 @@ app.post("/api/photo-frame", upload.single("image"), async (req, res) => {
       type: mime
     });
 
+    // ✅ パッチ適用: response_format を削除
     const result = await openai.images.edit({
       model: "gpt-image-1",
       image: file,
       prompt,
-      size: "1024x1536",
-      response_format: "b64_json"
+      size: "1024x1536"
+      // ❌ response_format: "b64_json" を削除（OpenAI v2では不要）
     });
 
     const b64 = result.data[0].b64_json;
@@ -1098,7 +1099,7 @@ app.get("/api/ping", (req, res) => {
   res.json({ 
     ok: true, 
     timestamp: new Date().toISOString(),
-    version: '3.0.0-fixed'
+    version: '3.1.0-openai-fixed'
   });
 });
 
@@ -1118,7 +1119,7 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║  🪶 Fleapay Server (完全修正版 v3.0.0)                    ║
+║  🪶 Fleapay Server (OpenAI API修正版 v3.1.0)             ║
 ║                                                           ║
 ║  🌐 Server:    http://localhost:${PORT}                   ║
 ║  📊 Admin:     http://localhost:${PORT}/admin-dashboard.html ║
@@ -1128,6 +1129,7 @@ app.listen(PORT, () => {
 ║  ✅ ADMIN_TOKEN: ${ADMIN_TOKEN.substring(0, 5)}***       ║
 ║  ✅ Database: Connected                                   ║
 ║  ✅ Stripe: Initialized                                   ║
+║  ✅ OpenAI: Images API v2 Compatible                     ║
 ╚═══════════════════════════════════════════════════════════╝
   `);
 });
