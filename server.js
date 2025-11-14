@@ -96,12 +96,18 @@ async function resolveSellerAccountId(sellerId) {
 }
 
 // 出店者用URL生成
-function buildSellerUrls(sellerId, stripeAccountId) {
+function buildSellerUrls(sellerId, stripeAccountId, orderId = null) {
   const base = BASE_URL;
   const sellerUrl = `${base}/seller-purchase.html?s=${encodeURIComponent(sellerId)}`;
-  const checkoutUrl = `${base}/checkout.html?s=${encodeURIComponent(sellerId)}${
-    stripeAccountId ? `&acct=${encodeURIComponent(stripeAccountId)}` : ""
-  }`;
+  
+  let checkoutUrl = `${base}/checkout.html?s=${encodeURIComponent(sellerId)}`;
+  if (orderId) {
+    checkoutUrl += `&order=${encodeURIComponent(orderId)}`;
+  }
+  if (stripeAccountId) {
+    checkoutUrl += `&acct=${encodeURIComponent(stripeAccountId)}`;
+  }
+  
   const dashboardUrl = `${base}/seller-dashboard.html?s=${encodeURIComponent(sellerId)}`;
   return { sellerUrl, checkoutUrl, dashboardUrl };
 }
@@ -1204,7 +1210,7 @@ app.post("/api/pending/start", async (req, res) => {
     audit("pending_order_created", { orderId: order.id, sellerId, orderNo, amount: amt });
 
     const stripeAccountId = await resolveSellerAccountId(sellerId);
-    const urls = buildSellerUrls(sellerId, stripeAccountId);
+    const urls = buildSellerUrls(sellerId, stripeAccountId, order.id);
 
     res.json({
       orderId: order.id,
@@ -1219,6 +1225,73 @@ app.post("/api/pending/start", async (req, res) => {
     });
   } catch (e) {
     console.error("pending/start error", e);
+    res.status(500).json(sanitizeError(e));
+  }
+});
+
+// ====== 一般API: 注文の金額取得 ======
+app.get("/api/price/latest", async (req, res) => {
+  try {
+    const orderId = req.query.order;
+    const sellerId = req.query.s;
+    
+    if (!orderId && !sellerId) {
+      return res.status(400).json({ error: "order_id_or_seller_id_required" });
+    }
+
+    const ip = clientIp(req);
+    if (!bumpAndAllow(`price:${ip}`, RATE_LIMIT_MAX_CHECKOUT)) {
+      return res.status(429).json({ error: "rate_limited" });
+    }
+
+    let result;
+    
+    if (orderId) {
+      result = await pool.query(
+        `select id, amount, summary, seller_id, created_at, status
+         from orders
+         where id = $1 and status = 'pending'
+         limit 1`,
+        [orderId]
+      );
+    } else {
+      result = await pool.query(
+        `select id, amount, summary, seller_id, created_at, status
+         from orders
+         where seller_id = $1 and status = 'pending'
+         order by created_at desc
+         limit 1`,
+        [sellerId]
+      );
+    }
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: "not_found", 
+        message: "Amount expired or not found" 
+      });
+    }
+
+    const order = result.rows[0];
+    
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    if (new Date(order.created_at) < tenMinutesAgo) {
+      return res.status(404).json({ 
+        error: "expired", 
+        message: "Amount expired or not found" 
+      });
+    }
+
+    res.json({
+      orderId: order.id,
+      amount: order.amount,
+      summary: order.summary || "",
+      sellerId: order.seller_id,
+      createdAt: order.created_at
+    });
+
+  } catch (e) {
+    console.error("/api/price/latest error", e);
     res.status(500).json(sanitizeError(e));
   }
 });
