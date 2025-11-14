@@ -1532,6 +1532,41 @@ app.get("/api/ping", (req, res) => {
 // ====== 静的ファイル配信 ======
 app.use(express.static(path.join(__dirname, "public")));
 
+// ====== 📄 HTMLファイルのルーティング追加 ======
+import { existsSync } from 'fs';
+
+function serveHtmlWithFallback(filename) {
+  return (req, res) => {
+    const publicPath = path.join(__dirname, "public", filename);
+    if (existsSync(publicPath)) {
+      console.log(`[HTML] ✓ ${filename} を配信しました`);
+      return res.sendFile(publicPath);
+    }
+
+    const rootPath = path.join(__dirname, filename);
+    if (existsSync(rootPath)) {
+      console.log(`[HTML] ✓ ${filename} を配信しました（ルートから）`);
+      return res.sendFile(rootPath);
+    }
+
+    console.error(`[HTML] ✗ ${filename} が見つかりません`);
+    return res.status(404).json({ 
+      error: "file_not_found", 
+      message: `${filename} が見つかりません`
+    });
+  };
+}
+
+app.get("/success.html", serveHtmlWithFallback("success.html"));
+app.get("/checkout.html", serveHtmlWithFallback("checkout.html"));
+app.get("/cancel.html", serveHtmlWithFallback("cancel.html"));
+app.get("/seller-purchase.html", serveHtmlWithFallback("seller-purchase.html"));
+app.get("/seller-dashboard.html", serveHtmlWithFallback("seller-dashboard.html"));
+app.get("/admin-dashboard.html", serveHtmlWithFallback("admin-dashboard.html"));
+app.get("/admin-payments.html", serveHtmlWithFallback("admin-payments.html"));
+
+console.log("✅ HTMLルーティングを追加しました");
+
 // ====== グローバルエラーハンドリングミドルウェア ======
 app.use((error, req, res, next) => {
   console.error("Global error handler:", error);
