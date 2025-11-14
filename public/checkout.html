@@ -119,21 +119,10 @@
     @keyframes heartbeat{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
     .btn:focus-visible{outline:3px solid rgba(230,57,70,.6);outline-offset:2px}
 
-    .brands{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:10px;flex-wrap:wrap}
-    .brand-icon{padding:4px 8px;font-size:11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;color:#64748b}
-
-    /* ==== Trust Badges ==== */
-    .security-badges{display:flex;justify-content:center;gap:16px;margin:16px 0;flex-wrap:wrap}
-    .security-badge{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e7f3ff;border-radius:999px;padding:8px 12px;font-size:12px;color:var(--shin-ai);box-shadow:0 2px 8px rgba(0,0,0,.05)}
-    .security-icon{width:16px;height:16px;color:#10b981}
-
-    .note-block{margin-top:12px;font-size:11px;color:#64748b;line-height:1.6}
-    .note-block p{margin:2px 0}
-
-    /* ==== LP Link in Card Footer ==== */
+    /* ==== LP Link Below Button ==== */
     .lp-link-wrapper{
-      margin-top:16px;
-      padding-top:16px;
+      margin-top:12px;
+      padding-top:12px;
       border-top:1px solid rgba(27,54,93,.08);
       text-align:center;
     }
@@ -148,7 +137,7 @@
       background:linear-gradient(135deg, rgba(27,54,93,.05), rgba(27,54,93,.08));
       border:1px solid rgba(27,54,93,.15);
       border-radius:999px;
-      padding:10px 18px;
+      padding:8px 16px;
       transition:all .2s ease;
     }
     .lp-link:hover{
@@ -163,8 +152,19 @@
     }
     .lp-link::before{
       content:"ℹ️";
-      font-size:16px;
+      font-size:15px;
     }
+
+    .brands{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:10px;flex-wrap:wrap}
+    .brand-icon{padding:4px 8px;font-size:11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;color:#64748b}
+
+    /* ==== Trust Badges ==== */
+    .security-badges{display:flex;justify-content:center;gap:16px;margin:16px 0;flex-wrap:wrap}
+    .security-badge{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e7f3ff;border-radius:999px;padding:8px 12px;font-size:12px;color:var(--shin-ai);box-shadow:0 2px 8px rgba(0,0,0,.05)}
+    .security-icon{width:16px;height:16px;color:#10b981}
+
+    .note-block{margin-top:12px;font-size:11px;color:#64748b;line-height:1.6}
+    .note-block p{margin:2px 0}
 
     /* ==== Themes by time ==== */
     .theme-evening{background-image:radial-gradient(1200px 700px at 80% -10%, rgba(255,212,163,.18) 0%, transparent 60%),
@@ -237,6 +237,14 @@
           </svg>
           <span id="payLabel">Pay Now</span>
         </button>
+        
+        <!-- LP Link Below Button -->
+        <div class="lp-link-wrapper">
+          <a href="https://travel.fleapay.jp/" target="_blank" rel="noopener noreferrer" class="lp-link" data-lang-content data-lang-key="about">
+            FleaPayについて
+          </a>
+        </div>
+        
         <div class="note-block" aria-live="polite">
           <p data-lang-content data-lang-key="confirm1">・間違いがないかご確認ください</p>
           <p data-lang-content data-lang-key="confirm2">・商品受け取り後の返品・交換はできません</p>
@@ -254,13 +262,6 @@
         <span data-lang-content data-lang-key="note">
           表示の外貨換算は参考値です。実際の決済はすべて日本円(JPY)で行われます。この画面は、出店者から受け取った商品の支払い画面です。
         </span>
-        
-        <!-- LP Link in Card Footer -->
-        <div class="lp-link-wrapper">
-          <a href="https://travel.fleapay.jp/" target="_blank" rel="noopener noreferrer" class="lp-link" data-lang-content data-lang-key="about">
-            FleaPayについて
-          </a>
-        </div>
       </footer>
     </div>
   </div>
@@ -316,7 +317,7 @@
         confirm1: '・请确认商品和金额是否正确。',
         confirm2: '・商品领取后无法退货或换货。',
         safety: '🔒 本次支付由 Stripe 安全处理，您的卡信息不会保存在 FleaPay。',
-        note: '画面上的外币换算仅供参考，实际扣款货币为日元（JPY）。此画面为您向摊主购买商品的支付页面。',
+        note: '画面上的外币换算仅供参考,实际扣款货币为日元（JPY）。此画面为您向摊主购买商品的支付页面。',
         about: '关于FleaPay'
       }
     };
