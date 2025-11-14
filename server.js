@@ -8,8 +8,21 @@ import pkg from "pg";
 import crypto from "crypto";
 import multer from "multer";
 import OpenAI from "openai";
+import sharp from "sharp";
 
 dotenv.config();
+
+// Node.js バージョン互換性対応
+let FileCtor;
+try {
+  FileCtor = globalThis.File;
+  if (!FileCtor) {
+    const { File } = await import("undici");
+    FileCtor = File;
+  }
+} catch (error) {
+  console.warn("File constructor not available");
+}
 
 const { Pool } = pkg;
 const app = express();
@@ -1127,54 +1140,89 @@ app.post("/api/pending/start", async (req, res) => {
 // ====== 🔥 AIフォトフレーム生成API（OpenAI v2 対応版・パッチ適用済み） ======
 app.post("/api/photo-frame", upload.single("image"), async (req, res) => {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: "OPENAI_API_KEY not set" });
-    }
-
     const f = req.file;
     if (!f || !f.buffer) {
-      return res.status(400).json({ error: "file_required" });
+      return res.status(400).json({ 
+        error: "file_required", 
+        message: "画像ファイルが必要です" 
+      });
     }
 
-    const prompt =
+    // プロンプト（長さ制限）
+    const rawPrompt =
       process.env.OPENAI_PROMPT_PHOTO_FRAME ||
       "Cute up this photo with a soft pink sakura frame. Keep the original person as they are.";
+    const prompt = rawPrompt.slice(0, 950);
 
-    // mime は一応判定だけしておく(今は jpeg 固定で返す)
-    let mime = f.mimetype || "image/jpeg";
-    const name = (f.originalname || "").toLowerCase();
-    if (mime === "application/octet-stream") {
-      if (name.endsWith(".png")) mime = "image/png";
-      else if (name.endsWith(".webp")) mime = "image/webp";
-      else if (name.endsWith(".heic")) mime = "image/heic";
-      else mime = "image/jpeg";
-    }
+    console.log(`Processing image: ${f.originalname || 'unknown'} (${f.size} bytes)`);
 
-    // BufferをFileオブジェクトに変換（OpenAI Images Edit API用）
-    const file = new File([f.buffer], f.originalname || "image.png", {
-      type: mime
-    });
+    // 画像を RGBA PNG に変換
+    const inputBuffer = await sharp(f.buffer)
+      .resize(1024, 1024, { fit: "inside", withoutEnlargement: true })
+      .ensureAlpha()
+      .png()
+      .toBuffer();
 
-    // ✅ 修正版: response_format追加、モデルとサイズ変更
+    // File オブジェクト作成（Node.js互換性対応）
+const FileConstructor = FileCtor || globalThis.File;
+if (!FileConstructor) {
+  return res.status(500).json({
+    error: "file_constructor_unavailable",
+    message: "File constructor is not available. Please upgrade to Node.js 20+ or install undici package."
+  });
+}
+const file = new FileConstructor([inputBuffer], "image.png", { type: "image/png" });
+    console.log("Sending to OpenAI Images Edit API...");
+
+    // OpenAI 画像編集
     const result = await openai.images.edit({
-      model: "dall-e-2",           // ← 正しいモデル名
+      model: "dall-e-2",
       image: file,
       prompt,
-      size: "1024x1024",           // ← サポートされているサイズ
+      size: "1024x1024",
     });
 
-    const b64 = result.data[0].b64_json;
-    const buf = Buffer.from(b64, "base64");
+    // レスポンス処理の安全性向上
+    const b64 = result.data?.[0]?.b64_json;
+    if (!b64) {
+      return res.status(502).json({
+        error: "no_image_returned",
+        message: "OpenAI APIから画像が返されませんでした",
+      });
+    }
 
-    res.set("Content-Type", "image/png");  // ← dall-e-2はpngを返す
-    res.send(buf);
-  } catch (e) {
-    console.error("photo-frame error", e?.response?.data || e);
-    const detail =
-      e?.response?.data?.error?.message ||
-      e?.message ||
-      "unknown_error";
-    res.status(500).json({ error: "internal_error", detail });
+    const buf = Buffer.from(b64, "base64");
+    
+    console.log("Image processing completed successfully");
+    
+    res.set("Content-Type", "image/png");
+    return res.send(buf);
+
+  } catch (error) {
+    // ★ ここが「エラーハンドリングの強化」部分 ★
+    console.error("Photo frame processing error:", error);
+
+    // OpenAI APIエラーの詳細ログ
+    if (error.response) {
+      console.error("OpenAI API Error Details:", {
+        status: error.response.status,
+        data: error.response.data
+      });
+    }
+
+    // クライアントへの適切なエラーレスポンス
+    const statusFromOpenAI = error?.response?.status || error?.status;
+    const status = typeof statusFromOpenAI === "number" ? statusFromOpenAI : 500;
+
+    const messageFromOpenAI =
+      error?.response?.data?.error?.message ||
+      error?.message ||
+      "画像の加工処理中にエラーが発生しました";
+
+    return res.status(status).json({
+      error: "edit_failed",
+      message: messageFromOpenAI,
+    });
   }
 });
 
@@ -1189,6 +1237,29 @@ app.get("/api/ping", (req, res) => {
 
 // ====== 静的ファイル配信 ======
 app.use(express.static(path.join(__dirname, "public")));
+
+// ====== グローバルエラーハンドリングミドルウェア ======
+app.use((error, req, res, next) => {
+  console.error("Global error handler:", error);
+
+  // multerエラー（ファイルサイズ超過など）の処理
+  if (error instanceof multer.MulterError) {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        error: "file_too_large",
+        message: "ファイルサイズが上限(10MB)を超えています",
+        maxBytes: 10 * 1024 * 1024
+      });
+    }
+    return res.status(400).json({ 
+      error: "upload_error", 
+      message: error.message 
+    });
+  }
+
+  // その他の予期せぬエラー
+  return res.status(500).json(sanitizeError(error));
+});
 
 // ====== 404ハンドラー ======
 app.use((req, res) => {
