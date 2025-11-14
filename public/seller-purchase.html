@@ -5,15 +5,15 @@
        FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
        ★フリマ実態に合わせて簡略化版
        
-       【パッチ適用済み v6 - カメラ拡大問題修正パッチ NEW！】
+       【パッチ適用済み v7 - iPad撮影ボタン見切れ修正パッチ NEW！】
        ★変更点★
-       1. クロップ範囲を95%に拡大（80% → 95%）
-          - 商品全体が画面に収まるように修正
-       2. ズーム機能を完全無効化
-          - カメラの自動ズームを削除
-       3. より広い範囲を撮影可能に改善
+       1. 撮影ボタンがiPadで見切れる問題を修正
+          - 安全領域(safe area)を確保
+          - 画面下部に十分な余白を追加
+          - padding-bottom を 2rem に増加
        
        【過去のパッチ】
+       v6: カメラ拡大問題修正（クロップ95%、ズーム無効化）
        v5: QR URL優先順位修正
        v4: AI total 自動反映
        v3: UX改善（ボタン無効化、価格入力クリア）
@@ -101,6 +101,8 @@
       position:relative;
       width:100%;
       height:100vh;
+      /* iOS/iPadOS対応: Safe Areaを考慮 */
+      height:100dvh; /* Dynamic Viewport Height */
       background:#000;
       overflow:hidden;
     }
@@ -123,7 +125,10 @@
       display:flex;
       flex-direction:column;
       justify-content:space-between;
-      padding:1rem;
+      /* iPad対応: 下部に十分な余白を確保 */
+      padding:1rem 1rem 2rem 1rem;
+      /* iOS Safe Area対応 */
+      padding-bottom:max(2rem, env(safe-area-inset-bottom));
     }
     .overlay-top, .overlay-bottom{
       pointer-events:auto;
@@ -164,6 +169,10 @@
       justify-content:center;
       align-items:center;
       gap:1rem;
+      /* iPad対応: 下部に追加の余白 */
+      padding-bottom:1rem;
+      /* ボタンが見切れないように最小高さを確保 */
+      min-height:100px;
     }
     #captureBtn{
       width:80px;
@@ -903,7 +912,7 @@
   
   /* ========== 初期化 ========== */
   document.addEventListener('DOMContentLoaded', () => {
-    debugLog('=== App Initialized (v6 - Camera zoom fix patch) ===');
+    debugLog('=== App Initialized (v7 - iPad button visibility fix patch) ===');
     sellerId = getSellerIdFromURL();
     initCamera();
   });
