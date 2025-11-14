@@ -317,51 +317,56 @@
       fx.textContent = `≈ USD ${usd} / EUR ${eur}`;
     }
 
-    async function fetchLatest() {
-      const s = getParam('s') || '';
-      const amountEl = document.getElementById('amount');
-      const summaryEl = document.getElementById('summary');
-      const payBtn = document.getElementById('payBtn');
+async function fetchLatest() {
+  const s = getParam('s') || '';
+  const orderId = getParam('order') || '';
+  const amountEl = document.getElementById('amount');
+  const summaryEl = document.getElementById('summary');
+  const payBtn = document.getElementById('payBtn');
 
-      amountEl.classList.add('loading');
-      summaryEl.classList.add('loading');
-      summaryEl.textContent = languages[currentLang].fetching;
+  amountEl.classList.add('loading');
+  summaryEl.classList.add('loading');
+  summaryEl.textContent = languages[currentLang].fetching;
 
-      if(!s){
-        amountEl.classList.remove('loading');
-        summaryEl.classList.remove('loading');
-        amountEl.textContent = '—';
-        summaryEl.textContent = 'sellerId is missing';
-        return;
-      }
+  if(!orderId && !s){
+    amountEl.classList.remove('loading');
+    summaryEl.classList.remove('loading');
+    amountEl.textContent = '—';
+    summaryEl.textContent = 'Missing order information';
+    return;
+  }
 
-      try{
-        const resp = await fetch(`/api/price/latest?s=${encodeURIComponent(s)}`);
-        if(!resp.ok) throw new Error('not found');
-        const data = await resp.json();
-        const amount = Number(data.amount);
-        window.__amountInt = amount;
-        amountEl.textContent = formatJPY(amount);
-        amountEl.classList.remove('loading');
+  try{
+    const url = orderId 
+      ? `/api/price/latest?order=${encodeURIComponent(orderId)}`
+      : `/api/price/latest?s=${encodeURIComponent(s)}`;
+    
+    const resp = await fetch(url);
+    if(!resp.ok) throw new Error('not found');
+    const data = await resp.json();
+    const amount = Number(data.amount);
+    window.__amountInt = amount;
+    amountEl.textContent = formatJPY(amount);
+    amountEl.classList.remove('loading');
 
-        const summary = String(data.summary || '');
-        summaryEl.textContent = summary;
-        summaryEl.classList.remove('loading');
+    const summary = String(data.summary || '');
+    summaryEl.textContent = summary;
+    summaryEl.classList.remove('loading');
 
-        updatePayLabel(amount);
-        updateFx(amount);
-        payBtn.disabled = false;
-      }catch(err){
-        amountEl.classList.remove('loading');
-        summaryEl.classList.remove('loading');
-        amountEl.textContent = '—';
-        summaryEl.textContent = 'Amount expired or not found';
-        document.getElementById('payBtn').disabled = true;
-      } finally {
-        document.body.classList.remove('loading');
-        document.body.classList.add('ready');
-      }
-    }
+    updatePayLabel(amount);
+    updateFx(amount);
+    payBtn.disabled = false;
+  }catch(err){
+    amountEl.classList.remove('loading');
+    summaryEl.classList.remove('loading');
+    amountEl.textContent = '—';
+    summaryEl.textContent = 'Amount expired or not found';
+    document.getElementById('payBtn').disabled = true;
+  } finally {
+    document.body.classList.remove('loading');
+    document.body.classList.add('ready');
+  }
+}
 
     async function startCheckout(){
       const s = getParam('s') || '';
