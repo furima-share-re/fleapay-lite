@@ -1,5 +1,5 @@
 // ------------------------------------------------------------
-// Fleapay Admin - 認証トークン初期化（全ページ共通）
+// Fleapay Admin - 認証トークン初期化(全ページ共通)
 // admin-dashboard / admin-sellers / admin-frames / admin-payments すべて対応
 // ------------------------------------------------------------
 (function initializeAdminToken() {
@@ -11,14 +11,14 @@
     if (!token || (expiry && Date.now() > Number(expiry))) {
       console.warn("⚠️ ADMIN_TOKEN が未設定 or 有効期限切れ → 開発用トークンに切替えます");
 
-      // 開発環境のみ：fallback トークン（本番では server.js のチェックを通る）
+      // 開発環境のみ：fallback トークン(本番では server.js のチェックを通る)
       window.ADMIN_TOKEN = "admin-devtoken";
 
       // 期限切れの可能性があるためクリア
       localStorage.removeItem("ADMIN_TOKEN");
       localStorage.removeItem("ADMIN_TOKEN_EXPIRY");
     } else {
-      // 正常トークン（全APIはこれを利用）
+      // 正常トークン(全APIはこれを利用)
       window.ADMIN_TOKEN = token;
     }
   } catch (e) {
@@ -28,7 +28,7 @@
 })();
 // ============================================
 // Fleapay Admin - 共通ユーティリティ
-// 完全修正版 - 2025年版
+// 完全修正版 - 2025年版 (通貨表示バグ修正)
 // ============================================
 
 // ============================================
@@ -214,15 +214,24 @@ const adminUI = {
   },
   
   /**
-   * 金額をフォーマット（円単位 → 表示）
-   * @param {number} amount - 金額（円単位）
+   * 金額をフォーマット
+   * ✅ 修正: JPY(日本円)はゼロデシマル通貨のため100で割らない
+   * 
+   * Stripeの通貨処理について:
+   * - 通常の通貨(USD, EUR等): amount=1000 → $10.00 (100で割る)
+   * - ゼロデシマル通貨(JPY, KRW等): amount=1000 → ¥1,000 (そのまま)
+   * 
+   * 参考: https://stripe.com/docs/currencies#zero-decimal
+   * 
+   * @param {number} amount - 金額(円単位)
    * @returns {string} - フォーマット済み金額
    */
   formatCurrency(amount) {
     if (typeof amount !== 'number') {
       amount = parseInt(amount) || 0;
     }
-    return '¥' + (amount / 100).toLocaleString('ja-JP');
+    // ✅ 修正: 日本円は100で割らない
+    return '¥' + amount.toLocaleString('ja-JP');
   },
   
   /**
@@ -260,7 +269,7 @@ const adminUI = {
   /**
    * デバウンス関数
    * @param {Function} func - 実行する関数
-   * @param {number} wait - 待機時間（ミリ秒）
+   * @param {number} wait - 待機時間(ミリ秒)
    * @returns {Function} - デバウンスされた関数
    */
   debounce(func, wait) {
