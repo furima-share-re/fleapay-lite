@@ -152,135 +152,6 @@
       font-size: 11px;
     }
 
-    /* 写真エリア */
-    .photo-section{
-      margin: 10px auto 16px;
-      max-width: 520px;
-      text-align:center;
-    }
-    .photo-label{
-      font-size:13px;
-      font-weight:700;
-      margin-bottom:6px;
-      color:#244636;
-    }
-    .photo-preview{
-      position:relative;
-      width:100%;
-      padding-top:62%;
-      border-radius:16px;
-      background:rgba(255,255,255,0.96);
-      border:1px solid rgba(50,60,60,.16);
-      box-shadow:0 8px 18px rgba(0,0,0,.10);
-      overflow:hidden;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-    .photo-preview span{
-      font-size:12px;
-      color:rgba(60,70,70,.8);
-      padding:0 12px;
-    }
-    .photo-preview img{
-      position:absolute;
-      inset:0;
-      width:100%;
-      height:100%;
-      object-fit:cover;
-    }
-
-    .frame{
-      position:absolute;
-      inset:6%;
-      border-radius:14px;
-      pointer-events:none;
-      border: 10px solid rgba(246,200,107,.88);
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,.95) inset,
-        0 8px 26px rgba(0,0,0,.18);
-      mix-blend-mode:soft-light;
-    }
-    .frame.hide{ display:none }
-
-    .photo-controls{
-      display:flex;
-      justify-content:center;
-      gap:10px;
-      margin-top:10px;
-      flex-wrap:wrap;
-    }
-    .photo-helper{
-      margin-top:6px;
-      font-size:11px;
-      color:rgba(60,70,70,.8);
-      line-height:1.5;
-    }
-    .btn-sub{
-      padding:7px 14px;
-      border-radius:999px;
-      border:1px solid rgba(16,60,40,.16);
-      background:rgba(255,255,255,.9);
-      font-size:12px;
-      font-weight:700;
-      cursor:pointer;
-      box-shadow:0 4px 10px rgba(30,80,60,.14);
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      transition:.22s;
-    }
-    .btn-sub.is-busy{
-      opacity:.7;
-      pointer-events:none;
-    }
-    .btn-sub:hover{
-      transform:translateY(-1px);
-      box-shadow:0 7px 16px rgba(30,80,60,.20);
-    }
-
-    .share-title{
-      margin-top:6px;
-      font-size:13px;
-      color:rgba(30,50,50,.95);
-    }
-    .hashtag{
-      margin-top:6px;
-      font-size:12px;
-      color:rgba(50,60,70,.9);
-    }
-
-    .actions{
-      display:flex;
-      gap:10px;
-      justify-content:center;
-      flex-wrap:wrap;
-      margin-top:10px;
-    }
-    .btn{
-      padding:11px 16px;
-      border-radius:14px;
-      border:1px solid rgba(16,60,40,.14);
-      background:rgba(255,255,255,.9);
-      font-weight:700;
-      cursor:pointer;
-      box-shadow:0 6px 14px rgba(30,80,60,.14);
-      transition:.25s;
-      font-size:13px;
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-    }
-    .btn.primary{
-      background:linear-gradient(135deg,#256f4d,#3bbf87);
-      color:#f8fffb;
-      border-color:rgba(10,60,40,.3);
-    }
-    .btn:hover{
-      transform:translateY(-2px);
-      box-shadow:0 10px 20px rgba(30,80,60,.22);
-    }
-
     .meta{
       font-size:11px;
       color:rgba(50,60,60,.9);
@@ -311,15 +182,9 @@
       border-color:#205a3e;
     }
 
-    /* SNS一時無効化 */
-    .sns-disabled{
-      display:none !important;
-    }
-
     @media(max-width:520px){
       .card{padding:28px 18px 22px}
       .notice{text-align:left; font-size:12px;}
-      .actions{gap:8px}
     }
   </style>
 </head>
@@ -400,69 +265,6 @@
         </p>
       </div>
 
-      <section class="photo-section">
-        <p class="photo-label" data-i18n="photoLabel">自分で撮った写真をAIでかわいく加工</p>
-        <div class="photo-preview" id="photoPreview">
-          <!-- 実装側で img を差し込む想定 -->
-          <span data-i18n="photoPlaceholder">
-            ① 下のボタンから写真をえらぶ / とる<br>② 「AIでかわいく加工」を押すと、桜フレームつきの記念写真がここに表示されます。
-          </span>
-          <div class="frame hide" id="frame"></div>
-        </div>
-
-        <div class="photo-controls">
-          <button class="btn-sub" id="selectPhotoBtn">
-            <span>📸</span><span data-i18n="selectPhoto">写真をえらぶ / とる</span>
-          </button>
-          <button class="btn-sub" id="runAiBtn">
-            <span>✨</span><span data-i18n="runAi">AIでかわいく加工</span>
-          </button>
-          <button class="btn-sub" id="photoFrameToggle">
-            <span>🎀</span><span data-i18n="photoFrameToggle">フォトフレーム ON / OFF</span>
-          </button>
-          <button class="btn-sub" id="savePhotoBtn">
-            <span>💾</span><span data-i18n="savePhoto">写真を保存する</span>
-          </button>
-        </div>
-
-        <!-- 購入者が自分で写真を撮る / 選ぶための input -->
-        <input
-          type="file"
-          id="photoInput"
-          accept="image/*"
-          capture="environment"
-          style="display:none"
-        />
-
-        <p class="photo-helper" data-i18n="photoHelper">
-          ※写真はAI加工のために一時的に送信されますが、サーバーには保存されません。完成した画像はお客さまの端末にだけ保存されます。
-        </p>
-      </section>
-
-      <!-- ▼ SNS共有エリア:今は非表示。再開時は sns-disabled を外す -->
-      <div class="sns-section sns-disabled" id="snsSection">
-        <p class="share-title" data-i18n="shareTitle">
-          旅のフリマ体験を、SNSでシェアしませんか?
-        </p>
-
-        <div class="actions">
-          <button class="btn primary" id="shareInsta">
-            <span>📸</span><span data-i18n="shareInsta">Instagramでシェア</span>
-          </button>
-          <button class="btn" id="shareTiktok">
-            <span>🎵</span><span data-i18n="shareTiktok">TikTokでシェア</span>
-          </button>
-          <button class="btn" id="shareX">
-            <span>✕</span><span data-i18n="shareX">Xでシェア</span>
-          </button>
-        </div>
-
-        <p class="hashtag" data-i18n="hashtag">
-          #Fleapay #TokyoFleaMarket #JapanFinds をつけて、旅の宝物をシェアしましょう。
-        </p>
-      </div>
-      <!-- ▲ SNS共有エリア -->
-
       <p class="meta" data-i18n="meta">
         Thanks for supporting local creators & flea market culture.<br>
         ※必要に応じて、スタッフから決済IDの確認をお願いする場合があります。
@@ -531,110 +333,6 @@
     for(let i=0;i<18;i++) spawnPetal();
     setInterval(spawnPetal, 1200);
 
-    // フレーム ON/OFF
-    const frameEl = document.getElementById('frame');
-    const frameToggleBtn = document.getElementById('photoFrameToggle');
-    frameToggleBtn.addEventListener('click', ()=>{
-      frameEl.classList.toggle('hide');
-    });
-
-    // ====== 写真保存（ローカルへダウンロード） ======
-    const savePhotoBtn = document.getElementById('savePhotoBtn');
-    savePhotoBtn.addEventListener('click', () => {
-      // 表示中の <img> を取得
-      const img = photoPreview.querySelector('img');
-      if (!img || !img.src) {
-        alert('保存できる写真がありません。写真を撮影 or 加工してからお試しください。');
-        return;
-      }
-
-      // ダウンロード用リンクを作成して自動クリック
-      const link = document.createElement('a');
-      link.href = img.src; // dataURL または blob URL
-      link.download = `fleapay-photo-${Date.now()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
-
-    // --- 自分で写真を撮影 → AIでフォトフレームを適用する暫定処理 ---
-    const photoPreview = document.getElementById('photoPreview');
-    const photoInput = document.getElementById('photoInput');
-    const selectPhotoBtn = document.getElementById('selectPhotoBtn');
-    const runAiBtn = document.getElementById('runAiBtn');
-
-    let originalPhotoUrl = null;
-    let processedPhotoUrl = null;
-
-    function setPreviewImage(url){
-      let img = photoPreview.querySelector('img');
-      const placeholder = photoPreview.querySelector('span');
-      if(!img){
-        img = document.createElement('img');
-        photoPreview.appendChild(img);
-      }
-      img.src = url;
-      if(placeholder) placeholder.style.display = 'none';
-    }
-
-    // 写真をえらぶ / とる
-    if(selectPhotoBtn && photoInput){
-      selectPhotoBtn.addEventListener('click', ()=>{
-        photoInput.click();
-      });
-
-      photoInput.addEventListener('change', ()=>{
-        const file = photoInput.files && photoInput.files[0];
-        if(!file) return;
-        if(originalPhotoUrl){
-          URL.revokeObjectURL(originalPhotoUrl);
-        }
-        originalPhotoUrl = URL.createObjectURL(file);
-        processedPhotoUrl = null;
-        frameEl.classList.add('hide');
-        setPreviewImage(originalPhotoUrl);
-      });
-    }
-
-    // AIでかわいく加工する → /api/photo-frame を呼び出し
-    if(runAiBtn){
-      runAiBtn.addEventListener('click', async ()=>{
-        const file = photoInput && photoInput.files && photoInput.files[0];
-        if(!file){
-          alert('まず「写真をえらぶ / とる」ボタンから写真を選択してください。');
-          return;
-        }
-        if(runAiBtn.classList.contains('is-busy')) return;
-        runAiBtn.classList.add('is-busy');
-        runAiBtn.disabled = true;
-
-        try{
-          const fd = new FormData();
-          fd.append('image', file);
-
-          const res = await fetch('/api/photo-frame', {
-            method: 'POST',
-            body: fd
-          });
-          if(!res.ok) throw new Error('ai_failed');
-
-          const blob = await res.blob();
-          if(processedPhotoUrl){
-            URL.revokeObjectURL(processedPhotoUrl);
-          }
-          processedPhotoUrl = URL.createObjectURL(blob);
-          setPreviewImage(processedPhotoUrl);
-          frameEl.classList.remove('hide');
-        }catch(e){
-          console.error(e);
-          alert('AIでの写真加工に失敗しました。電波状況などをご確認のうえ、もう一度お試しください。');
-        }finally{
-          runAiBtn.classList.remove('is-busy');
-          runAiBtn.disabled = false;
-        }
-      });
-    }
-
     // 多言語対応
     const dict = {
       ja:{
@@ -642,18 +340,6 @@
         title: "決済が完了しました",
         lead: "この画面を出店スタッフにお見せください。",
         notice: "<strong>✅ 決済が完了しました。</strong><br>出店スタッフが商品をお渡しします。<br><small>※商品お渡し後の返品・交換はご遠慮ください。</small>",
-        photoLabel: "自分で撮った写真をAIでかわいく加工",
-        photoPlaceholder: "① 下のボタンから写真をえらぶ / とる<br>② 「AIでかわいく加工」を押すと、桜フレームつきの記念写真がここに表示されます。",
-        selectPhoto: "写真をえらぶ / とる",
-        runAi: "AIでかわいく加工",
-        photoHelper: "※写真はAI加工のために一時的に送信されますが、サーバーには保存されません。完成した画像はお客さまの端末にだけ保存されます。",
-        photoFrameToggle: "フォトフレーム ON / OFF",
-        savePhoto: "写真を保存する",
-        shareTitle: "旅のフリマ体験を、SNSでシェアしませんか?",
-        shareInsta: "Instagramでシェア",
-        shareTiktok: "TikTokでシェア",
-        shareX: "Xでシェア",
-        hashtag: "#Fleapay #TokyoFleaMarket #JapanFinds をつけて、旅の宝物をシェアしましょう。",
         meta: "Thanks for supporting local creators and flea market culture.<br>※必要に応じて、スタッフから決済IDの確認をお願いする場合があります。"
       },
       en:{
@@ -661,18 +347,6 @@
         title: "Payment Completed",
         lead: "Please show this screen to the shop staff.",
         notice: "<strong>✅ Your payment has been completed.</strong><br>The staff will hand you your item.<br><small>*Refunds and exchanges are not available after receiving your item.</small>",
-        photoLabel: "Take your own photo & let AI make it cute",
-        photoPlaceholder: "1) Take or choose a photo below<br>2) Tap 『Make it cute with AI』 and your framed memory photo will appear here.",
-        selectPhoto: "Choose / take a photo",
-        runAi: "Make it cute with AI",
-        photoHelper: "Your photo is sent to AI only for processing and is not stored on the server. The final image is saved only on your device.",
-        photoFrameToggle: "Photo frame ON / OFF",
-        savePhoto: "Save photo",
-        shareTitle: "Share your flea market moment on SNS!",
-        shareInsta: "Share on Instagram",
-        shareTiktok: "Share on TikTok",
-        shareX: "Share on X",
-        hashtag: "Share your travel treasure with #Fleapay #TokyoFleaMarket #JapanFinds",
         meta: "Thank you for supporting local creators and flea market culture.<br>*Staff may ask you to confirm your payment ID if necessary."
       },
       zh:{
@@ -680,18 +354,6 @@
         title: "付款已完成",
         lead: "请将此画面出示给摊主。",
         notice: "<strong>✅ 付款已完成。</strong><br>摊主会为您递上商品。<br><small>※领取商品后,恕不接受退换。</small>",
-        photoLabel: "用自己的照片,让 AI 打造成可爱的纪念照",
-        photoPlaceholder: "① 点击下方按钮拍照或选择照片<br>② 点击「用 AI 可爱化」,带樱花相框的纪念照会显示在这里。",
-        selectPhoto: "选择 / 拍摄照片",
-        runAi: "用 AI 可爱化",
-        photoHelper: "照片仅用于 AI 处理,不会保存在服务器上。完成后的图片只会保存在您的设备中。",
-        photoFrameToggle: "相框 开 / 关",
-        savePhoto: "保存照片",
-        shareTitle: "要不要在 SNS 上分享这次市集体验?",
-        shareInsta: "分享到 Instagram",
-        shareTiktok: "分享到 TikTok",
-        shareX: "分享到 X",
-        hashtag: "欢迎使用 #Fleapay #TokyoFleaMarket #JapanFinds 分享您的旅途收获。",
         meta: "感谢您支持本地创作者与跳蚤市集文化。<br>※如有需要,工作人员可能会请您确认付款编号。"
       }
     };
@@ -724,54 +386,6 @@
       else if(nav.startsWith('zh')) applyLang('zh');
       else applyLang('ja');
     })();
-
-    // シェア処理(将来SNS連携用の土台として残す)
-    function buildShareText(lang){
-      const t = dict[lang] || dict.ja;
-      return {
-        text: t.shareTitle.replace(/<br>/g,' ') || '',
-        hashtags: "#Fleapay #TokyoFleaMarket #JapanFinds"
-      };
-    }
-
-    function getLangFromHtml(){
-      const lang = document.documentElement.lang;
-      if(lang === 'en' || lang === 'zh' || lang === 'ja') return lang;
-      return 'ja';
-    }
-
-    function tryShare(target){
-      const lang = getLangFromHtml();
-      const s = buildShareText(lang);
-      const url = window.location.origin || '';
-
-      const textBase = s.text + ' ' + s.hashtags;
-
-      // 将来:ここを「各SNSアプリを開く処理」に差し替える想定
-      if(navigator.share){
-        navigator.share({
-          title: 'Fleapay',
-          text: textBase + ' [' + target + ']',
-          url
-        }).catch(()=>{ /* user cancelled */ });
-      }else{
-        alert(textBase + "\n\nこのテキストをコピーして、" + target + " に貼り付けてください。");
-      }
-    }
-
-    const shareInstaBtn = document.getElementById('shareInsta');
-    const shareTiktokBtn = document.getElementById('shareTiktok');
-    const shareXBtn = document.getElementById('shareX');
-
-    if(shareInstaBtn){
-      shareInstaBtn.addEventListener('click', ()=>tryShare('Instagram'));
-    }
-    if(shareTiktokBtn){
-      shareTiktokBtn.addEventListener('click', ()=>tryShare('TikTok'));
-    }
-    if(shareXBtn){
-      shareXBtn.addEventListener('click', ()=>tryShare('X'));
-    }
   </script>
 </body>
 </html>
