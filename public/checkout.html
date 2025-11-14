@@ -52,7 +52,14 @@
     .container{max-width:640px;margin:0 auto;padding:20px}
 
     /* ==== App Bar with Brand Logo ==== */
-    .appbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .appbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:12px;
+      flex-wrap:wrap;
+      gap:8px;
+    }
     .logo{display:flex;gap:8px;align-items:baseline;user-select:none}
     .logo__wordmark{
       font-family:"Nunito Sans", system-ui;
@@ -61,31 +68,74 @@
     }
     .logo__wordmark .pay{color:var(--kintsugi)} /* 金継ぎは文字装飾のみに使用 */
     .logo__sparkle{font-size:14px;opacity:.9;margin-left:2px}
-    .app-actions{display:flex;gap:8px;align-items:center}
+    .app-actions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
 
-    /* LP Link */
+    /* LP Link - モバイル優先デザイン */
     .lp-link{
-      display:flex;align-items:center;gap:4px;
-      font-size:13px;font-weight:700;
-      color:var(--shin-ai);text-decoration:none;
-      background:rgba(255,255,255,.6);
-      border:1px solid rgba(27,54,93,.15);
-      border-radius:999px;padding:8px 14px;
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      font-size:12px;
+      font-weight:700;
+      color:var(--shin-ai);
+      text-decoration:none;
+      background:rgba(255,255,255,.8);
+      border:1px solid rgba(27,54,93,.2);
+      border-radius:999px;
+      padding:6px 12px;
       transition:all .2s ease;
+      white-space:nowrap;
     }
     .lp-link:hover{
-      background:rgba(255,255,255,.9);
-      border-color:rgba(27,54,93,.25);
+      background:rgba(255,255,255,1);
+      border-color:rgba(27,54,93,.35);
       transform:translateY(-1px);
-      box-shadow:0 2px 8px rgba(27,54,93,.12);
+      box-shadow:0 2px 8px rgba(27,54,93,.15);
     }
     .lp-link:focus-visible{outline:3px solid rgba(230,57,70,.45);outline-offset:2px}
+    
+    /* レスポンシブ: 大きい画面では通常サイズ */
+    @media (min-width: 480px) {
+      .lp-link{
+        font-size:13px;
+        padding:8px 14px;
+      }
+    }
 
     /* Language toggle */
-    .lang-switch{display:flex;gap:4px;background:rgba(255,255,255,.6);border:1px solid rgba(27,54,93,.15);border-radius:999px;padding:3px}
-    .lang-btn{width:34px;height:34px;border:0;background:transparent;border-radius:50%;font-size:14px;cursor:pointer}
+    .lang-switch{
+      display:flex;
+      gap:4px;
+      background:rgba(255,255,255,.6);
+      border:1px solid rgba(27,54,93,.15);
+      border-radius:999px;
+      padding:3px;
+    }
+    .lang-btn{
+      width:32px;
+      height:32px;
+      border:0;
+      background:transparent;
+      border-radius:50%;
+      font-size:13px;
+      cursor:pointer;
+    }
     .lang-btn:focus-visible{outline:3px solid rgba(230,57,70,.45)}
     .lang-btn.active{background:rgba(27,54,93,.08)}
+    
+    /* レスポンシブ: 大きい画面では通常サイズ */
+    @media (min-width: 480px) {
+      .lang-btn{
+        width:34px;
+        height:34px;
+        font-size:14px;
+      }
+    }
 
     /* ==== Card ==== */
     .card{
