@@ -1155,19 +1155,19 @@ app.post("/api/photo-frame", upload.single("image"), async (req, res) => {
       type: mime
     });
 
-    // ✅ パッチ適用: response_format を削除
+    // ✅ 修正版: response_format追加、モデルとサイズ変更
     const result = await openai.images.edit({
-      model: "gpt-image-1",
+      model: "dall-e-2",           // ← 正しいモデル名
       image: file,
       prompt,
-      size: "1024x1536"
-      // ❌ response_format: "b64_json" を削除（OpenAI v2では不要）
+      size: "1024x1024",           // ← サポートされているサイズ
+      response_format: "b64_json"  // ← 必須パラメータを追加
     });
 
     const b64 = result.data[0].b64_json;
     const buf = Buffer.from(b64, "base64");
 
-    res.set("Content-Type", "image/jpeg");
+    res.set("Content-Type", "image/png");  // ← dall-e-2はpngを返す
     res.send(buf);
   } catch (e) {
     console.error("photo-frame error", e?.response?.data || e);
