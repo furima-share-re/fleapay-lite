@@ -61,7 +61,25 @@
     }
     .logo__wordmark .pay{color:var(--kintsugi)} /* 金継ぎは文字装飾のみに使用 */
     .logo__sparkle{font-size:14px;opacity:.9;margin-left:2px}
-    .app-actions{display:flex;gap:8px}
+    .app-actions{display:flex;gap:8px;align-items:center}
+
+    /* LP Link */
+    .lp-link{
+      display:flex;align-items:center;gap:4px;
+      font-size:13px;font-weight:700;
+      color:var(--shin-ai);text-decoration:none;
+      background:rgba(255,255,255,.6);
+      border:1px solid rgba(27,54,93,.15);
+      border-radius:999px;padding:8px 14px;
+      transition:all .2s ease;
+    }
+    .lp-link:hover{
+      background:rgba(255,255,255,.9);
+      border-color:rgba(27,54,93,.25);
+      transform:translateY(-1px);
+      box-shadow:0 2px 8px rgba(27,54,93,.12);
+    }
+    .lp-link:focus-visible{outline:3px solid rgba(230,57,70,.45);outline-offset:2px}
 
     /* Language toggle */
     .lang-switch{display:flex;gap:4px;background:rgba(255,255,255,.6);border:1px solid rgba(27,54,93,.15);border-radius:999px;padding:3px}
@@ -153,6 +171,9 @@
         <span class="logo__sparkle" aria-hidden="true">✨</span>
       </div>
       <div class="app-actions">
+        <a href="https://travel.fleapay.jp/" target="_blank" rel="noopener noreferrer" class="lp-link" data-lang-content data-lang-key="about">
+          FleaPayについて
+        </a>
         <div class="lang-switch" role="group" aria-label="Language">
           <button class="lang-btn active" data-lang="ja" aria-label="日本語">🇯🇵</button>
           <button class="lang-btn" data-lang="en" aria-label="English">🇺🇸</button>
@@ -216,7 +237,7 @@
 
       <footer class="center mt24 muted" style="font-size:12px">
         <span data-lang-content data-lang-key="note">
-          表示の外貨換算は参考値です。実際の決済はすべて日本円（JPY）で行われます。この画面は、出店者から受け取った商品の支払い画面です。
+          表示の外貨換算は参考値です。実際の決済はすべて日本円(JPY)で行われます。この画面は、出店者から受け取った商品の支払い画面です。
         </span>
       </footer>
     </div>
@@ -245,7 +266,8 @@
         confirm1: '・間違いがないかご確認ください',
         confirm2: '・商品受け取り後の返品・交換はできません',
         safety: '🔒 この決済は Stripe の国際基準で保護されています。カード情報は FleaPay には保存されません。',
-        note: '表示の外貨換算は参考値です。実際の決済はすべて日本円（JPY）で行われます。この画面は、出店者から受け取った商品の支払い画面です。'
+        note: '表示の外貨換算は参考値です。実際の決済はすべて日本円(JPY)で行われます。この画面は、出店者から受け取った商品の支払い画面です。',
+        about: 'FleaPayについて'
       },
       en: { 
         welcome: 'Welcome!',
@@ -258,7 +280,8 @@
         confirm1: '・Please check that the items and amount are correct.',
         confirm2: '・Returns or exchanges are not available after you receive the item.',
         safety: '🔒 Payments are processed securely by Stripe. Your card details are not stored by FleaPay.',
-        note: 'Any foreign currency shown is indicative only. Your payment is charged in Japanese yen (JPY). This is the payment screen for the items you selected from the seller.'
+        note: 'Any foreign currency shown is indicative only. Your payment is charged in Japanese yen (JPY). This is the payment screen for the items you selected from the seller.',
+        about: 'About FleaPay'
       },
       zh: { 
         welcome: '欢迎光临！',
@@ -271,7 +294,8 @@
         confirm1: '・请确认商品和金额是否正确。',
         confirm2: '・商品领取后无法退货或换货。',
         safety: '🔒 本次支付由 Stripe 安全处理，您的卡信息不会保存在 FleaPay。',
-        note: '画面上的外币换算仅供参考，实际扣款货币为日元（JPY）。此画面为您向摊主购买商品的支付页面。'
+        note: '画面上的外币换算仅供参考，实际扣款货币为日元（JPY）。此画面为您向摊主购买商品的支付页面。',
+        about: '关于FleaPay'
       }
     };
     let currentLang = 'ja';
