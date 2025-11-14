@@ -4,201 +4,275 @@
   <meta charset="UTF-8" />
   <title>DB 初期構築用 SQL 実行ツール (危険)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- 共通管理画面スタイル -->
+  <link rel="stylesheet" href="./admin-base.css" />
   <style>
-    body{
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-      margin:16px;
-      background:#f5f5f5;
-    }
-    .wrap{
-      max-width:960px;
-      margin:0 auto;
-      background:#fff;
-      padding:16px 18px 20px;
-      border-radius:12px;
-      box-shadow:0 4px 12px rgba(0,0,0,0.06);
-    }
-    h1{
-      font-size:20px;
-      margin:0 0 8px;
-    }
-    .danger{
-      border-left:4px solid #d32f2f;
-      background:#ffebee;
-      color:#b71c1c;
-      padding:8px 10px;
-      margin:0 0 12px;
-      font-size:13px;
-    }
-    label{
-      font-size:13px;
-      display:block;
-      margin-top:8px;
-      margin-bottom:4px;
-    }
-    input[type="password"],
-    textarea{
-      width:100%;
-      box-sizing:border-box;
-      font-family:monospace;
-      font-size:13px;
-      padding:8px;
-      border-radius:6px;
-      border:1px solid #ccc;
-    }
-    textarea{
-      min-height:220px;
-      resize:vertical;
-    }
-    button{
-      margin-top:10px;
-      padding:8px 18px;
-      border-radius:999px;
-      border:none;
-      font-size:14px;
-      font-weight:600;
-      cursor:pointer;
-      background:#1976d2;
-      color:#fff;
-    }
-    button:disabled{
-      opacity:0.6;
-      cursor:wait;
-    }
-    .status{
-      margin-top:10px;
-      font-size:13px;
-      color:#555;
-      white-space:pre-wrap;
-    }
-    pre{
-      margin-top:12px;
-      padding:10px;
-      background:#111;
-      color:#eee;
-      border-radius:6px;
-      font-size:12px;
-      overflow-x:auto;
-      max-height:420px;
-    }
-    .preset-bar{
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
-      margin:6px 0 4px;
-    }
-    .preset-btn{
-      padding:4px 10px;
-      border-radius:999px;
-      border:1px solid #ccc;
-      background:#fafafa;
-      font-size:11px;
-      cursor:pointer;
-    }
-    .preset-btn:hover{
-      background:#e3f2fd;
-    }
-    .small{
-      font-size:11px;
-      color:#777;
-      margin-top:4px;
+    /* ========= このページ専用スタイル ========= */
+    .bootstrap-sql-title {
+      font-size: 20px;
+      margin: 0 0 8px;
     }
 
-    /* 追加：左右レイアウト */
-    .main-flex{
-      display:flex;
-      gap:14px;
-      margin-top:14px;
-    }
-    .panel{
-      flex:1;
-      display:flex;
-      flex-direction:column;
+    .bootstrap-sql-danger {
+      border-left: 4px solid #d32f2f;
+      background: #ffebee;
+      color: #b71c1c;
+      padding: 8px 10px;
+      margin: 0 0 16px;
+      font-size: 13px;
     }
 
-    .panel textarea{
-      flex:1;
-      min-height:0; /* flex内で縮むため */
+    .bootstrap-sql-label {
+      font-size: 13px;
+      display: block;
+      margin-top: 8px;
+      margin-bottom: 4px;
     }
 
-    .panel pre{
-      flex:1;
-      min-height:0;
+    .bootstrap-sql-input,
+    .bootstrap-sql-textarea {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "Helvetica Neue", "Noto Sans JP", sans-serif;
+      font-size: 13px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .bootstrap-sql-textarea {
+      font-family: monospace;
+      min-height: 220px;
+      resize: vertical;
+    }
+
+    .bootstrap-sql-main-flex {
+      display: flex;
+      gap: 14px;
+      margin-top: 14px;
+      align-items: stretch;
+    }
+
+    .bootstrap-sql-panel {
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bootstrap-sql-panel textarea {
+      flex: 1;
+      min-height: 0;
+    }
+
+    .bootstrap-sql-panel pre {
+      flex: 1;
+      min-height: 0;
+    }
+
+    .bootstrap-sql-button {
+      margin-top: 10px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--fleapay-blue);
+      color: #fff;
+    }
+
+    .bootstrap-sql-button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    .bootstrap-sql-status {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #555;
+      white-space: pre-wrap;
+    }
+
+    .bootstrap-sql-result {
+      margin-top: 12px;
+      padding: 10px;
+      background: #111;
+      color: #eee;
+      border-radius: 6px;
+      font-size: 12px;
+      overflow-x: auto;
+      max-height: 420px;
+    }
+
+    .bootstrap-sql-preset-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 6px 0 4px;
+    }
+
+    .bootstrap-sql-preset-btn {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #ccc;
+      background: #fafafa;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .bootstrap-sql-preset-btn:hover {
+      background: #e3f2fd;
+    }
+
+    .bootstrap-sql-small {
+      font-size: 11px;
+      color: #777;
+      margin-top: 4px;
+    }
+
+    /* スマホ時は上下レイアウトに自動で崩す */
+    @media (max-width: 960px) {
+      .bootstrap-sql-main-flex {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>DB 初期構築用 SQL 実行ツール</h1>
-    <div class="danger">
-      ⚠ <b>超・危険なツールです。</b><br>
-      - 本番運用開始後は <b>ADMIN_BOOTSTRAP_SQL_ENABLED を false / 削除</b> して封印してください。<br>
-      - <code>DROP DATABASE</code> などはブロックしますが、<b>テーブル削除・データ削除は普通に実行</b>されます。
-    </div>
-
-    <label for="adminToken">Admin Token (x-admin-token)</label>
-    <input id="adminToken" type="password" placeholder="環境変数 ADMIN_TOKEN と同じ値" />
-
-    <!-- 左右レイアウト開始 -->
-    <div class="main-flex">
-
-      <!-- 左パネル：SQL入力 -->
-      <div class="panel">
-        <label for="sql">SQL</label>
-        <div class="preset-bar">
-          <button type="button" class="preset-btn" data-preset="tables">publicテーブル一覧</button>
-          <button type="button" class="preset-btn" data-preset="columns">カラム一覧</button>
-          <button type="button" class="preset-btn" data-preset="truncate_sample">TRUNCATEサンプル(要編集)</button>
-        </div>
-        <textarea id="sql" placeholder="例:&#10;CREATE TABLE test (...);&#10;DELETE FROM pending_charges WHERE ...;"></textarea>
-
-        <button id="runBtn">SQLを実行する</button>
-        <div class="small">
-          ※複数ステートメントを流す場合は自己責任でお願いします。<br>
-          ※SELECT文の結果は右側に表示されます。
-        </div>
+  <div class="admin-container">
+    <!-- ヘッダー -->
+    <header class="admin-header">
+      <div>
+        <span style="font-weight:700;">Fleapay Admin</span>
       </div>
-
-      <!-- 右パネル：ステータス＋実行結果 -->
-      <div class="panel">
-        <label>実行結果</label>
-        <div id="status" class="status"></div>
-        <pre id="result"></pre>
+      <div>
+        <span>DB 初期構築用 SQL 実行ツール</span>
+        <span class="env-badge">ENV</span>
       </div>
+    </header>
 
-    </div>
-    <!-- 左右レイアウト終了 -->
+    <!-- サイドバー -->
+    <aside class="admin-sidebar">
+      <ul class="nav-menu">
+        <li><a href="./admin-dashboard.html" class="nav-item">ダッシュボード</a></li>
+        <li><a href="./admin-sellers.html" class="nav-item">出店者管理</a></li>
+        <li><a href="./admin-frames.html" class="nav-item">フレーム管理</a></li>
+        <li><a href="./admin-payments.html" class="nav-item">決済・売上</a></li>
+        <li><a href="./bootstrap_sql.html" class="nav-item active">DB 初期構築 SQL</a></li>
+      </ul>
+    </aside>
+
+    <!-- コンテンツ -->
+    <main class="admin-content">
+      <section class="bootstrap-sql">
+        <h1 class="bootstrap-sql-title">DB 初期構築用 SQL 実行ツール</h1>
+
+        <div class="bootstrap-sql-danger">
+          ⚠ <b>超・危険なツールです。</b><br>
+          - 本番運用開始後は <b>ADMIN_BOOTSTRAP_SQL_ENABLED を false / 削除</b> して封印してください。<br>
+          - <code>DROP DATABASE</code> などはブロックしますが、
+          <b>テーブル削除・データ削除は普通に実行</b>されます。
+        </div>
+
+        <label for="adminToken" class="bootstrap-sql-label">
+          Admin Token (x-admin-token)
+        </label>
+        <input
+          id="adminToken"
+          type="password"
+          class="bootstrap-sql-input"
+          placeholder="環境変数 ADMIN_TOKEN と同じ値"
+        />
+
+        <div class="bootstrap-sql-main-flex">
+          <!-- 左：SQL入力 -->
+          <div class="bootstrap-sql-panel">
+            <label for="sql" class="bootstrap-sql-label">SQL</label>
+            <div class="bootstrap-sql-preset-bar">
+              <button
+                type="button"
+                class="bootstrap-sql-preset-btn"
+                data-preset="tables"
+              >
+                publicテーブル一覧
+              </button>
+              <button
+                type="button"
+                class="bootstrap-sql-preset-btn"
+                data-preset="columns"
+              >
+                カラム一覧
+              </button>
+              <button
+                type="button"
+                class="bootstrap-sql-preset-btn"
+                data-preset="truncate_sample"
+              >
+                TRUNCATEサンプル(要編集)
+              </button>
+            </div>
+            <textarea
+              id="sql"
+              class="bootstrap-sql-textarea"
+              placeholder="例:&#10;CREATE TABLE test (...);&#10;DELETE FROM pending_charges WHERE ...;"
+            ></textarea>
+
+            <button id="runBtn" class="bootstrap-sql-button">
+              SQLを実行する
+            </button>
+            <div class="bootstrap-sql-small">
+              ※複数ステートメントを流す場合は自己責任でお願いします。<br />
+              ※SELECT文の結果は右側に表示されます。
+            </div>
+          </div>
+
+          <!-- 右：ステータス＋結果 -->
+          <div class="bootstrap-sql-panel">
+            <label class="bootstrap-sql-label">実行結果</label>
+            <div id="status" class="bootstrap-sql-status"></div>
+            <pre id="result" class="bootstrap-sql-result"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
+
+  <!-- 共通JS -->
+  <script src="./admin-utils.js"></script>
 
   <script>
     (function () {
       const adminInput = document.getElementById("adminToken");
-      const sqlInput   = document.getElementById("sql");
-      const btn        = document.getElementById("runBtn");
-      const statusEl   = document.getElementById("status");
-      const resultEl   = document.getElementById("result");
+      const sqlInput = document.getElementById("sql");
+      const btn = document.getElementById("runBtn");
+      const statusEl = document.getElementById("status");
+      const resultEl = document.getElementById("result");
 
-      // 初期構築時によく使うSQLプリセット
+      // すでにログイン済みなら ADMIN_TOKEN を初期値に入れておく
+      if (window.ADMIN_TOKEN) {
+        adminInput.value = window.ADMIN_TOKEN;
+      }
+
+      // プリセットSQL
       const presets = {
-        // publicスキーマのテーブル一覧
         tables: [
           "-- publicスキーマのテーブル一覧",
           "SELECT table_name",
           "FROM information_schema.tables",
           "WHERE table_schema = 'public'",
           "ORDER BY table_name;"
-        ].join("\n"),
+        ].join("\\n"),
 
-        // publicスキーマのカラム一覧
         columns: [
           "-- publicスキーマのカラム一覧",
           "SELECT table_name, column_name, data_type",
           "FROM information_schema.columns",
           "WHERE table_schema = 'public'",
           "ORDER BY table_name, ordinal_position;"
-        ].join("\n"),
+        ].join("\\n"),
 
-        // データ全消し用TRUNCATEサンプル(テーブル名は環境に合わせて編集してから実行)
         truncate_sample: [
           "-- 初期構築時にデータを全消しするTRUNCATEサンプル",
           "-- 必要なテーブル名に編集してから実行してください。",
@@ -208,29 +282,31 @@
           "  order_items,",
           "  payments",
           "RESTART IDENTITY CASCADE;"
-        ].join("\n")
+        ].join("\\n")
       };
 
-      // プリセットボタンのクリック時に textarea に展開
-      document.querySelectorAll(".preset-btn").forEach(function (el) {
-        el.addEventListener("click", function () {
-          const key = el.getAttribute("data-preset");
-          if (!key || !presets[key]) return;
-          sqlInput.value = presets[key];
-          statusEl.textContent = "プリセットSQLを展開しました: " + key;
+      document
+        .querySelectorAll(".bootstrap-sql-preset-btn")
+        .forEach(function (el) {
+          el.addEventListener("click", function () {
+            const key = el.getAttribute("data-preset");
+            if (!key || !presets[key]) return;
+            sqlInput.value = presets[key];
+            statusEl.textContent =
+              "プリセットSQLを展開しました: " + key;
+          });
         });
-      });
 
-      async function runSql(e){
+      async function runSql(e) {
         e.preventDefault();
         const token = adminInput.value.trim();
-        const sql   = sqlInput.value;
+        const sql = sqlInput.value;
 
-        if (!token){
+        if (!token) {
           alert("Admin Token を入力してください。");
           return;
         }
-        if (!sql.trim()){
+        if (!sql.trim()) {
           alert("SQL を入力してください。");
           return;
         }
@@ -239,7 +315,7 @@
         statusEl.textContent = "実行中...";
         resultEl.textContent = "";
 
-        try{
+        try {
           const res = await fetch("/api/admin/bootstrap_sql", {
             method: "POST",
             headers: {
@@ -251,11 +327,13 @@
 
           const data = await res.json().catch(() => ({}));
 
-          if (!res.ok){
+          if (!res.ok) {
             if (res.status === 403 && data?.error === "bootstrap_sql_disabled") {
-              statusEl.textContent = "エラー: この機能は無効化されています。環境変数 ADMIN_BOOTSTRAP_SQL_ENABLED を 'true' に設定してください。";
+              statusEl.textContent =
+                "エラー: この機能は無効化されています。環境変数 ADMIN_BOOTSTRAP_SQL_ENABLED を 'true' に設定してください。";
             } else {
-              statusEl.textContent = "エラー: " + (data?.error || ("HTTP " + res.status));
+              statusEl.textContent =
+                "エラー: " + (data?.error || "HTTP " + res.status);
             }
             resultEl.textContent = JSON.stringify(data, null, 2);
             return;
@@ -263,10 +341,11 @@
 
           statusEl.textContent = "OK: rowCount=" + (data.rowCount ?? "null");
           resultEl.textContent = JSON.stringify(data, null, 2);
-        } catch (err){
+        } catch (err) {
           console.error(err);
-          statusEl.textContent = "実行中にエラーが発生しました: " + err.message;
-        } finally{
+          statusEl.textContent =
+            "実行中にエラーが発生しました: " + err.message;
+        } finally {
           btn.disabled = false;
         }
       }
