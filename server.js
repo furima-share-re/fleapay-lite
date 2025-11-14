@@ -1229,6 +1229,141 @@ app.post("/api/pending/start", async (req, res) => {
   }
 });
 
+// ====== 💳 Stripe決済画面を作る命令 ======
+// この命令がないと「支払う」ボタンが動かない！
+// ====== 💳 Stripe決済画面を作る命令 ======
+// この命令がないと「支払う」ボタンが動かない！
+app.post("/api/checkout/session", async (req, res) => {
+  try {
+    // 🔒 セキュリティチェック: 正しいサイトからのアクセスか確認
+    if (!isSameOrigin(req)) {
+      return res.status(403).json({ error: "forbidden_origin" });
+    }
+
+    // 📦 画面から送られてきた情報を受け取る
+    const { sellerId, latest, summary } = req.body || {};
+    const orderId = req.body.orderId || req.query.order || "";
+
+    // ❌ 必要な情報が足りない場合
+    if (!sellerId && !orderId) {
+      return res.status(400).json({ error: "seller_id_or_order_id_required" });
+    }
+
+    // 🚦 連打防止: 同じ人が何度もクリックできないようにする
+    const ip = clientIp(req);
+    if (!bumpAndAllow(`checkout:${ip}`, RATE_LIMIT_MAX_CHECKOUT)) {
+      return res.status(429).json({ error: "rate_limited" });
+    }
+
+    // 📚 データベースから注文情報を取得
+    let order;
+    if (orderId) {
+      // 注文番号で探す
+      const result = await pool.query(
+        `select id, seller_id, order_no, amount, summary, status from orders where id=$1 limit 1`,
+        [orderId]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "order_not_found" });
+      }
+      order = result.rows[0];
+    } else if (latest) {
+      // 最新の注文を探す
+      const result = await pool.query(
+        `select id, seller_id, order_no, amount, summary, status 
+         from orders 
+         where seller_id=$1 
+         order by created_at desc 
+         limit 1`,
+        [sellerId]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "no_orders_found" });
+      }
+      order = result.rows[0];
+    } else {
+      return res.status(400).json({ error: "invalid_request" });
+    }
+
+    // 💰 金額チェック: 100円未満はダメ
+    const amount = Number(order.amount);
+    if (!amount || amount < 100) {
+      return res.status(400).json({ error: "invalid_amount" });
+    }
+
+    // 🏪 出店者のStripeアカウント情報を取得
+    const stripeAccountId = await resolveSellerAccountId(order.seller_id);
+
+    // 🎫 Stripe決済画面を作る設定
+    const sessionParams = {
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [{
+        price_data: {
+          currency: "jpy",
+          product_data: {
+            name: summary || order.summary || "フリマ商品",
+            description: `注文番号 #${order.order_no}`
+          },
+          unit_amount: amount
+        },
+        quantity: 1
+      }],
+      success_url: `${BASE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}&order=${order.id}`,
+      cancel_url: `${BASE_URL}/checkout.html?s=${encodeURIComponent(order.seller_id)}&order=${order.id}`,
+      metadata: {
+        sellerId: order.seller_id,
+        orderId: order.id,
+        orderNo: String(order.order_no)
+      },
+      payment_intent_data: {
+        metadata: {
+          sellerId: order.seller_id,
+          orderId: order.id
+        }
+      }
+    };
+
+    // 💼 出店者用アカウントがある場合の設定
+    if (stripeAccountId) {
+      sessionParams.payment_intent_data.application_fee_amount = Math.floor(amount * 0.05);
+      sessionParams.payment_intent_data.transfer_data = {
+        destination: stripeAccountId
+      };
+    }
+
+    // 🎉 Stripeに決済画面を作ってもらう！
+    const session = await stripe.checkout.sessions.create(sessionParams);
+
+    // 📊 ログに記録
+    audit("checkout_session_created", { 
+      orderId: order.id, 
+      sellerId: order.seller_id, 
+      sessionId: session.id,
+      amount 
+    });
+
+    // 🎊 成功！決済画面のURLを返す
+    res.json({
+      ok: true,
+      url: session.url,
+      sessionId: session.id
+    });
+
+  } catch (error) {
+    console.error("/api/checkout/session エラー発生:", error);
+    
+    if (error.type === 'StripeInvalidRequestError') {
+      return res.status(400).json({ 
+        error: "stripe_error", 
+        message: error.message 
+      });
+    }
+    
+    res.status(500).json(sanitizeError(error));
+  }
+});
+
 // ====== 一般API: 注文の金額取得 ======
 app.get("/api/price/latest", async (req, res) => {
   try {
