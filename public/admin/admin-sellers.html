@@ -56,7 +56,7 @@
       <span class="env-badge">ENV</span>
     </div>
     <div>
-      <span style="font-size: 13px; color: var(--fleapay-gray);">admin@fleapay.jp ▼</span>
+      <span style="font-size: 13px; color: var(--fleapay-gray);"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6706030a0e0927010b020617061e490d17">[email&#160;protected]</a> ▼</span>
     </div>
   </header>
 
@@ -173,7 +173,7 @@
     </main>
   </div>
 
-  <script>
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     // 出店者管理固有のスクリプト
     let sellers = [];
     let currentSeller = null;
@@ -188,7 +188,8 @@
       loadingIndicator.style.display = 'block';
       
       try {
-        const data = await adminAPI.request('/admin/sellers');
+        // ✅ 修正: /admin/sellers → /api/admin/sellers
+        const data = await adminAPI.request('/api/admin/sellers');
         sellers = data.sellers || [];
         renderSellersTable();
       } catch (error) {
@@ -281,7 +282,7 @@
           adminToken
         });
         
-        adminUI.showMessage('modalMessage', 'success', '保存しました');
+        adminUI.showMessage('modalMessage', 'success', '��存しました');
         await loadSellers();
         
         if (result.urls) {
