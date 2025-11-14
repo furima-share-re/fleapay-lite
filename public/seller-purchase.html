@@ -9,7 +9,7 @@
        ・金額は「ごうけい金額」を1つだけ入力
        ・ステップ4 / おとな確認も「summary＋合計」のみ
        
-       【パッチ適用済み v4 - AI total 自動反映パッチ】
+       【パッチ適用済み v5 - QR URL優先順位修正パッチ】
        1. 撮影画面フルスクリーン化（カメラ全画面＋オーバーレイUI）
        2. 送信データ強化（not_found対策・デバッグ強化）
        3. /api/pending/start エンドポイントへの変更
@@ -25,9 +25,13 @@
           - 初期状態でボタンを無効化
           - 価格入力クリア機能
           - エラーメッセージ改善
-       7. ★AI total 自動反映パッチ NEW！★
+       7. ★AI total 自動反映パッチ★
           - AI解析結果の total を「ごうけい金額」に自動入力
           - 自動入力時にボタンも有効化
+       8. ★QR URL優先順位修正パッチ NEW！★
+          - checkoutUrl（お客さん用）を最優先に変更
+          - purchaseUrl（出店者用）は予備として使用
+          - お客さんが支払うレジURLを優先表示
        ========================================================= -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -856,15 +860,21 @@
       debugLog(`✅ Server response: ${JSON.stringify(data)}`);
       
       // QR URL の決定（柔軟対応）
+      // ★パッチ適用：checkoutUrl（お客さん用）を最優先に変更
       let qrURL = null;
       
-      if(data.purchaseUrl){
-        qrURL = data.purchaseUrl;
-        debugLog(`✅ Using purchaseUrl from server: ${qrURL}`);
-      } else if(data.checkoutUrl){
+      // ① まず「お客さん用の決済URL」を最優先で使う
+      if(data.checkoutUrl){
         qrURL = data.checkoutUrl;
-        debugLog(`✅ Using checkoutUrl from server: ${qrURL}`);
-      } else {
+        debugLog(`✅ Using checkoutUrl (customer) from server: ${qrURL}`);
+      }
+      // ② もし checkoutUrl が無かったら、店員さん用のURLを使う（予備）
+      else if(data.purchaseUrl){
+        qrURL = data.purchaseUrl;
+        debugLog(`⚠️ Using purchaseUrl (seller) as fallback: ${qrURL}`);
+      }
+      // ③ どっちも無かったときの保険
+      else {
         // サーバがURLを返さない場合、フロント側で生成
         const baseURL = window.location.origin;
         qrURL = `${baseURL}/checkout.html?s=${sellerId}`;
@@ -917,7 +927,7 @@
   
   /* ========== 初期化 ========== */
   document.addEventListener('DOMContentLoaded', () => {
-    debugLog('=== App Initialized (v4 - AI total auto-fill patch) ===');
+    debugLog('=== App Initialized (v5 - QR URL priority fix patch) ===');
     sellerId = getSellerIdFromURL();
     initCamera();
   });
