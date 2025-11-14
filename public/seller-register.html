@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fleapay｜出店者登録</title>
+  <style>
+    body {
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+      background:#f7f7fb;
+      color:#222;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap {
+      max-width:480px;
+      margin:0 auto;
+      padding:24px 16px 40px;
+    }
+    h1 {
+      font-size:1.4rem;
+      margin:0 0 8px;
+    }
+    .desc {
+      font-size:.85rem;
+      color:#666;
+      margin-bottom:16px;
+      line-height:1.6;
+    }
+    .card {
+      background:#fff;
+      border-radius:16px;
+      padding:18px 16px 20px;
+      box-shadow:0 4px 16px rgba(0,0,0,.04);
+      border:1px solid #e3e3ef;
+    }
+    .field {
+      margin-bottom:14px;
+    }
+    label {
+      font-size:.8rem;
+      font-weight:600;
+      display:block;
+      margin-bottom:4px;
+    }
+    .required {
+      color:#e11d48;
+      font-size:.7rem;
+      margin-left:4px;
+    }
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+      width:100%;
+      padding:9px 10px;
+      font-size:.9rem;
+      border-radius:10px;
+      border:1px solid #d4d4e6;
+      box-sizing:border-box;
+    }
+    input:focus {
+      outline:none;
+      border-color:#5a6bff;
+      box-shadow:0 0 0 1px rgba(90,107,255,.2);
+    }
+    .hint {
+      font-size:.75rem;
+      color:#777;
+      margin-top:3px;
+    }
+    .checkbox-row {
+      display:flex;
+      align-items:flex-start;
+      gap:8px;
+      font-size:.8rem;
+      margin:4px 0 10px;
+    }
+    .checkbox-row input {
+      margin-top:2px;
+    }
+    .actions {
+      margin-top:10px;
+    }
+    button {
+      width:100%;
+      padding:10px 14px;
+      font-size:.95rem;
+      border-radius:999px;
+      border:none;
+      background:#5a6bff;
+      color:#fff;
+      font-weight:600;
+      cursor:pointer;
+    }
+    button:disabled {
+      opacity:.6;
+      cursor:default;
+    }
+    .msg {
+      margin-top:10px;
+      font-size:.8rem;
+      padding:8px 10px;
+      border-radius:10px;
+      display:none;
+      white-space:pre-wrap;
+    }
+    .msg.error {
+      display:block;
+      background:#fef2f2;
+      color:#b91c1c;
+      border:1px solid #fecaca;
+    }
+    .msg.ok {
+      display:block;
+      background:#ecfdf5;
+      color:#166534;
+      border:1px solid #bbf7d0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>出店者登録</h1>
+    <p class="desc">
+      Fleapay を使ってキャッシュレス決済を行うための出店者アカウントを作成します。<br>
+      このあと表示される Stripe の画面で、本人情報や振込先口座を登録してください。
+    </p>
+
+    <div class="card">
+      <form id="seller-form">
+        <div class="field">
+          <label for="shopName">
+            お店の名前 <span class="required">必須</span>
+          </label>
+          <input id="shopName" name="shopName" type="text" placeholder="例：テストフリマのお店" required />
+          <div class="hint">決済画面やダッシュボードに表示される名前です。</div>
+        </div>
+
+        <div class="field">
+          <label for="email">
+            メールアドレス <span class="required">必須</span>
+          </label>
+          <input id="email" name="email" type="email" placeholder="you@example.com" required />
+          <div class="hint">お知らせやログイン用に利用します。</div>
+        </div>
+
+        <div class="field">
+          <label for="password">
+            パスワード <span class="required">必須</span>
+          </label>
+          <input id="password" name="password" type="password" minlength="8" required />
+          <div class="hint">8文字以上。英数字の組み合わせをおすすめします。</div>
+        </div>
+
+        <div class="field">
+          <label for="passwordConfirm">
+            パスワード（確認） <span class="required">必須</span>
+          </label>
+          <input id="passwordConfirm" name="passwordConfirm" type="password" minlength="8" required />
+        </div>
+
+        <div class="checkbox-row">
+          <input id="agree" name="agree" type="checkbox" required />
+          <label for="agree">
+            <a href="/terms.html" target="_blank" rel="noopener">利用規約</a> に同意します。
+          </label>
+        </div>
+
+        <div class="actions">
+          <button type="submit" id="submitBtn">Stripe で出店者登録をはじめる</button>
+        </div>
+
+        <div id="msg" class="msg"></div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("seller-form");
+    const msg  = document.getElementById("msg");
+    const btn  = document.getElementById("submitBtn");
+
+    function showMsg(text, ok = false) {
+      msg.textContent = text;
+      msg.className = "msg " + (ok ? "ok" : "error");
+      msg.style.display = "block";
+    }
+
+    function slugify(str) {
+      return (str || "")
+        .toLowerCase()
+        .trim()
+        .replace(/[ぁ-ん]/g, "")    // ざっくりひらがな削除
+        .replace(/[^\w\-]+/g, "-")  // 英数と - _ 以外を -
+        .replace(/\-+/g, "-")
+        .replace(/^\-+|\-+$/g, "");
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      msg.style.display = "none";
+
+      const shopName = form.shopName.value.trim();
+      const email    = form.email.value.trim();
+      const pw       = form.password.value;
+      const pw2      = form.passwordConfirm.value;
+
+      if (!shopName || !email || !pw || !pw2) {
+        showMsg("必須項目を入力してください。");
+        return;
+      }
+      if (pw.length < 8) {
+        showMsg("パスワードは8文字以上にしてください。");
+        return;
+      }
+      if (pw !== pw2) {
+        showMsg("パスワードが一致しません。");
+        return;
+      }
+      if (!form.agree.checked) {
+        showMsg("利用規約への同意が必要です。");
+        return;
+      }
+
+      // publicId を shopName から自動生成
+      let publicId = slugify(shopName);
+      if (!publicId) {
+        publicId = "shop-" + Date.now();
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Stripe 画面へ移動中…";
+
+      try {
+        const res = await fetch("/api/seller/start_onboarding", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            publicId,
+            displayName: shopName,
+            email,
+            password: pw
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.url) {
+          console.error("start_onboarding error:", data);
+          showMsg("登録に失敗しました。\n時間をおいてもう一度お試しください。");
+          btn.disabled = false;
+          btn.textContent = "Stripe で出店者登録をはじめる";
+          return;
+        }
+
+        // Stripe のオンボーディング画面へリダイレクト
+        window.location.href = data.url;
+      } catch (err) {
+        console.error(err);
+        showMsg("通信エラーが発生しました。\nネットワーク環境を確認してください。");
+        btn.disabled = false;
+        btn.textContent = "Stripe で出店者登録をはじめる";
+      }
+    });
+  </script>
+</body>
+</html>
