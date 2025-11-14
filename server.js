@@ -596,6 +596,70 @@ app.get("/api/seller/summary", async (req, res) => {
   }
 });
 
+// ====== 🆕 出店者の新規登録（Stripe Onboarding 開始） ======
+import bcrypt from "bcryptjs";  // ← いちばん上にある import の近くに書いてOK
+
+app.post("/api/seller/start_onboarding", async (req, res) => {
+  try {
+    const { publicId, displayName, email, password } = req.body || {};
+
+    // 1) 入力チェック（まちがってたらすぐ返す）
+    if (!publicId || !displayName || !email || !password) {
+      return res.status(400).json({ error: "missing_params" });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: "password_too_short" });
+    }
+
+    // 2) パスワードをハッシュ化（安全にする）
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // 3) Stripeの出店者アカウント（Express）をつくる
+    const account = await stripe.accounts.create({
+      type: "express",
+      country: "JP",
+      email,
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true }
+      }
+    });
+
+    // 4) Fleapayのデータベースに保存
+    await pool.query(
+      `insert into sellers (id, display_name, stripe_account_id, email, password_hash)
+       values ($1,$2,$3,$4,$5)
+       on conflict (id) do update set
+         display_name = excluded.display_name,
+         stripe_account_id = excluded.stripe_account_id,
+         email = excluded.email,
+         password_hash = excluded.password_hash,
+         updated_at = now()
+      `,
+      [publicId, displayName, account.id, email, passwordHash]
+    );
+
+    // 5) 本人確認ページ（Stripe Onboarding）を作る
+    const returnUrl  = `${BASE_URL}/seller-dashboard.html?s=${encodeURIComponent(publicId)}`;
+    const refreshUrl = `${BASE_URL}/seller-register.html?retry=1`;
+
+    const link = await stripe.accountLinks.create({
+      account: account.id,
+      type: "account_onboarding",
+      return_url: returnUrl,
+      refresh_url: refreshUrl
+    });
+
+    // 6) フロントにURLを返す（ここに飛べば本人確認が始まる）
+    return res.json({ url: link.url });
+
+  } catch (err) {
+    console.error("start_onboarding error", err);
+    return res.status(500).json({ error: "internal_error", detail: err.message });
+  }
+});
+
+
 // ====== 🟢 改善された管理API: Stripeサマリー取得 ======
 app.get("/api/admin/stripe/summary", requireAdmin, async (req, res) => {
   try {
@@ -1593,13 +1657,14 @@ app.use((error, req, res, next) => {
 // ====== 404ハンドラー ======
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
-    res.status(404).json({ error: 'endpoint_not_found', path: req.path });
+    return res.status(404).json({ error: 'endpoint_not_found', path: req.path });
   } else {
     const notFoundPath = path.join(__dirname, "public", "404.html");
-    if (require('fs').existsSync(notFoundPath)) {
-      res.status(404).sendFile(notFoundPath);
+    if (existsSync(notFoundPath)) {
+      return res.status(404).sendFile(notFoundPath);
     } else {
-      res.status(404).send(`<!DOCTYPE html>
+      return res.status(404).send(`<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
