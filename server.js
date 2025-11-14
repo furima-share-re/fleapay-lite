@@ -462,7 +462,7 @@ async function initDb() {
       on qr_sessions(seller_id);
   `);
 
-  console.log("✅ DB init done (PATCHED v3.1 - OpenAI API修正版)");
+  console.log("✅ DB init done (PATCHED v3.2 - seller/summary API追加版)");
 }
 
 initDb().catch(e => console.error("DB init error", e));
@@ -491,6 +491,91 @@ function sanitizeError(error, isDevelopment = process.env.NODE_ENV === 'developm
   }
   return { error: "internal_error", message: "サーバー内部エラーが発生しました" };
 }
+
+// ====== 🆕 出店者用API: 売上サマリー取得 ======
+app.get("/api/seller/summary", async (req, res) => {
+  try {
+    const sellerId = req.query.s;
+    if (!sellerId) {
+      return res.status(400).json({ error: "seller_id_required" });
+    }
+
+    // レート制限
+    const ip = clientIp(req);
+    if (!bumpAndAllow(`seller:${ip}`, RATE_LIMIT_MAX_WRITES)) {
+      return res.status(429).json({ error: "rate_limited" });
+    }
+
+    // 出店者情報取得
+    const sellerResult = await pool.query(
+      `select display_name, shop_name from sellers where id=$1`,
+      [sellerId]
+    );
+
+    if (sellerResult.rows.length === 0) {
+      return res.status(404).json({ error: "seller_not_found" });
+    }
+
+    const seller = sellerResult.rows[0];
+    const { todayStart, tomorrowStart } = jstDayBounds();
+
+    // 今日の売上集計
+    const todayResult = await pool.query(
+      `select 
+        count(*) as count,
+        coalesce(sum(amount_net), 0) as total_net
+      from stripe_payments
+      where seller_id=$1 
+        and status='succeeded'
+        and created_at >= $2 
+        and created_at < $3`,
+      [sellerId, todayStart, tomorrowStart]
+    );
+
+    const todayStats = todayResult.rows[0];
+    const count = parseInt(todayStats.count) || 0;
+    const total = parseInt(todayStats.total_net) || 0;
+    const avg = count > 0 ? Math.round(total / count) : 0;
+
+    // 最近の決済（最大20件）
+    const recentResult = await pool.query(
+      `select 
+        payment_intent_id as id,
+        amount_gross as amount,
+        amount_net as net_amount,
+        status,
+        created_at,
+        (select summary from orders where orders.id = stripe_payments.order_id limit 1) as summary
+      from stripe_payments
+      where seller_id=$1
+      order by created_at desc
+      limit 20`,
+      [sellerId]
+    );
+
+    const recent = recentResult.rows.map(row => ({
+      id: row.id,
+      amount: row.amount,
+      net_amount: row.net_amount,
+      status: row.status,
+      summary: row.summary,
+      created: Math.floor(new Date(row.created_at).getTime() / 1000)
+    }));
+
+    res.json({
+      sellerId,
+      displayName: seller.display_name || seller.shop_name || sellerId,
+      salesToday: total,
+      countToday: count,
+      avgToday: avg,
+      recent
+    });
+
+  } catch (e) {
+    console.error("/api/seller/summary error", e);
+    res.status(500).json(sanitizeError(e));
+  }
+});
 
 // ====== 🟢 改善された管理API: Stripeサマリー取得 ======
 app.get("/api/admin/stripe/summary", requireAdmin, async (req, res) => {
@@ -1099,7 +1184,7 @@ app.get("/api/ping", (req, res) => {
   res.json({ 
     ok: true, 
     timestamp: new Date().toISOString(),
-    version: '3.1.0-openai-fixed'
+    version: '3.2.0-seller-summary-fixed'
   });
 });
 
@@ -1119,17 +1204,19 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║  🪶 Fleapay Server (OpenAI API修正版 v3.1.0)             ║
+║  🪶 Fleapay Server (seller-summary修正版 v3.2.0)        ║
 ║                                                           ║
 ║  🌐 Server:    http://localhost:${PORT}                   ║
 ║  📊 Admin:     http://localhost:${PORT}/admin-dashboard.html ║
 ║  💳 Payments:  http://localhost:${PORT}/admin-payments.html  ║
+║  🏪 Seller:    http://localhost:${PORT}/seller-dashboard.html?s=SELLER_ID ║
 ║                                                           ║
 ║  ✅ CORS: ${BASE_URL}                                    ║
 ║  ✅ ADMIN_TOKEN: ${ADMIN_TOKEN.substring(0, 5)}***       ║
 ║  ✅ Database: Connected                                   ║
 ║  ✅ Stripe: Initialized                                   ║
 ║  ✅ OpenAI: Images API v2 Compatible                     ║
+║  ✅ Seller Summary API: /api/seller/summary              ║
 ╚═══════════════════════════════════════════════════════════╝
   `);
 });
