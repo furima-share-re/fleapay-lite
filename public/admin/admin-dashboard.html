@@ -22,7 +22,7 @@
       <span class="env-badge">ENV</span>
     </div>
     <div>
-      <span style="font-size: 13px; color: var(--fleapay-gray);">admin@fleapay.jp ▼</span>
+      <span style="font-size: 13px; color: var(--fleapay-gray);"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e081848d898ea0868c8581908199ce8a90">[email&#160;protected]</a> ▼</span>
     </div>
   </header>
 
@@ -65,22 +65,22 @@
         <section>
           <h2>今日の決済サマリ</h2>
           <div style="font-size: 28px; font-weight: 700; color: var(--fleapay-blue); margin: 12px 0;">
-            <span id="paymentCount">120</span><span style="font-size: 16px; margin-left: 4px;">件</span>
+            <span id="paymentCount">-</span><span style="font-size: 16px; margin-left: 4px;">件</span>
           </div>
           <div style="font-size: 14px; color: var(--fleapay-gray);">
-            売上合計: <span id="totalRevenue">¥450,000</span><br>
-            純売上: <span id="netRevenue">¥410,000</span>
+            売上合計: <span id="totalRevenue">¥0</span><br>
+            純売上: <span id="netRevenue">¥0</span>
           </div>
         </section>
         
         <section>
           <h2>チャージバック / 返金</h2>
           <div style="font-size: 28px; font-weight: 700; color: var(--warning-amber); margin: 12px 0;">
-            <span id="disputeCount">2</span><span style="font-size: 16px; margin-left: 4px;">件</span>
+            <span id="disputeCount">-</span><span style="font-size: 16px; margin-left: 4px;">件</span>
           </div>
           <div style="font-size: 14px; color: var(--fleapay-gray);">
-            返金: <span id="refundCount">5件</span><br>
-            期限間近: <span id="urgentCount" style="color: var(--error-maroon);">1件 🔔</span>
+            返金: <span id="refundCount">-</span>件<br>
+            期限間近: <span id="urgentCount" style="color: var(--error-maroon);">-</span>件 🔔
           </div>
         </section>
       </div>
@@ -89,12 +89,8 @@
       <section>
         <h2>最近のアラート</h2>
         <div id="alertsList">
-          <div class="err" style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <strong>⚠️ チャージバック 1件（期限まで 3日）</strong><br>
-              <small>seller-abc123 / ¥5,000 / 対応が必要</small>
-            </div>
-            <button class="small">対応</button>
+          <div style="text-align: center; padding: 20px; color: var(--fleapay-gray);">
+            読み込み中...
           </div>
         </div>
       </section>
@@ -114,12 +110,9 @@
             </thead>
             <tbody id="recentSellers">
               <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #eee;">seller-abc123</td>
-                <td style="padding: 10px; border-bottom: 1px solid #eee;">花子商店</td>
-                <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                  <span style="background: #f0f9f4; color: var(--success-green); padding: 2px 8px; border-radius: 12px; font-size: 12px;">利用可</span>
+                <td colspan="4" style="padding: 20px; text-align: center; color: var(--fleapay-gray);">
+                  読み込み中...
                 </td>
-                <td style="padding: 10px; border-bottom: 1px solid #eee;">2025/11/13 14:30</td>
               </tr>
             </tbody>
           </table>
@@ -128,36 +121,198 @@
     </main>
   </div>
 
-  <script>
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     // ダッシュボード固有の初期化
     document.addEventListener('DOMContentLoaded', async () => {
+      // 認証チェック
+      checkAuth();
+      
+      // データ読み込み
       await loadDashboardData();
       setupEventListeners();
       startAutoRefresh();
     });
 
+    // 認証チェック
+    function checkAuth() {
+      const token = window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN');
+      if (!token) {
+        console.warn('認証トークンが設定されていません');
+        // 開発環境用のデフォルトトークンを設定
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          localStorage.setItem('ADMIN_TOKEN', 'admin-devtoken');
+          console.log('開発環境用トークンを設定しました');
+        }
+      }
+    }
+
     async function loadDashboardData() {
       try {
-        const data = await adminAPI.request('/admin/dashboard');
+        // ✅ 修正: /admin/dashboard → /api/admin/dashboard
+        const data = await adminAPI.request('/api/admin/dashboard');
         updateMetrics(data);
+        adminUI.showToast('ダッシュボードデータを更新しました', 'success');
       } catch (error) {
-        adminUI.showToast('ダッシュボードデータの取得に失敗しました', 'error');
+        console.error('Dashboard load error:', error);
+        adminUI.showToast('ダッシュボードデータの取得に失敗しました: ' + error.message, 'error');
+        
+        // エラー時はデフォルト値を表示
+        updateMetrics({
+          paymentCount: 0,
+          totalRevenue: 0,
+          netRevenue: 0,
+          disputeCount: 0,
+          refundCount: 0
+        });
+        
+        // アラート表示
+        document.getElementById('alertsList').innerHTML = `
+          <div class="err" style="padding: 12px;">
+            <strong>⚠️ データの取得に失敗しました</strong><br>
+            <small>${error.message || 'サーバーに接続できません'}</small>
+          </div>
+        `;
+        
+        // 出店者テーブルにエラー表示
+        document.getElementById('recentSellers').innerHTML = `
+          <tr>
+            <td colspan="4" style="padding: 20px; text-align: center; color: var(--error-maroon);">
+              データの取得に失敗しました
+            </td>
+          </tr>
+        `;
       }
     }
 
     function updateMetrics(data) {
+      // 決済サマリの更新
       document.getElementById('paymentCount').textContent = data.paymentCount || 0;
       document.getElementById('totalRevenue').textContent = adminUI.formatCurrency(data.totalRevenue || 0);
       document.getElementById('netRevenue').textContent = adminUI.formatCurrency(data.netRevenue || 0);
+      
+      // チャージバック・返金の更新
+      document.getElementById('disputeCount').textContent = data.disputeCount || 0;
+      document.getElementById('refundCount').textContent = data.refundCount || 0;
+      
+      // 期限間近の件数（urgentCountがあれば表示）
+      const urgentCountEl = document.getElementById('urgentCount');
+      if (urgentCountEl) {
+        urgentCountEl.textContent = data.urgentCount || 0;
+      }
+      
+      // アラートの更新
+      updateAlerts(data);
+      
+      // 出店者アクティビティの更新
+      updateRecentSellers(data);
+    }
+
+    function updateAlerts(data) {
+      const alertsList = document.getElementById('alertsList');
+      
+      // アラートがない場合
+      if (!data.disputeCount && !data.urgentCount) {
+        alertsList.innerHTML = `
+          <div style="text-align: center; padding: 20px; color: var(--success-green);">
+            ✅ アラートはありません
+          </div>
+        `;
+        return;
+      }
+      
+      // アラートがある場合
+      let html = '';
+      
+      if (data.urgentCount > 0) {
+        html += `
+          <div class="err" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>
+              <strong>⚠️ チャージバック ${data.urgentCount}件（期限間近）</strong><br>
+              <small>早急な対応が必要です</small>
+            </div>
+            <button class="small" onclick="location.href='admin-payments.html?status=disputed'">対応</button>
+          </div>
+        `;
+      }
+      
+      if (data.disputeCount > 0) {
+        html += `
+          <div style="background: #fef9e7; padding: 12px; border-radius: 8px; border: 1px solid var(--warning-amber);">
+            <strong>📋 チャージバック ${data.disputeCount}件</strong><br>
+            <small>対応状況を確認してください</small>
+          </div>
+        `;
+      }
+      
+      alertsList.innerHTML = html;
+    }
+
+    function updateRecentSellers(data) {
+      const tbody = document.getElementById('recentSellers');
+      
+      // サンプルデータを表示（実際のAPIからデータを取得する場合は置き換え）
+      if (!data.recentSellers || data.recentSellers.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" style="padding: 20px; text-align: center; color: var(--fleapay-gray);">
+              データがありません
+            </td>
+          </tr>
+        `;
+        return;
+      }
+      
+      // 出店者データがある場合
+      const rows = data.recentSellers.map(seller => `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #eee;">${seller.id}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #eee;">${seller.name}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #eee;">
+            <span style="background: #f0f9f4; color: var(--success-green); padding: 2px 8px; border-radius: 12px; font-size: 12px;">
+              ${seller.status}
+            </span>
+          </td>
+          <td style="padding: 10px; border-bottom: 1px solid #eee;">${adminUI.formatDate(seller.lastUsed)}</td>
+        </tr>
+      `).join('');
+      
+      tbody.innerHTML = rows;
     }
 
     function setupEventListeners() {
-      document.getElementById('refreshBtn').addEventListener('click', loadDashboardData);
-      document.getElementById('periodFilter').addEventListener('change', loadDashboardData);
+      // 更新ボタン
+      document.getElementById('refreshBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('refreshBtn');
+        btn.disabled = true;
+        btn.textContent = '🔄 更新中...';
+        
+        await loadDashboardData();
+        
+        btn.disabled = false;
+        btn.textContent = '🔄 更新';
+      });
+      
+      // 期間フィルタ
+      document.getElementById('periodFilter').addEventListener('change', async (e) => {
+        console.log('Period changed:', e.target.value);
+        // 期間フィルタに応じたデータ読み込み処理を追加
+        await loadDashboardData();
+      });
+      
+      // イベントフィルタ
+      document.getElementById('eventFilter').addEventListener('change', async (e) => {
+        console.log('Event changed:', e.target.value);
+        // イベントフィルタに応じたデータ読み込み処理を追加
+        await loadDashboardData();
+      });
     }
 
     function startAutoRefresh() {
-      setInterval(loadDashboardData, 300000); // 5分ごと
+      // 5分ごとに自動更新
+      setInterval(() => {
+        console.log('Auto refresh triggered');
+        loadDashboardData();
+      }, 300000);
     }
   </script>
 </body>
