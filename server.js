@@ -1148,57 +1148,6 @@ app.post("/api/analyze-item", upload.single("image"), async (req, res) => {
   }
 });
 
-// ====== 写真にフレームをつける機能 ======
-app.post("/api/photo-frame", upload.single("image"), async (req, res) => {
-  try {
-    // 写真が送られてきたかチェック
-    const f = req.file;
-    
-    if (!f || !f.buffer) {
-      return res.status(400).json({ 
-        error: "file_required", 
-        message: "画像ファイルが必要です" 
-      });
-    }
-
-    // 連打防止チェック
-    const ip = clientIp(req);
-    if (!bumpAndAllow(`frame:${ip}`, RATE_LIMIT_MAX_WRITES)) {
-      return res.status(429).json({ error: "rate_limited" });
-    }
-
-    console.log(`[写真加工] 処理開始: ${f.originalname || 'ファイル名なし'} (${f.size} バイト)`);
-
-    // 写真を小さくする（大きすぎると重いから）
-    const imageBuffer = await sharp(f.buffer)
-      .resize(1024, 1024, { 
-        fit: "inside", 
-        withoutEnlargement: true 
-      })
-      .jpeg({ quality: 92 })
-      .toBuffer();
-
-    console.log('[写真加工] 完了しました！');
-
-    // 加工した写真をお客さんに送り返す
-    res.set('Content-Type', 'image/jpeg');
-    res.set('Content-Length', imageBuffer.length);
-    res.send(imageBuffer);
-
-    audit("photo_frame_processed", { 
-      size: imageBuffer.length, 
-      ip: clientIp(req) 
-    });
-
-  } catch (error) {
-    console.error('[/api/photo-frame] エラー:', error);
-    res.status(500).json({
-      error: "processing_failed",
-      message: "写真の加工に失敗しました"
-    });
-  }
-});
-
 // ====== 一般API: 注文作成 ======
 app.post("/api/pending/start", async (req, res) => {
   try {
