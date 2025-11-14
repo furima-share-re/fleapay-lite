@@ -1161,7 +1161,6 @@ app.post("/api/photo-frame", upload.single("image"), async (req, res) => {
       image: file,
       prompt,
       size: "1024x1024",           // ← サポートされているサイズ
-      response_format: "b64_json"  // ← 必須パラメータを追加
     });
 
     const b64 = result.data[0].b64_json;
