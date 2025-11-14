@@ -1,31 +1,3 @@
-// ------------------------------------------------------------
-// Fleapay Admin - 認証トークン初期化（全ページ共通）
-// admin-dashboard / admin-sellers / admin-frames / admin-payments すべて対応
-// ------------------------------------------------------------
-(function initializeAdminToken() {
-  try {
-    const token = localStorage.getItem("ADMIN_TOKEN");
-    const expiry = localStorage.getItem("ADMIN_TOKEN_EXPIRY");
-
-    // トークンが無い or 期限切れ
-    if (!token || (expiry && Date.now() > Number(expiry))) {
-      console.warn("⚠️ ADMIN_TOKEN が未設定 or 有効期限切れ → 開発用トークンに切替えます");
-
-      // 開発環境のみ：fallback トークン（本番では server.js のチェックを通る）
-      window.ADMIN_TOKEN = "admin-devtoken";
-
-      // 期限切れの可能性があるためクリア
-      localStorage.removeItem("ADMIN_TOKEN");
-      localStorage.removeItem("ADMIN_TOKEN_EXPIRY");
-    } else {
-      // 正常トークン（全APIはこれを利用）
-      window.ADMIN_TOKEN = token;
-    }
-  } catch (e) {
-    console.error("ADMIN_TOKEN 初期化エラー:", e);
-    window.ADMIN_TOKEN = null;
-  }
-})();
 // ============================================
 // Fleapay Admin - 決済・チャージバック管理
 // 完全修正版 v2 - API契約整合・エラーハンドリング・コード重複解消
