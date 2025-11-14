@@ -1062,6 +1062,92 @@ app.get("/api/admin/dashboard", requireAdmin, async (req, res) => {
   }
 });
 
+// ====== AI画像解析エンドポイント ======
+app.post("/api/analyze-item", upload.single("image"), async (req, res) => {
+  try {
+    const f = req.file;
+    if (!f || !f.buffer) {
+      return res.status(400).json({ error: "file_required", message: "画像ファイルが必要です" });
+    }
+
+    const ip = clientIp(req);
+    if (!bumpAndAllow(`ai:${ip}`, RATE_LIMIT_MAX_WRITES)) {
+      return res.status(429).json({ error: "rate_limited" });
+    }
+
+    console.log(`[AI分析] Processing image: ${f.originalname || 'unknown'} (${f.size} bytes)`);
+
+    const imageBuffer = await sharp(f.buffer)
+      .resize(1024, 1024, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+
+    const base64Image = imageBuffer.toString('base64');
+    const dataUrl = `data:image/jpeg;base64,${base64Image}`;
+
+    console.log('[AI分析] 画像をOpenAIに送信中...');
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `この画像はフリーマーケットの商品写真です。以下の情報を分析してJSON形式で返してください：
+
+1. 商品の簡潔な説明（summary）
+2. 値札に書かれている価格（total）- 数字のみ（円）
+
+値札が見つからない場合は、total を 0 にしてください。
+
+**必ず以下のJSON形式で返してください：**
+{
+  "summary": "商品の説明（日本語、50文字以内）",
+  "total": 価格の数字（整数）
+}`
+          },
+          { type: "image_url", image_url: { url: dataUrl } }
+        ]
+      }],
+      max_tokens: 300,
+      temperature: 0.3
+    });
+
+    const aiText = response.choices[0]?.message?.content?.trim() || "{}";
+    console.log('[AI分析] OpenAI応答:', aiText);
+
+    let result;
+    try {
+      const cleanText = aiText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      result = JSON.parse(cleanText);
+    } catch (parseErr) {
+      result = { summary: "商品情報の取得に失敗しました", total: 0 };
+    }
+
+    if (!result.summary) result.summary = "商品";
+    if (typeof result.total !== 'number') result.total = 0;
+
+    console.log('[AI分析] 最終結果:', result);
+    audit("ai_analysis_success", { summary: result.summary, total: result.total, ip: clientIp(req) });
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('[AI分析] Error:', error);
+    
+    const statusCode = error?.response?.status || error?.status || 500;
+    const message = error?.response?.data?.error?.message || error?.message || "AI解析に失敗しました";
+
+    res.status(statusCode).json({
+      error: "analysis_failed",
+      message: message,
+      summary: "商品情報の取得に失敗しました",
+      total: 0
+    });
+  }
+});
+
 // ====== 一般API: 注文作成 ======
 app.post("/api/pending/start", async (req, res) => {
   try {
@@ -1264,9 +1350,53 @@ app.use((error, req, res, next) => {
 // ====== 404ハンドラー ======
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
-    res.status(404).json({ error: 'endpoint_not_found' });
+    res.status(404).json({ error: 'endpoint_not_found', path: req.path });
   } else {
-    res.status(404).sendFile(path.join(__dirname, "public", "404.html"));
+    const notFoundPath = path.join(__dirname, "public", "404.html");
+    if (require('fs').existsSync(notFoundPath)) {
+      res.status(404).sendFile(notFoundPath);
+    } else {
+      res.status(404).send(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 - ページが見つかりません</title>
+  <style>
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container { text-align: center; padding: 2rem; }
+    h1 { font-size: 6rem; margin: 0; }
+    p { font-size: 1.5rem; margin: 1rem 0; }
+    a {
+      display: inline-block;
+      margin-top: 2rem;
+      padding: 1rem 2rem;
+      background: white;
+      color: #667eea;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>404</h1>
+    <p>お探しのページが見つかりませんでした</p>
+    <a href="/">ホームに戻る</a>
+  </div>
+</body>
+</html>`);
+    }
   }
 });
 
