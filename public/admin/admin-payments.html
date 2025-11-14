@@ -8,13 +8,30 @@
   <meta name="robots" content="noindex,nofollow">
   <meta http-equiv="Cache-Control" content="no-store">
   <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
   
   <link rel="stylesheet" href="common/admin-base.css">
   <script src="common/admin-utils.js"></script>
   
-  <!-- 🟦 修正1: ADMIN_TOKEN 初期化を追加 -->
+  <!-- 🟢 認証トークン初期化 -->
   <script>
-    window.ADMIN_TOKEN = localStorage.getItem("ADMIN_TOKEN") || "";
+    // トークンチェックと初期化
+    (function() {
+      const token = localStorage.getItem("ADMIN_TOKEN");
+      const tokenExpiry = localStorage.getItem("ADMIN_TOKEN_EXPIRY");
+      
+      // トークンがない、または期限切れの場合はログイン画面へ
+      if (!token || (tokenExpiry && Date.now() > parseInt(tokenExpiry))) {
+        localStorage.removeItem("ADMIN_TOKEN");
+        localStorage.removeItem("ADMIN_TOKEN_EXPIRY");
+        // 本番環境ではログイン画面にリダイレクト
+        // window.location.href = '/admin-login.html';
+        console.warn('⚠️ ADMIN_TOKEN が設定されていません。開発環境ではデフォルトトークンを使用します。');
+        window.ADMIN_TOKEN = 'admin-devtoken'; // 開発環境用
+      } else {
+        window.ADMIN_TOKEN = token;
+      }
+    })();
   </script>
   
   <style>
@@ -40,6 +57,19 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.7; }
     }
+    
+    .error-banner {
+      background: #fef2f2;
+      border-left: 4px solid var(--error-maroon);
+      padding: 12px 16px;
+      margin: 16px 0;
+      border-radius: 8px;
+      display: none;
+    }
+    
+    .error-banner.show {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -49,7 +79,7 @@
       <span class="env-badge">ENV</span>
     </div>
     <div style="font-size: 13px; color: var(--fleapay-gray);">
-      <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5c3d383135321c3a30393d2c3d2572362c">[email&#160;protected]</a> ▼
+      <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2243464f4b4c62444e474352435b0c4852">[email&#160;protected]</a> ▼
     </div>
   </header>
 
@@ -59,31 +89,37 @@
         <li><a href="admin-dashboard.html" class="nav-item" data-page="dashboard">📊 ダッシュボード</a></li>
         <li><a href="admin-sellers.html" class="nav-item" data-page="sellers">👥 出店者</a></li>
         <li><a href="admin-frames.html" class="nav-item" data-page="frames">🎨 AIフレーム</a></li>
-        <li><a href="admin-payments.html" class="nav-item" data-page="payments">💳 決済・CB管理</a></li>
+        <li><a href="admin-payments.html" class="nav-item active" data-page="payments">💳 決済・CB管理</a></li>
       </ul>
     </nav>
 
     <main class="admin-content">
+      <!-- エラーバナー -->
+      <div id="errorBanner" class="error-banner">
+        <strong>⚠️ エラー:</strong> <span id="errorMessage"></span>
+      </div>
+      
       <section>
         <div class="sec-title-row">
           <h1>決済・チャージバック管理</h1>
           <button id="syncPaymentsBtn" class="ghost">🔄 Stripe同期</button>
         </div>
         
-        <div class="flex flex-wrap" style="margin-bottom: 20px;">
-          <select id="periodFilter" style="max-width: 120px;">
+        <div class="flex flex-wrap" style="margin-bottom: 20px; gap: 12px;">
+          <select id="periodFilter" style="max-width: 120px; padding: 8px; border-radius: 8px;">
             <option value="today">今日</option>
             <option value="week">今週</option>
             <option value="month">今月</option>
             <option value="all">全期間</option>
           </select>
-          <select id="typeFilter" style="max-width: 150px;">
+          <select id="typeFilter" style="max-width: 150px; padding: 8px; border-radius: 8px;">
             <option value="">全種別</option>
             <option value="payment">通常決済</option>
             <option value="refund">返金</option>
             <option value="dispute">チャージバック</option>
           </select>
-          <input type="text" id="searchInput" placeholder="Stripe ID・金額で検索" style="max-width: 200px;">
+          <input type="text" id="searchInput" placeholder="Stripe ID・金額で検索" 
+                 style="max-width: 200px; padding: 8px; border-radius: 8px;">
           <button id="searchBtn" class="ghost">🔍 検索</button>
         </div>
       </section>
@@ -127,38 +163,6 @@
         </div>
       </div>
 
-      <!-- 今日の決済 -->
-      <section>
-        <p>
-          <span>今日の決済</span>
-          <span data-field="today-payments-count">0件</span>
-        </p>
-
-        <p>
-          <span>純売上:</span>
-          <span data-field="today-net-sales">¥0</span>
-        </p>
-
-        <!-- チャージバック -->
-        <p>
-          <span>チャージバック</span>
-          <span data-field="dispute-count">0件</span>
-        </p>
-
-        <!-- 返金 -->
-        <p>
-          <span>返金</span>
-          <span data-field="refund-count">0件</span><br>
-          <span>返金額:</span>
-          <span data-field="refund-amount">¥0</span>
-        </p>
-
-        <!-- Stripe同期ボタン -->
-        <button type="button" class="btn btn-primary" data-action="stripe-sync">
-          Stripe同期
-        </button>
-      </section>
-
       <!-- 決済一覧 -->
       <section>
         <div class="sec-title-row">
@@ -180,7 +184,9 @@
               </tr>
             </thead>
             <tbody id="paymentsTableBody">
-              <!-- 動的に生成される -->
+              <tr>
+                <td colspan="7" class="empty-state">読み込み中...</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -243,8 +249,9 @@
               </div>
 
               <div class="card" style="margin-bottom: 16px;">
-                <h3>対応メモ(運営内部用)</h3>
-                <textarea id="internalMemo" rows="4" placeholder="対応内容・メモを入力..." style="width: 100%;"></textarea>
+                <h3>対応メモ（運営内部用）</h3>
+                <textarea id="internalMemo" rows="4" placeholder="対応内容・メモを入力..." 
+                          style="width: 100%; padding: 8px; border-radius: 8px;"></textarea>
                 <button id="saveMemoBtn" class="small" style="margin-top: 8px;">メモを保存</button>
               </div>
             </div>
@@ -274,327 +281,19 @@
     </main>
   </div>
 
-  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-    let payments = [];
-    let currentPayment = null;
-    let currentFilters = {};
-
-    document.addEventListener('DOMContentLoaded', async () => {
-      await loadPayments();
-      setupEventListeners();
-      handleHashNavigation();
-    });
-
-    async function loadPayments(filters = {}) {
-      const loadingIndicator = document.getElementById('loadingIndicator');
-      loadingIndicator.style.display = 'block';
-      
-      try {
-        const queryParams = new URLSearchParams(filters).toString();
-        const data = await adminAPI.request(`/admin/payments${queryParams ? '?' + queryParams : ''}`);
-        
-        payments = data.payments || [];
-        currentFilters = filters;
-        updateSummary(data.summary || {});
-        renderPaymentsTable();
-      } catch (error) {
-        adminUI.showToast('決済データの取得に失敗しました', 'error');
-        loadMockPayments(); // フォールバック
-      } finally {
-        loadingIndicator.style.display = 'none';
-      }
-    }
-
-    function loadMockPayments() {
-      const mockData = {
-        payments: [
-          {
-            id: 'pi_3P1234567890123456',
-            created: '2025-11-13T12:03:00Z',
-            amount: 1500,
-            status: 'succeeded',
-            seller: { publicId: 'seller-abc123', displayName: '花子商店' },
-            stripeIds: {
-              paymentIntent: 'pi_3P1234567890123456',
-              charge: 'ch_3P1234567890123456'
-            },
-            type: 'payment'
-          }
-        ],
-        summary: {
-          todayPayments: 45,
-          todayRevenue: 125000,
-          activeDisputes: 2,
-          urgentDisputes: 1,
-          refundCount: 3,
-          refundAmount: 8500
-        }
-      };
-      
-      payments = mockData.payments;
-      updateSummary(mockData.summary);
-      renderPaymentsTable();
-    }
-
-    function updateSummary(summary) {
-      document.getElementById('todayPayments').textContent = adminUI.formatNumber(summary.todayPayments || 0);
-      document.getElementById('todayRevenue').textContent = adminUI.formatCurrency(summary.todayRevenue || 0);
-      document.getElementById('activeDisputes').textContent = adminUI.formatNumber(summary.activeDisputes || 0);
-      document.getElementById('urgentDisputes').textContent = adminUI.formatNumber(summary.urgentDisputes || 0) + '件';
-      document.getElementById('refundCount').textContent = adminUI.formatNumber(summary.refundCount || 0);
-      document.getElementById('refundAmount').textContent = adminUI.formatCurrency(summary.refundAmount || 0);
-    }
-
-    function renderPaymentsTable() {
-      const tbody = document.getElementById('paymentsTableBody');
-      document.getElementById('totalCount').textContent = `${payments.length}件`;
-      
-      if (payments.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">決済データが見つかりませんでした</td></tr>';
-        return;
-      }
-      
-      tbody.innerHTML = payments.map(payment => `
-        <tr style="cursor: pointer;" onclick="openPaymentModal('${payment.id}')" data-payment-id="${payment.id}">
-          <td>${adminUI.formatDate(payment.created)}</td>
-          <td>${payment.seller?.displayName || payment.seller?.publicId || '-'}</td>
-          <td>${adminUI.formatCurrency(payment.amount)}</td>
-          <td>${getPaymentStatusBadge(payment.status, payment.type)}</td>
-          <td style="font-family: monospace; font-size: 11px;">${payment.stripeIds?.paymentIntent?.substring(0, 12) || '-'}...</td>
-          <td>${payment.dispute?.dueBy ? getDeadlineText(payment.dispute.dueBy) : '-'}</td>
-          <td>
-            <button class="small ghost" onclick="event.stopPropagation(); openPaymentModal('${payment.id}')">詳細</button>
-          </td>
-        </tr>
-      `).join('');
-    }
-
-    function getPaymentStatusBadge(status, type) {
-      if (type === 'dispute') {
-        return '<span class="payment-status payment-disputed">CB申請中</span>';
-      }
-      if (status === 'refunded') {
-        return '<span class="payment-status payment-refunded">返金済</span>';
-      }
-      return '<span class="payment-status payment-normal">通常</span>';
-    }
-
-    function getDeadlineText(dueBy) {
-      const now = new Date();
-      const due = new Date(dueBy);
-      const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
-      
-      if (diffDays <= 0) {
-        return '<span class="deadline-urgent">期限切れ</span>';
-      } else if (diffDays <= 3) {
-        return `<span class="deadline-urgent">${diffDays}日後</span>`;
-      } else {
-        return `${diffDays}日後`;
-      }
-    }
-
-    function openPaymentModal(paymentId) {
-      currentPayment = payments.find(p => p.id === paymentId);
-      if (!currentPayment) return;
-
-      document.getElementById('modalTitle').textContent = `取引詳細: ${paymentId}`;
-      populatePaymentDetails(currentPayment);
-      adminUI.showModal('paymentModal');
-    }
-
-    function populatePaymentDetails(payment) {
-      document.getElementById('paymentDate').textContent = adminUI.formatDate(payment.created);
-      document.getElementById('paymentAmount').textContent = adminUI.formatCurrency(payment.amount);
-      document.getElementById('paymentSeller').textContent = payment.seller?.displayName || payment.seller?.publicId || '-';
-      document.getElementById('paymentStatus').textContent = getPaymentStatusText(payment.status, payment.type);
-      
-      document.getElementById('paymentIntentId').textContent = payment.stripeIds?.paymentIntent || '-';
-      document.getElementById('chargeId').textContent = payment.stripeIds?.charge || '-';
-      
-      // Stripeダッシュボードリンク
-      const stripeBtn = document.getElementById('openStripeBtn');
-      if (payment.stripeIds?.charge) {
-        const env = window.location.hostname.includes('localhost') ? 'test/' : '';
-        stripeBtn.onclick = () => window.open(`https://dashboard.stripe.com/${env}payments/${payment.stripeIds.charge}`, '_blank');
-      }
-    }
-
-    function getPaymentStatusText(status, type) {
-      if (type === 'dispute') return 'チャージバック申請中';
-      if (status === 'refunded') return '返金済';
-      return '通常決済';
-    }
-
-    function setupEventListeners() {
-      const debouncedSearch = adminUI.debounce(() => {
-        const period = document.getElementById('periodFilter').value;
-        const type = document.getElementById('typeFilter').value;
-        const search = document.getElementById('searchInput').value;
-        loadPayments({ period, type, search });
-      }, 300);
-
-      document.getElementById('periodFilter').addEventListener('change', debouncedSearch);
-      document.getElementById('typeFilter').addEventListener('change', debouncedSearch);
-      document.getElementById('searchInput').addEventListener('input', debouncedSearch);
-      document.getElementById('searchBtn').addEventListener('click', debouncedSearch);
-
-      document.getElementById('syncPaymentsBtn').addEventListener('click', async () => {
-        adminUI.showSpinner('syncPaymentsBtn');
-        try {
-          await adminAPI.request('/admin/payments/sync', { method: 'POST' });
-          adminUI.showToast('Stripe同期が完了しました', 'success');
-          await loadPayments(currentFilters);
-        } catch (error) {
-          adminUI.showToast('同期に失敗しました', 'error');
-        } finally {
-          adminUI.showSpinner('syncPaymentsBtn', false);
+  <!-- 🟢 統合された admin-payments.js -->
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/admin-payments.js"></script>
+  
+  <script>
+    // ページ固有の初期化処理
+    document.addEventListener('DOMContentLoaded', () => {
+      // ナビゲーションのアクティブ状態を設定
+      const currentPage = window.location.pathname.split('/').pop();
+      document.querySelectorAll('.nav-item').forEach(item => {
+        if (item.getAttribute('href') === currentPage) {
+          item.classList.add('active');
         }
       });
-
-      // モーダル内操作
-      document.getElementById('generateEvidenceBtn').addEventListener('click', generateEvidence);
-      document.getElementById('submitEvidenceBtn').addEventListener('click', submitEvidence);
-      document.getElementById('refundBtn').addEventListener('click', processRefund);
-    }
-
-    async function generateEvidence() {
-      if (!currentPayment) return;
-      
-      adminUI.showSpinner('generateEvidenceBtn');
-      try {
-        await adminAPI.request('/admin/disputes/generate_evidence', {
-          method: 'POST',
-          body: JSON.stringify({ payment_intent_id: currentPayment.stripeIds.paymentIntent })
-        });
-        
-        adminUI.showMessage('modalMessage', 'success', 'エビデンスを生成しました');
-      } catch (error) {
-        adminUI.showMessage('modalMessage', 'error', error.message);
-      } finally {
-        adminUI.showSpinner('generateEvidenceBtn', false);
-      }
-    }
-
-    async function submitEvidence() {
-      if (!currentPayment) return;
-      
-      adminUI.showSpinner('submitEvidenceBtn');
-      try {
-        await adminAPI.request('/admin/disputes/submit_evidence', {
-          method: 'POST',
-          body: JSON.stringify({ payment_intent_id: currentPayment.stripeIds.paymentIntent })
-        });
-        
-        adminUI.showMessage('modalMessage', 'success', 'エビデンスを送信しました');
-        await loadPayments(currentFilters);
-      } catch (error) {
-        adminUI.showMessage('modalMessage', 'error', error.message);
-      } finally {
-        adminUI.showSpinner('submitEvidenceBtn', false);
-      }
-    }
-
-    async function processRefund() {
-      if (!currentPayment) return;
-      
-      if (!confirm(`¥${currentPayment.amount.toLocaleString()} の返金処理を実行しますか?`)) return;
-      
-      adminUI.showSpinner('refundBtn');
-      try {
-        await adminAPI.request('/admin/payments/refund', {
-          method: 'POST',
-          body: JSON.stringify({ 
-            payment_intent_id: currentPayment.stripeIds.paymentIntent,
-            amount: currentPayment.amount
-          })
-        });
-        
-        adminUI.showMessage('modalMessage', 'success', '返金処理を完了しました');
-        await loadPayments(currentFilters);
-      } catch (error) {
-        adminUI.showMessage('modalMessage', 'error', error.message);
-      } finally {
-        adminUI.showSpinner('refundBtn', false);
-      }
-    }
-
-    function handleHashNavigation() {
-      const hash = window.location.hash.substring(1);
-      if (hash && hash.startsWith('chargeback-')) {
-        const paymentId = hash.replace('chargeback-', 'pi_');
-        const payment = payments.find(p => p.id === paymentId);
-        if (payment) {
-          openPaymentModal(paymentId);
-        }
-      }
-    }
-  </script>
-
-  <!-- 🟦 修正2: admin-payments.js の fetch に認証ヘッダーを付ける -->
-  <script>
-    // Stripe Summary API から直接データ取得
-    async function loadStripeSummary() {
-      const period = document.getElementById('periodFilter')?.value || 'today';
-      
-      try {
-        // 🟢 認証ヘッダーを有効化
-        const res = await fetch(`/api/admin/stripe/summary?period=${encodeURIComponent(period)}`, {
-          headers: {
-            'x-admin-token': window.ADMIN_TOKEN
-          }
-        });
-        
-        if (!res.ok) {
-          throw new Error(`API Error: ${res.status}`);
-        }
-        
-        const data = await res.json();
-        
-        // サマリー更新
-        if (data.summary) {
-          updateSummary(data.summary);
-        }
-        
-        // データフィールド更新
-        document.querySelector('[data-field="today-payments-count"]').textContent = 
-          `${data.summary?.todayPayments || 0}件`;
-        document.querySelector('[data-field="today-net-sales"]').textContent = 
-          adminUI.formatCurrency(data.summary?.todayRevenue || 0);
-        document.querySelector('[data-field="dispute-count"]').textContent = 
-          `${data.summary?.activeDisputes || 0}件`;
-        document.querySelector('[data-field="refund-count"]').textContent = 
-          `${data.summary?.refundCount || 0}件`;
-        document.querySelector('[data-field="refund-amount"]').textContent = 
-          adminUI.formatCurrency(data.summary?.refundAmount || 0);
-        
-      } catch (error) {
-        console.error('Stripe Summary 取得失敗:', error);
-        adminUI.showToast('Stripeデータの取得に失敗しました', 'error');
-      }
-    }
-    
-    // ページ読み込み時とフィルター変更時に実行
-    document.addEventListener('DOMContentLoaded', () => {
-      loadStripeSummary();
-      
-      document.getElementById('periodFilter')?.addEventListener('change', loadStripeSummary);
-    });
-    
-    // Stripe同期ボタン
-    document.querySelector('[data-action="stripe-sync"]')?.addEventListener('click', async (e) => {
-      const btn = e.target;
-      btn.disabled = true;
-      btn.textContent = '同期中...';
-      
-      try {
-        await loadStripeSummary();
-        adminUI.showToast('Stripe同期が完了しました', 'success');
-      } catch (error) {
-        adminUI.showToast('同期に失敗しました', 'error');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Stripe同期';
-      }
     });
   </script>
 </body>
