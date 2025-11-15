@@ -5,14 +5,17 @@
        FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
        ★フリマ実態に合わせて簡略化版
        
-       【パッチ適用済み v7 - iPad撮影ボタン見切れ修正パッチ NEW！】
+       【パッチ適用済み v8 - キッズモード ウェルカム画面追加】
        ★変更点★
-       1. 撮影ボタンがiPadで見切れる問題を修正
-          - 安全領域(safe area)を確保
-          - 画面下部に十分な余白を追加
-          - padding-bottom を 2rem に増加
+       1. Step 0-1（キャラクター登場）追加
+       2. Step 0-2（ミッション説明）追加
+       3. Step 0-3（準備OK確認）追加
+       4. カメラ起動を遅延（ボタンクリック時のみ）
+       5. 電力節約＆子供の戸惑い解消
+       6. 桜アニメーション、金継ぎ線演出追加
        
        【過去のパッチ】
+       v7: iPad撮影ボタン見切れ修正
        v6: カメラ拡大問題修正（クロップ95%、ズーム無効化）
        v5: QR URL優先順位修正
        v4: AI total 自動反映
@@ -22,7 +25,7 @@
        ========================================================= -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FleaPay｜出店者UI（カメラ修正版）</title>
+  <title>FleaPay｜出店者UI（キッズモード対応版）</title>
 
   <!-- Normalize -->
   <link rel="stylesheet"
@@ -35,7 +38,9 @@
     :root{
       --color-bg: #f0f4f8;
       --color-primary: #3b82f6;
+      --color-secondary: #10b981;
       --color-text: #1e293b;
+      --color-gold: #f59e0b;
       --radius: 12px;
       --shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
@@ -92,17 +97,271 @@
       background:#64748b;
     }
     
+    /* ========== Step 0-1: キャラクター登場画面 ========== */
+    #step0-1{
+      background: linear-gradient(180deg, #fef3c7 0%, #fde68a 50%, #fff 100%);
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding:2rem 1rem;
+    }
+    .welcome-container{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:2rem;
+      max-width:400px;
+      width:100%;
+    }
+    .character-animation{
+      position:relative;
+      width:200px;
+      height:200px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .sakura-particles{
+      position:absolute;
+      width:100%;
+      height:100%;
+      pointer-events:none;
+      overflow:visible;
+    }
+    .sakura-particles::before,
+    .sakura-particles::after{
+      content:'🌸';
+      position:absolute;
+      font-size:2rem;
+      animation:sakuraFall 4s ease-in-out infinite;
+      opacity:0;
+    }
+    .sakura-particles::before{
+      left:10%;
+      animation-delay:0s;
+    }
+    .sakura-particles::after{
+      right:10%;
+      animation-delay:2s;
+    }
+    @keyframes sakuraFall{
+      0%{
+        top:-20%;
+        transform:rotate(0deg);
+        opacity:0;
+      }
+      10%{
+        opacity:0.7;
+      }
+      90%{
+        opacity:0.3;
+      }
+      100%{
+        top:120%;
+        transform:rotate(360deg);
+        opacity:0;
+      }
+    }
+    .owl-character{
+      font-size:6rem;
+      animation:bounce 2s ease-in-out infinite;
+      z-index:1;
+    }
+    @keyframes bounce{
+      0%, 100%{transform:translateY(0);}
+      50%{transform:translateY(-20px);}
+    }
+    .welcome-title{
+      font-size:2rem;
+      font-weight:700;
+      margin:0;
+      line-height:1.4;
+    }
+    .welcome-title .subtitle{
+      display:block;
+      font-size:1.2rem;
+      color:#64748b;
+      margin-top:0.5rem;
+    }
+    .welcome-message{
+      font-size:1.1rem;
+      color:#475569;
+      margin:0;
+    }
+    .btn-hero{
+      font-size:1.3rem;
+      padding:1.5rem 3rem;
+      background:linear-gradient(135deg, var(--color-primary) 0%, #2563eb 100%);
+      box-shadow:0 8px 16px rgba(59,130,246,0.3);
+      position:relative;
+      overflow:hidden;
+      border:none;
+      color:#fff;
+      border-radius:var(--radius);
+      font-weight:700;
+      cursor:pointer;
+      transition:transform 0.1s;
+    }
+    .btn-hero::before{
+      content:'';
+      position:absolute;
+      top:50%;
+      left:50%;
+      width:0;
+      height:0;
+      border-radius:50%;
+      background:rgba(255,255,255,0.3);
+      transform:translate(-50%,-50%);
+      transition:width 0.6s, height 0.6s;
+    }
+    .btn-hero:active{
+      transform:scale(0.98);
+    }
+    .btn-hero:active::before{
+      width:300px;
+      height:300px;
+    }
+    
+    /* ========== Step 0-2: ミッション説明画面 ========== */
+    #step0-2{
+      align-items:center;
+      padding:2rem 1rem;
+    }
+    .mission-container{
+      display:flex;
+      flex-direction:column;
+      width:100%;
+      max-width:400px;
+    }
+    .mission-steps{
+      margin:2rem 0;
+      width:100%;
+    }
+    .mission-card{
+      background:linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border-radius:var(--radius);
+      padding:1.5rem;
+      margin-bottom:1rem;
+      display:flex;
+      align-items:center;
+      gap:1rem;
+      box-shadow:var(--shadow);
+      transition:transform 0.2s;
+    }
+    .mission-card:hover{
+      transform:scale(1.02);
+    }
+    .mission-icon{
+      font-size:3rem;
+      flex-shrink:0;
+    }
+    .mission-text{
+      text-align:left;
+      flex:1;
+    }
+    .mission-number{
+      font-weight:700;
+      font-size:1.1rem;
+      color:var(--color-primary);
+      margin-bottom:0.25rem;
+    }
+    .mission-desc{
+      font-size:0.9rem;
+      color:#64748b;
+      line-height:1.4;
+    }
+    .mission-arrow{
+      font-size:2rem;
+      color:var(--color-primary);
+      margin:0.5rem 0;
+      text-align:center;
+    }
+    
+    /* ========== Step 0-3: 準備OK確認画面 ========== */
+    #step0-3{
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding:2rem 1rem;
+    }
+    .ready-container{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:2rem;
+      max-width:400px;
+      width:100%;
+    }
+    .ready-icon{
+      font-size:6rem;
+      animation:pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse{
+      0%, 100%{
+        transform:scale(1);
+        opacity:1;
+      }
+      50%{
+        transform:scale(1.1);
+        opacity:0.8;
+      }
+    }
+    .ready-title{
+      font-size:2rem;
+      font-weight:700;
+      margin:0;
+    }
+    .ready-message{
+      font-size:1.1rem;
+      line-height:1.8;
+      margin:0;
+      color:#475569;
+    }
+    .ready-hint{
+      display:block;
+      font-size:0.9rem;
+      color:#94a3b8;
+      margin-top:0.5rem;
+    }
+    .btn-camera{
+      background:linear-gradient(135deg, var(--color-secondary) 0%, #059669 100%);
+      box-shadow:0 8px 16px rgba(16,185,129,0.3);
+      font-size:1.2rem;
+      padding:1.5rem 2.5rem;
+      animation:breathe 2s ease-in-out infinite;
+      border:none;
+      color:#fff;
+      border-radius:var(--radius);
+      font-weight:700;
+      cursor:pointer;
+    }
+    @keyframes breathe{
+      0%, 100%{
+        transform:scale(1);
+      }
+      50%{
+        transform:scale(1.05);
+      }
+    }
+    .btn-camera:active{
+      transform:scale(0.98);
+      animation:none;
+    }
+    .btn-small{
+      font-size:0.9rem;
+      padding:0.75rem 1.5rem;
+    }
+    
     /* ========== Step1: カメラ画面（フルスクリーン） ========== */
     #step1{
-      padding:0; /* フルスクリーン用 */
+      padding:0;
       position:relative;
     }
     #videoContainer{
       position:relative;
       width:100%;
       height:100vh;
-      /* iOS/iPadOS対応: Safe Areaを考慮 */
-      height:100dvh; /* Dynamic Viewport Height */
+      height:100dvh;
       background:#000;
       overflow:hidden;
     }
@@ -115,7 +374,6 @@
     }
     #canvas{display:none;}
     
-    /* オーバーレイUI */
     #cameraOverlay{
       position:absolute;
       top:0;left:0;
@@ -125,9 +383,7 @@
       display:flex;
       flex-direction:column;
       justify-content:space-between;
-      /* iPad対応: 下部に十分な余白を確保 */
       padding:1rem 1rem 2rem 1rem;
-      /* iOS Safe Area対応 */
       padding-bottom:max(2rem, env(safe-area-inset-bottom));
     }
     .overlay-top, .overlay-bottom{
@@ -169,9 +425,7 @@
       justify-content:center;
       align-items:center;
       gap:1rem;
-      /* iPad対応: 下部に追加の余白 */
       padding-bottom:1rem;
-      /* ボタンが見切れないように最小高さを確保 */
       min-height:100px;
     }
     #captureBtn{
@@ -377,8 +631,95 @@
 <body>
 <div id="app">
   
+  <!-- ========== Step 0-1: キャラクター登場画面 ========== -->
+  <div id="step0-1" class="step active">
+    <div class="welcome-container">
+      <div class="character-animation">
+        <div class="sakura-particles"></div>
+        <div class="owl-character">🦉</div>
+      </div>
+      
+      <h1 class="welcome-title">
+        こんにちは!<br/>
+        <span class="subtitle">きょうは きみが おみせやさん</span>
+      </h1>
+      
+      <p class="welcome-message">
+        ふくろう博士が<br/>
+        おてつだい するよ
+      </p>
+      
+      <button class="btn btn-hero" id="startBtn">
+        ✨ はじめる
+      </button>
+    </div>
+  </div>
+  
+  <!-- ========== Step 0-2: ミッション説明画面 ========== -->
+  <div id="step0-2" class="step">
+    <div class="mission-container">
+      <h2><span class="emoji">📚</span> やることリスト</h2>
+      
+      <div class="mission-steps">
+        <div class="mission-card">
+          <div class="mission-icon">📸</div>
+          <div class="mission-text">
+            <div class="mission-number">① さつえい</div>
+            <div class="mission-desc">しょうひんの しゃしんを とる</div>
+          </div>
+        </div>
+        
+        <div class="mission-arrow">↓</div>
+        
+        <div class="mission-card">
+          <div class="mission-icon">💰</div>
+          <div class="mission-text">
+            <div class="mission-number">② ねだん</div>
+            <div class="mission-desc">いくらで うるかを きめる</div>
+          </div>
+        </div>
+        
+        <div class="mission-arrow">↓</div>
+        
+        <div class="mission-card">
+          <div class="mission-icon">✨</div>
+          <div class="mission-text">
+            <div class="mission-number">③ はんばい</div>
+            <div class="mission-desc">QRコードを みせる</div>
+          </div>
+        </div>
+      </div>
+      
+      <button class="btn btn-hero" id="understoodBtn">
+        👍 わかった!
+      </button>
+    </div>
+  </div>
+  
+  <!-- ========== Step 0-3: 準備OK確認画面 ========== -->
+  <div id="step0-3" class="step">
+    <div class="ready-container">
+      <div class="ready-icon">🎯</div>
+      
+      <h2 class="ready-title">じゅんび は いい?</h2>
+      
+      <p class="ready-message">
+        これから カメラが ひらくよ<br/>
+        <span class="ready-hint">しょうひんを きれいに うつそう</span>
+      </p>
+      
+      <button class="btn btn-camera" id="openCameraBtn">
+        📷 カメラを ひらく
+      </button>
+      
+      <button class="btn btn-secondary btn-small" id="skipToQRBtn">
+        🛍️ さきに QR を みせる
+      </button>
+    </div>
+  </div>
+  
   <!-- ========== Step1: カメラ撮影（フルスクリーン） ========== -->
-  <div id="step1" class="step active">
+  <div id="step1" class="step">
     <div id="videoContainer">
       <video id="video" autoplay playsinline></video>
       <canvas id="canvas"></canvas>
@@ -539,7 +880,31 @@
     return s;
   }
   
-  /* ========== Step1: カメラ起動＆撮影（修正版） ========== */
+  /* ========== Step 0 Navigation ========== */
+  document.getElementById('startBtn')?.addEventListener('click', () => {
+    showStep('step0-2');
+    debugLog('User clicked: はじめる');
+  });
+  
+  document.getElementById('understoodBtn')?.addEventListener('click', () => {
+    showStep('step0-3');
+    debugLog('User clicked: わかった');
+  });
+  
+  document.getElementById('openCameraBtn')?.addEventListener('click', () => {
+    showStep('step1');
+    initCamera(); // ★ここで初めてカメラ起動
+    debugLog('User clicked: カメラをひらく');
+  });
+  
+  document.getElementById('skipToQRBtn')?.addEventListener('click', () => {
+    const baseURL = window.location.origin;
+    const qrURL = `${baseURL}/checkout.html?s=${sellerId}`;
+    window.location.href = qrURL;
+    debugLog('User clicked: QRをさきにみせる');
+  });
+  
+  /* ========== Step1: カメラ起動＆撮影 ========== */
   async function initCamera(){
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
@@ -547,7 +912,6 @@
     const torchBtn = document.getElementById('torchBtn');
     
     try {
-      // 高解像度設定（4:3, 1600x1200）
       videoStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
@@ -561,7 +925,6 @@
       video.srcObject = videoStream;
       debugLog(`✅ Camera started: ${video.videoWidth}x${video.videoHeight}`);
       
-      // カメラ機能設定
       const track = videoStream.getVideoTracks()[0];
       const caps = track.getCapabilities?.();
       
@@ -570,21 +933,16 @@
         
         const constraints = { advanced: [] };
         
-        // オートフォーカス
         if(caps.focusMode && caps.focusMode.includes('continuous')){
           constraints.advanced.push({ focusMode: 'continuous' });
           debugLog('✅ Continuous autofocus enabled');
         }
-        
-        // ★★★ ズーム機能は無効化（削除） ★★★
-        // 商品全体が画面に入るように、ズームは使わない
         
         if(constraints.advanced.length > 0){
           await track.applyConstraints(constraints);
         }
       }
       
-      // トーチ（ライト）機能
       if(caps && caps.torch){
         torchBtn.style.display = 'flex';
         torchBtn.addEventListener('click', async () => {
@@ -609,41 +967,33 @@
       return;
     }
     
-    // 撮影ボタン
     captureBtn.addEventListener('click', () => {
       captureAndProcessImage(video, canvas);
     });
   }
   
-  /* ========== 画像キャプチャ＆処理（修正版） ========== */
+  /* ========== 画像キャプチャ＆処理 ========== */
   function captureAndProcessImage(video, canvas){
     const vw = video.videoWidth  || 640;
     const vh = video.videoHeight || 480;
     
     debugLog(`📸 Capturing: ${vw}x${vh}`);
     
-    // ★★★ クロップ範囲を95%に拡大（80% → 95%） ★★★
-    // より広い範囲を撮影できるように変更
-    const sx = vw * 0.025;  // 2.5%マージン（左右）
-    const sy = vh * 0.025;  // 2.5%マージン（上下）
-    const sw = vw * 0.95;   // 95%使用
-    const sh = vh * 0.95;   // 95%使用
+    const sx = vw * 0.025;
+    const sy = vh * 0.025;
+    const sw = vw * 0.95;
+    const sh = vh * 0.95;
     
     debugLog(`📐 Crop area: ${sx}, ${sy}, ${sw}x${sh} (95% of frame)`);
     
-    // 向き自動補正
     const needRotate = vw > vh && window.innerHeight > window.innerWidth;
-    
-    // OCR用に1024px四方に正規化
     const SIZE = 1024;
     
     if(needRotate){
-      // 90度回転が必要
       canvas.width  = SIZE;
       canvas.height = SIZE;
       const ctx = canvas.getContext('2d');
       
-      // コントラスト＆明るさ補正
       ctx.filter = 'contrast(1.25) brightness(1.05)';
       
       ctx.save();
@@ -655,29 +1005,24 @@
       
       debugLog('🔄 Image rotated 90° for portrait mode');
     } else {
-      // 回転不要
       canvas.width  = SIZE;
       canvas.height = SIZE;
       const ctx = canvas.getContext('2d');
       
-      // コントラスト＆明るさ補正
       ctx.filter = 'contrast(1.25) brightness(1.05)';
       ctx.drawImage(video, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
       ctx.filter = 'none';
     }
     
-    // JPEG品質向上（0.95）
     capturedImageDataURL = canvas.toDataURL('image/jpeg', 0.95);
     debugLog(`✅ Image captured (wide angle): ${capturedImageDataURL.substring(0,50)}...`);
     debugLog(`📦 Image size: ${Math.round(capturedImageDataURL.length / 1024)}KB`);
     
-    // カメラ停止
     if(videoStream){
       videoStream.getTracks().forEach(t => t.stop());
       debugLog('📷 Camera stopped');
     }
     
-    // AI解析へ
     showStep('step2');
     analyzeImage();
   }
@@ -730,17 +1075,14 @@
     const nextBtn = document.getElementById('nextToConfirm');
     const priceWrapper = document.getElementById('priceWrapper');
     
-    // プレビュー画像
     previewImg.src = capturedImageDataURL;
     
-    // AI解析結果（summary）
     if(aiAnalysisResult && aiAnalysisResult.summary){
       itemSummary.textContent = aiAnalysisResult.summary;
     } else {
       itemSummary.textContent = '（AI で しょうひん を にんしき できませんでした）';
     }
     
-    // AI total 自動反映
     if (aiAnalysisResult && aiAnalysisResult.total) {
       const autoAmount = parseInt(aiAnalysisResult.total, 10);
       if (autoAmount > 0) {
@@ -750,12 +1092,10 @@
       }
     }
     
-    // 初期状態：金額が入っていない場合はボタン無効
     if (!totalPriceInput.value || parseInt(totalPriceInput.value, 10) <= 0) {
       nextBtn.disabled = true;
     }
     
-    // 価格入力フォーカス演出
     totalPriceInput.addEventListener('focus', () => {
       priceWrapper.classList.add('focused');
     });
@@ -763,13 +1103,11 @@
       priceWrapper.classList.remove('focused');
     });
     
-    // 価格入力で次へボタン有効化
     totalPriceInput.addEventListener('input', () => {
       const val = parseInt(totalPriceInput.value, 10);
       nextBtn.disabled = !(val > 0);
     });
     
-    // 次へボタン
     nextBtn.addEventListener('click', () => {
       showStep('step4');
       renderStep4();
@@ -794,12 +1132,10 @@
     const totalVal = parseInt(document.getElementById('totalPriceInput').value, 10) || 0;
     confirmTotal.textContent = `¥${totalVal.toLocaleString()}`;
     
-    // 保護者チェックボックス
     parentCheck.addEventListener('change', () => {
       registerBtn.disabled = !parentCheck.checked;
     });
     
-    // 登録ボタン
     registerBtn.addEventListener('click', async () => {
       registerBtn.disabled = true;
       registerBtn.textContent = '📤 とうろく ちゅう…';
@@ -849,7 +1185,6 @@
       const data = await res.json();
       debugLog(`✅ Server response: ${JSON.stringify(data)}`);
       
-      // QR URL の決定
       let qrURL = null;
       
       if(data.checkoutUrl){
@@ -866,7 +1201,6 @@
         debugLog(`⚠️ Server did not return URL, generated: ${qrURL}`);
       }
       
-      // Step5へ移動してQR表示
       showStep('step5');
       displayQR(qrURL);
       
@@ -912,9 +1246,14 @@
   
   /* ========== 初期化 ========== */
   document.addEventListener('DOMContentLoaded', () => {
-    debugLog('=== App Initialized (v7 - iPad button visibility fix patch) ===');
+    debugLog('=== App Initialized (v8 - Kids Mode with Welcome Screen) ===');
     sellerId = getSellerIdFromURL();
-    initCamera();
+    
+    // ★重要：カメラは初期化しない（電力節約）
+    // initCamera(); ← 削除
+    
+    // ウェルカム画面から開始
+    showStep('step0-1');
   });
   
 })();

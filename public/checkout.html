@@ -172,6 +172,344 @@
     .theme-night{background:#0f172a;color:#f8fafc}
     .theme-night .card{background:rgba(255,255,255,.96);backdrop-filter:blur(10px)}
 
+    /* ==== Empty State: Guide Screen ==== */
+    .empty-state-view {
+      text-align: center;
+      padding: 32px 20px;
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 桜アニメーション */
+    .sakura-float {
+      font-size: 36px;
+      animation: sakura-gentle 3s ease-in-out infinite;
+      display: block;
+      margin-bottom: 16px;
+    }
+
+    @keyframes sakura-gentle {
+      0%, 100% { 
+        transform: translateY(0) rotate(-5deg);
+        opacity: 0.6;
+      }
+      50% { 
+        transform: translateY(-8px) rotate(5deg);
+        opacity: 0.9;
+      }
+    }
+
+    /* メインメッセージ */
+    .main-message {
+      margin-bottom: 32px;
+    }
+
+    .exciting-title {
+      font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
+      font-weight: 700;
+      font-size: 24px;
+      color: var(--hakken);
+      letter-spacing: 0.02em;
+      margin: 0 0 8px 0;
+      animation: gentle-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes gentle-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+
+    .sub-title {
+      font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
+      font-weight: 600;
+      font-size: 16px;
+      color: var(--shin-ai);
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    /* 3ステップガイド */
+    .steps-guide {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .step-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(251,247,240,0.8));
+      border: 1px solid rgba(27,54,93,0.12);
+      border-radius: 12px;
+      text-align: left;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .step-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .step-discover::before { background: #4A90E2; }
+    .step-communicate::before { background: #F5A623; }
+    .step-payment::before { background: var(--kintsugi); }
+
+    .step-card:hover {
+      transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(27,54,93,0.1);
+    }
+
+    .step-card:hover::before {
+      opacity: 1;
+    }
+
+    .step-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+      animation: icon-bounce 2s ease-in-out infinite;
+    }
+
+    @keyframes icon-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-title {
+      font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--shin-ai);
+      margin: 0 0 4px 0;
+      letter-spacing: 0.01em;
+    }
+
+    .step-desc {
+      font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
+      font-weight: 400;
+      font-size: 13px;
+      color: var(--usuzumi);
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    /* セキュリティセクション */
+    .security-section {
+      margin: 24px 0;
+      border-top: 1px solid rgba(27,54,93,0.08);
+      padding-top: 20px;
+    }
+
+    .security-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, rgba(27,54,93,0.05), rgba(27,54,93,0.08));
+      border: 1px solid rgba(27,54,93,0.15);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--shin-ai);
+    }
+
+    .security-toggle:hover {
+      background: linear-gradient(135deg, rgba(27,54,93,0.08), rgba(27,54,93,0.12));
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(27,54,93,0.15);
+    }
+
+    .security-toggle:focus-visible {
+      outline: 3px solid rgba(230,57,70,0.45);
+      outline-offset: 2px;
+    }
+
+    .toggle-icon {
+      font-size: 16px;
+    }
+
+    .toggle-arrow {
+      font-size: 12px;
+      transition: transform 0.3s ease;
+      margin-left: 4px;
+    }
+
+    .security-toggle[aria-expanded="true"] .toggle-arrow {
+      transform: rotate(180deg);
+    }
+
+    .security-details {
+      margin-top: 16px;
+      padding: 16px;
+      background: rgba(255,255,255,0.6);
+      border: 1px solid rgba(27,54,93,0.08);
+      border-radius: 12px;
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .security-item {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .security-item:last-of-type {
+      margin-bottom: 12px;
+    }
+
+    .security-badge-mini {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .security-icon-mini {
+      width: 16px;
+      height: 16px;
+      color: #10b981;
+    }
+
+    .security-icon-text {
+      font-size: 16px;
+    }
+
+    .security-badge-mini span {
+      font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--shin-ai);
+    }
+
+    .security-explain {
+      font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
+      font-size: 12px;
+      color: var(--usuzumi);
+      margin: 0 0 0 22px;
+      line-height: 1.5;
+    }
+
+    .security-link {
+      display: inline-flex;
+      align-items: center;
+      margin-top: 8px;
+      padding: 8px 16px;
+      font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--shin-ai);
+      text-decoration: none;
+      background: rgba(27,54,93,0.05);
+      border-radius: 999px;
+      transition: all 0.2s ease;
+    }
+
+    .security-link:hover {
+      background: rgba(27,54,93,0.1);
+      transform: translateX(2px);
+    }
+
+    /* リフレッシュヒント */
+    .refresh-hint {
+      margin-top: 24px;
+      padding-top: 16px;
+    }
+
+    .kintsugi-line-pulse {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--kintsugi), transparent);
+      margin-bottom: 8px;
+      animation: pulse-line 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-line {
+      0%, 100% { 
+        opacity: 0.4;
+        transform: scaleX(0.5);
+      }
+      50% { 
+        opacity: 1;
+        transform: scaleX(1);
+      }
+    }
+
+    .hint-text {
+      font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
+      font-size: 12px;
+      color: var(--usuzumi);
+      margin: 0;
+      font-style: italic;
+    }
+
+    /* レスポンシブ対応 */
+    @media (max-width: 480px) {
+      .empty-state-view {
+        padding: 24px 16px;
+      }
+      
+      .exciting-title {
+        font-size: 21px;
+      }
+      
+      .sub-title {
+        font-size: 15px;
+      }
+      
+      .step-card {
+        padding: 14px;
+      }
+      
+      .step-icon {
+        font-size: 24px;
+      }
+    }
+
+    /* アニメーション削減対応 */
+    @media (prefers-reduced-motion: reduce) {
+      .sakura-float,
+      .exciting-title,
+      .gentle-pulse,
+      .icon-bounce,
+      .kintsugi-line-pulse,
+      .sway,
+      .heartbeat {
+        animation: none;
+      }
+    }
+
     /* Helpers */
     .muted{color:#64748b}
     .center{text-align:center}
@@ -199,18 +537,144 @@
 
     <div class="card" role="main">
       <header class="header">
-        <h1 class="welcome-message" data-lang-content data-lang-key="welcome">いらっしゃいませ！</h1>
+        <h1 class="welcome-message" data-lang-content data-lang-key="welcome">いらっしゃいませ!</h1>
         <p class="sub-message" data-lang-content data-lang-key="enjoy">フリマとお祭りをお楽しみください 🎆</p>
       </header>
 
       <section class="priceBox" id="priceBox" aria-live="polite">
-        <div class="priceHead">
-          <span class="ccy">JPY</span>
-          <div id="amount" class="price loading" aria-label="合計金額">—</div>
+        <!-- 通常表示(商品あり) -->
+        <div id="normalView" class="normal-view">
+          <div class="priceHead">
+            <span class="ccy">JPY</span>
+            <div id="amount" class="price loading" aria-label="合計金額">—</div>
+          </div>
+          <div id="fx" class="fx muted" aria-live="polite"></div>
+          <p class="summary-title" data-lang-content data-lang-key="summaryTitle">🛍 ご購入内容(出店者が確認済みです)</p>
+          <p id="summary" class="summary muted loading"></p>
         </div>
-        <div id="fx" class="fx muted" aria-live="polite"></div>
-        <p class="summary-title" data-lang-content data-lang-key="summaryTitle">🛍 ご購入内容（出店者が確認済みです）</p>
-        <p id="summary" class="summary muted loading"></p>
+
+        <!-- 空状態表示(商品なし) -->
+        <div id="emptyView" class="empty-state-view" style="display: none;">
+          
+          <!-- 桜アニメーション -->
+          <div class="sakura-float" aria-hidden="true">🌸</div>
+          
+          <!-- メインメッセージ -->
+          <div class="main-message">
+            <h2 class="exciting-title" data-lang-content data-lang-key="emptyTitle">
+              ちょっと待って!
+            </h2>
+            <p class="sub-title" data-lang-content data-lang-key="emptySubtitle">
+              まだ宝物を選んでいないよ?
+            </p>
+          </div>
+
+          <!-- 3ステップガイド -->
+          <div class="steps-guide">
+            
+            <!-- Step 1 -->
+            <div class="step-card step-discover">
+              <div class="step-icon">📍</div>
+              <div class="step-content">
+                <h3 class="step-title" data-lang-content data-lang-key="step1Title">
+                  Step 1: 宝物を見つけよう
+                </h3>
+                <p class="step-desc" data-lang-content data-lang-key="step1Desc">
+                  お気に入りの商品を探してね
+                </p>
+              </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="step-card step-communicate">
+              <div class="step-icon">💬</div>
+              <div class="step-content">
+                <h3 class="step-title" data-lang-content data-lang-key="step2Title">
+                  Step 2: 出店者さんに伝えよう
+                </h3>
+                <p class="step-desc" data-lang-content data-lang-key="step2Desc">
+                  「これください!」と伝えてね
+                </p>
+              </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="step-card step-payment">
+              <div class="step-icon">✨</div>
+              <div class="step-content">
+                <h3 class="step-title" data-lang-content data-lang-key="step3Title">
+                  Step 3: 安心決済
+                </h3>
+                <p class="step-desc" data-lang-content data-lang-key="step3Desc">
+                  出店者さんが準備したらこのQRで決済できるよ!
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- セキュリティアピール(折りたたみ式) -->
+          <div class="security-section">
+            <button class="security-toggle" id="securityToggle" aria-expanded="false">
+              <span class="toggle-icon">🔒</span>
+              <span class="toggle-text" data-lang-content data-lang-key="securityQuestion">
+                FleaPayは安全?
+              </span>
+              <span class="toggle-arrow">▼</span>
+            </button>
+            
+            <div class="security-details" id="securityDetails" style="display: none;">
+              <div class="security-item">
+                <div class="security-badge-mini">
+                  <svg class="security-icon-mini" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"/>
+                  </svg>
+                  <span data-lang-content data-lang-key="securityBadge1">SSL暗号化</span>
+                </div>
+                <p class="security-explain" data-lang-content data-lang-key="securityExplain1">
+                  カード情報は最高水準で保護
+                </p>
+              </div>
+              
+              <div class="security-item">
+                <div class="security-badge-mini">
+                  <svg class="security-icon-mini" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="12" cy="16" r="1" fill="currentColor"/>
+                  </svg>
+                  <span data-lang-content data-lang-key="securityBadge2">Stripe認証</span>
+                </div>
+                <p class="security-explain" data-lang-content data-lang-key="securityExplain2">
+                  世界中で使われる決済システム
+                </p>
+              </div>
+              
+              <div class="security-item">
+                <div class="security-badge-mini">
+                  <span class="security-icon-text">💳</span>
+                  <span data-lang-content data-lang-key="securityBadge3">情報保存なし</span>
+                </div>
+                <p class="security-explain" data-lang-content data-lang-key="securityExplain3">
+                  カード番号はFleaPayに保存されません
+                </p>
+              </div>
+
+              <!-- LP誘導 -->
+              <a href="https://thajlmrw.gensparkspace.com/" target="_blank" rel="noopener noreferrer" class="security-link" data-lang-content data-lang-key="securityLearnMore">
+                もっと詳しく見る →
+              </a>
+            </div>
+          </div>
+
+          <!-- リフレッシュヒント(自動リトライ中) -->
+          <div class="refresh-hint">
+            <div class="kintsugi-line-pulse"></div>
+            <p class="hint-text" data-lang-content data-lang-key="refreshHint">
+              出店者さんの準備を待っています…
+            </p>
+          </div>
+
+        </div>
       </section>
 
       <div class="security-badges">
@@ -279,18 +743,36 @@
     // ---- i18n ----
     const languages = {
       ja: { 
-        welcome: 'いらっしゃいませ！',
+        welcome: 'いらっしゃいませ!',
         enjoy: 'フリマとお祭りをお楽しみください 🎆',
         pay: '{amount} を支払う',
         fetching: '最新の金額を取得しています…',
         ssl: 'SSL暗号化',
         stripe: 'Stripe認証',
-        summaryTitle: '🛍 ご購入内容（出店者が確認済みです）',
+        summaryTitle: '🛍 ご購入内容(出店者が確認済みです)',
         confirm1: '・間違いがないかご確認ください',
         confirm2: '・商品受け取り後の返品・交換はできません',
         safety: '🔒 この決済は Stripe の国際基準で保護されています。カード情報は FleaPay には保存されません。',
         note: '表示の外貨換算は参考値です。実際の決済はすべて日本円(JPY)で行われます。この画面は、出店者から受け取った商品の支払い画面です。',
-        about: 'FleaPayについて'
+        about: 'FleaPayについて',
+        // 空状態メッセージ
+        emptyTitle: 'ちょっと待って!',
+        emptySubtitle: 'まだ宝物を選んでいないよ?',
+        step1Title: 'Step 1: 宝物を見つけよう',
+        step1Desc: 'お気に入りの商品を探してね',
+        step2Title: 'Step 2: 出店者さんに伝えよう',
+        step2Desc: '「これください!」と伝えてね',
+        step3Title: 'Step 3: 安心決済',
+        step3Desc: '出店者さんが準備したらこのQRで決済できるよ!',
+        securityQuestion: 'FleaPayは安全?',
+        securityBadge1: 'SSL暗号化',
+        securityExplain1: 'カード情報は最高水準で保護',
+        securityBadge2: 'Stripe認証',
+        securityExplain2: '世界中で使われる決済システム',
+        securityBadge3: '情報保存なし',
+        securityExplain3: 'カード番号はFleaPayに保存されません',
+        securityLearnMore: 'もっと詳しく見る →',
+        refreshHint: '出店者さんの準備を待っています…'
       },
       en: { 
         welcome: 'Welcome!',
@@ -304,21 +786,57 @@
         confirm2: '・Returns or exchanges are not available after you receive the item.',
         safety: '🔒 Payments are processed securely by Stripe. Your card details are not stored by FleaPay.',
         note: 'Any foreign currency shown is indicative only. Your payment is charged in Japanese yen (JPY). This is the payment screen for the items you selected from the seller.',
-        about: 'About FleaPay'
+        about: 'About FleaPay',
+        // 空状態メッセージ
+        emptyTitle: 'Wait a moment!',
+        emptySubtitle: "Haven't chosen your treasure yet?",
+        step1Title: 'Step 1: Find Your Treasure',
+        step1Desc: 'Look for your favorite items',
+        step2Title: 'Step 2: Tell the Seller',
+        step2Desc: 'Say "I want this!"',
+        step3Title: 'Step 3: Safe Payment',
+        step3Desc: 'Once the seller is ready, pay with this QR!',
+        securityQuestion: 'Is FleaPay Safe?',
+        securityBadge1: 'SSL Encrypted',
+        securityExplain1: 'Your card info is protected',
+        securityBadge2: 'Stripe Certified',
+        securityExplain2: 'Trusted payment system worldwide',
+        securityBadge3: 'No Storage',
+        securityExplain3: 'Card numbers not saved by FleaPay',
+        securityLearnMore: 'Learn More →',
+        refreshHint: 'Waiting for seller preparation…'
       },
       zh: { 
-        welcome: '欢迎光临！',
+        welcome: '欢迎光临!',
         enjoy: '祝您在集市和祭典玩得开心 🎆',
         pay: '支付 {amount}',
         fetching: '正在获取最新金额…',
         ssl: 'SSL 加密',
         stripe: 'Stripe 保障',
-        summaryTitle: '🛍 购买内容（已由摊主确认）',
+        summaryTitle: '🛍 购买内容(已由摊主确认)',
         confirm1: '・请确认商品和金额是否正确。',
         confirm2: '・商品领取后无法退货或换货。',
-        safety: '🔒 本次支付由 Stripe 安全处理，您的卡信息不会保存在 FleaPay。',
-        note: '画面上的外币换算仅供参考,实际扣款货币为日元（JPY）。此画面为您向摊主购买商品的支付页面。',
-        about: '关于FleaPay'
+        safety: '🔒 本次支付由 Stripe 安全处理,您的卡信息不会保存在 FleaPay。',
+        note: '画面上的外币换算仅供参考,实际扣款货币为日元(JPY)。此画面为您向摊主购买商品的支付页面。',
+        about: '关于FleaPay',
+        // 空状态メッセージ
+        emptyTitle: '等一下!',
+        emptySubtitle: '还没有选好宝物吗?',
+        step1Title: 'Step 1: 发现宝物',
+        step1Desc: '寻找你喜欢的商品',
+        step2Title: 'Step 2: 告诉摊主',
+        step2Desc: '说"我要这个!"',
+        step3Title: 'Step 3: 安全支付',
+        step3Desc: '摊主准备好后,用这个QR码支付!',
+        securityQuestion: 'FleaPay安全吗?',
+        securityBadge1: 'SSL加密',
+        securityExplain1: '卡片信息受到最高级别保护',
+        securityBadge2: 'Stripe认证',
+        securityExplain2: '全球信赖的支付系统',
+        securityBadge3: '不保存信息',
+        securityExplain3: 'FleaPay不保存卡号',
+        securityLearnMore: '了解更多 →',
+        refreshHint: '正在等待摊主准备…'
       }
     };
     let currentLang = 'ja';
@@ -364,56 +882,119 @@
       fx.textContent = `≈ USD ${usd} / EUR ${eur}`;
     }
 
-async function fetchLatest() {
-  const s = getParam('s') || '';
-  const orderId = getParam('order') || '';
-  const amountEl = document.getElementById('amount');
-  const summaryEl = document.getElementById('summary');
-  const payBtn = document.getElementById('payBtn');
+    // ===== 自動リトライ機能 =====
+    let retryCount = 0;
+    const MAX_RETRIES = 12; // 最大12回(約60秒)
+    let retryTimer = null;
 
-  amountEl.classList.add('loading');
-  summaryEl.classList.add('loading');
-  summaryEl.textContent = languages[currentLang].fetching;
+    function startAutoRetry() {
+      if (retryCount >= MAX_RETRIES) {
+        console.log('[AutoRetry] 最大リトライ回数に到達');
+        // リトライ上限に達したらヒントテキストを更新
+        const hintText = document.querySelector('.hint-text');
+        if (hintText) {
+          hintText.textContent = languages[currentLang].step2Desc || 
+            '出店者さんに「これください!」と伝えてくださいね';
+          hintText.style.color = 'var(--hakken)';
+          hintText.style.fontWeight = '700';
+        }
+        return;
+      }
+      
+      retryTimer = setTimeout(() => {
+        retryCount++;
+        console.log(`[AutoRetry] リトライ ${retryCount}/${MAX_RETRIES}`);
+        fetchLatest();
+      }, 5000); // 5秒ごと
+    }
 
-  if(!orderId && !s){
-    amountEl.classList.remove('loading');
-    summaryEl.classList.remove('loading');
-    amountEl.textContent = '—';
-    summaryEl.textContent = 'Missing order information';
-    return;
-  }
+    function showEmptyState(normalView, emptyView) {
+      normalView.style.display = 'none';
+      emptyView.style.display = 'block';
+      document.getElementById('payBtn').disabled = true;
+      
+      // 自動リトライ開始
+      if (!retryTimer) {
+        startAutoRetry();
+      }
+    }
 
-  try{
-    const url = orderId 
-      ? `/api/price/latest?order=${encodeURIComponent(orderId)}`
-      : `/api/price/latest?s=${encodeURIComponent(s)}`;
-    
-    const resp = await fetch(url);
-    if(!resp.ok) throw new Error('not found');
-    const data = await resp.json();
-    const amount = Number(data.amount);
-    window.__amountInt = amount;
-    amountEl.textContent = formatJPY(amount);
-    amountEl.classList.remove('loading');
+    function showNormalView(normalView, emptyView) {
+      normalView.style.display = 'block';
+      emptyView.style.display = 'none';
+      
+      // リトライタイマーをクリア
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+        retryCount = 0;
+      }
+    }
 
-    const summary = String(data.summary || '');
-    summaryEl.textContent = summary;
-    summaryEl.classList.remove('loading');
+    async function fetchLatest() {
+      const s = getParam('s') || '';
+      const orderId = getParam('order') || '';
+      const amountEl = document.getElementById('amount');
+      const summaryEl = document.getElementById('summary');
+      const payBtn = document.getElementById('payBtn');
+      const normalView = document.getElementById('normalView');
+      const emptyView = document.getElementById('emptyView');
 
-    updatePayLabel(amount);
-    updateFx(amount);
-    payBtn.disabled = false;
-  }catch(err){
-    amountEl.classList.remove('loading');
-    summaryEl.classList.remove('loading');
-    amountEl.textContent = '—';
-    summaryEl.textContent = 'Amount expired or not found';
-    document.getElementById('payBtn').disabled = true;
-  } finally {
-    document.body.classList.remove('loading');
-    document.body.classList.add('ready');
-  }
-}
+      amountEl.classList.add('loading');
+      summaryEl.classList.add('loading');
+      summaryEl.textContent = languages[currentLang].fetching;
+
+      if(!orderId && !s){
+        showEmptyState(normalView, emptyView);
+        amountEl.classList.remove('loading');
+        summaryEl.classList.remove('loading');
+        return;
+      }
+
+      try{
+        const url = orderId 
+          ? `/api/price/latest?order=${encodeURIComponent(orderId)}`
+          : `/api/price/latest?s=${encodeURIComponent(s)}`;
+        
+        const resp = await fetch(url);
+        if(!resp.ok) {
+          showEmptyState(normalView, emptyView);
+          throw new Error('not found');
+        }
+        const data = await resp.json();
+        const amount = Number(data.amount);
+        
+        // 金額が0または未設定の場合も空状態表示
+        if (!amount || amount === 0) {
+          showEmptyState(normalView, emptyView);
+          amountEl.classList.remove('loading');
+          summaryEl.classList.remove('loading');
+          return;
+        }
+        
+        // 正常データ表示
+        showNormalView(normalView, emptyView);
+        window.__amountInt = amount;
+        amountEl.textContent = formatJPY(amount);
+        amountEl.classList.remove('loading');
+
+        const summary = String(data.summary || '');
+        summaryEl.textContent = summary;
+        summaryEl.classList.remove('loading');
+
+        updatePayLabel(amount);
+        updateFx(amount);
+        payBtn.disabled = false;
+      }catch(err){
+        showEmptyState(normalView, emptyView);
+        amountEl.classList.remove('loading');
+        summaryEl.classList.remove('loading');
+        document.getElementById('payBtn').disabled = true;
+      } finally {
+        document.body.classList.remove('loading');
+        document.body.classList.add('ready');
+      }
+    }
 
     async function startCheckout(){
       const s = getParam('s') || '';
@@ -441,9 +1022,29 @@ async function fetchLatest() {
       }
     }
 
+    // ===== セキュリティトグル機能 =====
     document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.lang-btn').forEach(btn => btn.addEventListener('click', () => switchLanguage(btn.dataset.lang)));
       document.getElementById('payBtn').addEventListener('click', startCheckout);
+      
+      // セキュリティセクションのトグル
+      const securityToggle = document.getElementById('securityToggle');
+      const securityDetails = document.getElementById('securityDetails');
+      
+      if (securityToggle && securityDetails) {
+        securityToggle.addEventListener('click', () => {
+          const isExpanded = securityToggle.getAttribute('aria-expanded') === 'true';
+          
+          if (isExpanded) {
+            securityToggle.setAttribute('aria-expanded', 'false');
+            securityDetails.style.display = 'none';
+          } else {
+            securityToggle.setAttribute('aria-expanded', 'true');
+            securityDetails.style.display = 'block';
+          }
+        });
+      }
+      
       const ua = navigator.language || 'ja';
       if(ua.startsWith('en')) switchLanguage('en');
       else if(ua.startsWith('zh')) switchLanguage('zh');
