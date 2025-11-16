@@ -96,9 +96,8 @@
     .price{font-weight:900;font-size:48px;letter-spacing:1px;line-height:1;margin:8px 0;
       background:linear-gradient(135deg,var(--shin-ai),var(--hakken));
       -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .fx{margin-top:6px;font-size:12px;color:#64748b}
-    .summary{margin:6px 0 0;font-size:13px;color:#334155;white-space:pre-line}
-    .summary-title{margin:6px 0 0;font-size:13px;font-weight:700;color:#0f172a}
+    .summary{margin:12px 0 0;font-size:13px;color:#334155;white-space:pre-line}
+    .summary-title{margin:12px 0 0;font-size:13px;font-weight:700;color:#0f172a}
 
     /* ==== Loading shimmer ==== */
     .loading{position:relative;color:transparent}
@@ -538,7 +537,6 @@
     <div class="card" role="main">
       <header class="header">
         <h1 class="welcome-message" data-lang-content data-lang-key="welcome">いらっしゃいませ!</h1>
-        <p class="sub-message" data-lang-content data-lang-key="enjoy">フリマとお祭りをお楽しみください 🎆</p>
       </header>
 
       <section class="priceBox" id="priceBox" aria-live="polite">
@@ -548,8 +546,6 @@
             <span class="ccy">JPY</span>
             <div id="amount" class="price loading" aria-label="合計金額">—</div>
           </div>
-          <div id="fx" class="fx muted" aria-live="polite"></div>
-          <p class="summary-title" data-lang-content data-lang-key="summaryTitle">🛍 ご購入内容(出店者が確認済みです)</p>
           <p id="summary" class="summary muted loading"></p>
         </div>
 
@@ -695,6 +691,9 @@
       </div>
 
       <div class="mt8">
+        <p class="muted" style="text-align:center; font-size:13px; margin-top:6px; margin-bottom:12px; line-height:1.6;" data-lang-content data-lang-key="stripeRedirect">
+          このあと、安全な Stripe の決済画面に移動します。次の画面でカード番号 → 有効期限 → 名義(ローマ字)を入力して《支払う》を押してください。
+        </p>
         <button id="payBtn" class="btn heartbeat" disabled>
           <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18">
             <path d="M5 12h14M13 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2"/>
@@ -721,12 +720,6 @@
           <div class="brand-icon">Google Pay</div>
         </div>
       </div>
-
-      <footer class="center mt24 muted" style="font-size:12px">
-        <span data-lang-content data-lang-key="note">
-          表示の外貨換算は参考値です。実際の決済はすべて日本円(JPY)で行われます。この画面は、出店者から受け取った商品の支払い画面です。
-        </span>
-      </footer>
     </div>
   </div>
 
@@ -772,7 +765,8 @@
         securityBadge3: '情報保存なし',
         securityExplain3: 'カード番号はFleaPayに保存されません',
         securityLearnMore: 'もっと詳しく見る →',
-        refreshHint: '出店者さんの準備を待っています…'
+        refreshHint: '出店者さんの準備を待っています…',
+        stripeRedirect: 'このあと、安全な Stripe の決済画面に移動します。次の画面でカード番号 → 有効期限 → 名義(ローマ字)を入力して《支払う》を押してください。'
       },
       en: { 
         welcome: 'Welcome!',
@@ -804,7 +798,8 @@
         securityBadge3: 'No Storage',
         securityExplain3: 'Card numbers not saved by FleaPay',
         securityLearnMore: 'Learn More →',
-        refreshHint: 'Waiting for seller preparation…'
+        refreshHint: 'Waiting for seller preparation…',
+        stripeRedirect: 'You will be redirected to Stripe\'s secure payment page next. On the next Stripe page, enter your card number → expiry date → name, then press Pay.'
       },
       zh: { 
         welcome: '欢迎光临!',
@@ -819,7 +814,7 @@
         safety: '🔒 本次支付由 Stripe 安全处理,您的卡信息不会保存在 FleaPay。',
         note: '画面上的外币换算仅供参考,实际扣款货币为日元(JPY)。此画面为您向摊主购买商品的支付页面。',
         about: '关于FleaPay',
-        // 空状态メッセージ
+        // 空状態メッセージ
         emptyTitle: '等一下!',
         emptySubtitle: '还没有选好宝物吗?',
         step1Title: 'Step 1: 发现宝物',
@@ -836,7 +831,8 @@
         securityBadge3: '不保存信息',
         securityExplain3: 'FleaPay不保存卡号',
         securityLearnMore: '了解更多 →',
-        refreshHint: '正在等待摊主准备…'
+        refreshHint: '正在等待摊主准备…',
+        stripeRedirect: '接下来会跳转到 Stripe 安全支付页面。在 Stripe 页面输入 卡号 → 有效期 → 姓名(拼音),然后点击【支付】。'
       }
     };
     let currentLang = 'ja';
@@ -870,16 +866,6 @@
       const t = languages[currentLang]?.pay || 'Pay {amount}';
       const label = t.replace('{amount}', formatJPY(amount));
       document.getElementById('payLabel').textContent = label;
-    }
-
-    // FX (static indicative only)
-    function updateFx(amount){
-      const USD = 0.0065;  // approx
-      const EUR = 0.0060;  // approx
-      const usd = (amount * USD).toFixed(2);
-      const eur = (amount * EUR).toFixed(2);
-      const fx = document.getElementById('fx');
-      fx.textContent = `≈ USD ${usd} / EUR ${eur}`;
     }
 
     // ===== 自動リトライ機能 =====
@@ -931,126 +917,216 @@
       }
     }
 
-    async function fetchLatest() {
-      const s = getParam('s') || '';
-      const orderId = getParam('order') || '';
-      const amountEl = document.getElementById('amount');
-      const summaryEl = document.getElementById('summary');
-      const payBtn = document.getElementById('payBtn');
-      const normalView = document.getElementById('normalView');
-      const emptyView = document.getElementById('emptyView');
+    // ===== セキュリティトグル =====
+    const securityToggle = document.getElementById('securityToggle');
+    const securityDetails = document.getElementById('securityDetails');
+    
+    if (securityToggle && securityDetails) {
+      securityToggle.addEventListener('click', function() {
+        const isExpanded = securityToggle.getAttribute('aria-expanded') === 'true';
+        
+        if (isExpanded) {
+          securityToggle.setAttribute('aria-expanded', 'false');
+          securityDetails.style.display = 'none';
+        } else {
+          securityToggle.setAttribute('aria-expanded', 'true');
+          securityDetails.style.display = 'block';
+        }
+      });
+    }
 
-      amountEl.classList.add('loading');
-      summaryEl.classList.add('loading');
-      summaryEl.textContent = languages[currentLang].fetching;
+    // ---- Language switcher ----
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchLanguage(btn.dataset.lang);
+      });
+    });
 
-      if(!orderId && !s){
+    // ---- Fetch data ----
+    const orderKey = getParam('order');
+    const normalView = document.getElementById('normalView');
+    const emptyView = document.getElementById('emptyView');
+
+    function fetchLatest(){
+      if (!orderKey) {
+        console.warn('[FleaPay] orderキーが見つかりません。ガイド画面を表示。');
         showEmptyState(normalView, emptyView);
-        amountEl.classList.remove('loading');
-        summaryEl.classList.remove('loading');
+        document.body.classList.remove('loading');
+        document.body.classList.add('ready');
         return;
       }
 
-      try{
-        const url = orderId 
-          ? `/api/price/latest?order=${encodeURIComponent(orderId)}`
-          : `/api/price/latest?s=${encodeURIComponent(s)}`;
-        
-        const resp = await fetch(url);
-        if(!resp.ok) {
-          showEmptyState(normalView, emptyView);
-          throw new Error('not found');
-        }
-        const data = await resp.json();
-        const amount = Number(data.amount);
-        
-        // 金額が0または未設定の場合も空状態表示
-        if (!amount || amount === 0) {
-          showEmptyState(normalView, emptyView);
-          amountEl.classList.remove('loading');
-          summaryEl.classList.remove('loading');
-          return;
-        }
-        
-        // 正常データ表示
-        showNormalView(normalView, emptyView);
-        window.__amountInt = amount;
-        amountEl.textContent = formatJPY(amount);
-        amountEl.classList.remove('loading');
+      const url = `https://fleapay-sheet-proxy-production.up.railway.app/get?order=${encodeURIComponent(orderKey)}`;
+      fetch(url)
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then(data => {
+          if (data && data.amount && parseInt(data.amount, 10) > 0) {
+            // 正常データ → 通常表示
+            showNormalView(normalView, emptyView);
+            
+            const amountInt = parseInt(data.amount, 10);
+            window.__amountInt = amountInt;
+            document.getElementById('amount').textContent = formatJPY(amountInt);
+            document.getElementById('amount').classList.remove('loading');
 
-        const summary = String(data.summary || '');
-        summaryEl.textContent = summary;
-        summaryEl.classList.remove('loading');
+            const summaryText = data.summary ? data.summary.trim() : '';
+            const summaryEl = document.getElementById('summary');
+            if (summaryText) {
+              summaryEl.textContent = summaryText;
+            } else {
+              summaryEl.textContent = '';
+            }
+            summaryEl.classList.remove('loading');
 
-        updatePayLabel(amount);
-        updateFx(amount);
-        payBtn.disabled = false;
-      }catch(err){
+            updatePayLabel(amountInt);
+
+            const btn = document.getElementById('payBtn');
+            btn.disabled = false;
+            btn.classList.remove('heartbeat');
+            btn.onclick = () => {
+              const checkoutLink = data.checkout_url || data.checkoutUrl || '';
+              if (checkoutLink) {
+                window.location.href = checkoutLink;
+              } else {
+                alert('決済リンクが取得できませんでした。');
+              }
+            };
+
+            document.body.classList.remove('loading');
+            document.body.classList.add('ready');
+          } else {
+            // 金額が0または未設定 → 空状態画面
+            showEmptyState(normalView, emptyView);
+            document.body.classList.remove('loading');
+            document.body.classList.add('ready');
+          }
+        })
+        .catch(err => {
+          console.error('[FleaPay Fetch Error]', err);
+          // エラー時も空状態画面
+          showEmptyState(normalView, emptyView);
+          document.body.classList.remove('loading');
+          document.body.classList.add('ready');
+        });
+    }
+
+    // ===== セキュリティトグル =====
+    const securityToggle = document.getElementById('securityToggle');
+    const securityDetails = document.getElementById('securityDetails');
+    
+    if (securityToggle && securityDetails) {
+      securityToggle.addEventListener('click', function() {
+        const isExpanded = securityToggle.getAttribute('aria-expanded') === 'true';
+        
+        if (isExpanded) {
+          securityToggle.setAttribute('aria-expanded', 'false');
+          securityDetails.style.display = 'none';
+        } else {
+          securityToggle.setAttribute('aria-expanded', 'true');
+          securityDetails.style.display = 'block';
+        }
+      });
+    }
+
+    // ---- Language switcher ----
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchLanguage(btn.dataset.lang);
+      });
+    });
+
+    // ---- Auto language detection ----
+    const ua = navigator.language || 'en';
+
+    // 日本語 → 日本語
+    if (ua.startsWith('ja')) {
+      switchLanguage('ja');
+    }
+    // 中国語(簡体・繁体) → 中国語
+    else if (ua.startsWith('zh')) {
+      switchLanguage('zh');
+    }
+    // その他すべて → 英語
+    else {
+      switchLanguage('en');
+    }
+
+    // ---- Fetch data ----
+    const orderKey = getParam('order');
+    const normalView = document.getElementById('normalView');
+    const emptyView = document.getElementById('emptyView');
+
+    function fetchLatest(){
+      if (!orderKey) {
+        console.warn('[FleaPay] orderキーが見つかりません。ガイド画面を表示。');
         showEmptyState(normalView, emptyView);
-        amountEl.classList.remove('loading');
-        summaryEl.classList.remove('loading');
-        document.getElementById('payBtn').disabled = true;
-      } finally {
         document.body.classList.remove('loading');
         document.body.classList.add('ready');
+        return;
       }
-    }
 
-    async function startCheckout(){
-      const s = getParam('s') || '';
-      const summaryText = document.getElementById('summary').textContent || '';
-      const payBtn = document.getElementById('payBtn');
-      payBtn.disabled = true;
+      const url = `https://fleapay-sheet-proxy-production.up.railway.app/get?order=${encodeURIComponent(orderKey)}`;
+      fetch(url)
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then(data => {
+          if (data && data.amount && parseInt(data.amount, 10) > 0) {
+            // 正常データ → 通常表示
+            showNormalView(normalView, emptyView);
+            
+            const amountInt = parseInt(data.amount, 10);
+            window.__amountInt = amountInt;
+            document.getElementById('amount').textContent = formatJPY(amountInt);
+            document.getElementById('amount').classList.remove('loading');
 
-      try{
-        const resp = await fetch('/api/checkout/session', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ latest:true, sellerId:s, summary:summaryText })
-        });
-        const data = await resp.json();
-        if(data?.url){
-          location.href = data.url;
-        }else{
-          alert('Failed to create checkout session.');
-          payBtn.disabled = false;
-        }
-      }catch(e){
-        console.error(e);
-        alert('Network error.');
-        payBtn.disabled = false;
-      }
-    }
+            const summaryText = data.summary ? data.summary.trim() : '';
+            const summaryEl = document.getElementById('summary');
+            if (summaryText) {
+              summaryEl.textContent = summaryText;
+            } else {
+              summaryEl.textContent = '';
+            }
+            summaryEl.classList.remove('loading');
 
-    // ===== セキュリティトグル機能 =====
-    document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.lang-btn').forEach(btn => btn.addEventListener('click', () => switchLanguage(btn.dataset.lang)));
-      document.getElementById('payBtn').addEventListener('click', startCheckout);
-      
-      // セキュリティセクションのトグル
-      const securityToggle = document.getElementById('securityToggle');
-      const securityDetails = document.getElementById('securityDetails');
-      
-      if (securityToggle && securityDetails) {
-        securityToggle.addEventListener('click', () => {
-          const isExpanded = securityToggle.getAttribute('aria-expanded') === 'true';
-          
-          if (isExpanded) {
-            securityToggle.setAttribute('aria-expanded', 'false');
-            securityDetails.style.display = 'none';
+            updatePayLabel(amountInt);
+
+            const btn = document.getElementById('payBtn');
+            btn.disabled = false;
+            btn.classList.remove('heartbeat');
+            btn.onclick = () => {
+              const checkoutLink = data.checkout_url || data.checkoutUrl || '';
+              if (checkoutLink) {
+                window.location.href = checkoutLink;
+              } else {
+                alert('決済リンクが取得できませんでした。');
+              }
+            };
+
+            document.body.classList.remove('loading');
+            document.body.classList.add('ready');
           } else {
-            securityToggle.setAttribute('aria-expanded', 'true');
-            securityDetails.style.display = 'block';
+            // 金額が0または未設定 → 空状態画面
+            showEmptyState(normalView, emptyView);
+            document.body.classList.remove('loading');
+            document.body.classList.add('ready');
           }
+        })
+        .catch(err => {
+          console.error('[FleaPay Fetch Error]', err);
+          // エラー時も空状態画面
+          showEmptyState(normalView, emptyView);
+          document.body.classList.remove('loading');
+          document.body.classList.add('ready');
         });
-      }
-      
-      const ua = navigator.language || 'ja';
-      if(ua.startsWith('en')) switchLanguage('en');
-      else if(ua.startsWith('zh')) switchLanguage('zh');
-      else switchLanguage('ja');
-      fetchLatest();
-    });
+    }
+
+    // Initial load
+    fetchLatest();
   </script>
 </body>
 </html>
