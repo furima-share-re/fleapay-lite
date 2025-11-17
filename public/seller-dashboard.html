@@ -597,6 +597,31 @@
         return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日（${w}）`;
       }
 
+      // ★追加：購入者属性ラベルを生成する関数
+      function formatBuyerLabel(buyer){
+        if (!buyer) return "購入者情報：未入力";
+
+        const typeLabel =
+          buyer.customer_type === "inbound" ? "外国のひと" :
+          buyer.customer_type === "domestic" ? "日本のひと" :
+          "";
+        const genderLabel =
+          buyer.gender === "male" ? "男性" :
+          buyer.gender === "female" ? "女性" :
+          "性別 不明";
+        const ageLabel =
+          buyer.age_band === "child" ? "こども" :
+          buyer.age_band === "age_16_29" ? "16〜29" :
+          buyer.age_band === "age_30_59" ? "30〜59" :
+          buyer.age_band === "age_60_plus" ? "60+" :
+          "年齢 不明";
+
+        if (typeLabel){
+          return `${typeLabel} / ${genderLabel} / ${ageLabel}`;
+        }
+        return "購入者情報：未入力";
+      }
+
       async function loadSummary(){
         if (!sellerId){
           if (homeHintEl) homeHintEl.textContent = "URLに ?s=出店者ID が ひつようです。";
@@ -668,7 +693,7 @@
             }
           }
 
-          // さいきんの決済（3件まで）
+          // ★修正：さいきんの決済（3件まで）—— 購入者ラベルを追加
           const recent = (data.recent || []).slice(0,3);
           if (recentListEl){
             recentListEl.innerHTML = "";
@@ -690,6 +715,9 @@
                 const timeStr = created ? formatTime(created) : "";
                 const summary = (tx.summary || "商品のおかいもの").split("\n")[0];
 
+                // ★購入者属性のラベルを生成
+                const buyerLabel = formatBuyerLabel(tx.buyer);
+
                 li.innerHTML = `
                   <div class="tx-main">
                     <div class="tx-top">
@@ -697,7 +725,7 @@
                       <span class="tx-time">${timeStr}</span>
                     </div>
                     <div class="tx-title">${summary}</div>
-                    <div class="tx-sub">タップで くわしく みる</div>
+                    <div class="tx-sub">${buyerLabel}</div>
                     <div class="tx-detail">
                       ${tx.summary ? tx.summary.replace(/\n/g,"<br>") : ""}
                     </div>
@@ -716,7 +744,7 @@
             recentHintEl.textContent = "Stripe のテスト決済が さいしん3件まで ひょうじされます。";
           }
 
-          // 取引履歴（最大20件）
+          // ★修正：取引履歴（最大20件）—— 購入者ラベルを追加
           if (txListEl){
             txListEl.innerHTML = "";
             const list = data.recent || [];
@@ -741,6 +769,9 @@
                   : "";
                 const summary = (tx.summary || "商品のおかいもの").replace(/\n/g," / ");
 
+                // ★購入者属性のラベルを生成
+                const buyerLabel = formatBuyerLabel(tx.buyer);
+
                 li.innerHTML = `
                   <div class="tx-main">
                     <div class="tx-top">
@@ -748,7 +779,7 @@
                       <span class="tx-time">${timeStr} / ${dateStr}</span>
                     </div>
                     <div class="tx-title">${summary}</div>
-                    <div class="tx-sub">決済ID: ${tx.id}</div>
+                    <div class="tx-sub">${buyerLabel}</div>
                     <div class="tx-detail">
                       金額：${formatYen(tx.amount)} / 純売上：${formatYen(tx.net_amount)}<br>
                       ステータス：${tx.status}

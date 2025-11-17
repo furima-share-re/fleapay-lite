@@ -5,16 +5,15 @@
        FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
        ★フリマ実態に合わせて簡略化版
        
-       【パッチ適用済み v8 - キッズモード ウェルカム画面追加】
+       【パッチ適用済み v9 - 購入者属性タグ追加】
        ★変更点★
-       1. Step 0-1（キャラクター登場）追加
-       2. Step 0-2（ミッション説明）追加
-       3. Step 0-3（準備OK確認）追加
-       4. カメラ起動を遅延（ボタンクリック時のみ）
-       5. 電力節約＆子供の戸惑い解消
-       6. 桜アニメーション、金継ぎ線演出追加
+       1. Step5に購入者タグ（国籍/性別/年齢帯）入力UI追加
+       2. 決済完了後に必須ボタンで購入者情報を取得
+       3. /api/orders/buyer-attributes へ送信
+       4. orderIdをサーバーから受け取り保存
        
        【過去のパッチ】
+       v8: キッズモード ウェルカム画面追加
        v7: iPad撮影ボタン見切れ修正
        v6: カメラ拡大問題修正（クロップ95%、ズーム無効化）
        v5: QR URL優先順位修正
@@ -596,6 +595,57 @@
       border-radius:var(--radius);
     }
     
+    /* ========== 購入者属性タグ ========== */
+    .buyer-attrs{
+      width:100%;
+      max-width:420px;
+      margin:2rem auto 1.5rem;
+      text-align:left;
+      background:#f1f5f9;
+      padding:1.5rem;
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    .buyer-hint{
+      font-size:0.8rem;
+      color:#64748b;
+      margin:0.25rem 0 0.75rem;
+    }
+    .attr-group{
+      margin-bottom:0.75rem;
+    }
+    .attr-label{
+      font-size:0.85rem;
+      font-weight:600;
+      margin-bottom:0.35rem;
+      color:#475569;
+    }
+    .attr-buttons{
+      display:flex;
+      flex-wrap:wrap;
+      gap:0.4rem;
+    }
+    .attr-btn{
+      flex:1 1 40%;
+      min-width:40%;
+      border-radius:999px;
+      border:1px solid #cbd5e1;
+      background:#f8fafc;
+      padding:0.4rem 0.6rem;
+      font-size:0.8rem;
+      cursor:pointer;
+      transition:all 0.2s;
+    }
+    .attr-btn:hover{
+      background:#e0edff;
+    }
+    .attr-btn.selected{
+      background:#e0edff;
+      border-color:#3b82f6;
+      color:#1e293b;
+      font-weight:600;
+    }
+    
     /* ========== デバッグログ ========== */
     #debugPanel{
       position:fixed;
@@ -815,6 +865,51 @@
       <div id="qrcode"></div>
     </div>
     
+    <!-- ▼ 購入者タグ入力エリア -->
+    <div class="buyer-attrs">
+      <h2><span class="emoji">🙋‍♀️</span> かってくれた ひと</h2>
+      <p class="buyer-hint">
+        おきゃくさんの だいたいの じょうほうを えらんでね。<br>
+        ※なまえ や れんらくさき は ひつよう ありません。
+      </p>
+
+      <!-- 国籍/区分 -->
+      <div class="attr-group">
+        <div class="attr-label">国籍/区分</div>
+        <div class="attr-buttons" data-attr="customer_type">
+          <button type="button" class="attr-btn" data-value="domestic">日本のひと</button>
+          <button type="button" class="attr-btn" data-value="inbound">外国からきたひと</button>
+        </div>
+      </div>
+
+      <!-- 性別 -->
+      <div class="attr-group">
+        <div class="attr-label">性別</div>
+        <div class="attr-buttons" data-attr="gender">
+          <button type="button" class="attr-btn" data-value="male">男性</button>
+          <button type="button" class="attr-btn" data-value="female">女性</button>
+          <button type="button" class="attr-btn" data-value="unknown">わからない</button>
+        </div>
+      </div>
+
+      <!-- 年齢帯 -->
+      <div class="attr-group">
+        <div class="attr-label">年齢帯</div>
+        <div class="attr-buttons" data-attr="age_band">
+          <button type="button" class="attr-btn" data-value="child">こども</button>
+          <button type="button" class="attr-btn" data-value="age_16_29">16〜29</button>
+          <button type="button" class="attr-btn" data-value="age_30_59">30〜59</button>
+          <button type="button" class="attr-btn" data-value="age_60_plus">60+</button>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary" id="saveBuyerAttrBtn" disabled>
+        💾 おきゃくさんじょうほう を ほぞん
+      </button>
+      <p class="buyer-hint" id="buyerAttrStatus"></p>
+    </div>
+    <!-- ▲ 購入者タグ入力エリアここまで -->
+    
     <button class="btn btn-secondary" onclick="location.reload()">
       🔄 つぎの しょうひん を とうろく
     </button>
@@ -860,6 +955,14 @@
   let sellerId = null;
   let videoStream = null;
   let torchEnabled = false;
+  
+  // ★追加：オーダーID & 購入者属性の一時保存
+  let currentOrderId = null;
+  const buyerAttrs = {
+    customer_type: null,
+    gender: null,
+    age_band: null
+  };
   
   /* ========== Step制御 ========== */
   function showStep(stepId){
@@ -1185,6 +1288,10 @@
       const data = await res.json();
       debugLog(`✅ Server response: ${JSON.stringify(data)}`);
       
+      // ★追加：orderId を保存
+      currentOrderId = data.orderId || null;
+      debugLog(`💾 Saved orderId: ${currentOrderId}`);
+      
       let qrURL = null;
       
       if(data.checkoutUrl){
@@ -1231,6 +1338,79 @@
     debugLog(`✅ QR code displayed: ${url}`);
   }
   
+  /* ========== 購入者属性タグUI セットアップ ========== */
+  function setupBuyerAttrUI(){
+    const containerList = document.querySelectorAll('.attr-buttons');
+    const saveBtn = document.getElementById('saveBuyerAttrBtn');
+    const statusEl = document.getElementById('buyerAttrStatus');
+
+    if (!saveBtn || !statusEl) return;
+
+    // ボタンの選択処理
+    containerList.forEach(group => {
+      const attrKey = group.getAttribute('data-attr');
+      group.querySelectorAll('.attr-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          // 同じグループ内で1つだけ選択
+          group.querySelectorAll('.attr-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          buyerAttrs[attrKey] = btn.getAttribute('data-value');
+          debugLog(`buyerAttrs.${attrKey} = ${buyerAttrs[attrKey]}`);
+          updateBuyerAttrSaveState();
+        });
+      });
+    });
+
+    // 保存ボタン
+    saveBtn.addEventListener('click', async () => {
+      if (!currentOrderId){
+        alert('オーダーID が まだ設定されていません。');
+        return;
+      }
+      if (!isBuyerAttrsFilled()){
+        alert('国籍・性別・年齢帯を えらんでください。');
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = '💾 ほぞん中…';
+
+      try{
+        const res = await fetch('/api/orders/buyer-attributes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: currentOrderId,
+            customer_type: buyerAttrs.customer_type,
+            gender: buyerAttrs.gender,
+            age_band: buyerAttrs.age_band
+          })
+        });
+        if (!res.ok){
+          const t = await res.text();
+          throw new Error(t || `HTTP ${res.status}`);
+        }
+        statusEl.textContent = '✅ おきゃくさんの じょうほう を ほぞんしました。';
+        debugLog('✅ Buyer attributes saved successfully');
+      } catch(e){
+        console.error(e);
+        statusEl.textContent = '❌ ほぞんに しっぱいしました。あとで ダッシュボードから へんしゅう できます。';
+        debugLog(`❌ Buyer attributes save failed: ${e.message}`);
+      } finally{
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 おきゃくさんじょうほう を ほぞん';
+      }
+    });
+
+    function isBuyerAttrsFilled(){
+      return buyerAttrs.customer_type && buyerAttrs.gender && buyerAttrs.age_band;
+    }
+
+    function updateBuyerAttrSaveState(){
+      saveBtn.disabled = !isBuyerAttrsFilled();
+    }
+  }
+  
   /* ========== ユーティリティ：DataURL → Blob ========== */
   function dataURLtoBlob(dataURL){
     const arr = dataURL.split(',');
@@ -1246,11 +1426,11 @@
   
   /* ========== 初期化 ========== */
   document.addEventListener('DOMContentLoaded', () => {
-    debugLog('=== App Initialized (v8 - Kids Mode with Welcome Screen) ===');
+    debugLog('=== App Initialized (v9 - Buyer Attributes Added) ===');
     sellerId = getSellerIdFromURL();
     
-    // ★重要：カメラは初期化しない（電力節約）
-    // initCamera(); ← 削除
+    // ★購入者属性タグのUIセットアップ
+    setupBuyerAttrUI();
     
     // ウェルカム画面から開始
     showStep('step0-1');
