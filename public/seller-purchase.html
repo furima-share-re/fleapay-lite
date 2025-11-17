@@ -5,11 +5,12 @@
        FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
        ★フリマ実態に合わせて簡略化版
        
-       【パッチ適用済み v10 - 現金/キャッシュレス支払い方法選択追加】
+       【パッチ適用済み v10.1 - 初期値をキャッシュレスに確実に設定】
        ★変更点★
        1. Step4に支払い方法選択UI追加（現金/QR・カード）
        2. paymentMethodをサーバーへ送信
        3. 現金の場合はQRコード表示をスキップ
+       4. renderStep4で初期値を確実にキャッシュレスに設定
        
        【過去のパッチ】
        v9: 購入者属性タグ追加
@@ -1277,8 +1278,21 @@
       registerBtn.disabled = !parentCheck.checked;
     });
 
-    // ★追加：支払い方法ボタンのイベント
+    // ★追加：支払い方法ボタンの初期化と設定
+    paymentMethod = "cashless"; // ★デフォルトをキャッシュレスに明示的に設定
     const payButtons = document.querySelectorAll('.pay-btn');
+    
+    // ★初期状態を確実に設定
+    payButtons.forEach(btn => {
+      if (btn.getAttribute('data-method') === 'cashless') {
+        btn.classList.add('selected');
+      } else {
+        btn.classList.remove('selected');
+      }
+    });
+    debugLog(`💳 Payment method initialized: ${paymentMethod}`);
+    
+    // ★イベントリスナー設定
     payButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         paymentMethod = btn.getAttribute('data-method'); // "cashless" or "cash"
