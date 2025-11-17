@@ -1522,8 +1522,8 @@ app.post("/api/pending/start", async (req, res) => {
             Bucket: S3_BUCKET,
             Key: key,
             Body: buffer,
-            ContentType: "image/jpeg",
-            ACL: "public-read"
+            ContentType: "image/jpeg"
+            // ACL は指定しない（バケット側のポリシーに任せる）
           })
         );
 
