@@ -600,6 +600,7 @@ app.get("/api/seller/summary", async (req, res) => {
          sp.status,
          sp.created_at,
          o.summary as summary,
+         o.id as order_id,
          ba.customer_type,
          ba.gender,
          ba.age_band,
@@ -632,6 +633,7 @@ app.get("/api/seller/summary", async (req, res) => {
         status: row.status,
         summary: row.summary,
         created: Math.floor(new Date(row.created_at).getTime() / 1000),
+        orderId: row.order_id || null,
         is_cash: row.is_cash || false,
         raw_category: row.raw_category || null,
         buyer_language: row.buyer_language || null,
@@ -721,13 +723,85 @@ app.post("/api/orders/metadata", async (req, res) => {
          buyer_language = excluded.buyer_language,
          is_cash = excluded.is_cash,
          updated_at = now()`,
-      [orderId, category || null, buyer_language || null, is_cash || false]
+      [orderId, category || null, buyer_language || null, !!is_cash]
     );
 
     audit("order_metadata_saved", { orderId, category, buyer_language, is_cash });
     res.json({ ok: true });
   } catch (e) {
     console.error("/api/orders/metadata error", e);
+    res.status(500).json(sanitizeError(e));
+  }
+});
+
+// ====== 🆕 出店者用: 注文1件の詳細（写真＋属性）取得 ======
+app.get("/api/seller/order-detail", async (req, res) => {
+  try {
+    const sellerId = req.query.s;
+    const orderId  = req.query.orderId;
+
+    if (!sellerId || !orderId) {
+      return res.status(400).json({ error: "missing_params" });
+    }
+
+    const ip = clientIp(req);
+    if (!bumpAndAllow(`seller:${ip}`, RATE_LIMIT_MAX_WRITES)) {
+      return res.status(429).json({ error: "rate_limited" });
+    }
+
+    const q = `
+      select
+        o.id,
+        o.seller_id,
+        o.amount,
+        o.summary,
+        o.created_at,
+        sp.status,
+        sp.amount_net,
+        ba.customer_type,
+        ba.gender,
+        ba.age_band,
+        om.category,
+        om.buyer_language,
+        om.is_cash,
+        i.url as image_url
+      from orders o
+      left join stripe_payments sp on sp.order_id = o.id
+      left join buyer_attributes ba on ba.order_id = o.id
+      left join order_metadata om on om.order_id = o.id
+      left join images i on i.order_id = o.id
+      where o.id = $1
+        and o.seller_id = $2
+      order by i.created_at asc
+      limit 1
+    `;
+    const r = await pool.query(q, [orderId, sellerId]);
+    if (r.rows.length === 0) {
+      return res.status(404).json({ error: "order_not_found" });
+    }
+
+    const row = r.rows[0];
+    res.json({
+      orderId: row.id,
+      amount: row.amount,
+      summary: row.summary,
+      createdAt: row.created_at,
+      status: row.status,
+      netAmount: row.amount_net,
+      buyer: row.customer_type ? {
+        customer_type: row.customer_type,
+        gender: row.gender,
+        age_band: row.age_band
+      } : null,
+      metadata: {
+        category: row.category || "",
+        buyer_language: row.buyer_language || "",
+        is_cash: !!row.is_cash
+      },
+      imageUrl: row.image_url || null
+    });
+  } catch (e) {
+    console.error("/api/seller/order-detail error", e);
     res.status(500).json(sanitizeError(e));
   }
 });
