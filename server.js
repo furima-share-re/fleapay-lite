@@ -498,9 +498,25 @@ async function initDb() {
 
     create index if not exists buyer_attributes_customer_type_idx
       on buyer_attributes(customer_type);
+
+    -- order_metadata
+    create table if not exists order_metadata (
+      order_id uuid primary key references orders(id) on delete cascade,
+      category text,
+      buyer_language text,
+      is_cash boolean default false,
+      created_at timestamptz default now(),
+      updated_at timestamptz default now()
+    );
+
+    create index if not exists order_metadata_order_idx
+      on order_metadata(order_id);
+
+    create index if not exists order_metadata_is_cash_idx
+      on order_metadata(is_cash);
   `);
 
-  console.log("✅ DB init done (PATCHED v3.2 - seller/summary API追加版)");
+  console.log("✅ DB init done (PATCHED v3.3 - order_metadata + dataScore)");
 }
 
 initDb().catch(e => console.error("DB init error", e));
@@ -575,7 +591,7 @@ app.get("/api/seller/summary", async (req, res) => {
     const total = parseInt(todayStats.total_net) || 0;
     const avg = count > 0 ? Math.round(total / count) : 0;
 
-    // 最近の決済（最大20件）
+    // 最近の決済（最大20件） + order_metadata
     const recentResult = await pool.query(
       `select 
          sp.payment_intent_id as id,
@@ -586,29 +602,47 @@ app.get("/api/seller/summary", async (req, res) => {
          o.summary as summary,
          ba.customer_type,
          ba.gender,
-         ba.age_band
+         ba.age_band,
+         om.category as raw_category,
+         om.buyer_language,
+         om.is_cash
        from stripe_payments sp
        left join orders o on o.id = sp.order_id
        left join buyer_attributes ba on ba.order_id = sp.order_id
+       left join order_metadata om on om.order_id = sp.order_id
        where sp.seller_id=$1
        order by sp.created_at desc
        limit 20`,
       [sellerId]
     );
 
-    const recent = recentResult.rows.map(row => ({
-      id: row.id,
-      amount: row.amount,
-      net_amount: row.net_amount,
-      status: row.status,
-      summary: row.summary,
-      created: Math.floor(new Date(row.created_at).getTime() / 1000),
-      buyer: row.customer_type ? {
-        customer_type: row.customer_type,
-        gender: row.gender,
-        age_band: row.age_band
-      } : null
-    }));
+    const recent = recentResult.rows.map(row => {
+      // dataScoreを算出：各項目があるかどうかで加算
+      let dataScore = 0;
+      if (row.customer_type) dataScore++;  // buyer_attributesがある
+      if (row.raw_category) dataScore++;   // categoryがある
+      if (row.buyer_language) dataScore++; // buyer_languageがある
+      // 最大3点満点で100点制へ変換
+      const dataScorePercent = Math.round((dataScore / 3) * 100);
+
+      return {
+        id: row.id,
+        amount: row.amount,
+        net_amount: row.net_amount,
+        status: row.status,
+        summary: row.summary,
+        created: Math.floor(new Date(row.created_at).getTime() / 1000),
+        is_cash: row.is_cash || false,
+        raw_category: row.raw_category || null,
+        buyer_language: row.buyer_language || null,
+        dataScore: dataScorePercent,
+        buyer: row.customer_type ? {
+          customer_type: row.customer_type,
+          gender: row.gender,
+          age_band: row.age_band
+        } : null
+      };
+    });
 
     res.json({
       sellerId,
@@ -665,6 +699,35 @@ app.post("/api/orders/buyer-attributes", async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error("/api/orders/buyer-attributes error", e);
+    res.status(500).json(sanitizeError(e));
+  }
+});
+
+// ====== 🆕 注文メタデータ保存（現金購入後の追加入力用） ======
+app.post("/api/orders/metadata", async (req, res) => {
+  try {
+    const { orderId, category, buyer_language, is_cash } = req.body || {};
+
+    if (!orderId) {
+      return res.status(400).json({ error: "order_id_required" });
+    }
+
+    await pool.query(
+      `insert into order_metadata (order_id, category, buyer_language, is_cash)
+       values ($1, $2, $3, $4)
+       on conflict (order_id)
+       do update set
+         category = excluded.category,
+         buyer_language = excluded.buyer_language,
+         is_cash = excluded.is_cash,
+         updated_at = now()`,
+      [orderId, category || null, buyer_language || null, is_cash || false]
+    );
+
+    audit("order_metadata_saved", { orderId, category, buyer_language, is_cash });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("/api/orders/metadata error", e);
     res.status(500).json(sanitizeError(e));
   }
 });
@@ -1293,7 +1356,7 @@ app.post("/api/pending/start", async (req, res) => {
   try {
     if (!isSameOrigin(req)) return res.status(403).json({ error: "forbidden_origin" });
 
-    const { sellerId, amount, summary, imageData, aiAnalysis } = req.body || {};
+    const { sellerId, amount, summary, imageData, aiAnalysis, paymentMethod } = req.body || {};
     const amt = Number(amount);
 
     if (!sellerId || !Number.isInteger(amt) || amt < 100) {
@@ -1341,7 +1404,18 @@ app.post("/api/pending/start", async (req, res) => {
       );
     }
 
-    audit("pending_order_created", { orderId: order.id, sellerId, orderNo, amount: amt });
+    // order_metadataに現金支払いフラグを保存
+    const isCash = paymentMethod === "cash";
+    await pool.query(
+      `insert into order_metadata (order_id, is_cash)
+       values ($1, $2)
+       on conflict (order_id) do update set
+         is_cash = excluded.is_cash,
+         updated_at = now()`,
+      [order.id, isCash]
+    );
+
+    audit("pending_order_created", { orderId: order.id, sellerId, orderNo, amount: amt, paymentMethod, isCash });
 
     const stripeAccountId = await resolveSellerAccountId(sellerId);
     const urls = buildSellerUrls(sellerId, stripeAccountId, order.id);
