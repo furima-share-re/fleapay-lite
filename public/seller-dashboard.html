@@ -426,7 +426,7 @@
       text-align:center;
       margin-bottom:8px;
     }
-    #modal-image{
+    #order-image{
       max-width:100%;
       max-height:180px;
       border-radius:12px;
@@ -1003,7 +1003,7 @@
     // ====== 🆕 注文詳細モーダル ======
     let currentDetailOrderId = null;
 
-    // ★ 修正3: 画像表示の改善（imageUrlがある場合のみ表示）
+    // 🟩 修正3: サーバーのレスポンス構造に合わせて修正
     async function openOrderDetail(orderId){
       const modal = document.getElementById("order-detail-modal");
       if (!modal) return;
@@ -1012,8 +1012,12 @@
       try {
         const params = new URLSearchParams(location.search);
         const sellerId = params.get("s") || "";
-        const res = await fetch(`/api/seller/order-detail?s=${encodeURIComponent(sellerId)}&orderId=${encodeURIComponent(orderId)}`);
+        
+        const res = await fetch(
+          `/api/seller/order-detail?s=${encodeURIComponent(sellerId)}&orderId=${encodeURIComponent(orderId)}`
+        );
         const data = await res.json();
+        
         if (!res.ok){
           alert("取引の読み込みに失敗しました");
           console.error("order-detail error", data);
@@ -1031,7 +1035,7 @@
         const catEl      = document.getElementById("modal-category");
         const langEl     = document.getElementById("modal-language");
 
-        // ★ 画像の表示制御
+        // 🟩 画像の表示制御（サーバーは imageUrl を直接返す）
         if (data.imageUrl) {
           if (imgEl) {
             imgEl.src = data.imageUrl;
@@ -1049,20 +1053,23 @@
           }
         }
 
-        if (sumEl)   sumEl.textContent = data.summary || "";
-        if (amtEl)   amtEl.textContent = "¥" + (data.amount || 0).toLocaleString("ja-JP");
+        // 🟩 商品メモ（サーバーは memo を返す）
+        if (sumEl) sumEl.textContent = data.memo || "";
 
-        // 既存値を反映
-        const buyer = data.buyer || {};
-        if (typeEl) typeEl.value = buyer.customer_type || "";
-        if (genEl)  genEl.value  = buyer.gender || "";
-        if (ageEl)  ageEl.value  = buyer.age_band || "";
+        // 🟩 金額（サーバーは amount を返す）
+        if (amtEl) amtEl.textContent = "¥" + (data.amount || 0).toLocaleString("ja-JP");
 
-        const meta = data.metadata || {};
-        if (catEl)  catEl.value  = meta.category || "";
-        if (langEl) langEl.value = meta.buyer_language || "";
+        // 🟩 購入者属性（サーバーは buyer オブジェクトではなく直接返す）
+        if (typeEl) typeEl.value = data.customerType || "";
+        if (genEl)  genEl.value = data.gender || "";
+        if (ageEl)  ageEl.value = data.ageBand || "";
+
+        // 🟩 カテゴリ / 言語（サーバーは metadata オブジェクトではなく直接返す）
+        if (catEl)  catEl.value = data.itemCategory || "";
+        if (langEl) langEl.value = data.buyerLanguage || "";
 
         modal.style.display = "flex";
+
       } catch (e){
         console.error("openOrderDetail error", e);
         alert("取引の読み込みでエラーが発生しました");
