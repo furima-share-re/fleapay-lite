@@ -35,15 +35,33 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // 🆕 S3クライアントの初期化
-const s3 = new S3Client({
-  region: process.env.AWS_REGION || "ap-northeast-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-  }
-});
+// 環境変数をまとめて吸い上げる
+const AWS_REGION      = process.env.AWS_REGION;
+const AWS_BUCKET      = process.env.AWS_S3_BUCKET;
 
-const S3_BUCKET = process.env.AWS_S3_BUCKET;
+// どちらの名前でも読めるようにする（あなたの環境はこっち）
+const AWS_ACCESS_KEY  = process.env.AWS_ACCESS_KEY  || process.env.AWS_ACCESS_KEY_ID;
+const AWS_SECRET_KEY  = process.env.AWS_SECRET_KEY  || process.env.AWS_SECRET_ACCESS_KEY;
+
+// 一式そろっているかチェック
+const HAS_S3_CONFIG = !!(AWS_REGION && AWS_BUCKET && AWS_ACCESS_KEY && AWS_SECRET_KEY);
+
+// S3クライアント（足りなければ null にして無効化）
+const s3 = HAS_S3_CONFIG
+  ? new S3Client({
+      region: AWS_REGION,
+      credentials: {
+        accessKeyId: AWS_ACCESS_KEY,
+        secretAccessKey: AWS_SECRET_KEY,
+      },
+    })
+  : null;
+
+const S3_BUCKET = AWS_BUCKET;
+
+if (!HAS_S3_CONFIG) {
+  console.warn("⚠️ S3設定が足りないため、S3アップロードを無効化しました。");
+}
 
 // ====== 設定 ======
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
@@ -1488,6 +1506,11 @@ app.post("/api/pending/start", async (req, res) => {
 
     if (imageData && typeof imageData === 'string' && imageData.startsWith('data:')) {
       try {
+        // S3が無効ならエラーを発生させてフォールバック
+        if (!s3) {
+          throw new Error("s3_disabled");
+        }
+
         // DataURL → バイナリ
         const base64 = imageData.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64, "base64");
