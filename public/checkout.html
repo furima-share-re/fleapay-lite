@@ -739,7 +739,11 @@
         welcome: 'いらっしゃいませ!',
         enjoy: 'フリマとお祭りをお楽しみください 🎆',
         pay: '{amount} を支払う',
-        fetching: '最新の金額を取得しています…',
+        fetching: '処理中...',
+        errorCheckout: '決済処理でエラーが発生しました。もう一度お試しください。',
+        errorRateLimit: 'アクセスが集中しています。少し待ってから再度お試しください。',
+        errorNotFound: '注文が見つかりませんでした。出店者に確認してください。',
+        errorForbidden: 'アクセスが拒否されました。',
         ssl: 'SSL暗号化',
         stripe: 'Stripe認証',
         summaryTitle: '🛍 ご購入内容(出店者が確認済みです)',
@@ -772,7 +776,11 @@
         welcome: 'Welcome!',
         enjoy: 'Enjoy the flea market & festival 🎆',
         pay: 'Pay {amount}',
-        fetching: 'Fetching latest amount…',
+        fetching: 'Processing...',
+        errorCheckout: 'Payment processing error occurred. Please try again.',
+        errorRateLimit: 'Too many requests. Please wait a moment and try again.',
+        errorNotFound: 'Order not found. Please check with the seller.',
+        errorForbidden: 'Access denied.',
         ssl: 'SSL encryption',
         stripe: 'Powered by Stripe',
         summaryTitle: '🛍 Items to purchase (confirmed by seller)',
@@ -805,7 +813,11 @@
         welcome: '欢迎光临!',
         enjoy: '祝您在集市和祭典玩得开心 🎆',
         pay: '支付 {amount}',
-        fetching: '正在获取最新金额…',
+        fetching: '处理中...',
+        errorCheckout: '支付处理出错。请再试一次。',
+        errorRateLimit: '访问过于频繁。请稍候再试。',
+        errorNotFound: '未找到订单。请与摇主确认。',
+        errorForbidden: '访问被拒绝。',
         ssl: 'SSL 加密',
         stripe: 'Stripe 保障',
         summaryTitle: '🛍 购买内容(已由摊主确认)',
@@ -959,27 +971,71 @@
     }
 
     // ---- Fetch data ----
-    const orderKey = getParam('order');
+    const orderId = getParam('order');
+    const sellerId = getParam('s');
     const normalView = document.getElementById('normalView');
     const emptyView = document.getElementById('emptyView');
+    let currentOrderData = null; // 注文データを保存
 
     function fetchLatest(){
-      if (!orderKey) {
-        console.warn('[FleaPay] orderキーが見つかりません。ガイド画面を表示。');
+      // orderIdまたはsellerIdが必要
+      if (!orderId && !sellerId) {
+        console.warn('[FleaPay] order または s パラメータが見つかりません。ガイド画面を表示。');
         showEmptyState(normalView, emptyView);
         document.body.classList.remove('loading');
         document.body.classList.add('ready');
         return;
       }
 
-      const url = `https://fleapay-sheet-proxy-production.up.railway.app/get?order=${encodeURIComponent(orderKey)}`;
+      // ✅ 修正: /api/price/latest を使用（PostgreSQL + server.js）
+      let url = '/api/price/latest';
+      if (orderId) {
+        url += `?order=${encodeURIComponent(orderId)}`;
+      } else if (sellerId) {
+        url += `?s=${encodeURIComponent(sellerId)}`;
+      }
+
+      console.log('[FleaPay] API呼び出し:', url);
+
       fetch(url)
         .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          if (!r.ok) {
+            if (r.status === 404) {
+              throw new Error('ORDER_NOT_FOUND');
+            } else if (r.status === 429) {
+              throw new Error('RATE_LIMITED');
+            }
+            throw new Error(`HTTP ${r.status}`);
+          }
           return r.json();
         })
         .then(data => {
+          console.log('[FleaPay] API応答:', data);
+
+          // エラーチェック
+          if (data.error) {
+            if (data.error === 'expired') {
+              console.warn('[FleaPay] 注文が期限切れです（10分経過）');
+              showEmptyState(normalView, emptyView);
+              return;
+            } else if (data.error === 'not_found') {
+              console.warn('[FleaPay] 注文が見つかりません');
+              showEmptyState(normalView, emptyView);
+              return;
+            }
+            throw new Error(data.error);
+          }
+
+          // 正常データチェック
           if (data && data.amount && parseInt(data.amount, 10) > 0) {
+            // 注文データを保存
+            currentOrderData = {
+              orderId: data.orderId,
+              sellerId: data.sellerId,
+              amount: data.amount,
+              summary: data.summary || ''
+            };
+
             // 正常データ → 通常表示
             showNormalView(normalView, emptyView);
             
@@ -1002,12 +1058,65 @@
             const btn = document.getElementById('payBtn');
             btn.disabled = false;
             btn.classList.remove('heartbeat');
-            btn.onclick = () => {
-              const checkoutLink = data.checkout_url || data.checkoutUrl || '';
-              if (checkoutLink) {
-                window.location.href = checkoutLink;
-              } else {
-                alert('決済リンクが取得できませんでした。');
+            
+            // ✅ 修正: /api/checkout/session を呼び出してStripe URLを取得
+            btn.onclick = async () => {
+              try {
+                btn.disabled = true;
+                const originalText = btn.querySelector('#payLabel').textContent;
+                btn.querySelector('#payLabel').textContent = languages[currentLang].fetching || '処理中...';
+                
+                console.log('[FleaPay] 決済セッション作成開始');
+
+                const response = await fetch('/api/checkout/session', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    sellerId: currentOrderData.sellerId,
+                    orderId: currentOrderData.orderId,
+                    summary: currentOrderData.summary,
+                    latest: !orderId // orderIdがない場合は最新注文を使用
+                  })
+                });
+                
+                console.log('[FleaPay] 決済API応答ステータス:', response.status);
+
+                if (!response.ok) {
+                  const errorData = await response.json().catch(() => ({}));
+                  console.error('[FleaPay] 決済APIエラー:', errorData);
+                  
+                  if (response.status === 429) {
+                    alert(languages[currentLang].errorRateLimit || 'アクセスが集中しています。少し待ってから再度お試しください。');
+                  } else if (response.status === 404) {
+                    alert(languages[currentLang].errorNotFound || '注文が見つかりませんでした。');
+                  } else if (response.status === 403) {
+                    alert(languages[currentLang].errorForbidden || 'アクセスが拒否されました。');
+                  } else {
+                    alert(languages[currentLang].errorCheckout || '決済処理でエラーが発生しました。');
+                  }
+                  
+                  btn.disabled = false;
+                  btn.querySelector('#payLabel').textContent = originalText;
+                  return;
+                }
+                
+                const result = await response.json();
+                console.log('[FleaPay] 決済セッション作成成功:', result);
+                
+                if (result.ok && result.url) {
+                  console.log('[FleaPay] Stripeへリダイレクト:', result.url);
+                  window.location.href = result.url;
+                } else {
+                  console.error('[FleaPay] 決済URL取得失敗:', result);
+                  alert(languages[currentLang].errorCheckout || '決済リンクの取得に失敗しました。');
+                  btn.disabled = false;
+                  btn.querySelector('#payLabel').textContent = originalText;
+                }
+              } catch (error) {
+                console.error('[FleaPay] 決済処理エラー:', error);
+                alert(languages[currentLang].errorCheckout || '決済処理でエラーが発生しました。');
+                btn.disabled = false;
+                btn.querySelector('#payLabel').textContent = languages[currentLang].pay.replace('{amount}', formatJPY(amountInt));
               }
             };
 
@@ -1015,6 +1124,7 @@
             document.body.classList.add('ready');
           } else {
             // 金額が0または未設定 → 空状態画面
+            console.warn('[FleaPay] 金額が0または未設定');
             showEmptyState(normalView, emptyView);
             document.body.classList.remove('loading');
             document.body.classList.add('ready');
