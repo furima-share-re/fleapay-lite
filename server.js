@@ -479,6 +479,25 @@ async function initDb() {
 
     create index if not exists qr_sessions_seller_idx
       on qr_sessions(seller_id);
+
+    -- buyer_attributes
+    create table if not exists buyer_attributes (
+      order_id uuid primary key references orders(id) on delete cascade,
+      customer_type text not null,
+      gender text not null,
+      age_band text not null,
+      created_at timestamptz default now(),
+      updated_at timestamptz default now(),
+      constraint buyer_attributes_customer_type_check 
+        check (customer_type in ('domestic', 'inbound')),
+      constraint buyer_attributes_gender_check 
+        check (gender in ('male', 'female', 'unknown')),
+      constraint buyer_attributes_age_band_check 
+        check (age_band in ('child', 'age_16_29', 'age_30_59', 'age_60_plus'))
+    );
+
+    create index if not exists buyer_attributes_customer_type_idx
+      on buyer_attributes(customer_type);
   `);
 
   console.log("✅ DB init done (PATCHED v3.2 - seller/summary API追加版)");
@@ -559,16 +578,21 @@ app.get("/api/seller/summary", async (req, res) => {
     // 最近の決済（最大20件）
     const recentResult = await pool.query(
       `select 
-        payment_intent_id as id,
-        amount_gross as amount,
-        amount_net as net_amount,
-        status,
-        created_at,
-        (select summary from orders where orders.id = stripe_payments.order_id limit 1) as summary
-      from stripe_payments
-      where seller_id=$1
-      order by created_at desc
-      limit 20`,
+         sp.payment_intent_id as id,
+         sp.amount_gross as amount,
+         sp.amount_net   as net_amount,
+         sp.status,
+         sp.created_at,
+         o.summary as summary,
+         ba.customer_type,
+         ba.gender,
+         ba.age_band
+       from stripe_payments sp
+       left join orders o on o.id = sp.order_id
+       left join buyer_attributes ba on ba.order_id = sp.order_id
+       where sp.seller_id=$1
+       order by sp.created_at desc
+       limit 20`,
       [sellerId]
     );
 
@@ -578,7 +602,12 @@ app.get("/api/seller/summary", async (req, res) => {
       net_amount: row.net_amount,
       status: row.status,
       summary: row.summary,
-      created: Math.floor(new Date(row.created_at).getTime() / 1000)
+      created: Math.floor(new Date(row.created_at).getTime() / 1000),
+      buyer: row.customer_type ? {
+        customer_type: row.customer_type,
+        gender: row.gender,
+        age_band: row.age_band
+      } : null
     }));
 
     res.json({
@@ -598,6 +627,47 @@ app.get("/api/seller/summary", async (req, res) => {
 
 // ====== 🆕 出店者の新規登録（Stripe Onboarding 開始） ======
 import bcrypt from "bcryptjs";  // ← いちばん上にある import の近くに書いてOK
+
+
+// ====== 🆕 購入者属性タグを保存 ======
+app.post("/api/orders/buyer-attributes", async (req, res) => {
+  try {
+    const { orderId, customer_type, gender, age_band } = req.body || {};
+
+    if (!orderId || !customer_type || !gender || !age_band) {
+      return res.status(400).json({ error: "missing_params" });
+    }
+
+    // ざっくりバリデーション
+    const allowedType = ["domestic", "inbound"];
+    const allowedGender = ["male", "female", "unknown"];
+    const allowedAge = ["child", "age_16_29", "age_30_59", "age_60_plus"];
+
+    if (!allowedType.includes(customer_type) ||
+        !allowedGender.includes(gender) ||
+        !allowedAge.includes(age_band)) {
+      return res.status(400).json({ error: "invalid_params" });
+    }
+
+    // UPSERT（すでにあれば更新）
+    await pool.query(
+      `insert into buyer_attributes (order_id, customer_type, gender, age_band)
+       values ($1,$2,$3,$4)
+       on conflict (order_id) do update set
+         customer_type = excluded.customer_type,
+         gender        = excluded.gender,
+         age_band      = excluded.age_band,
+         updated_at    = now()`,
+      [orderId, customer_type, gender, age_band]
+    );
+
+    audit("buyer_attrs_saved", { orderId, customer_type, gender, age_band });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("/api/orders/buyer-attributes error", e);
+    res.status(500).json(sanitizeError(e));
+  }
+});
 
 app.post("/api/seller/start_onboarding", async (req, res) => {
   try {
