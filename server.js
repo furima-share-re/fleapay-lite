@@ -9,6 +9,8 @@ import crypto from "crypto";
 import multer from "multer";
 import OpenAI from "openai";
 import sharp from "sharp";
+// 🆕 S3クライアントをインポート
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 dotenv.config();
 
@@ -31,6 +33,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// 🆕 S3クライアントの初期化
+const s3 = new S3Client({
+  region: process.env.AWS_REGION || "ap-northeast-1",
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  }
+});
+
+const S3_BUCKET = process.env.AWS_S3_BUCKET;
 
 // ====== 設定 ======
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
@@ -1470,12 +1483,48 @@ app.post("/api/pending/start", async (req, res) => {
       }
     }
 
+    // 🆕 画像をS3に保存
+    let imageUrl = null;
+
     if (imageData && typeof imageData === 'string' && imageData.startsWith('data:')) {
-      await pool.query(
-        `insert into images (order_id, kind, url, content_type)
-         values ($1, 'processed', $2, 'image/jpeg')`,
-        [order.id, imageData]
-      );
+      try {
+        // DataURL → バイナリ
+        const base64 = imageData.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64, "base64");
+        const key = `orders/${order.id}.jpg`;
+
+        // S3にアップロード
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: S3_BUCKET,
+            Key: key,
+            Body: buffer,
+            ContentType: "image/jpeg",
+            ACL: "public-read"
+          })
+        );
+
+        imageUrl = `https://${S3_BUCKET}.s3.${process.env.AWS_REGION || "ap-northeast-1"}.amazonaws.com/${key}`;
+
+        // images テーブルへ保存
+        await pool.query(
+          `insert into images (order_id, kind, url, s3_key, content_type, file_size)
+           values ($1, 'processed', $2, $3, 'image/jpeg', $4)`,
+          [order.id, imageUrl, key, buffer.length]
+        );
+
+        audit("image_uploaded_to_s3", { orderId: order.id, key, size: buffer.length });
+      } catch (s3Error) {
+        console.error("S3 upload error", s3Error);
+        // S3アップロード失敗時はフォールバックとしてDataURLを保存
+        await pool.query(
+          `insert into images (order_id, kind, url, content_type)
+           values ($1, 'processed', $2, 'image/jpeg')`,
+          [order.id, imageData]
+        );
+        imageUrl = imageData;
+        audit("image_fallback_to_dataurl", { orderId: order.id, error: s3Error.message });
+      }
     }
 
     // order_metadataに現金支払いフラグを保存
@@ -1503,7 +1552,8 @@ app.post("/api/pending/start", async (req, res) => {
       status: order.status,
       createdAt: order.created_at,
       checkoutUrl: urls.checkoutUrl,
-      purchaseUrl: urls.sellerUrl
+      purchaseUrl: urls.sellerUrl,
+      imageUrl: imageUrl // 🆕 S3 URLを返却
     });
   } catch (e) {
     console.error("pending/start error", e);
