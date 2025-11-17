@@ -789,29 +789,40 @@ app.get("/api/seller/order-detail", async (req, res) => {
         o.created_at,
         sp.status,
         sp.amount_net,
+
+        -- buyer attributes
         ba.customer_type,
         ba.gender,
         ba.age_band,
+
+        -- metadata (現金 / カテゴリ / 言語)
         om.category,
         om.buyer_language,
         om.is_cash,
+
+        -- ★★★ images のURLを取得（最新1枚）
         i.url as image_url
+
       from orders o
       left join stripe_payments sp on sp.order_id = o.id
       left join buyer_attributes ba on ba.order_id = o.id
       left join order_metadata om on om.order_id = o.id
-      left join images i on i.order_id = o.id
+      left join images i on i.order_id = o.id   -- ★ 必須 JOIN
+
       where o.id = $1
         and o.seller_id = $2
-      order by i.created_at asc
-      limit 1
+
+      order by i.created_at desc
+      limit 1;
     `;
     const r = await pool.query(q, [orderId, sellerId]);
+
     if (r.rows.length === 0) {
-      return res.status(404).json({ error: "order_not_found" });
+      return res.status(404).json({ error: "not_found" });
     }
 
     const row = r.rows[0];
+
     res.json({
       orderId: row.id,
       amount: row.amount,
@@ -819,21 +830,24 @@ app.get("/api/seller/order-detail", async (req, res) => {
       createdAt: row.created_at,
       status: row.status,
       netAmount: row.amount_net,
+
       buyer: row.customer_type ? {
         customer_type: row.customer_type,
         gender: row.gender,
-        age_band: row.age_band
+        age_band: row.age_band,
       } : null,
+
       metadata: {
         category: row.category || "",
         buyer_language: row.buyer_language || "",
         is_cash: !!row.is_cash
       },
-      imageUrl: row.image_url || null
+
+      imageUrl: row.image_url || null   // ★ 重要！
     });
   } catch (e) {
     console.error("/api/seller/order-detail error", e);
-    res.status(500).json(sanitizeError(e));
+    res.status(500).json({ error: "internal_error" });
   }
 });
 
