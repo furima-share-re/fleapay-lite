@@ -558,7 +558,7 @@
         </div>
 
         <div class="notice-item notice-important">
-          <div class="notice-title">重要：チャージバック対応は Fleapay が おこないます。</div>
+          <div class="notice-title">重要:チャージバック対応は Fleapay が おこないます。</div>
           <div class="notice-meta">出店者さまの 操作は不要です。</div>
           <div class="notice-body">
             カード会社からの 返金・チャージバックに ついては、Fleapay運営側で いっかつ で 対応します。<br>
@@ -645,8 +645,8 @@
       </div>
 
       <div class="modal-body">
-        <div class="modal-image-wrap">
-          <img id="modal-image" alt="商品写真" />
+        <div class="modal-image-wrap" id="order-image-wrapper">
+          <img id="order-image" alt="商品写真" />
         </div>
 
         <div class="field">
@@ -811,6 +811,60 @@
         return "購入者情報：未入力";
       }
 
+      // ★ 修正1: 一覧生成時に必ずorderIdをdata属性に保存
+      function createTransactionItem(tx){
+        const li = document.createElement("li");
+        li.className = "tx-item";
+        
+        // ★ 必須: orderIdをdata属性に保存
+        li.dataset.orderId = tx.orderId || "";
+        
+        const created = tx.created ? new Date(tx.created * 1000) : null;
+        const timeStr = created ? formatTime(created) : "";
+        const dateStr = created
+          ? `${created.getFullYear()}-${String(created.getMonth()+1).padStart(2,"0")}-${String(created.getDate()).padStart(2,"0")}`
+          : "";
+        const summary = (tx.summary || "商品のおかいもの").split("\n")[0];
+
+        // 🟦 (B) 未分類フォルダ表示
+        const isUncategorized = tx.is_cash && !tx.raw_category;
+        const uncategorizedBadge = isUncategorized
+          ? '<span class="badge badge-cb-pending">未分類</span>'
+          : '';
+
+        // 購入者属性のラベルを生成
+        const buyerLabel = formatBuyerLabel(tx);
+
+        li.innerHTML = `
+          <div class="tx-main">
+            <div class="tx-top">
+              <span class="badge badge-ok">${tx.status || "通常"}</span>
+              ${uncategorizedBadge}
+              <span class="tx-time">${timeStr}${dateStr ? " / " + dateStr : ""}</span>
+            </div>
+            <div class="tx-title">${summary}</div>
+            <div class="tx-sub">${buyerLabel}</div>
+            <div class="tx-detail">
+              ${tx.summary ? tx.summary.replace(/\n/g,"<br>") : ""}
+            </div>
+          </div>
+          <div class="tx-amt">${formatYen(tx.net_amount ?? tx.amount)}</div>
+        `;
+        
+        // ★ 修正2: クリック時にdata属性からorderIdを取得してモーダルを開く
+        li.addEventListener("click", () => {
+          const orderId = li.dataset.orderId;
+          if (orderId) {
+            openOrderDetail(orderId);
+          } else {
+            // orderIdがない場合は従来の展開動作
+            li.classList.toggle("expanded");
+          }
+        });
+        
+        return li;
+      }
+
       async function loadSummary(){
         if (!sellerId){
           if (homeHintEl) homeHintEl.textContent = "URLに ?s=出店者ID が ひつようです。";
@@ -903,50 +957,7 @@
               recentListEl.appendChild(li);
             } else {
               for (const tx of recent){
-                const li = document.createElement("li");
-                li.className = "tx-item";
-                li.dataset.orderId = tx.orderId || "";   // ★追加
-                
-                const created = tx.created ? new Date(tx.created * 1000) : null;
-                const timeStr = created ? formatTime(created) : "";
-                const summary = (tx.summary || "商品のおかいもの").split("\n")[0];
-
-                // 🟦 (B) 未分類フォルダ表示
-                const isUncategorized = tx.is_cash && !tx.raw_category;
-                const uncategorizedBadge = isUncategorized
-                  ? '<span class="badge badge-cb-pending">未分類</span>'
-                  : '';
-
-                // 購入者属性のラベルを生成
-                const buyerLabel = formatBuyerLabel(tx);
-
-                li.innerHTML = `
-                  <div class="tx-main">
-                    <div class="tx-top">
-                      <span class="badge badge-ok">通常</span>
-                      ${uncategorizedBadge}
-                      <span class="tx-time">${timeStr}</span>
-                    </div>
-                    <div class="tx-title">${summary}</div>
-                    <div class="tx-sub">${buyerLabel}</div>
-                    <div class="tx-detail">
-                      ${tx.summary ? tx.summary.replace(/\n/g,"<br>") : ""}
-                    </div>
-                  </div>
-                  <div class="tx-amt">${formatYen(tx.net_amount ?? tx.amount)}</div>
-                `;
-                
-                // ★モーダルを開く関数を呼び出す
-                li.addEventListener("click", () => {
-                  const oid = li.dataset.orderId;
-                  if (oid) {
-                    openOrderDetail(oid);
-                  } else {
-                    li.classList.toggle("expanded");
-                  }
-                });
-                
-                recentListEl.appendChild(li);
+                recentListEl.appendChild(createTransactionItem(tx));
               }
             }
           }
@@ -971,54 +982,7 @@
               txListEl.appendChild(li);
             } else {
               for (const tx of list){
-                const li = document.createElement("li");
-                li.className = "tx-item";
-                li.dataset.orderId = tx.orderId || "";   // ★追加
-                
-                const created = tx.created ? new Date(tx.created * 1000) : null;
-                const timeStr = created ? formatTime(created) : "";
-                const dateStr = created
-                  ? `${created.getFullYear()}-${String(created.getMonth()+1).padStart(2,"0")}-${String(created.getDate()).padStart(2,"0")}`
-                  : "";
-                const summary = (tx.summary || "商品のおかいもの").replace(/\n/g," / ");
-
-                // 🟦 (B) 未分類フォルダ表示
-                const isUncategorized = tx.is_cash && !tx.raw_category;
-                const uncategorizedBadge = isUncategorized
-                  ? '<span class="badge badge-cb-pending">未分類</span>'
-                  : '';
-
-                // 購入者属性のラベルを生成
-                const buyerLabel = formatBuyerLabel(tx);
-
-                li.innerHTML = `
-                  <div class="tx-main">
-                    <div class="tx-top">
-                      <span class="badge badge-ok">${tx.status || "通常"}</span>
-                      ${uncategorizedBadge}
-                      <span class="tx-time">${timeStr} / ${dateStr}</span>
-                    </div>
-                    <div class="tx-title">${summary}</div>
-                    <div class="tx-sub">${buyerLabel}</div>
-                    <div class="tx-detail">
-                      金額：${formatYen(tx.amount)} / 純売上：${formatYen(tx.net_amount)}<br>
-                      ステータス：${tx.status}
-                    </div>
-                  </div>
-                  <div class="tx-amt">${formatYen(tx.net_amount ?? tx.amount)}</div>
-                `;
-                
-                // ★モーダルを開く関数を呼び出す
-                li.addEventListener("click", () => {
-                  const oid = li.dataset.orderId;
-                  if (oid) {
-                    openOrderDetail(oid);
-                  } else {
-                    li.classList.toggle("expanded");
-                  }
-                });
-                
-                txListEl.appendChild(li);
+                txListEl.appendChild(createTransactionItem(tx));
               }
             }
           }
@@ -1029,12 +993,17 @@
         }
       }
 
+      // 初回読み込み
       loadSummary();
+
+      // グローバルスコープに公開（モーダル保存時の再読み込み用）
+      window.loadSummary = loadSummary;
     })();
 
     // ====== 🆕 注文詳細モーダル ======
     let currentDetailOrderId = null;
 
+    // ★ 修正3: 画像表示の改善（imageUrlがある場合のみ表示）
     async function openOrderDetail(orderId){
       const modal = document.getElementById("order-detail-modal");
       if (!modal) return;
@@ -1052,16 +1021,34 @@
         }
 
         // 要素取得
-        const imgEl   = document.getElementById("modal-image");
-        const sumEl   = document.getElementById("modal-summary");
-        const amtEl   = document.getElementById("modal-amount");
-        const typeEl  = document.getElementById("modal-customer-type");
-        const genEl   = document.getElementById("modal-gender");
-        const ageEl   = document.getElementById("modal-age");
-        const catEl   = document.getElementById("modal-category");
-        const langEl  = document.getElementById("modal-language");
+        const imgEl      = document.getElementById("order-image");
+        const imgWrapper = document.getElementById("order-image-wrapper");
+        const sumEl      = document.getElementById("modal-summary");
+        const amtEl      = document.getElementById("modal-amount");
+        const typeEl     = document.getElementById("modal-customer-type");
+        const genEl      = document.getElementById("modal-gender");
+        const ageEl      = document.getElementById("modal-age");
+        const catEl      = document.getElementById("modal-category");
+        const langEl     = document.getElementById("modal-language");
 
-        if (imgEl)   imgEl.src = data.imageUrl || "";
+        // ★ 画像の表示制御
+        if (data.imageUrl) {
+          if (imgEl) {
+            imgEl.src = data.imageUrl;
+            imgEl.alt = "商品写真";
+          }
+          if (imgWrapper) {
+            imgWrapper.style.display = "";
+          }
+        } else {
+          if (imgEl) {
+            imgEl.src = "";
+          }
+          if (imgWrapper) {
+            imgWrapper.style.display = "none";
+          }
+        }
+
         if (sumEl)   sumEl.textContent = data.summary || "";
         if (amtEl)   amtEl.textContent = "¥" + (data.amount || 0).toLocaleString("ja-JP");
 
@@ -1149,7 +1136,9 @@
             alert("保存しました");
             closeOrderDetail();
             // 最新の一覧を再読み込み
-            loadSummary();
+            if (window.loadSummary) {
+              window.loadSummary();
+            }
           } catch (e){
             console.error("save detail error", e);
             alert("保存でエラーが発生しました");
