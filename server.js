@@ -1416,16 +1416,20 @@ app.post("/api/analyze-item", upload.single("image"), async (req, res) => {
         content: [
           {
             type: "text",
-            text: `この画像はフリーマーケットの商品写真です。以下の情報を分析してJSON形式で返してください：
+            text: `この画像はフリーマーケットの商品写真です。以下の情報を分析して、必ずJSONだけを返してください。
 
-1. 商品の簡潔な説明（summary）
+1. 商品の簡潔で具体的な説明（summary）
+   - 写真から読み取れる情報を使ってください
+   - 例: 「ポケモンカードのセット」「青い子ども用Tシャツ」など
+   - 「商品の説明（日本語、50文字以内）」のようなテンプレ文や、この指示文をそのまま書かないでください
+
 2. 値札に書かれている価格（total）- 数字のみ（円）
+   - 値札が見つからない、読めない場合は total を 0 にしてください
 
-値札が見つからない場合は、total を 0 にしてください。
+**レスポンスは、必ず次の形式のJSONだけにしてください：**
 
-**必ず以下のJSON形式で返してください：**
 {
-  "summary": "商品の説明（日本語、50文字以内）",
+  "summary": "<商品の説明（日本語、50文字以内）>",
   "total": 価格の数字（整数）
 }`
           },
@@ -1441,14 +1445,30 @@ app.post("/api/analyze-item", upload.single("image"), async (req, res) => {
 
     let result;
     try {
-      const cleanText = aiText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const cleanText = aiText
+        .replace(/```json\n?/g, "")
+        .replace(/```/g, "")
+        .trim();
       result = JSON.parse(cleanText);
     } catch (parseErr) {
       result = { summary: "商品情報の取得に失敗しました", total: 0 };
     }
 
-    if (!result.summary) result.summary = "商品";
-    if (typeof result.total !== 'number') result.total = 0;
+    // ★ ここからガード追加
+    const BAD_SUMMARIES = [
+      "商品の説明（日本語、50文字以内）",
+      "商品の説明(日本語、50文字以内)",
+      "<商品の説明（日本語、50文字以内）>",
+      "フリーマーケットの商品写真です。",
+    ];
+
+    if (!result.summary || BAD_SUMMARIES.includes(result.summary.trim())) {
+      result.summary = "商品"; // 少なくとも「商品」にはしておく
+    }
+
+    if (typeof result.total !== "number") {
+      result.total = 0;
+    }
 
     console.log('[AI分析] 最終結果:', result);
     audit("ai_analysis_success", { summary: result.summary, total: result.total, ip: clientIp(req) });
