@@ -9,6 +9,7 @@ import crypto from "crypto";
 import multer from "multer";
 import OpenAI from "openai";
 import sharp from "sharp";
+import bcrypt from "bcryptjs";
 // 🆕 S3クライアントをインポート
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
@@ -577,124 +578,99 @@ function sanitizeError(error, isDevelopment = process.env.NODE_ENV === 'developm
   return { error: "internal_error", message: "サーバー内部エラーが発生しました" };
 }
 
-// ====== 🆕 出店者用API: 売上サマリー取得 ======
+// ====== 🆕 出店者用API: 売上サマリー取得（orders基準に変更） ======
 app.get("/api/seller/summary", async (req, res) => {
+  const sellerId = req.query.s;
+  if (!sellerId) {
+    return res.status(400).json({ error: "seller_id_required" });
+  }
+
   try {
-    const sellerId = req.query.s;
-    if (!sellerId) {
-      return res.status(400).json({ error: "seller_id_required" });
-    }
-
-    // レート制限
-    const ip = clientIp(req);
-    if (!bumpAndAllow(`seller:${ip}`, RATE_LIMIT_MAX_WRITES)) {
-      return res.status(429).json({ error: "rate_limited" });
-    }
-
-    // 出店者情報取得
-    const sellerResult = await pool.query(
-      `select display_name, shop_name from sellers where id=$1`,
+    // ① 売上KPI（ここは従来どおり Stripe だけでOK）
+    const kpiToday = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(amount_gross), 0) AS gross,
+        COALESCE(SUM(amount_net), 0)   AS net,
+        COALESCE(SUM(amount_fee), 0)   AS fee
+      FROM stripe_payments
+      WHERE seller_id = $1
+        AND created_at::date = CURRENT_DATE
+      `,
       [sellerId]
     );
 
-    if (sellerResult.rows.length === 0) {
-      return res.status(404).json({ error: "seller_not_found" });
-    }
-
-    const seller = sellerResult.rows[0];
-    const { todayStart, tomorrowStart } = jstDayBounds();
-
-    // 今日の売上集計
-    const todayResult = await pool.query(
-      `select 
-        count(*) as count,
-        coalesce(sum(amount_net), 0) as total_net
-      from stripe_payments
-      where seller_id=$1 
-        and status='succeeded'
-        and created_at >= $2 
-        and created_at < $3`,
-      [sellerId, todayStart, tomorrowStart]
-    );
-
-    const todayStats = todayResult.rows[0];
-    const count = parseInt(todayStats.count) || 0;
-    const total = parseInt(todayStats.total_net) || 0;
-    const avg = count > 0 ? Math.round(total / count) : 0;
-
-    // 最近の決済（最大20件） + order_metadata
-    const recentResult = await pool.query(
-      `select 
-         sp.payment_intent_id as id,
-         sp.amount_gross as amount,
-         sp.amount_net   as net_amount,
-         sp.status,
-         sp.created_at,
-         o.summary as summary,
-         o.id as order_id,
-         ba.customer_type,
-         ba.gender,
-         ba.age_band,
-         om.category as raw_category,
-         om.buyer_language,
-         om.is_cash
-       from stripe_payments sp
-       left join orders o on o.id = sp.order_id
-       left join buyer_attributes ba on ba.order_id = sp.order_id
-       left join order_metadata om on om.order_id = sp.order_id
-       where sp.seller_id=$1
-       order by sp.created_at desc
-       limit 20`,
+    const kpiTotal = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(amount_gross), 0) AS gross,
+        COALESCE(SUM(amount_net), 0)   AS net,
+        COALESCE(SUM(amount_fee), 0)   AS fee
+      FROM stripe_payments
+      WHERE seller_id = $1
+      `,
       [sellerId]
     );
 
-    const recent = recentResult.rows.map(row => {
-      // dataScoreを算出：各項目があるかどうかで加算
-      let dataScore = 0;
-      if (row.customer_type) dataScore++;  // buyer_attributesがある
-      if (row.raw_category) dataScore++;   // categoryがある
-      if (row.buyer_language) dataScore++; // buyer_languageがある
-      // 最大3点満点で100点制へ変換
-      const dataScorePercent = Math.round((dataScore / 3) * 100);
+    // ② 取引履歴（orders を基準に、カードも現金も一緒に出す）
+    const recentRes = await pool.query(
+      `
+      SELECT
+        o.id                     AS order_id,
+        o.created_at,
+        o.amount,
+        o.summary              AS memo,
+        om.is_cash,
+        CASE 
+          WHEN om.is_cash THEN 'cash'
+          WHEN sp.id IS NOT NULL THEN 'card'
+          ELSE 'other'
+        END                      AS payment_method,
+        ba.customer_type,
+        ba.gender,
+        ba.age_band
+      FROM orders o
+      LEFT JOIN order_metadata   om ON om.order_id = o.id
+      LEFT JOIN stripe_payments  sp ON sp.order_id = o.id
+      LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
+      WHERE o.seller_id = $1
+      ORDER BY o.created_at DESC
+      LIMIT 20
+      `,
+      [sellerId]
+    );
 
-      return {
-        id: row.id,
-        amount: row.amount,
-        net_amount: row.net_amount,
-        status: row.status,
-        summary: row.summary,
-        created: Math.floor(new Date(row.created_at).getTime() / 1000),
-        orderId: row.order_id || null,
-        is_cash: row.is_cash || false,
-        raw_category: row.raw_category || null,
-        buyer_language: row.buyer_language || null,
-        dataScore: dataScorePercent,
-        buyer: row.customer_type ? {
-          customer_type: row.customer_type,
-          gender: row.gender,
-          age_band: row.age_band
-        } : null
-      };
-    });
+    const recent = recentRes.rows.map(r => ({
+      orderId: r.order_id,
+      createdAt: r.created_at,
+      amount: r.amount,
+      memo: r.memo || "",
+      isCash: !!r.is_cash,
+      paymentMethod: r.payment_method,
+      customerType: r.customer_type || "unknown",
+      gender: r.gender || "unknown",
+      ageBand: r.age_band || "unknown"
+    }));
 
     res.json({
       sellerId,
-      displayName: seller.display_name || seller.shop_name || sellerId,
-      salesToday: total,
-      countToday: count,
-      avgToday: avg,
+      salesToday: {
+        gross: Number(kpiToday.rows[0].gross || 0),
+        net:   Number(kpiToday.rows[0].net   || 0),
+        fee:   Number(kpiToday.rows[0].fee   || 0)
+      },
+      salesTotal: {
+        gross: Number(kpiTotal.rows[0].gross || 0),
+        net:   Number(kpiTotal.rows[0].net   || 0),
+        fee:   Number(kpiTotal.rows[0].fee   || 0)
+      },
       recent
     });
-
   } catch (e) {
-    console.error("/api/seller/summary error", e);
-    res.status(500).json(sanitizeError(e));
+    console.error("seller_summary_error", e);
+    res.status(500).json({ error: "server_error" });
   }
 });
-
-// ====== 🆕 出店者の新規登録（Stripe Onboarding 開始） ======
-import bcrypt from "bcryptjs";  // ← いちばん上にある import の近くに書いてOK
-
 
 // ====== 🆕 購入者属性タグを保存 ======
 app.post("/api/orders/buyer-attributes", async (req, res) => {
@@ -765,89 +741,64 @@ app.post("/api/orders/metadata", async (req, res) => {
   }
 });
 
-// ====== 🆕 出店者用: 注文1件の詳細（写真＋属性）取得 ======
+// ====== 🆕 出店者用: 注文1件の詳細（写真＋属性）取得（orders基準に修正） ======
 app.get("/api/seller/order-detail", async (req, res) => {
+  const sellerId = req.query.s;
+  const orderId  = req.query.orderId;
+
+  if (!sellerId || !orderId) {
+    return res.status(400).json({ error: "seller_id_and_order_id_required" });
+  }
+
   try {
-    const sellerId = req.query.s;
-    const orderId  = req.query.orderId;
-
-    if (!sellerId || !orderId) {
-      return res.status(400).json({ error: "missing_params" });
-    }
-
-    const ip = clientIp(req);
-    if (!bumpAndAllow(`seller:${ip}`, RATE_LIMIT_MAX_WRITES)) {
-      return res.status(429).json({ error: "rate_limited" });
-    }
-
-    const q = `
-      select
+    const result = await pool.query(
+      `
+      SELECT
         o.id,
-        o.seller_id,
+        o.summary              AS memo,
         o.amount,
-        o.summary,
         o.created_at,
-        sp.status,
-        sp.amount_net,
-
-        -- buyer attributes
+        om.is_cash,
         ba.customer_type,
         ba.gender,
         ba.age_band,
-
-        -- metadata (現金 / カテゴリ / 言語)
-        om.category,
+        om.category            AS item_category,
         om.buyer_language,
-        om.is_cash,
+        img.url                AS image_url
+      FROM orders o
+      LEFT JOIN order_metadata   om  ON om.order_id  = o.id
+      LEFT JOIN buyer_attributes ba  ON ba.order_id  = o.id
+      LEFT JOIN images           img ON img.order_id = o.id
+      WHERE o.id = $1
+        AND o.seller_id = $2
+      ORDER BY img.created_at DESC NULLS LAST
+      LIMIT 1
+      `,
+      [orderId, sellerId]
+    );
 
-        -- ★★★ images のURLを取得（最新1枚）
-        i.url as image_url
-
-      from orders o
-      left join stripe_payments sp on sp.order_id = o.id
-      left join buyer_attributes ba on ba.order_id = o.id
-      left join order_metadata om on om.order_id = o.id
-      left join images i on i.order_id = o.id   -- ★ 必須 JOIN
-
-      where o.id = $1
-        and o.seller_id = $2
-
-      order by i.created_at desc
-      limit 1;
-    `;
-    const r = await pool.query(q, [orderId, sellerId]);
-
-    if (r.rows.length === 0) {
-      return res.status(404).json({ error: "not_found" });
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "order_not_found" });
     }
 
-    const row = r.rows[0];
+    const row = result.rows[0];
 
     res.json({
       orderId: row.id,
+      memo: row.memo || "",
       amount: row.amount,
-      summary: row.summary,
       createdAt: row.created_at,
-      status: row.status,
-      netAmount: row.amount_net,
-
-      buyer: row.customer_type ? {
-        customer_type: row.customer_type,
-        gender: row.gender,
-        age_band: row.age_band,
-      } : null,
-
-      metadata: {
-        category: row.category || "",
-        buyer_language: row.buyer_language || "",
-        is_cash: !!row.is_cash
-      },
-
-      imageUrl: row.image_url || null   // ★ 重要！
+      isCash: !!row.is_cash,
+      customerType: row.customer_type || "unknown",
+      gender: row.gender || "unknown",
+      ageBand: row.age_band || "unknown",
+      itemCategory: row.item_category || "unknown",
+      buyerLanguage: row.buyer_language || "unknown",
+      imageUrl: row.image_url || null
     });
   } catch (e) {
-    console.error("/api/seller/order-detail error", e);
-    res.status(500).json({ error: "internal_error" });
+    console.error("seller_order_detail_error", e);
+    res.status(500).json({ error: "server_error" });
   }
 });
 
