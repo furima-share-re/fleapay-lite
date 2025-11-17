@@ -5,14 +5,14 @@
        FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
        ★フリマ実態に合わせて簡略化版
        
-       【パッチ適用済み v9 - 購入者属性タグ追加】
+       【パッチ適用済み v10 - 現金/キャッシュレス支払い方法選択追加】
        ★変更点★
-       1. Step5に購入者タグ（国籍/性別/年齢帯）入力UI追加
-       2. 決済完了後に必須ボタンで購入者情報を取得
-       3. /api/orders/buyer-attributes へ送信
-       4. orderIdをサーバーから受け取り保存
+       1. Step4に支払い方法選択UI追加（現金/QR・カード）
+       2. paymentMethodをサーバーへ送信
+       3. 現金の場合はQRコード表示をスキップ
        
        【過去のパッチ】
+       v9: 購入者属性タグ追加
        v8: キッズモード ウェルカム画面追加
        v7: iPad撮影ボタン見切れ修正
        v6: カメラ拡大問題修正（クロップ95%、ズーム無効化）
@@ -94,6 +94,28 @@
     }
     .btn-secondary{
       background:#64748b;
+    }
+    
+    /* ========== 支払い方法ボタン ========== */
+    .payment-method-group{
+      display:flex;
+      gap:0.5rem;
+      margin:0.5rem 0 1.5rem;
+    }
+    .pay-btn{
+      flex:1;
+      border-radius:999px;
+      border:1px solid #cbd5e1;
+      background:#f8fafc;
+      padding:0.75rem 0.5rem;
+      font-size:0.9rem;
+      cursor:pointer;
+      transition:all 0.15s;
+    }
+    .pay-btn.selected{
+      background:#e0edff;
+      border-color:#3b82f6;
+      font-weight:600;
     }
     
     /* ========== Step 0-1: キャラクター登場画面 ========== */
@@ -852,7 +874,19 @@
       <input type="checkbox" id="parentCheck"/>
       <label for="parentCheck">内容を確認しました</label>
     </div>
-    
+
+    <!-- ★追加：支払い方法えらぶ -->
+    <h2><span class="emoji">💳</span> しはらい ほうほう</h2>
+    <div class="payment-method-group">
+      <button type="button" class="pay-btn selected" data-method="cashless">
+        💳 QR / カード で はらう
+      </button>
+      <button type="button" class="pay-btn" data-method="cash">
+        💴 現金で もらった
+      </button>
+    </div>
+    <!-- ここまで追加 -->
+
     <button class="btn" id="registerBtn" disabled>✅ とうろく する</button>
   </div>
   
@@ -956,7 +990,10 @@
   let videoStream = null;
   let torchEnabled = false;
   
-  // ★追加：オーダーID & 購入者属性の一時保存
+  // ★追加：支払い方法（デフォルトはキャッシュレス）
+  let paymentMethod = "cashless";
+  
+  // オーダーID & 購入者属性の一時保存
   let currentOrderId = null;
   const buyerAttrs = {
     customer_type: null,
@@ -996,7 +1033,7 @@
   
   document.getElementById('openCameraBtn')?.addEventListener('click', () => {
     showStep('step1');
-    initCamera(); // ★ここで初めてカメラ起動
+    initCamera();
     debugLog('User clicked: カメラをひらく');
   });
   
@@ -1235,10 +1272,23 @@
     const totalVal = parseInt(document.getElementById('totalPriceInput').value, 10) || 0;
     confirmTotal.textContent = `¥${totalVal.toLocaleString()}`;
     
+    // 保護者チェック
     parentCheck.addEventListener('change', () => {
       registerBtn.disabled = !parentCheck.checked;
     });
+
+    // ★追加：支払い方法ボタンのイベント
+    const payButtons = document.querySelectorAll('.pay-btn');
+    payButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        paymentMethod = btn.getAttribute('data-method'); // "cashless" or "cash"
+        payButtons.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        debugLog(`💳 paymentMethod = ${paymentMethod}`);
+      });
+    });
     
+    // 登録ボタン
     registerBtn.addEventListener('click', async () => {
       registerBtn.disabled = true;
       registerBtn.textContent = '📤 とうろく ちゅう…';
@@ -1253,165 +1303,168 @@
     debugLog(`sellerId: ${sellerId}`);
     debugLog(`amount: ${amount}`);
     debugLog(`summary: ${summary}`);
+    debugLog(`paymentMethod: ${paymentMethod}`); // ★追加
     
     const payload = {
       sellerId: sellerId,
       amount: amount,
       summary: summary,
       imageData: capturedImageDataURL,
-      aiAnalysis: aiAnalysisResult || {}
+      aiAnalysis: aiAnalysisResult || {},
+      // ★追加
+      paymentMethod: paymentMethod
     };
     
-    debugLog(`📤 Sending to /api/pending/start: ${JSON.stringify({
-      sellerId: payload.sellerId,
-      amount: payload.amount,
-      summary: payload.summary,
-      imageLength: payload.imageData ? payload.imageData.length : 0,
-      aiAnalysis: payload.aiAnalysis
-    })}`);
+    debugLog(`📤 Sending to /api/pending/start: ${JSON.stringify(payload).substring(0,100)}...`);
     
     try{
       const res = await fetch('/api/pending/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type':'application/json'},
         body: JSON.stringify(payload)
       });
       
-      debugLog(`📥 Response status: ${res.status}`);
-      
       if(!res.ok){
-        const errorText = await res.text();
-        debugLog(`❌ Server error: ${errorText}`);
-        throw new Error(`HTTP ${res.status}: ${errorText}`);
+        throw new Error(`HTTP ${res.status}`);
       }
       
       const data = await res.json();
       debugLog(`✅ Server response: ${JSON.stringify(data)}`);
       
-      // ★追加：orderId を保存
       currentOrderId = data.orderId || null;
-      debugLog(`💾 Saved orderId: ${currentOrderId}`);
+      debugLog(`📝 currentOrderId: ${currentOrderId}`);
       
-      let qrURL = null;
+      const baseURL = window.location.origin;
+      let qrURL;
       
-      if(data.checkoutUrl){
-        qrURL = data.checkoutUrl;
-        debugLog(`✅ Using checkoutUrl (customer) from server: ${qrURL}`);
-      }
-      else if(data.purchaseUrl){
-        qrURL = data.purchaseUrl;
-        debugLog(`⚠️ Using purchaseUrl (seller) as fallback: ${qrURL}`);
-      }
-      else {
-        const baseURL = window.location.origin;
+      if(data.qrURL){
+        qrURL = data.qrURL;
+        debugLog(`🔗 Using server-provided qrURL: ${qrURL}`);
+      } else if(data.orderId){
+        qrURL = `${baseURL}/checkout.html?o=${data.orderId}`;
+        debugLog(`🔗 Using orderId-based qrURL: ${qrURL}`);
+      } else {
         qrURL = `${baseURL}/checkout.html?s=${sellerId}`;
-        debugLog(`⚠️ Server did not return URL, generated: ${qrURL}`);
+        debugLog(`⚠️ Fallback to sellerId-based qrURL: ${qrURL}`);
       }
       
       showStep('step5');
-      displayQR(qrURL);
+
+      // ★追加：現金かどうかで分岐
+      const qrContainer = document.querySelector('.qr-container');
+      const msgP = document.querySelector('#step5 > p');
+
+      if (paymentMethod === "cash") {
+        // 現金：QRを隠してメッセージだけ
+        if (qrContainer) qrContainer.style.display = 'none';
+        if (msgP) msgP.textContent = '💴 現金で うけとりました。ありがとうございました！';
+        debugLog('🪙 現金決済として登録（QRなし）');
+      } else {
+        // キャッシュレス：従来通りQR表示
+        if (qrContainer) qrContainer.style.display = 'block';
+        if (msgP) msgP.textContent = 'このQRコードを おきゃくさんに みせてね';
+        displayQR(qrURL);
+        debugLog('💳 キャッシュレス決済（QR表示）');
+      }
+      
+      setupBuyerAttrButtons();
       
       debugLog('=== registerSale SUCCESS ===');
       
     } catch(err) {
       debugLog(`❌ registerSale failed: ${err.message}`);
-      alert(`登録に失敗しました: ${err.message}`);
-      document.getElementById('registerBtn').disabled = false;
-      document.getElementById('registerBtn').textContent = '✅ とうろく する';
+      alert('登録に失敗しました。もう一度お試しください。');
+      location.reload();
     }
   }
   
   /* ========== QRコード表示 ========== */
   function displayQR(url){
-    const container = document.getElementById('qrcode');
-    container.innerHTML = '';
+    const qrcodeDiv = document.getElementById('qrcode');
+    qrcodeDiv.innerHTML = '';
     
-    new QRCode(container, {
-      text: url,
-      width: 256,
-      height: 256,
-      colorDark: '#000',
-      colorLight: '#fff',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-    
-    debugLog(`✅ QR code displayed: ${url}`);
+    try{
+      new QRCode(qrcodeDiv, {
+        text: url,
+        width: 200,
+        height: 200,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+      debugLog(`✅ QR code generated: ${url}`);
+    } catch(e){
+      debugLog(`❌ QR generation error: ${e.message}`);
+      qrcodeDiv.innerHTML = `<p style="color:red;">QRコード生成失敗</p><p style="font-size:0.8rem;">${url}</p>`;
+    }
   }
   
-  /* ========== 購入者属性タグUI セットアップ ========== */
-  function setupBuyerAttrUI(){
-    const containerList = document.querySelectorAll('.attr-buttons');
+  /* ========== 購入者属性ボタンの設定 ========== */
+  function setupBuyerAttrButtons(){
+    const allAttrButtons = document.querySelectorAll('.attr-btn');
     const saveBtn = document.getElementById('saveBuyerAttrBtn');
-    const statusEl = document.getElementById('buyerAttrStatus');
-
-    if (!saveBtn || !statusEl) return;
-
-    // ボタンの選択処理
-    containerList.forEach(group => {
-      const attrKey = group.getAttribute('data-attr');
-      group.querySelectorAll('.attr-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          // 同じグループ内で1つだけ選択
-          group.querySelectorAll('.attr-btn').forEach(b => b.classList.remove('selected'));
-          btn.classList.add('selected');
-          buyerAttrs[attrKey] = btn.getAttribute('data-value');
-          debugLog(`buyerAttrs.${attrKey} = ${buyerAttrs[attrKey]}`);
-          updateBuyerAttrSaveState();
-        });
+    const statusP = document.getElementById('buyerAttrStatus');
+    
+    allAttrButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const parentDiv = btn.closest('.attr-buttons');
+        const attrName = parentDiv.getAttribute('data-attr');
+        const attrValue = btn.getAttribute('data-value');
+        
+        parentDiv.querySelectorAll('.attr-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        
+        buyerAttrs[attrName] = attrValue;
+        debugLog(`🙋 buyerAttrs.${attrName} = ${attrValue}`);
+        
+        const allFilled = buyerAttrs.customer_type && buyerAttrs.gender && buyerAttrs.age_band;
+        saveBtn.disabled = !allFilled;
       });
     });
-
-    // 保存ボタン
+    
     saveBtn.addEventListener('click', async () => {
-      if (!currentOrderId){
-        alert('オーダーID が まだ設定されていません。');
+      if(!currentOrderId){
+        statusP.textContent = '⚠️ オーダーIDがありません';
         return;
       }
-      if (!isBuyerAttrsFilled()){
-        alert('国籍・性別・年齢帯を えらんでください。');
-        return;
-      }
-
+      
       saveBtn.disabled = true;
-      saveBtn.textContent = '💾 ほぞん中…';
-
+      saveBtn.textContent = '💾 ほぞん ちゅう…';
+      statusP.textContent = '';
+      
+      debugLog(`📤 Sending buyer attributes to /api/orders/buyer-attributes`);
+      debugLog(`orderId: ${currentOrderId}, buyerAttrs: ${JSON.stringify(buyerAttrs)}`);
+      
       try{
         const res = await fetch('/api/orders/buyer-attributes', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {'Content-Type':'application/json'},
           body: JSON.stringify({
             orderId: currentOrderId,
-            customer_type: buyerAttrs.customer_type,
-            gender: buyerAttrs.gender,
-            age_band: buyerAttrs.age_band
+            ...buyerAttrs
           })
         });
-        if (!res.ok){
-          const t = await res.text();
-          throw new Error(t || `HTTP ${res.status}`);
+        
+        if(!res.ok){
+          throw new Error(`HTTP ${res.status}`);
         }
-        statusEl.textContent = '✅ おきゃくさんの じょうほう を ほぞんしました。';
-        debugLog('✅ Buyer attributes saved successfully');
-      } catch(e){
-        console.error(e);
-        statusEl.textContent = '❌ ほぞんに しっぱいしました。あとで ダッシュボードから へんしゅう できます。';
-        debugLog(`❌ Buyer attributes save failed: ${e.message}`);
-      } finally{
+        
+        const data = await res.json();
+        debugLog(`✅ Buyer attributes saved: ${JSON.stringify(data)}`);
+        
+        statusP.textContent = '✅ ほぞん かんりょう！';
+        saveBtn.textContent = '💾 ほぞん かんりょう';
+        
+      } catch(err) {
+        debugLog(`❌ Buyer attributes save failed: ${err.message}`);
+        statusP.textContent = '⚠️ ほぞん しっぱい しました';
         saveBtn.disabled = false;
         saveBtn.textContent = '💾 おきゃくさんじょうほう を ほぞん';
       }
     });
-
-    function isBuyerAttrsFilled(){
-      return buyerAttrs.customer_type && buyerAttrs.gender && buyerAttrs.age_band;
-    }
-
-    function updateBuyerAttrSaveState(){
-      saveBtn.disabled = !isBuyerAttrsFilled();
-    }
   }
   
-  /* ========== ユーティリティ：DataURL → Blob ========== */
+  /* ========== ヘルパー: DataURL → Blob ========== */
   function dataURLtoBlob(dataURL){
     const arr = dataURL.split(',');
     const mime = arr[0].match(/:(.*?);/)[1];
@@ -1425,16 +1478,8 @@
   }
   
   /* ========== 初期化 ========== */
-  document.addEventListener('DOMContentLoaded', () => {
-    debugLog('=== App Initialized (v9 - Buyer Attributes Added) ===');
-    sellerId = getSellerIdFromURL();
-    
-    // ★購入者属性タグのUIセットアップ
-    setupBuyerAttrUI();
-    
-    // ウェルカム画面から開始
-    showStep('step0-1');
-  });
+  sellerId = getSellerIdFromURL();
+  debugLog(`🚀 App initialized with sellerId: ${sellerId}`);
   
 })();
 </script>

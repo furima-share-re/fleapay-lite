@@ -433,6 +433,20 @@
         </div>
       </div>
 
+      <!-- 🟦 (A) データ精度スコア カード -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">データ精度スコア</div>
+            <div class="card-sub">QR決済を使うほど正確になります</div>
+          </div>
+        </div>
+        <div class="kpi-value" id="data-score">—%</div>
+        <div class="hint">
+          購入者の属性情報が入力された取引の割合です。QR決済を使うと自動で記録されます。
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header">
           <div class="card-title">さいきんの けっさい</div>
@@ -582,6 +596,9 @@
       const purchaseUrlEl = $("#purchase-url");
       const purchaseQrEl  = $("#purchase-qr");
       const copyBtnEl     = $("#copy-purchase-url");
+      
+      // 🟦 (A) データ精度スコア用の要素
+      const dataScoreEl  = $("#data-score");
 
       function formatYen(n){
         if (!Number.isFinite(n)) return "¥—";
@@ -597,8 +614,15 @@
         return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日（${w}）`;
       }
 
-      // ★追加：購入者属性ラベルを生成する関数
-      function formatBuyerLabel(buyer){
+      // 購入者属性ラベルを生成する関数
+      function formatBuyerLabel(tx){
+        const buyer = tx.buyer;
+        
+        // 🟦 (C) 現金で属性未入力の場合
+        if (tx.is_cash && !tx.raw_category) {
+          return "（現金：追加情報未入力）";
+        }
+        
         if (!buyer) return "購入者情報：未入力";
 
         const typeLabel =
@@ -685,6 +709,11 @@
           if (kpiCountEl) kpiCountEl.textContent = `${count}件`;
           if (kpiAvgEl)   kpiAvgEl.textContent   = formatYen(avg || 0);
 
+          // 🟦 (A) データ精度スコアの表示
+          if (dataScoreEl && data.dataScore !== undefined) {
+            dataScoreEl.textContent = data.dataScore + "%";
+          }
+
           if (homeHintEl) {
             if (count === 0) {
               homeHintEl.textContent = "きょうの けっさい は まだ ありません。さいしょの 1件を お待ちしています。";
@@ -693,7 +722,7 @@
             }
           }
 
-          // ★修正：さいきんの決済（3件まで）—— 購入者ラベルを追加
+          // さいきんの決済（3件まで）
           const recent = (data.recent || []).slice(0,3);
           if (recentListEl){
             recentListEl.innerHTML = "";
@@ -715,13 +744,20 @@
                 const timeStr = created ? formatTime(created) : "";
                 const summary = (tx.summary || "商品のおかいもの").split("\n")[0];
 
-                // ★購入者属性のラベルを生成
-                const buyerLabel = formatBuyerLabel(tx.buyer);
+                // 🟦 (B) 未分類フォルダ表示
+                const isUncategorized = tx.is_cash && !tx.raw_category;
+                const uncategorizedBadge = isUncategorized
+                  ? '<span class="badge badge-cb-pending">未分類</span>'
+                  : '';
+
+                // 購入者属性のラベルを生成
+                const buyerLabel = formatBuyerLabel(tx);
 
                 li.innerHTML = `
                   <div class="tx-main">
                     <div class="tx-top">
                       <span class="badge badge-ok">通常</span>
+                      ${uncategorizedBadge}
                       <span class="tx-time">${timeStr}</span>
                     </div>
                     <div class="tx-title">${summary}</div>
@@ -744,7 +780,7 @@
             recentHintEl.textContent = "Stripe のテスト決済が さいしん3件まで ひょうじされます。";
           }
 
-          // ★修正：取引履歴（最大20件）—— 購入者ラベルを追加
+          // 取引履歴（最大20件）
           if (txListEl){
             txListEl.innerHTML = "";
             const list = data.recent || [];
@@ -769,13 +805,20 @@
                   : "";
                 const summary = (tx.summary || "商品のおかいもの").replace(/\n/g," / ");
 
-                // ★購入者属性のラベルを生成
-                const buyerLabel = formatBuyerLabel(tx.buyer);
+                // 🟦 (B) 未分類フォルダ表示
+                const isUncategorized = tx.is_cash && !tx.raw_category;
+                const uncategorizedBadge = isUncategorized
+                  ? '<span class="badge badge-cb-pending">未分類</span>'
+                  : '';
+
+                // 購入者属性のラベルを生成
+                const buyerLabel = formatBuyerLabel(tx);
 
                 li.innerHTML = `
                   <div class="tx-main">
                     <div class="tx-top">
                       <span class="badge badge-ok">${tx.status || "通常"}</span>
+                      ${uncategorizedBadge}
                       <span class="tx-time">${timeStr} / ${dateStr}</span>
                     </div>
                     <div class="tx-title">${summary}</div>
