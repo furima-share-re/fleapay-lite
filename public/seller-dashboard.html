@@ -380,6 +380,81 @@
       border-radius:999px;
     }
 
+    /* 🆕 モーダル用CSS */
+    .modal-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(15,23,42,0.45);
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      z-index:300;
+    }
+    .modal{
+      width:100%;
+      max-width:420px;
+      max-height:90vh;
+      background:#fff;
+      border-radius:16px;
+      box-shadow:0 10px 40px rgba(15,23,42,0.35);
+      display:flex;
+      flex-direction:column;
+    }
+    .modal-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:10px 14px;
+      border-bottom:1px solid #e5e7eb;
+    }
+    .modal-body{
+      padding:10px 14px 4px;
+      overflow-y:auto;
+    }
+    .modal-footer{
+      padding:10px 14px 12px;
+      border-top:1px solid #e5e7eb;
+      text-align:right;
+    }
+    #modal-close-btn{
+      border:none;
+      background:transparent;
+      font-size:1rem;
+      cursor:pointer;
+    }
+    .modal-image-wrap{
+      text-align:center;
+      margin-bottom:8px;
+    }
+    #modal-image{
+      max-width:100%;
+      max-height:180px;
+      border-radius:12px;
+      object-fit:contain;
+      background:#f3f4f6;
+    }
+    .field-select{
+      width:100%;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:#fff;
+      font-size:.85rem;
+    }
+    .btn-primary{
+      padding:8px 14px;
+      border-radius:999px;
+      border:none;
+      background:var(--brand);
+      color:#fff;
+      font-size:.85rem;
+      cursor:pointer;
+    }
+    .btn-primary:disabled{
+      opacity:0.5;
+      cursor:default;
+    }
+
     @media (min-width:768px){
       .wrap { padding:16px 16px 72px; }
     }
@@ -411,7 +486,7 @@
 
         <div class="kpi-row">
           <div class="kpi">
-            <div class="kpi-label">売上合計（返金・チャージバック反映後）</div>
+            <div class="kpi-label">売上合計(返金・チャージバック反映後)</div>
             <div class="kpi-value" id="kpi-total">¥—</div>
             <div class="kpi-note">純売上</div>
           </div>
@@ -560,6 +635,96 @@
       <span>お店</span>
     </button>
   </nav>
+
+  <!-- 🆕 取引編集モーダル -->
+  <div id="order-detail-modal" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <span id="modal-title">取引の編集</span>
+        <button type="button" id="modal-close-btn">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-image-wrap">
+          <img id="modal-image" alt="商品写真" />
+        </div>
+
+        <div class="field">
+          <div class="field-label">商品メモ</div>
+          <div class="field-value" id="modal-summary"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">金額</div>
+          <div class="field-value" id="modal-amount"></div>
+        </div>
+
+        <hr/>
+
+        <div class="field">
+          <div class="field-label">購入者タイプ</div>
+          <select id="modal-customer-type" class="field-select">
+            <option value="">（未選択）</option>
+            <option value="domestic">日本のひと</option>
+            <option value="inbound">外国のひと</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">性別</div>
+          <select id="modal-gender" class="field-select">
+            <option value="">（未選択）</option>
+            <option value="male">男性</option>
+            <option value="female">女性</option>
+            <option value="unknown">わからない</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">年齢帯</div>
+          <select id="modal-age" class="field-select">
+            <option value="">（未選択）</option>
+            <option value="child">こども</option>
+            <option value="age_16_29">16〜29</option>
+            <option value="age_30_59">30〜59</option>
+            <option value="age_60_plus">60+</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">商品カテゴリ</div>
+          <select id="modal-category" class="field-select">
+            <option value="">（未選択）</option>
+            <option value="toy">おもちゃ</option>
+            <option value="card">カード・トレカ</option>
+            <option value="clothes">ふく</option>
+            <option value="book">本</option>
+            <option value="handmade">ハンドメイド</option>
+            <option value="other">そのた</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">購入者のことば</div>
+          <select id="modal-language" class="field-select">
+            <option value="">（未選択）</option>
+            <option value="ja">日本語</option>
+            <option value="en">英語</option>
+            <option value="zh">中国語</option>
+            <option value="ko">韓国語</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="modal-save-btn" class="btn-primary">
+          保存する
+        </button>
+      </div>
+    </div>
+  </div>
 
   <script>
     // タブ切り替え
@@ -740,6 +905,8 @@
               for (const tx of recent){
                 const li = document.createElement("li");
                 li.className = "tx-item";
+                li.dataset.orderId = tx.orderId || "";   // ★追加
+                
                 const created = tx.created ? new Date(tx.created * 1000) : null;
                 const timeStr = created ? formatTime(created) : "";
                 const summary = (tx.summary || "商品のおかいもの").split("\n")[0];
@@ -768,9 +935,17 @@
                   </div>
                   <div class="tx-amt">${formatYen(tx.net_amount ?? tx.amount)}</div>
                 `;
+                
+                // ★モーダルを開く関数を呼び出す
                 li.addEventListener("click", () => {
-                  li.classList.toggle("expanded");
+                  const oid = li.dataset.orderId;
+                  if (oid) {
+                    openOrderDetail(oid);
+                  } else {
+                    li.classList.toggle("expanded");
+                  }
                 });
+                
                 recentListEl.appendChild(li);
               }
             }
@@ -798,6 +973,8 @@
               for (const tx of list){
                 const li = document.createElement("li");
                 li.className = "tx-item";
+                li.dataset.orderId = tx.orderId || "";   // ★追加
+                
                 const created = tx.created ? new Date(tx.created * 1000) : null;
                 const timeStr = created ? formatTime(created) : "";
                 const dateStr = created
@@ -830,9 +1007,17 @@
                   </div>
                   <div class="tx-amt">${formatYen(tx.net_amount ?? tx.amount)}</div>
                 `;
+                
+                // ★モーダルを開く関数を呼び出す
                 li.addEventListener("click", () => {
-                  li.classList.toggle("expanded");
+                  const oid = li.dataset.orderId;
+                  if (oid) {
+                    openOrderDetail(oid);
+                  } else {
+                    li.classList.toggle("expanded");
+                  }
                 });
+                
                 txListEl.appendChild(li);
               }
             }
@@ -846,6 +1031,135 @@
 
       loadSummary();
     })();
+
+    // ====== 🆕 注文詳細モーダル ======
+    let currentDetailOrderId = null;
+
+    async function openOrderDetail(orderId){
+      const modal = document.getElementById("order-detail-modal");
+      if (!modal) return;
+      currentDetailOrderId = orderId;
+
+      try {
+        const params = new URLSearchParams(location.search);
+        const sellerId = params.get("s") || "";
+        const res = await fetch(`/api/seller/order-detail?s=${encodeURIComponent(sellerId)}&orderId=${encodeURIComponent(orderId)}`);
+        const data = await res.json();
+        if (!res.ok){
+          alert("取引の読み込みに失敗しました");
+          console.error("order-detail error", data);
+          return;
+        }
+
+        // 要素取得
+        const imgEl   = document.getElementById("modal-image");
+        const sumEl   = document.getElementById("modal-summary");
+        const amtEl   = document.getElementById("modal-amount");
+        const typeEl  = document.getElementById("modal-customer-type");
+        const genEl   = document.getElementById("modal-gender");
+        const ageEl   = document.getElementById("modal-age");
+        const catEl   = document.getElementById("modal-category");
+        const langEl  = document.getElementById("modal-language");
+
+        if (imgEl)   imgEl.src = data.imageUrl || "";
+        if (sumEl)   sumEl.textContent = data.summary || "";
+        if (amtEl)   amtEl.textContent = "¥" + (data.amount || 0).toLocaleString("ja-JP");
+
+        // 既存値を反映
+        const buyer = data.buyer || {};
+        if (typeEl) typeEl.value = buyer.customer_type || "";
+        if (genEl)  genEl.value  = buyer.gender || "";
+        if (ageEl)  ageEl.value  = buyer.age_band || "";
+
+        const meta = data.metadata || {};
+        if (catEl)  catEl.value  = meta.category || "";
+        if (langEl) langEl.value = meta.buyer_language || "";
+
+        modal.style.display = "flex";
+      } catch (e){
+        console.error("openOrderDetail error", e);
+        alert("取引の読み込みでエラーが発生しました");
+      }
+    }
+
+    function closeOrderDetail(){
+      const modal = document.getElementById("order-detail-modal");
+      if (modal) modal.style.display = "none";
+      currentDetailOrderId = null;
+    }
+
+    // モーダルのイベント登録
+    document.addEventListener("DOMContentLoaded", () => {
+      const modal = document.getElementById("order-detail-modal");
+      if (!modal) return;
+
+      const closeBtn = document.getElementById("modal-close-btn");
+      if (closeBtn) closeBtn.onclick = closeOrderDetail;
+
+      const saveBtn = document.getElementById("modal-save-btn");
+      if (saveBtn) {
+        saveBtn.onclick = async () => {
+          if (!currentDetailOrderId) return;
+
+          const params = new URLSearchParams(location.search);
+          const sellerId = params.get("s") || "";
+
+          const typeEl  = document.getElementById("modal-customer-type");
+          const genEl   = document.getElementById("modal-gender");
+          const ageEl   = document.getElementById("modal-age");
+          const catEl   = document.getElementById("modal-category");
+          const langEl  = document.getElementById("modal-language");
+
+          const customer_type = typeEl?.value || "";
+          const gender        = genEl?.value  || "";
+          const age_band      = ageEl?.value  || "";
+          const category      = catEl?.value  || "";
+          const buyer_language= langEl?.value || "";
+
+          try {
+            saveBtn.disabled = true;
+            saveBtn.textContent = "保存中…";
+
+            // 1) 購入者属性を保存
+            if (customer_type && gender && age_band){
+              await fetch("/api/orders/buyer-attributes",{
+                method:"POST",
+                headers:{ "Content-Type":"application/json" },
+                body:JSON.stringify({
+                  orderId: currentDetailOrderId,
+                  customer_type,
+                  gender,
+                  age_band
+                })
+              });
+            }
+
+            // 2) メタデータ（カテゴリ・言語）を保存
+            await fetch("/api/orders/metadata",{
+              method:"POST",
+              headers:{ "Content-Type":"application/json" },
+              body:JSON.stringify({
+                orderId: currentDetailOrderId,
+                category,
+                buyer_language,
+                // is_cash は今回はダッシュボード編集では変更しないので送らなくてもOK
+              })
+            });
+
+            alert("保存しました");
+            closeOrderDetail();
+            // 最新の一覧を再読み込み
+            loadSummary();
+          } catch (e){
+            console.error("save detail error", e);
+            alert("保存でエラーが発生しました");
+          } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = "保存する";
+          }
+        };
+      }
+    });
   </script>
 </body>
 </html>
