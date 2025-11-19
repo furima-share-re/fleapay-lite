@@ -765,6 +765,26 @@
       // 🟦 (A) データ精度スコア用の要素
       const dataScoreEl  = $("#data-score");
 
+      // サブスク未加入時にダッシュボードをブロックする共通関数
+      function blockForNonSubscriber() {
+        if (homeHintEl) {
+          homeHintEl.textContent = "このダッシュボードは、プロ / キッズプランご契約中の出店者さま専用です。";
+        }
+        if (kpiTotalEl) kpiTotalEl.textContent = "–";
+        if (kpiCountEl) kpiCountEl.textContent = "–";
+        if (kpiAvgEl)   kpiAvgEl.textContent   = "–";
+        if (recentListEl) {
+          recentListEl.innerHTML = "";
+        }
+        if (recentHintEl) {
+          recentHintEl.textContent = "サブスクにご加入いただくと、売上のくわしい分析が表示されます。";
+        }
+        if (purchaseUrlEl) {
+          purchaseUrlEl.textContent = "サブスクご契約で販売用URLが表示されます";
+          purchaseUrlEl.removeAttribute("href");
+        }
+      }
+
       function formatYen(n){
         if (!Number.isFinite(n)) return "¥—";
         return "¥" + n.toLocaleString("ja-JP");
@@ -878,6 +898,17 @@
           if (!res.ok){
             console.error("summary error", data);
             if (homeHintEl) homeHintEl.textContent = "売上データ取得でエラーが発生しました。";
+            return;
+          }
+
+          // サブスク未加入（standard または isSubscribed=false）の場合はダッシュボードをブロック
+          if (
+            data &&
+            (data.isSubscribed === false ||
+             data.planType === "standard" ||
+             !data.planType)
+          ) {
+            blockForNonSubscriber();
             return;
           }
 

@@ -5,8 +5,13 @@
        FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
        ★フリマ実態に合わせて簡略化版
        
-       【パッチ適用済み v10.1 - 初期値をキャッシュレスに確実に設定】
+       【パッチ適用済み v11 - サブスクチェック追加 - 初期値をキャッシュレスに確実に設定】
        ★変更点★
+       1. サブスクチェック機能追加（プロ/キッズプラン専用）
+       2. sellerId未設定時のブロック処理追加
+       3. 非サブスク会員へのメッセージ表示
+       
+       【v10.1の変更点】
        1. Step4に支払い方法選択UI追加（現金/QR・カード）
        2. paymentMethodをサーバーへ送信
        3. 現金の場合はQRコード表示をスキップ
@@ -1002,6 +1007,69 @@
     age_band: null
   };
   
+  // ========== サブスクリプションチェック ==========
+  // サブスク状態を確認し、未加入なら画面をブロック
+  async function ensureSubscribedSeller() {
+    if (!sellerId) {
+      const app = document.getElementById('app');
+      if (app) {
+        app.innerHTML = `
+          <div style="padding:16px;">
+            <h1 style="font-size:1.1rem;margin-bottom:8px;">この販売画面はご利用いただけません</h1>
+            <p style="font-size:.9rem;line-height:1.6;">
+              この「出店者用 販売画面」は、プロ / キッズプランご契約中の出店者さま専用です。<br>
+              サブスクのお申し込みやプラン変更については、運営までお問い合わせください。
+            </p>
+          </div>
+        `;
+      }
+      return false;
+    }
+
+    try {
+      const res = await fetch(\`/api/seller/summary?s=\${encodeURIComponent(sellerId)}\`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("seller summary error", data);
+        const app = document.getElementById('app');
+        if (app) {
+          app.innerHTML = \`<p style="padding:16px;">出店者情報の取得に失敗しました。</p>\`;
+        }
+        return false;
+      }
+
+      if (
+        data.isSubscribed === false ||
+        data.planType === "standard" ||
+        !data.planType
+      ) {
+        const app = document.getElementById('app');
+        if (app) {
+          app.innerHTML = \`
+            <div style="padding:16px;">
+              <h1 style="font-size:1.1rem;margin-bottom:8px;">この販売画面はご利用いただけません</h1>
+              <p style="font-size:.9rem;line-height:1.6;">
+                この「出店者用 販売画面」は、プロ / キッズプランご契約中の出店者さま専用です。<br>
+                サブスクのお申し込みやプラン変更については、運営までお問い合わせください。
+              </p>
+            </div>
+          \`;
+        }
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      console.error("ensureSubscribedSeller error", e);
+      const app = document.getElementById('app');
+      if (app) {
+        app.innerHTML = \`<p style="padding:16px;">通信エラーが発生しました。ネットワークをご確認ください。</p>\`;
+      }
+      return false;
+    }
+  }
+  
   /* ========== Step制御 ========== */
   function showStep(stepId){
     document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
@@ -1489,11 +1557,20 @@
       u8arr[n] = bstr.charCodeAt(n);
     }
     return new Blob([u8arr], {type:mime});
-  }
-  
-  /* ========== 初期化 ========== */
-  sellerId = getSellerIdFromURL();
-  debugLog(`🚀 App initialized with sellerId: ${sellerId}`);
+  }  /* ========== 初期化 ========== */
+  (async () => {
+    sellerId = getSellerIdFromURL();
+    debugLog(`🚀 App initialized with sellerId: ${sellerId}`);
+
+    const ok = await ensureSubscribedSeller();
+    if (!ok) {
+      // サブスク未加入 or エラー時はここで止める
+      debugLog('⚠️ Subscription check failed. UI blocked.');
+      return;
+    }
+    debugLog('✅ Subscription check passed.');
+    // ここから先の処理は、サブスク加入者のみ実行される
+  })();
   
 })();
 </script>
