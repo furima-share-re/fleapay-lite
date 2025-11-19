@@ -7,7 +7,7 @@
 
   <style>
     :root {
-      --bg:#fbf7f0;           /* 生成り（江戸っぽい背景） */
+      --bg:#fbf7f0;           /* 生成り(江戸っぽい背景) */
       --panel:#ffffff;
       --border:#e5d9c8;
       --text:#1f2933;
@@ -383,6 +383,25 @@
       border:1px solid #bae6fd;
     }
 
+    /* === 新規追加：絵本リンク === */
+    .ehon-link {
+      display: block;
+      margin: 20px 0;
+      font-size: 1.4rem;
+      text-decoration: none;
+      background: #ffe06b;
+      color: #333;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-weight: bold;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .ehon-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
     @media (min-width:768px){
       .wrap { padding:16px 16px 90px; }
     }
@@ -406,6 +425,11 @@
       <h1>若旦那 / 若女将 ダッシュボード</h1>
       <div id="currentTitle" class="title-pill">称号：まだこれから！</div>
     </div>
+
+    <!-- ▼ 新規追加：絵本リンク -->
+    <a href="kids-ehon.html" class="ehon-link">
+      📘 にんじゃたいの えほん をよむ
+    </a>
 
     <!-- ▼ 新規追加：こども実績 -->
     <section class="card kids-stats">
@@ -508,11 +532,11 @@
       </div>
 
       <p class="hint" id="main-hint">
-        きょうの 売上（すべての 決済）を かんたんに 見られる 画面です。
+        きょうの 売上(すべての 決済)を かんたんに 見られる 画面です。
       </p>
     </section>
 
-    <!-- ▼ がんばりメーター（データ精度） -->
+    <!-- ▼ がんばりメーター(データ精度) -->
     <section class="card">
       <div class="card-header">
         <div>
@@ -540,9 +564,9 @@
 
       <div class="footer-helpers">
         <span>いっしょに おてつだい：</span>
-        <span class="helper-badge">🌸 キモニャ（みつける係）</span>
-        <span class="helper-badge">🥷 ニンシャ（かち を まもる係）</span>
-        <span class="helper-badge">🐱 ネコマル（おうえん係）</span>
+        <span class="helper-badge">🌸 キモニャ(みつける係)</span>
+        <span class="helper-badge">🥷 ニンシャ(かち を まもる係)</span>
+        <span class="helper-badge">🐱 ネコマル(おうえん係)</span>
       </div>
     </section>
 
@@ -570,7 +594,7 @@
           <div class="mission-check" data-mission="2">✓</div>
           <div>
             <div class="mission-text-main">値下げを ねがわれたら 「ごめんなさい」と 伝えられた</div>
-            <div class="mission-text-sub">ねぎり を ことわる れんしゅう（現金トラブル よけ）</div>
+            <div class="mission-text-sub">ねぎり を ことわる れんしゅう(現金トラブル よけ)</div>
           </div>
         </li>
         <li class="mission-item">
@@ -666,7 +690,7 @@
 
       function formatDateJp(date){
         const w = ["日","月","火","水","木","金","土"][date.getDay()];
-        return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日（${w}）`;
+        return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日(${w})`;
       }
 
       // きょう の ラベル
@@ -698,10 +722,10 @@
           $("#statDataScoreValue").textContent = ds;
           $("#dataScoreBar").style.width = Math.min(ds, 100) + "%";
 
-          // 称号（いちばん新しいものを表示）
+          // 称号(いちばん新しいものを表示)
           const titleEl = $("#currentTitle");
           if (titles.length > 0) {
-            // first_earned_at でソート（新しい順）
+            // first_earned_at でソート(新しい順)
             titles.sort((a, b) => {
               const ta = a.first_earned_at ? new Date(a.first_earned_at).getTime() : 0;
               const tb = b.first_earned_at ? new Date(b.first_earned_at).getTime() : 0;
@@ -783,7 +807,7 @@
           }
           if (kpiCountEl) kpiCountEl.textContent = `${count} 件`;
 
-          // いちばん高い金額（今日の取引からざっくり）
+          // いちばん高い金額(今日の取引からざっくり)
           let maxAmount = 0;
           if (Array.isArray(data.recent)) {
             data.recent.forEach(tx => {
@@ -797,7 +821,7 @@
             mainHintEl.textContent = "きょう の うりあげ は まだ 0 件です。さいしょの 1件 を 目指そう！";
           }
 
-          // がんばりメーター（dataScoreをそのまま%表示）
+          // がんばりメーター(dataScoreをそのまま%表示)
           const score = typeof data.dataScore === "number" ? data.dataScore : null;
           if (score != null) {
             const clamped = Math.max(0, Math.min(100, score));
@@ -853,7 +877,7 @@
         }
       }
 
-      // ミッションのチェック（ローカルだけ）
+      // ミッションのチェック(ローカルだけ)
       function initMissions(){
         if (!missionListEl) return;
         const keyPrefix = `kids-mission-${sellerId}-`;
