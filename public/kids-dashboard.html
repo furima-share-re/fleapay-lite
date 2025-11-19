@@ -402,6 +402,44 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
+    /* === 新規追加：きょうの目標カード用 CSS === */
+    .goal-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:#f9fafb;
+      margin-bottom:6px;
+    }
+    .goal-main{
+      flex:1;
+    }
+    .goal-title{
+      font-size:.9rem;
+      font-weight:600;
+    }
+    .goal-sub{
+      font-size:.78rem;
+      color:var(--sub);
+    }
+    .goal-count{
+      font-size:.9rem;
+      font-weight:700;
+      min-width:60px;
+      text-align:right;
+    }
+    .goal-row.done{
+      background:#ecfdf3;
+      border-color:#bbf7d0;
+    }
+    .goal-row.done .goal-count::after{
+      content:" ✅";
+      font-size:.85rem;
+    }
+
     @media (min-width:768px){
       .wrap { padding:16px 16px 90px; }
     }
@@ -500,6 +538,40 @@
         <!-- JSで称号を追加 -->
       </div>
       <p class="hint">称号は あなた の レベル を あらわします。もっと すごい 称号を めざそう！</p>
+    </section>
+
+    <!-- ▼ 新規追加：きょうの目標 -->
+    <section class="card" id="goal-card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">
+            <span class="emoji">🎯</span>
+            <span>きょうの もくひょう</span>
+          </div>
+          <div class="card-sub">若旦那・若女将ダッシュボード と つながっています</div>
+        </div>
+      </div>
+
+      <div class="goal-row" id="goal-row-cashless">
+        <div class="goal-main">
+          <div class="goal-title">QR / カード決済 を 1回 してみよう</div>
+          <div class="goal-sub">キャッシュレスバッジ に ちかづく もくひょう</div>
+        </div>
+        <div class="goal-count" id="goal-cashless-count">0 / 1</div>
+      </div>
+
+      <div class="goal-row" id="goal-row-attrs">
+        <div class="goal-main">
+          <div class="goal-title">おきゃくさんじょうほう を 3人分 入れてみよう</div>
+          <div class="goal-sub">データ名人メーター が 上がる もくひょう</div>
+        </div>
+        <div class="goal-count" id="goal-attrs-count">0 / 3</div>
+      </div>
+
+      <p class="hint">
+        💡 目標は、決済のあとに出てくる「かってくれた ひと」画面 や<br>
+        「QR / カードで はらう」の 説明 と おなじ内容です。
+      </p>
     </section>
 
     <!-- ▼ メインカード：きょうの売上 -->
@@ -676,6 +748,12 @@
       const mainCardEl   = $("#sec-main");
       const blockEl      = $("#block-message");
 
+      // 新規追加：きょうの目標カード用の要素参照
+      const goalCashlessRowEl = $("#goal-row-cashless");
+      const goalAttrsRowEl    = $("#goal-row-attrs");
+      const goalCashlessEl    = $("#goal-cashless-count");
+      const goalAttrsEl       = $("#goal-attrs-count");
+
       if (!sellerId) {
         if (mainHintEl) {
           mainHintEl.textContent = "URLのさいごに ?s=出店者ID を つけてください。";
@@ -830,6 +908,58 @@
           } else {
             if (meterTextEl) meterTextEl.textContent = "—%";
           }
+
+          // ▼ ここから きょうの目標のための集計 ▼
+
+          // きょうの日付（JST）を YYYY-MM-DD 文字列に
+          const todayStr = nowJst.toISOString().slice(0,10);
+
+          let cashlessToday = 0;
+          let attrsToday    = 0;
+
+          (data.recent || []).forEach(tx => {
+            if (!tx.createdAt) return;
+
+            // createdAt を JST によせて日付だけ比較
+            const created = new Date(tx.createdAt);
+            const jst = new Date(created.toLocaleString("en-US", { timeZone:"Asia/Tokyo" }));
+            const dStr = jst.toISOString().slice(0,10);
+            if (dStr !== todayStr) return;
+
+            // QR / カード決済（paymentMethod === 'card' を想定）
+            if (tx.paymentMethod === "card") {
+              cashlessToday++;
+            }
+
+            // 購入者属性が 1つでも入っていればカウント
+            const hasAttr =
+              tx.customerType && tx.customerType !== "unknown" ||
+              tx.gender       && tx.gender       !== "unknown" ||
+              tx.ageBand      && tx.ageBand      !== "unknown";
+
+            if (hasAttr) {
+              attrsToday++;
+            }
+          });
+
+          const GOAL_CASHLESS = 1;
+          const GOAL_ATTRS    = 3;
+
+          if (goalCashlessEl) {
+            goalCashlessEl.textContent = `${cashlessToday} / ${GOAL_CASHLESS}`;
+          }
+          if (goalAttrsEl) {
+            goalAttrsEl.textContent = `${attrsToday} / ${GOAL_ATTRS}`;
+          }
+
+          if (goalCashlessRowEl) {
+            goalCashlessRowEl.classList.toggle("done", cashlessToday >= GOAL_CASHLESS);
+          }
+          if (goalAttrsRowEl) {
+            goalAttrsRowEl.classList.toggle("done", attrsToday >= GOAL_ATTRS);
+          }
+
+          // ▼ ここまで きょうの目標 ▼
 
           // さいきんの 取引3件
           if (recentListEl){
