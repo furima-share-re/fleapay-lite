@@ -203,7 +203,7 @@ export function registerPaymentRoutes(app, deps) {
     res.json({ received: true });
   });
 
-  // ====== 🆕 出店者用API: 売上サマリー取得（orders基準に変更） ======
+  // ====== 🆕 出店者用API: 売上サマリー取得（サブスク判定追加） ======
   app.get("/api/seller/summary", async (req, res) => {
     const sellerId = req.query.s;
     if (!sellerId) {
@@ -211,6 +211,27 @@ export function registerPaymentRoutes(app, deps) {
     }
 
     try {
+      // 0) サブスク状態の判定（履歴テーブルから現在プランを取得）
+      const subRes = await pool.query(
+        `
+        SELECT plan_type, started_at, ended_at, status
+          FROM seller_subscriptions
+         WHERE seller_id = $1
+           AND status = 'active'
+           AND (ended_at IS NULL OR ended_at > now())
+         ORDER BY started_at DESC
+         LIMIT 1
+        `,
+        [sellerId]
+      );
+
+      let planType = "standard";
+      let isSubscribed = false;
+      if (subRes.rowCount > 0) {
+        planType = subRes.rows[0].plan_type || "standard";
+        isSubscribed = (planType === "pro" || planType === "kids");
+      }
+
       // ① 売上KPI（ここは従来どおり Stripe だけでOK）
       const kpiToday = await pool.query(
         `
@@ -279,6 +300,8 @@ export function registerPaymentRoutes(app, deps) {
 
       res.json({
         sellerId,
+        planType,
+        isSubscribed,
         salesToday: {
           gross: Number(kpiToday.rows[0].gross || 0),
           net:   Number(kpiToday.rows[0].net   || 0),
