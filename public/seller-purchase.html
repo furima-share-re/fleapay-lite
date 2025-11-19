@@ -1090,28 +1090,30 @@
   }
   
   /* ========== Step 0 Navigation ========== */
-  document.getElementById('startBtn')?.addEventListener('click', () => {
-    showStep('step0-2');
-    debugLog('User clicked: はじめる');
-  });
-  
-  document.getElementById('understoodBtn')?.addEventListener('click', () => {
-    showStep('step0-3');
-    debugLog('User clicked: わかった');
-  });
-  
-  document.getElementById('openCameraBtn')?.addEventListener('click', () => {
-    showStep('step1');
-    initCamera();
-    debugLog('User clicked: カメラをひらく');
-  });
-  
-  document.getElementById('skipToQRBtn')?.addEventListener('click', () => {
-    const baseURL = window.location.origin;
-    const qrURL = `${baseURL}/checkout.html?s=${sellerId}`;
-    window.location.href = qrURL;
-    debugLog('User clicked: QRをさきにみせる');
-  });
+  function setupEventListeners() {
+    document.getElementById('startBtn')?.addEventListener('click', () => {
+      showStep('step0-2');
+      debugLog('User clicked: はじめる');
+    });
+    
+    document.getElementById('understoodBtn')?.addEventListener('click', () => {
+      showStep('step0-3');
+      debugLog('User clicked: わかった');
+    });
+    
+    document.getElementById('openCameraBtn')?.addEventListener('click', () => {
+      showStep('step1');
+      initCamera();
+      debugLog('User clicked: カメラをひらく');
+    });
+    
+    document.getElementById('skipToQRBtn')?.addEventListener('click', () => {
+      const baseURL = window.location.origin;
+      const qrURL = `${baseURL}/checkout.html?s=${sellerId}`;
+      window.location.href = qrURL;
+      debugLog('User clicked: QRをさきにみせる');
+    });
+  }
   
   /* ========== Step1: カメラ起動＆撮影 ========== */
   async function initCamera(){
@@ -1557,7 +1559,9 @@
       u8arr[n] = bstr.charCodeAt(n);
     }
     return new Blob([u8arr], {type:mime});
-  }  /* ========== 初期化 ========== */
+  }
+  
+  /* ========== 初期化 ========== */
   (async () => {
     sellerId = getSellerIdFromURL();
     debugLog(`🚀 App initialized with sellerId: ${sellerId}`);
@@ -1569,7 +1573,9 @@
       return;
     }
     debugLog('✅ Subscription check passed.');
-    // ここから先の処理は、サブスク加入者のみ実行される
+    
+    // サブスクチェック成功後、イベントリスナーを登録
+    setupEventListeners();
   })();
   
 })();
