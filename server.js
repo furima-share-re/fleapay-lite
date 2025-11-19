@@ -385,9 +385,23 @@ async function initDb() {
 
     create index if not exists order_metadata_is_cash_idx
       on order_metadata(is_cash);
+
+    -- kids_achievements
+    create table if not exists kids_achievements (
+      seller_id text not null,
+      code text not null,
+      kind text not null,
+      first_earned_at timestamptz default now(),
+      primary key (seller_id, code),
+      constraint kids_achievements_kind_check
+        check (kind in ('badge', 'title'))
+    );
+
+    create index if not exists kids_achievements_seller_idx
+      on kids_achievements(seller_id);
   `);
 
-  console.log("✅ DB init done (PATCHED v3.3 - order_metadata + dataScore)");
+  console.log("✅ DB init done (PATCHED v3.4 - kids_achievements added)");
 }
 
 initDb().catch(e => console.error("DB init error", e));
@@ -604,6 +618,184 @@ app.post("/api/seller/start_onboarding", async (req, res) => {
   } catch (err) {
     console.error("start_onboarding error", err);
     return res.status(500).json({ error: "internal_error", detail: err.message });
+  }
+});
+
+// 🆕 若旦那 / 若女将 用サマリーAPI（バッジ・称号・実績）
+app.get("/api/seller/kids-summary", async (req, res) => {
+  const sellerId = req.query.s;
+  if (!sellerId) {
+    return res.status(400).json({ error: "seller_id_required" });
+  }
+
+  try {
+    // 1) 基本集計
+    const totalOrdersResult = await pool.query(
+      `select count(*) as cnt from orders where seller_id = $1`,
+      [sellerId]
+    );
+    const totalOrders = Number(totalOrdersResult.rows[0].cnt || 0);
+
+    const attrsResult = await pool.query(
+      `select 
+         count(*) as total_with_attrs,
+         count(*) filter (where customer_type = 'inbound') as inbound_cnt,
+         count(*) filter (where age_band = 'child') as child_cnt
+       from buyer_attributes ba
+       join orders o on o.id = ba.order_id
+       where o.seller_id = $1`,
+      [sellerId]
+    );
+
+    const ordersWithAttrs = Number(attrsResult.rows[0].total_with_attrs || 0);
+    const inboundCount = Number(attrsResult.rows[0].inbound_cnt || 0);
+    const childCustomerCount = Number(attrsResult.rows[0].child_cnt || 0);
+
+    const cashResult = await pool.query(
+      `select 
+         count(*) filter (where om.is_cash = true) as cash_cnt
+       from orders o
+       left join order_metadata om on om.order_id = o.id
+       where o.seller_id = $1`,
+      [sellerId]
+    );
+    const cashOrders = Number(cashResult.rows[0].cash_cnt || 0);
+
+    const cashlessResult = await pool.query(
+      `select count(*) as cnt
+       from stripe_payments
+       where seller_id = $1
+         and status = 'succeeded'`,
+      [sellerId]
+    );
+    const cashlessOrders = Number(cashlessResult.rows[0].cnt || 0);
+
+    const dataScore =
+      totalOrders === 0
+        ? 0
+        : Math.round((ordersWithAttrs / totalOrders) * 100);
+
+    // 2) 実績判定
+    const achievements = [];
+    const badges = [];
+    const titles = [];
+
+    function addBadge(code, label, description) {
+      badges.push({ code, label, description });
+      achievements.push({ code, kind: "badge", label, description });
+    }
+
+    function addTitle(code, label, description) {
+      titles.push({ code, label, description });
+      achievements.push({ code, kind: "title", label, description });
+    }
+
+    // ---- バッジ判定 ----
+    if (totalOrders >= 1) {
+      addBadge("FIRST_SALE", "はじめての売り子", "1回めの販売に成功！");
+    }
+    if (totalOrders >= 5) {
+      addBadge("FIVE_SALES", "小さな商人", "5回以上 売れました");
+    }
+    if (cashlessOrders >= 1) {
+      addBadge(
+        "CASHLESS_1",
+        "キャッシュレス入門",
+        "QR / カードで1回決済できました"
+      );
+    }
+    if (inboundCount >= 1) {
+      addBadge(
+        "INBOUND_FRIEND_1",
+        "海外のお客さま いらっしゃい",
+        "インバウンドのお客さまに1回以上販売"
+      );
+    }
+    if (dataScore >= 80 && totalOrders >= 3) {
+      addBadge(
+        "DATA_SCORE_80",
+        "データ名人",
+        "購入者のタグ入力を 80%以上できました"
+      );
+    }
+
+    // ---- 称号判定 ----
+    if (totalOrders >= 10 && dataScore >= 70) {
+      addTitle(
+        "TITLE_YOUNG_MASTER",
+        "若旦那 / 若女将 見習い",
+        "たくさん売って、お客さまの情報もちゃんと入力できました"
+      );
+    }
+    if (totalOrders >= 30 && dataScore >= 80) {
+      addTitle(
+        "TITLE_FULL_MASTER",
+        "本物の若旦那 / 若女将",
+        "売上とデータの両方でトップクラス！"
+      );
+    }
+
+    // 3) DB に "初めて取った日" を保存（UPSERT）
+    if (achievements.length > 0) {
+      const values = [];
+      const params = [];
+      achievements.forEach((a, idx) => {
+        const base = idx * 3;
+        values.push(`($${base + 1}, $${base + 2}, $${base + 3})`);
+        params.push(sellerId, a.code, a.kind);
+      });
+
+      await pool.query(
+        `
+        insert into kids_achievements (seller_id, code, kind)
+        values ${values.join(",")}
+        on conflict (seller_id, code) do nothing
+        `,
+        params
+      );
+    }
+
+    // 既に保存された first_earned_at も取得して返す
+    const earnedRows = await pool.query(
+      `select code, kind, first_earned_at
+         from kids_achievements
+        where seller_id = $1`,
+      [sellerId]
+    );
+
+    const earnedMap = {};
+    for (const r of earnedRows.rows) {
+      earnedMap[r.code] = {
+        first_earned_at: r.first_earned_at,
+        kind: r.kind,
+      };
+    }
+
+    const badgesWithDate = badges.map((b) => ({
+      ...b,
+      first_earned_at: earnedMap[b.code]?.first_earned_at || null,
+    }));
+    const titlesWithDate = titles.map((t) => ({
+      ...t,
+      first_earned_at: earnedMap[t.code]?.first_earned_at || null,
+    }));
+
+    res.json({
+      stats: {
+        totalOrders,
+        ordersWithAttrs,
+        cashOrders,
+        cashlessOrders,
+        inboundCount,
+        childCustomerCount,
+        dataScore,
+      },
+      badges: badgesWithDate,
+      titles: titlesWithDate,
+    });
+  } catch (e) {
+    console.error("/api/seller/kids-summary error", e);
+    res.status(500).json(sanitizeError(e));
   }
 });
 
