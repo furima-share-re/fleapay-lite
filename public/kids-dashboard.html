@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EDO ICHIBA｜若旦那・若女将 マイページ</title>
+
+  <style>
+    :root {
+      --bg:#fbf7f0;           /* 生成り（江戸っぽい背景） */
+      --panel:#ffffff;
+      --border:#e5d9c8;
+      --text:#1f2933;
+      --sub:#6b7280;
+      --brand:#1B365D;       /* 江戸藍 */ 
+      --accent:#E8B4B8;      /* 桜ピンク */
+      --accent2:#E63946;     /* 江戸朱 */
+      --ok:#16a34a;
+    }
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      font-family:system-ui,-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+    }
+
+    .wrap {
+      max-width:720px;
+      margin:0 auto;
+      padding:12px 12px 80px;
+    }
+
+    header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:8px 4px 12px;
+      gap:12px;
+    }
+
+    .brand {
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .brand-icon {
+      width:36px;
+      height:36px;
+      border-radius:999px;
+      background:radial-gradient(circle at 30% 30%, #fff 0, #fff 35%, #E8B4B8 100%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:1.3rem;
+    }
+
+    .brand-text-title {
+      margin:0;
+      font-weight:800;
+      letter-spacing:.06em;
+      font-size:.95rem;
+    }
+    .brand-text-sub {
+      margin:0;
+      font-size:.78rem;
+      color:var(--sub);
+    }
+
+    .kid-chip {
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,0.9);
+      padding:6px 10px;
+      font-size:.8rem;
+      color:var(--sub);
+      max-width:50%;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .card {
+      background:var(--panel);
+      border-radius:18px;
+      border:1px solid var(--border);
+      padding:14px 14px 16px;
+      margin-bottom:12px;
+      box-shadow:0 2px 10px rgba(0,0,0,.06);
+    }
+
+    .card-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:8px;
+    }
+
+    .card-title {
+      font-size:1rem;
+      font-weight:800;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .card-title span.emoji {
+      font-size:1.2rem;
+    }
+
+    .card-sub {
+      font-size:.8rem;
+      color:var(--sub);
+    }
+
+    .pill {
+      font-size:.75rem;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#fff;
+      color:var(--sub);
+    }
+
+    .big-num {
+      font-size:1.7rem;
+      font-weight:800;
+      margin-bottom:4px;
+    }
+
+    .label {
+      font-size:.8rem;
+      color:var(--sub);
+    }
+
+    .kpi-row {
+      display:flex;
+      gap:8px;
+      margin-top:10px;
+    }
+
+    .kpi {
+      flex:1;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:#fff7f7;
+      padding:8px 10px;
+    }
+
+    .kpi-label {
+      font-size:.75rem;
+      color:var(--sub);
+      margin-bottom:2px;
+    }
+
+    .kpi-value {
+      font-size:1.1rem;
+      font-weight:700;
+    }
+
+    .hint {
+      font-size:.78rem;
+      color:var(--sub);
+      margin-top:6px;
+    }
+
+    /* がんばりメーター */
+    .meter-wrap {
+      margin-top:6px;
+    }
+    .meter-bar {
+      position:relative;
+      width:100%;
+      height:14px;
+      border-radius:999px;
+      background:#fde2e4;
+      overflow:hidden;
+    }
+    .meter-fill {
+      position:absolute;
+      left:0;
+      top:0;
+      bottom:0;
+      width:0%;
+      background:linear-gradient(90deg, var(--accent), var(--accent2));
+      transition:width .6s ease-out;
+    }
+    .meter-text {
+      margin-top:4px;
+      font-size:.8rem;
+      color:var(--sub);
+    }
+
+    /* ミッション */
+    .mission-list {
+      list-style:none;
+      padding:0;
+      margin:6px 0 0;
+    }
+    .mission-item {
+      display:flex;
+      align-items:flex-start;
+      gap:8px;
+      padding:6px 0;
+    }
+    .mission-check {
+      width:18px;
+      height:18px;
+      border-radius:5px;
+      border:2px solid var(--border);
+      background:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:.9rem;
+      cursor:pointer;
+    }
+    .mission-text-main {
+      font-size:.9rem;
+      margin-bottom:2px;
+    }
+    .mission-text-sub {
+      font-size:.78rem;
+      color:var(--sub);
+    }
+    .mission-item.done .mission-check {
+      background:#bbf7d0;
+      border-color:#22c55e;
+    }
+
+    /* さいきんの売れたもの */
+    .list {
+      list-style:none;
+      padding:0;
+      margin:6px 0 0;
+    }
+    .tx-item {
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      padding:8px 0;
+      border-bottom:1px solid #f1e4d6;
+    }
+    .tx-item:last-child {
+      border-bottom:none;
+    }
+    .tx-main {
+      flex:1;
+    }
+    .tx-title {
+      font-size:.9rem;
+      margin-bottom:2px;
+    }
+    .tx-sub {
+      font-size:.78rem;
+      color:var(--sub);
+    }
+    .tx-amt {
+      white-space:nowrap;
+      font-size:.95rem;
+      font-weight:700;
+    }
+
+    /* フッターキャラ帯 */
+    .footer-helpers {
+      margin-top:4px;
+      padding-top:6px;
+      border-top:1px dashed rgba(148,163,184,0.4);
+      font-size:.75rem;
+      color:var(--sub);
+      display:flex;
+      gap:6px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .helper-badge {
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      padding:3px 7px;
+      border-radius:999px;
+      background:#fff;
+      border:1px solid #e5d9c8;
+      font-size:.75rem;
+    }
+
+    .blocked {
+      text-align:left;
+      font-size:.88rem;
+      line-height:1.7;
+    }
+    .blocked h1 {
+      font-size:1.1rem;
+      margin-bottom:6px;
+    }
+
+    /* === 新規追加：こども実績 === */
+    .kids-header {
+      text-align:center;
+      margin-bottom:16px;
+    }
+    .kids-header h1 {
+      font-size:1.3rem;
+      font-weight:800;
+      margin:0 0 8px;
+      color:var(--brand);
+    }
+    .title-pill {
+      display:inline-block;
+      padding:6px 12px;
+      border-radius:999px;
+      background:#fff3c4;
+      font-weight:bold;
+      font-size:.85rem;
+      margin-top:4px;
+    }
+
+    .kids-stats .stat-grid {
+      display:grid;
+      gap:12px;
+      grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
+      margin-top:10px;
+    }
+    .stat-card {
+      background:#fff;
+      border-radius:12px;
+      padding:12px;
+      box-shadow:0 1px 4px rgba(0,0,0,0.04);
+      border:1px solid var(--border);
+    }
+    .stat-card .label {
+      font-size:.75rem;
+      color:#666;
+      margin-bottom:4px;
+    }
+    .stat-card .value {
+      font-size:1.3rem;
+      font-weight:bold;
+      margin-top:4px;
+      color:var(--brand);
+    }
+    .stat-card .meter {
+      margin-top:6px;
+      width:100%;
+      height:8px;
+      border-radius:999px;
+      background:#eee;
+      overflow:hidden;
+    }
+    .stat-card .meter-bar {
+      height:100%;
+      width:0%;
+      border-radius:999px;
+      background:#ffb3b3;
+      transition:width .4s ease;
+    }
+
+    /* バッジと称号 */
+    .badge-list, .title-list {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:10px;
+    }
+    .badge-chip {
+      padding:6px 10px;
+      border-radius:999px;
+      background:#f4f0ff;
+      font-size:.85rem;
+      border:1px solid #e5d9c8;
+    }
+    .badge-chip.new {
+      border:2px solid #ffcc33;
+      background:#fffbeb;
+    }
+    .title-chip {
+      padding:6px 10px;
+      border-radius:999px;
+      background:#e0f2fe;
+      font-size:.85rem;
+      border:1px solid #bae6fd;
+    }
+
+    @media (min-width:768px){
+      .wrap { padding:16px 16px 90px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">🌸</div>
+        <div>
+          <p class="brand-text-title">EDO ICHIBA</p>
+          <p class="brand-text-sub">若旦那・若女将 マイページ</p>
+        </div>
+      </div>
+      <div class="kid-chip" id="kid-name">おみせ</div>
+    </header>
+
+    <!-- ▼ 新規追加：若旦那/若女将 ダッシュボード -->
+    <div class="kids-header">
+      <h1>若旦那 / 若女将 ダッシュボード</h1>
+      <div id="currentTitle" class="title-pill">称号：まだこれから！</div>
+    </div>
+
+    <!-- ▼ 新規追加：こども実績 -->
+    <section class="card kids-stats">
+      <div class="card-header">
+        <div>
+          <div class="card-title">
+            <span class="emoji">📈</span>
+            <span>きょうまでの こども実績</span>
+          </div>
+          <div class="card-sub">これまでの がんばり</div>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="label">売れた回数</div>
+          <div class="value" id="statTotalOrders">0 回</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">こども お客さん</div>
+          <div class="value" id="statChildCustomers">0 人</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">海外のお客さん</div>
+          <div class="value" id="statInbound">0 人</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">データ名人メーター</div>
+          <div class="value">
+            <span id="statDataScoreValue">0</span> %
+          </div>
+          <div class="meter">
+            <div id="dataScoreBar" class="meter-bar"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ▼ 新規追加：バッジ -->
+    <section class="card kids-badges">
+      <div class="card-header">
+        <div>
+          <div class="card-title">
+            <span class="emoji">🏅</span>
+            <span>てにいれた バッジ</span>
+          </div>
+          <div class="card-sub">いままで ゲット したもの</div>
+        </div>
+      </div>
+      <div id="badgeList" class="badge-list">
+        <!-- JSでバッジを追加 -->
+      </div>
+      <p class="hint">バッジは あなた の がんばり の あかし です。もっと ふやそう！</p>
+    </section>
+
+    <!-- ▼ 新規追加：称号 -->
+    <section class="card kids-titles">
+      <div class="card-header">
+        <div>
+          <div class="card-title">
+            <span class="emoji">👑</span>
+            <span>称号</span>
+          </div>
+          <div class="card-sub">ゲット した 称号たち</div>
+        </div>
+      </div>
+      <div id="titleList" class="title-list">
+        <!-- JSで称号を追加 -->
+      </div>
+      <p class="hint">称号は あなた の レベル を あらわします。もっと すごい 称号を めざそう！</p>
+    </section>
+
+    <!-- ▼ メインカード：きょうの売上 -->
+    <section id="sec-main" class="card" aria-live="polite">
+      <div class="card-header">
+        <div>
+          <div class="card-title">
+            <span class="emoji">💴</span>
+            <span>きょうの うりあげ</span>
+          </div>
+          <div class="card-sub" id="today-label">きょう の うりあげ</div>
+        </div>
+        <div class="pill">リアルタイム</div>
+      </div>
+
+      <div>
+        <div class="big-num" id="total-sales">¥—</div>
+        <div class="label" id="total-detail">— 件 / へいきん ¥—</div>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="kpi-label">きょう うれた かず</div>
+          <div class="kpi-value" id="kpi-count">— 件</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">いちばん ねだんが 高い もの</div>
+          <div class="kpi-value" id="kpi-max">¥—</div>
+        </div>
+      </div>
+
+      <p class="hint" id="main-hint">
+        きょうの 売上（すべての 決済）を かんたんに 見られる 画面です。
+      </p>
+    </section>
+
+    <!-- ▼ がんばりメーター（データ精度） -->
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">
+            <span class="emoji">📊</span>
+            <span>がんばり メーター</span>
+          </div>
+          <div class="card-sub">お客さんじょうほう の 入力ど</div>
+        </div>
+      </div>
+
+      <div class="meter-wrap">
+        <div class="meter-bar">
+          <div class="meter-fill" id="meter-fill"></div>
+        </div>
+        <div class="meter-text">
+          きょうの がんばり：<span id="meter-text">—%</span>
+        </div>
+      </div>
+
+      <p class="hint">
+        「日本のひと / 外国のひと」「年齢」 などを 入れてくれると、<br>
+        ふくろう博士と 三精霊が、もっと じょうずな 売りかたを 教えてくれます。
+      </p>
+
+      <div class="footer-helpers">
+        <span>いっしょに おてつだい：</span>
+        <span class="helper-badge">🌸 キモニャ（みつける係）</span>
+        <span class="helper-badge">🥷 ニンシャ（かち を まもる係）</span>
+        <span class="helper-badge">🐱 ネコマル（おうえん係）</span>
+      </div>
+    </section>
+
+    <!-- ▼ きょうのミッション -->
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">
+            <span class="emoji">🎯</span>
+            <span>きょうの ミッション</span>
+          </div>
+          <div class="card-sub">三つ できたら 100点！</div>
+        </div>
+      </div>
+
+      <ul class="mission-list" id="mission-list">
+        <li class="mission-item">
+          <div class="mission-check" data-mission="1">✓</div>
+          <div>
+            <div class="mission-text-main">お客さんに「いらっしゃいませ！」と いえた</div>
+            <div class="mission-text-sub">さいしょの ひとことを 元気に いってみよう</div>
+          </div>
+        </li>
+        <li class="mission-item">
+          <div class="mission-check" data-mission="2">✓</div>
+          <div>
+            <div class="mission-text-main">値下げを ねがわれたら 「ごめんなさい」と 伝えられた</div>
+            <div class="mission-text-sub">ねぎり を ことわる れんしゅう（現金トラブル よけ）</div>
+          </div>
+        </li>
+        <li class="mission-item">
+          <div class="mission-check" data-mission="3">✓</div>
+          <div>
+            <div class="mission-text-main">1回 QR / カード で うってみた</div>
+            <div class="mission-text-sub">現金が なくても 買えるように してあげよう</div>
+          </div>
+        </li>
+      </ul>
+
+      <p class="hint" id="mission-hint">
+        ミッションは このスマホだけで 記録されます。<br>
+        なくなっても 大丈夫なので、気楽に タップして OK です。
+      </p>
+    </section>
+
+    <!-- ▼ さいきん うれた もの -->
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">
+            <span class="emoji">🛍️</span>
+            <span>さいきん うれた もの</span>
+          </div>
+          <div class="card-sub">3件だけ ひょうじ</div>
+        </div>
+      </div>
+
+      <ul class="list" id="recent-list">
+        <!-- JSで うめこみ -->
+      </ul>
+
+      <p class="hint" id="recent-hint">
+        何が いちばん うれているか を 見てみよう。<br>
+        たくさん うれている もの を 手前に ならべてみる のも コツです。
+      </p>
+    </section>
+
+    <!-- ▼ サブスク以外のブロック表示 -->
+    <section class="card" id="block-message" style="display:none;">
+      <div class="blocked">
+        <h1>この画面は「キッズプラン」専用です</h1>
+        <p>
+          若旦那・若女将マイページは、EDO ICHIBA キッズプラン ご契約中の<br>
+          出店者さま向けの 画面です。
+        </p>
+        <p>
+          プランの くわしい内容や お申し込みは、<br>
+          EDO ICHIBA / FleaPay 運営まで お問い合わせください。
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function(){
+      const $ = s => document.querySelector(s);
+      const $$ = s => document.querySelectorAll(s);
+
+      const params   = new URLSearchParams(location.search);
+      const sellerId = params.get("s") || "";
+
+      const kidNameEl    = $("#kid-name");
+      const todayLabelEl = $("#today-label");
+      const totalSalesEl = $("#total-sales");
+      const totalDetailEl= $("#total-detail");
+      const kpiCountEl   = $("#kpi-count");
+      const kpiMaxEl     = $("#kpi-max");
+      const mainHintEl   = $("#main-hint");
+
+      const meterFillEl  = $("#meter-fill");
+      const meterTextEl  = $("#meter-text");
+
+      const missionListEl= $("#mission-list");
+      const recentListEl = $("#recent-list");
+      const recentHintEl = $("#recent-hint");
+
+      const mainCardEl   = $("#sec-main");
+      const blockEl      = $("#block-message");
+
+      if (!sellerId) {
+        if (mainHintEl) {
+          mainHintEl.textContent = "URLのさいごに ?s=出店者ID を つけてください。";
+        }
+        return;
+      }
+
+      function formatYen(n){
+        if (!Number.isFinite(n)) return "¥—";
+        return "¥" + n.toLocaleString("ja-JP");
+      }
+
+      function formatDateJp(date){
+        const w = ["日","月","火","水","木","金","土"][date.getDay()];
+        return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日（${w}）`;
+      }
+
+      // きょう の ラベル
+      const nowJst = new Date(new Date().toLocaleString("en-US",{ timeZone:"Asia/Tokyo" }));
+      if (todayLabelEl) {
+        todayLabelEl.textContent = formatDateJp(nowJst) + " の うりあげ";
+      }
+
+      // ====== 新規追加：こども実績サマリーを読み込む ======
+      async function loadKidsSummary() {
+        try {
+          const res = await fetch(`/api/seller/kids-summary?s=${encodeURIComponent(sellerId)}`);
+          if (!res.ok) {
+            console.warn("kids-summary API error:", res.status);
+            return;
+          }
+          const data = await res.json();
+
+          const stats = data.stats || {};
+          const badges = data.badges || [];
+          const titles = data.titles || [];
+
+          // 数字系
+          $("#statTotalOrders").textContent = (stats.totalOrders || 0) + " 回";
+          $("#statChildCustomers").textContent = (stats.childCustomerCount || 0) + " 人";
+          $("#statInbound").textContent = (stats.inboundCount || 0) + " 人";
+
+          const ds = stats.dataScore || 0;
+          $("#statDataScoreValue").textContent = ds;
+          $("#dataScoreBar").style.width = Math.min(ds, 100) + "%";
+
+          // 称号（いちばん新しいものを表示）
+          const titleEl = $("#currentTitle");
+          if (titles.length > 0) {
+            // first_earned_at でソート（新しい順）
+            titles.sort((a, b) => {
+              const ta = a.first_earned_at ? new Date(a.first_earned_at).getTime() : 0;
+              const tb = b.first_earned_at ? new Date(b.first_earned_at).getTime() : 0;
+              return tb - ta;
+            });
+            titleEl.textContent = "称号：" + titles[0].label;
+          } else {
+            titleEl.textContent = "称号：まだこれから！";
+          }
+
+          // バッジ一覧
+          const badgeList = $("#badgeList");
+          badgeList.innerHTML = "";
+          if (badges.length === 0) {
+            badgeList.innerHTML = '<div class="hint">まだ バッジが ありません。がんばって ゲット しよう！</div>';
+          } else {
+            badges.forEach((b) => {
+              const div = document.createElement("div");
+              div.className = "badge-chip";
+              div.textContent = b.label;
+              badgeList.appendChild(div);
+            });
+          }
+
+          // 称号一覧
+          const titleList = $("#titleList");
+          titleList.innerHTML = "";
+          if (titles.length === 0) {
+            titleList.innerHTML = '<div class="hint">まだ 称号が ありません。がんばって ゲット しよう！</div>';
+          } else {
+            titles.forEach((t) => {
+              const div = document.createElement("div");
+              div.className = "title-chip";
+              div.textContent = t.label;
+              titleList.appendChild(div);
+            });
+          }
+        } catch (e) {
+          console.error("loadKidsSummary error", e);
+        }
+      }
+
+      async function loadSummary(){
+        try{
+          const res = await fetch(`/api/seller/summary?s=${encodeURIComponent(sellerId)}`);
+          const data = await res.json();
+
+          if (!res.ok){
+            console.error("summary error", data);
+            if (mainHintEl) mainHintEl.textContent = "データの よみこみ に しっぱいしました。";
+            return;
+          }
+
+          // サブスク制御：kids以外はブロック
+          if (
+            data &&
+            (data.isSubscribed === false ||
+             !data.planType ||
+             data.planType !== "kids")
+          ){
+            if (mainCardEl) mainCardEl.style.display = "none";
+            if (blockEl)    blockEl.style.display    = "block";
+            return;
+          }
+
+          // 店名表示
+          const disp = data.displayName || data.sellerId || "おみせ";
+          if (kidNameEl) kidNameEl.textContent = disp + " の 若旦那 / 若女将";
+
+          // 売上KPI
+          const total = Number(data.salesToday || 0);
+          const count = Number(data.countToday || 0);
+          const avg   = Number(data.avgToday   || 0);
+
+          if (totalSalesEl) totalSalesEl.textContent = formatYen(total);
+          if (totalDetailEl) {
+            totalDetailEl.textContent =
+              `${count}件 / へいきん ${formatYen(avg || 0)}`;
+          }
+          if (kpiCountEl) kpiCountEl.textContent = `${count} 件`;
+
+          // いちばん高い金額（今日の取引からざっくり）
+          let maxAmount = 0;
+          if (Array.isArray(data.recent)) {
+            data.recent.forEach(tx => {
+              const amt = Number(tx.amount || tx.net_amount || 0);
+              if (amt > maxAmount) maxAmount = amt;
+            });
+          }
+          if (kpiMaxEl) kpiMaxEl.textContent = maxAmount ? formatYen(maxAmount) : "¥—";
+
+          if (count === 0 && mainHintEl){
+            mainHintEl.textContent = "きょう の うりあげ は まだ 0 件です。さいしょの 1件 を 目指そう！";
+          }
+
+          // がんばりメーター（dataScoreをそのまま%表示）
+          const score = typeof data.dataScore === "number" ? data.dataScore : null;
+          if (score != null) {
+            const clamped = Math.max(0, Math.min(100, score));
+            if (meterFillEl) meterFillEl.style.width = clamped + "%";
+            if (meterTextEl) meterTextEl.textContent = clamped + "%";
+          } else {
+            if (meterTextEl) meterTextEl.textContent = "—%";
+          }
+
+          // さいきんの 取引3件
+          if (recentListEl){
+            recentListEl.innerHTML = "";
+            const list = (data.recent || []).slice(0,3);
+            if (!list.length){
+              const li = document.createElement("li");
+              li.className = "tx-item";
+              li.innerHTML = `
+                <div class="tx-main">
+                  <div class="tx-title">まだ うれた もの が ありません</div>
+                  <div class="tx-sub">はじめて の 1件が ここに ひょうじされます。</div>
+                </div>
+              `;
+              recentListEl.appendChild(li);
+            } else {
+              list.forEach(tx => {
+                const li = document.createElement("li");
+                li.className = "tx-item";
+
+                const summary = (tx.summary || "しょうひん").split("\n")[0];
+                const amt = Number(tx.amount || tx.net_amount || 0);
+
+                li.innerHTML = `
+                  <div class="tx-main">
+                    <div class="tx-title">${summary}</div>
+                    <div class="tx-sub">
+                      ${amt ? "この とき の おかいもの" : "金額データ なし"}
+                    </div>
+                  </div>
+                  <div class="tx-amt">${formatYen(amt || 0)}</div>
+                `;
+                recentListEl.appendChild(li);
+              });
+            }
+          }
+
+          if (recentHintEl){
+            recentHintEl.textContent = "さいきん の 3件 を ひょうじしています。なにが 人気か 見てみよう。";
+          }
+
+        } catch(e){
+          console.error("loadSummary error", e);
+          if (mainHintEl) mainHintEl.textContent = "通信エラーが 発生しました。ネットワークを かくにん してください。";
+        }
+      }
+
+      // ミッションのチェック（ローカルだけ）
+      function initMissions(){
+        if (!missionListEl) return;
+        const keyPrefix = `kids-mission-${sellerId}-`;
+
+        missionListEl.querySelectorAll(".mission-item").forEach(item => {
+          const check = item.querySelector(".mission-check");
+          if (!check) return;
+          const id = check.getAttribute("data-mission");
+          const key = keyPrefix + id;
+
+          const saved = localStorage.getItem(key);
+          if (saved === "done") {
+            item.classList.add("done");
+          }
+
+          check.addEventListener("click", () => {
+            const done = item.classList.toggle("done");
+            localStorage.setItem(key, done ? "done" : "todo");
+          });
+        });
+      }
+
+      initMissions();
+      loadSummary();
+      loadKidsSummary(); // 新規追加：こども実績を読み込む
+    })();
+  </script>
+</body>
+</html>
