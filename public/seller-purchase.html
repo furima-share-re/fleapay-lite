@@ -195,6 +195,11 @@
       }
     }
     .owl-character{
+    .kimonya-character{
+      font-size:6rem;
+      animation:bounce 2s ease-in-out infinite;
+      z-index:1;
+    }
       font-size:6rem;
       animation:bounce 2s ease-in-out infinite;
       z-index:1;
@@ -719,7 +724,7 @@
     <div class="welcome-container">
       <div class="character-animation">
         <div class="sakura-particles"></div>
-        <div class="owl-character">🦉</div>
+        <div class="kimonya-character" aria-label="キモニャ">🌸</div>
       </div>
       
       <h1 class="welcome-title">
@@ -728,7 +733,7 @@
       </h1>
       
       <p class="welcome-message">
-        ふくろう博士が<br/>
+        キモニャ店長が<br/>
         おてつだい するよ
       </p>
       
@@ -825,7 +830,10 @@
   <!-- ========== Step2: AI解析中 ========== -->
   <div id="step2" class="step">
     <div class="loader"></div>
-    <h2><span class="emoji">🤖</span> AI が かんがえています…</h2>
+    <h2><span class="emoji">🥷</span> ニンシャが かんがえています…</h2>
+    <p style="font-size:0.9rem;color:#64748b;margin-top:0.25rem;">
+      （AI と いっしょに、ものの かち を チェックちゅう）
+    </p>
   </div>
   
   <!-- ========== Step3: 商品情報＆価格入力 ========== -->
@@ -890,7 +898,7 @@
     <h2><span class="emoji">💳</span> しはらい ほうほう</h2>
     <div class="payment-method-group">
       <button type="button" class="pay-btn selected" data-method="cashless">
-        💳 QR / カード で はらう
+        💳 QR / カード（ネコマルおすすめ）
       </button>
       <button type="button" class="pay-btn" data-method="cash">
         💴 現金で もらった
@@ -898,7 +906,7 @@
     </div>
     <!-- ★追加：ダッシュボード成長ヒント -->
     <p style="font-size:0.8rem;color:#64748b;margin-top:-0.5rem;margin-bottom:1.5rem;">
-      💡「QR / カード」を えらぶと、<br>
+      💡「QR / カード（ネコマルおすすめ）」を えらぶと、<br>
       若旦那・若女将ダッシュボードの
       <strong>キャッシュレスバッジ</strong> に ちかづきます。
     </p>
@@ -910,6 +918,9 @@
   <!-- ========== Step5: 登録完了＆QRコード表示 ========== -->
   <div id="step5" class="step">
     <h2><span class="emoji">✅</span> とうろく かんりょう！</h2>
+    <p style="margin-top:0.25rem;">
+      🌸キモニャ・🥷ニンシャ・🐱ネコマルから「ありがとう！」
+    </p>
     <p>このQRコードを おきゃくさんに みせてね</p>
     
     <div class="qr-container">
@@ -924,6 +935,7 @@
         ここを 入れてくれると、
         若旦那・若女将ダッシュボードの
         <strong>「データ名人メーター」</strong> が 上がります。<br>
+        うしろでは、影のニンシャ隊が こっそり おてつだいしてくれます。<br>
         ※なまえ や れんらくさき は ひつよう ありません。
       </p>
 
