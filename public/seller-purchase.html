@@ -5,8 +5,14 @@
        FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
        ★フリマ実態に合わせて簡略化版
        
-       【パッチ適用済み v11 - サブスクチェック追加 - 初期値をキャッシュレスに確実に設定】
+       【パッチ適用済み v12 - ダッシュボード連動UIヒント追加】
        ★変更点★
+       1. Step4：支払い方法にキャッシュレスバッジヒント追加
+       2. Step5：購入者属性に「データ名人メーター」説明追加
+       3. 保存ボタンを「メーターUP」表現に変更
+       4. 現金決済時にキャッシュレスバッジへのヒント追加
+       
+       【v11の変更点】
        1. サブスクチェック機能追加（プロ/キッズプラン専用）
        2. sellerId未設定時のブロック処理追加
        3. 非サブスク会員へのメッセージ表示
@@ -890,6 +896,12 @@
         💴 現金で もらった
       </button>
     </div>
+    <!-- ★追加：ダッシュボード成長ヒント -->
+    <p style="font-size:0.8rem;color:#64748b;margin-top:-0.5rem;margin-bottom:1.5rem;">
+      💡「QR / カード」を えらぶと、<br>
+      若旦那・若女将ダッシュボードの
+      <strong>キャッシュレスバッジ</strong> に ちかづきます。
+    </p>
     <!-- ここまで追加 -->
 
     <button class="btn" id="registerBtn" disabled>✅ とうろく する</button>
@@ -909,6 +921,9 @@
       <h2><span class="emoji">🙋‍♀️</span> かってくれた ひと</h2>
       <p class="buyer-hint">
         おきゃくさんの だいたいの じょうほうを えらんでね。<br>
+        ここを 入れてくれると、
+        若旦那・若女将ダッシュボードの
+        <strong>「データ名人メーター」</strong> が 上がります。<br>
         ※なまえ や れんらくさき は ひつよう ありません。
       </p>
 
@@ -943,7 +958,7 @@
       </div>
 
       <button class="btn btn-secondary" id="saveBuyerAttrBtn" disabled>
-        💾 おきゃくさんじょうほう を ほぞん
+        💾 じょうほうを ほぞんして メーターUP
       </button>
       <p class="buyer-hint" id="buyerAttrStatus"></p>
     </div>
@@ -1461,7 +1476,11 @@
       if (paymentMethod === "cash") {
         // 現金：QRを隠してメッセージだけ
         if (qrContainer) qrContainer.style.display = 'none';
-        if (msgP) msgP.textContent = '💴 現金で うけとりました。ありがとうございました！';
+        if (msgP) {
+          msgP.textContent =
+            '💴 現金で うけとりました。ありがとうございました！\n' +
+            '※キャッシュレスのバッジを ねらうときは、QR / カード も ためしてみてね。';
+        }
         debugLog('🪙 現金決済として登録（QRなし）');
       } else {
         // キャッシュレス：従来通りQR表示
@@ -1556,14 +1575,14 @@
         const data = await res.json();
         debugLog(`✅ Buyer attributes saved: ${JSON.stringify(data)}`);
         
-        statusP.textContent = '✅ ほぞん かんりょう！';
-        saveBtn.textContent = '💾 ほぞん かんりょう';
+        statusP.textContent = '✅ ほぞん かんりょう！ダッシュボードのメーターが すこし上がりました。';
+        saveBtn.textContent = '💾 メーターUP ずみ';
         
       } catch(err) {
         debugLog(`❌ Buyer attributes save failed: ${err.message}`);
         statusP.textContent = '⚠️ ほぞん しっぱい しました';
         saveBtn.disabled = false;
-        saveBtn.textContent = '💾 おきゃくさんじょうほう を ほぞん';
+        saveBtn.textContent = '💾 じょうほうを ほぞんして メーターUP';
       }
     });
   }
