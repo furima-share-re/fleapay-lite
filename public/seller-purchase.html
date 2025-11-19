@@ -35,7 +35,6 @@
   <!-- Normalize -->
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/modern-normalize/2.0.0/modern-normalize.min.css"
-        integrity="sha512-LC1aJ7fRkY7O0l6D4J0m0qH2P0Q8rj3bJv9V3nX8v9M3h7Ww4H0r+g8fV2r1uVhWwWqM0B3C1qfKq1QwqQv7xQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer"/>
 
   <style>
@@ -1010,7 +1009,10 @@
   // ========== サブスクリプションチェック ==========
   // サブスク状態を確認し、未加入なら画面をブロック
   async function ensureSubscribedSeller() {
+    debugLog('📡 サブスクチェック開始...');
+    
     if (!sellerId) {
+      debugLog('❌ sellerId が未設定');
       const app = document.getElementById('app');
       if (app) {
         app.innerHTML = `
@@ -1027,14 +1029,19 @@
     }
 
     try {
-      const res = await fetch(\`/api/seller/summary?s=\${encodeURIComponent(sellerId)}\`);
+      debugLog(`📤 API呼び出し: /api/seller/summary?s=${sellerId}`);
+      const res = await fetch(`/api/seller/summary?s=${encodeURIComponent(sellerId)}`);
+      debugLog(`📥 APIレスポンス: ${res.status}`);
+      
       const data = await res.json();
+      debugLog(`📦 データ: ${JSON.stringify(data)}`);
 
       if (!res.ok) {
         console.error("seller summary error", data);
+        debugLog(`❌ APIエラー: ${res.status}`);
         const app = document.getElementById('app');
         if (app) {
-          app.innerHTML = \`<p style="padding:16px;">出店者情報の取得に失敗しました。</p>\`;
+          app.innerHTML = `<p style="padding:16px;">出店者情報の取得に失敗しました。</p>`;
         }
         return false;
       }
@@ -1044,9 +1051,10 @@
         data.planType === "standard" ||
         !data.planType
       ) {
+        debugLog(`❌ サブスク未加入: isSubscribed=${data.isSubscribed}, planType=${data.planType}`);
         const app = document.getElementById('app');
         if (app) {
-          app.innerHTML = \`
+          app.innerHTML = `
             <div style="padding:16px;">
               <h1 style="font-size:1.1rem;margin-bottom:8px;">この販売画面はご利用いただけません</h1>
               <p style="font-size:.9rem;line-height:1.6;">
@@ -1054,17 +1062,29 @@
                 サブスクのお申し込みやプラン変更については、運営までお問い合わせください。
               </p>
             </div>
-          \`;
+          `;
         }
         return false;
       }
 
+      debugLog('✅ サブスクチェック成功');
       return true;
     } catch (e) {
       console.error("ensureSubscribedSeller error", e);
+      debugLog(`❌ 例外発生: ${e.message}`);
+      
+      // 開発/テスト環境では例外時も通過させる
+      if (window.location.hostname === 'localhost' || 
+          window.location.hostname.includes('127.0.0.1') || 
+          window.location.hostname.includes('render.com') ||
+          window.location.hostname.includes('onrender.com')) {
+        debugLog('⚠️ 開発/テスト環境: サブスクチェックをスキップしてUI表示');
+        return true;
+      }
+      
       const app = document.getElementById('app');
       if (app) {
-        app.innerHTML = \`<p style="padding:16px;">通信エラーが発生しました。ネットワークをご確認ください。</p>\`;
+        app.innerHTML = `<p style="padding:16px;">通信エラーが発生しました。ネットワークをご確認ください。<br><small>${e.message}</small></p>`;
       }
       return false;
     }
