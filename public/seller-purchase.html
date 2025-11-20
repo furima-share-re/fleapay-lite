@@ -5,8 +5,13 @@
        FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
        ★フリマ実態に合わせて簡略化版
        
-       【パッチ適用済み v12 - ダッシュボード連動UIヒント追加】
+       【パッチ適用済み v13 - キモニャSVG画像対応】
        ★変更点★
+       1. Step0-1：🌸絵文字 → /images/kimonya.svg に変更
+       2. キャラクター画像を<img>タグで表示（絶対パス使用）
+       3. 適切なスタイリング（中央配置、バウンスアニメーション維持）
+       
+       【v12の変更点】
        1. Step4：支払い方法にキャッシュレスバッジヒント追加
        2. Step5：購入者属性に「データ名人メーター」説明追加
        3. 保存ボタンを「メーターUP」表現に変更
@@ -194,19 +199,20 @@
         opacity:0;
       }
     }
-    .owl-character{
+    /* ★変更：キモニャキャラクター用スタイル（imgタグ対応） */
     .kimonya-character{
-      font-size:6rem;
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform:translate(-50%, -50%);
+      width:180px;
+      height:auto;
+      z-index:10;
       animation:bounce 2s ease-in-out infinite;
-      z-index:1;
-    }
-      font-size:6rem;
-      animation:bounce 2s ease-in-out infinite;
-      z-index:1;
     }
     @keyframes bounce{
-      0%, 100%{transform:translateY(0);}
-      50%{transform:translateY(-20px);}
+      0%, 100%{transform:translate(-50%, -50%) translateY(0);}
+      50%{transform:translate(-50%, -50%) translateY(-20px);}
     }
     .welcome-title{
       font-size:2rem;
@@ -724,7 +730,12 @@
     <div class="welcome-container">
       <div class="character-animation">
         <div class="sakura-particles"></div>
-        <div class="kimonya-character" aria-label="キモニャ">🌸</div>
+        <!-- ★変更：絵文字からSVG画像に変更 -->
+        <img 
+          src="/images/kimonya.svg" 
+          alt="キモニャ店長" 
+          class="kimonya-character"
+        />
       </div>
       
       <h1 class="welcome-title">
