@@ -232,7 +232,9 @@ export function registerPaymentRoutes(app, deps) {
         isSubscribed = (planType === "pro" || planType === "kids");
       }
 
-      // ① 売上KPI（ここは従来どおり Stripe だけでOK）
+      // ① 売上KPI（JST基準で正しく集計）
+      const { todayStart, tomorrowStart } = jstDayBounds();
+
       const kpiToday = await pool.query(
         `
         SELECT
@@ -242,9 +244,10 @@ export function registerPaymentRoutes(app, deps) {
           COALESCE(SUM(amount_fee),   0)     AS fee
         FROM stripe_payments
         WHERE seller_id = $1
-          AND created_at::date = CURRENT_DATE
+          AND created_at >= $2
+          AND created_at <  $3
         `,
-        [sellerId]
+        [sellerId, todayStart, tomorrowStart]
       );
 
       const todayGross = Number(kpiToday.rows[0].gross || 0);
