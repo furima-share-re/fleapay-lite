@@ -5,8 +5,13 @@
        FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
        ★フリマ実態に合わせて簡略化版
        
-       【パッチ適用済み v13 - キモニャSVG画像対応】
+       【パッチ適用済み v14 - パターンA問題修正】
        ★変更点★
+       1. QR URL生成ロジック：checkoutUrl最優先、フォールバック時は?order=使用
+       2. パラメータ統一：?o= → ?order=（checkout.html側との互換性）
+       3. skipボタンバグ修正：QRコンテナの表示制御追加
+       
+       【v13の変更点】
        1. Step0-1：🌸絵文字 → /images/kimonya.svg に変更
        2. キャラクター画像を<img>タグで表示（絶対パス使用）
        3. 適切なスタイリング（中央配置、バウンスアニメーション維持）
@@ -1168,7 +1173,15 @@
     document.getElementById('skipToQRBtn')?.addEventListener('click', () => {
       const baseURL = window.location.origin;
       const qrURL = `${baseURL}/checkout.html?s=${sellerId}`;
-      window.location.href = qrURL;
+      
+      // ★v14修正：QRコンテナを表示
+      const qrContainer = document.querySelector('.qr-container');
+      if (qrContainer) qrContainer.style.display = 'block';
+      
+      showStep('step5');
+      displayQR(qrURL);
+      setupBuyerAttrButtons();
+      
       debugLog('User clicked: QRをさきにみせる');
     });
   }
@@ -1479,11 +1492,15 @@
       const baseURL = window.location.origin;
       let qrURL;
       
-      if(data.qrURL){
+      // ★v14修正：checkoutUrlを最優先、フォールバック時は?order=を使用
+      if(data.checkoutUrl){
+        qrURL = data.checkoutUrl;
+        debugLog(`🔗 Using server-provided checkoutUrl: ${qrURL}`);
+      } else if(data.qrURL){
         qrURL = data.qrURL;
-        debugLog(`🔗 Using server-provided qrURL: ${qrURL}`);
+        debugLog(`🔗 Using server-provided qrURL (fallback): ${qrURL}`);
       } else if(data.orderId){
-        qrURL = `${baseURL}/checkout.html?o=${data.orderId}&s=${sellerId}`;
+        qrURL = `${baseURL}/checkout.html?s=${sellerId}&order=${data.orderId}`;
         debugLog(`🔗 Using orderId-based qrURL: ${qrURL}`);
       } else {
         qrURL = `${baseURL}/checkout.html?s=${sellerId}`;
