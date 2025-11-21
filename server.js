@@ -503,8 +503,34 @@ app.post("/api/orders/metadata", async (req, res) => {
   }
 });
 
+// ====== 🆕 商品メモ(summary) 更新API ======
+app.post("/api/orders/update-summary", async (req, res) => {
+  try {
+    const { orderId, summary } = req.body || {};
+
+    if (!orderId) {
+      return res.status(400).json({ error: "order_id_required" });
+    }
+
+    await pool.query(
+      `update orders
+         set summary   = $2,
+             updated_at = now()
+       where id = $1`,
+      [orderId, summary || null]
+    );
+
+    audit("order_summary_updated", { orderId });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("/api/orders/update-summary error", e);
+    res.status(500).json(sanitizeError(e));
+  }
+});
+
 // ====== 🆕 出店者用: 注文1件の詳細（写真＋属性）取得（orders基準に修正） ======
-app.get("/api/seller/order-detail", async (req, res) => {
+// ※ payments.js 側の /api/seller/order-detail と競合しないようにパス名を変更
+app.get("/api/seller/order-detail-full", async (req, res) => {
   const sellerId = req.query.s;
   const orderId  = req.query.orderId;
 
