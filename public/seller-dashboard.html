@@ -801,31 +801,34 @@
 
       // 購入者属性ラベルを生成する関数
       function formatBuyerLabel(tx){
-        const buyer = tx.buyer;
-        
-        // 🟦 (C) 現金で属性未入力の場合
-        if (tx.is_cash && !tx.raw_category) {
+        // 現金＋カテゴリ未設定の場合の特別表示
+        if ((tx.isCash || tx.is_cash) && !(tx.rawCategory || tx.raw_category)) {
           return "（現金：追加情報未入力）";
         }
-        
-        if (!buyer) return "購入者情報：未入力";
+
+        const customerType = tx.customerType || tx.customer_type || tx.buyer?.customer_type || "";
+        const gender       = tx.gender       || tx.buyer?.gender       || "";
+        const ageBand      = tx.ageBand      || tx.age_band || tx.buyer?.age_band || "";
+
+        if (!customerType && !gender && !ageBand) {
+          return "購入者情報：未入力";
+        }
 
         const typeLabel =
-          buyer.customer_type === "inbound" ? "外国のひと" :
-          buyer.customer_type === "domestic" ? "日本のひと" :
-          "";
-        const genderLabel =
-          buyer.gender === "male" ? "男性" :
-          buyer.gender === "female" ? "女性" :
-          "性別 不明";
-        const ageLabel =
-          buyer.age_band === "child" ? "こども" :
-          buyer.age_band === "age_16_29" ? "16〜29" :
-          buyer.age_band === "age_30_59" ? "30〜59" :
-          buyer.age_band === "age_60_plus" ? "60+" :
-          "年齢 不明";
+          customerType === "inbound"  ? "外国のひと" :
+          customerType === "domestic" ? "日本のひと" : "";
 
-        if (typeLabel){
+        const genderLabel =
+          gender === "male"   ? "男性" :
+          gender === "female" ? "女性" : "性別 不明";
+
+        const ageLabel =
+          ageBand === "child"      ? "こども" :
+          ageBand === "age_16_29"  ? "16〜29" :
+          ageBand === "age_30_59"  ? "30〜59" :
+          ageBand === "age_60_plus"? "60+"   : "年齢 不明";
+
+        if (typeLabel) {
           return `${typeLabel} / ${genderLabel} / ${ageLabel}`;
         }
         return "購入者情報：未入力";
@@ -839,12 +842,21 @@
         // ★ 必須: orderIdをdata属性に保存
         li.dataset.orderId = tx.orderId || "";
         
-        const created = tx.created ? new Date(tx.created * 1000) : null;
+        // created(秒) or createdAt(ISO文字列) のどちらでもOKにする
+        let created = null;
+        if (typeof tx.created === "number") {
+          created = new Date(tx.created * 1000);
+        } else if (tx.createdAt) {
+          created = new Date(tx.createdAt);
+        }
+
         const timeStr = created ? formatTime(created) : "";
         const dateStr = created
           ? `${created.getFullYear()}-${String(created.getMonth()+1).padStart(2,"0")}-${String(created.getDate()).padStart(2,"0")}`
           : "";
-        const summary = (tx.summary || "商品のおかいもの").split("\n")[0];
+
+        // summary / memo どちらでも
+        const summary = (tx.summary || tx.memo || "商品のおかいもの").split("\n")[0];
 
         // 🟦 (B) 未分類フォルダ表示
         const isUncategorized = tx.is_cash && !tx.raw_category;
@@ -902,12 +914,18 @@
           }
 
           // サブスク未加入（standard または isSubscribed=false）の場合はダッシュボードをブロック
+          // planType が "pro" または "kids" 以外の場合にブロック
           if (
             data &&
-            (data.isSubscribed === false ||
-             data.planType === "standard" ||
-             !data.planType)
+            data.planType &&
+            data.planType === "standard"
           ) {
+            blockForNonSubscriber();
+            return;
+          }
+          
+          // または isSubscribed が明示的に false の場合
+          if (data && data.isSubscribed === false) {
             blockForNonSubscriber();
             return;
           }
@@ -951,11 +969,27 @@
           const nowJst = new Date(new Date().toLocaleString("en-US",{ timeZone:"Asia/Tokyo" }));
           if (todayLabelEl) todayLabelEl.textContent = formatDateJp(nowJst) + " の うりあげ";
 
-          // KPI（純売上）
-          const total = Number(data.salesToday || 0);
-          const count = Number(data.countToday || 0);
-          const avg   = Number(data.avgToday || 0);
-          if (kpiTotalEl) kpiTotalEl.textContent = formatYen(total);
+          // KPI（純売上）: /api/seller/summary の新形式＋互換フィールド両対応
+          const todayNet =
+            (data.salesToday && typeof data.salesToday.net === "number")
+              ? data.salesToday.net
+              : (typeof data.salesTodayNet === "number" ? data.salesTodayNet : 0);
+
+          const count =
+            (typeof data.countToday === "number")
+              ? data.countToday
+              : (data.salesToday && typeof data.salesToday.count === "number"
+                  ? data.salesToday.count
+                  : 0);
+
+          const avg =
+            (typeof data.avgToday === "number")
+              ? data.avgToday
+              : (data.salesToday && typeof data.salesToday.avgNet === "number"
+                  ? data.salesToday.avgNet
+                  : (count > 0 ? Math.round(todayNet / count) : 0));
+
+          if (kpiTotalEl) kpiTotalEl.textContent = formatYen(todayNet);
           if (kpiCountEl) kpiCountEl.textContent = `${count}件`;
           if (kpiAvgEl)   kpiAvgEl.textContent   = formatYen(avg || 0);
 

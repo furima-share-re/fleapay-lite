@@ -774,6 +774,13 @@
         return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日(${w})`;
       }
 
+      // ▼ 修正②: 時刻フォーマット関数を追加
+      function formatTime(date){
+        const hh = String(date.getHours()).padStart(2,"0");
+        const mm = String(date.getMinutes()).padStart(2,"0");
+        return `${hh}:${mm}`;
+      }
+
       // きょう の ラベル
       const nowJst = new Date(new Date().toLocaleString("en-US",{ timeZone:"Asia/Tokyo" }));
       if (todayLabelEl) {
@@ -876,12 +883,27 @@
           const disp = data.displayName || data.sellerId || "おみせ";
           if (kidNameEl) kidNameEl.textContent = disp + " の 若旦那 / 若女将";
 
-          // 売上KPI
-          const total = Number(data.salesToday || 0);
-          const count = Number(data.countToday || 0);
-          const avg   = Number(data.avgToday   || 0);
+          // ▼ 修正①: 売上KPI（/api/seller/summary の新形式＋互換フィールド両対応）
+          const todayNet =
+            (data.salesToday && typeof data.salesToday.net === "number")
+              ? data.salesToday.net
+              : (typeof data.salesTodayNet === "number" ? data.salesTodayNet : 0);
 
-          if (totalSalesEl) totalSalesEl.textContent = formatYen(total);
+          const count =
+            (typeof data.countToday === "number")
+              ? data.countToday
+              : (data.salesToday && typeof data.salesToday.count === "number"
+                  ? data.salesToday.count
+                  : 0);
+
+          const avg =
+            (typeof data.avgToday === "number")
+              ? data.avgToday
+              : (data.salesToday && typeof data.salesToday.avgNet === "number"
+                  ? data.salesToday.avgNet
+                  : (count > 0 ? Math.round(todayNet / count) : 0));
+
+          if (totalSalesEl) totalSalesEl.textContent = formatYen(todayNet);
           if (totalDetailEl) {
             totalDetailEl.textContent =
               `${count}件 / へいきん ${formatYen(avg || 0)}`;
@@ -964,7 +986,7 @@
 
           // ▼ ここまで きょうの目標 ▼
 
-          // さいきんの 取引3件
+          // ▼ 修正②: さいきんの 取引3件（日時追加）
           if (recentListEl){
             recentListEl.innerHTML = "";
             const list = (data.recent || []).slice(0,3);
@@ -983,14 +1005,33 @@
                 const li = document.createElement("li");
                 li.className = "tx-item";
 
-                const summary = (tx.summary || "しょうひん").split("\n")[0];
+                const summary = (tx.summary || tx.memo || "しょうひん").split("\n")[0];
                 const amt = Number(tx.amount || tx.net_amount || 0);
+
+                // created(秒) or createdAt(ISO文字列) から日時を作成
+                let created = null;
+                if (typeof tx.created === "number") {
+                  created = new Date(tx.created * 1000);
+                } else if (tx.createdAt) {
+                  created = new Date(tx.createdAt);
+                }
+
+                let whenText = "日時データ なし";
+                if (created && !isNaN(created.getTime())) {
+                  // JSTにそろえてから表示（サーバーはUTC想定）
+                  const jst = new Date(created.toLocaleString("en-US", { timeZone:"Asia/Tokyo" }));
+                  const y  = jst.getFullYear();
+                  const m  = String(jst.getMonth()+1).padStart(2,"0");
+                  const d  = String(jst.getDate()).padStart(2,"0");
+                  const t  = formatTime(jst);
+                  whenText = `${y}-${m}-${d} ${t} ごろ の おかいもの`;
+                }
 
                 li.innerHTML = `
                   <div class="tx-main">
                     <div class="tx-title">${summary}</div>
                     <div class="tx-sub">
-                      ${amt ? "この とき の おかいもの" : "金額データ なし"}
+                      ${amt ? whenText : "金額データ なし"}
                     </div>
                   </div>
                   <div class="tx-amt">${formatYen(amt || 0)}</div>
