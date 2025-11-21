@@ -385,62 +385,7 @@ export function registerPaymentRoutes(app, deps) {
     }
   });
 
-  // ====== 🆕 注文詳細取得API ======
-  app.get("/api/seller/order-detail", async (req, res) => {
-    const sellerId = req.query.s;
-    const orderId = req.query.orderId;
-
-    if (!sellerId || !orderId) {
-      return res.status(400).json({ error: "seller_id_and_order_id_required" });
-    }
-
-    try {
-      // 注文情報取得（seller_idで権限チェック）
-      const orderRes = await pool.query(
-        `
-        SELECT 
-          o.id,
-          o.seller_id,
-          o.amount,
-          o.summary,
-          o.image_url,
-          om.category,
-          om.buyer_language,
-          ba.customer_type,
-          ba.gender,
-          ba.age_band
-        FROM orders o
-        LEFT JOIN order_metadata om ON om.order_id = o.id
-        LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
-        WHERE o.id = $1 AND o.seller_id = $2
-        LIMIT 1
-        `,
-        [orderId, sellerId]
-      );
-
-      if (orderRes.rowCount === 0) {
-        return res.status(404).json({ error: "order_not_found" });
-      }
-
-      const order = orderRes.rows[0];
-
-      res.json({
-        orderId: order.id,
-        imageUrl: order.image_url || null,
-        memo: order.summary || "",
-        amount: order.amount || 0,
-        customerType: order.customer_type || "",
-        gender: order.gender || "",
-        ageBand: order.age_band || "",
-        itemCategory: order.category || "",
-        buyerLanguage: order.buyer_language || ""
-      });
-    } catch (e) {
-      console.error("order_detail_error", e);
-      res.status(500).json({ error: "server_error" });
-    }
-  });
-
+ 
   // ====== 決済画面生成（Checkout Session） ======
   app.post("/api/checkout/session", async (req, res) => {
     try {
