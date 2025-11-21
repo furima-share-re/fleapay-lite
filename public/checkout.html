@@ -962,6 +962,20 @@
     const emptyView = document.getElementById('emptyView');
     let currentOrderData = null;
 
+    // ❗ seller-only の URL のとき、自動で orderId を取得して付けて再読み込み
+    if (!orderId && sellerId) {
+      fetch(`/api/price/latest?s=${sellerId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.orderId) {
+            location.href = `/checkout.html?s=${sellerId}&order=${data.orderId}`;
+          }
+        })
+        .catch(err => {
+          console.warn('[FleaPay] 自動orderId取得に失敗:', err);
+        });
+    }
+
     function fetchLatest(){
       // orderIdまたはsellerIdが必要
       if (!orderId && !sellerId) {
