@@ -752,7 +752,6 @@
         safety: '🔒 この決済は Stripe の国際基準で保護されています。カード情報は FleaPay には保存されません。',
         note: '表示の外貨換算は参考値です。実際の決済はすべて日本円(JPY)で行われます。この画面は、出店者から受け取った商品の支払い画面です。',
         about: 'FleaPayについて',
-        // 空状態メッセージ
         emptyTitle: 'ちょっと待って!',
         emptySubtitle: 'まだ宝物を選んでいないよ?',
         step1Title: 'Step 1: 宝物を見つけよう',
@@ -789,7 +788,6 @@
         safety: '🔒 Payments are processed securely by Stripe. Your card details are not stored by FleaPay.',
         note: 'Any foreign currency shown is indicative only. Your payment is charged in Japanese yen (JPY). This is the payment screen for the items you selected from the seller.',
         about: 'About FleaPay',
-        // 空状態メッセージ
         emptyTitle: 'Wait a moment!',
         emptySubtitle: "Haven't chosen your treasure yet?",
         step1Title: 'Step 1: Find Your Treasure',
@@ -826,7 +824,6 @@
         safety: '🔒 本次支付由 Stripe 安全处理,您的卡信息不会保存在 FleaPay。',
         note: '画面上的外币换算仅供参考,实际扣款货币为日元(JPY)。此画面为您向摊主购买商品的支付页面。',
         about: '关于FleaPay',
-        // 空状態メッセージ
         emptyTitle: '等一下!',
         emptySubtitle: '还没有选好宝物吗?',
         step1Title: 'Step 1: 发现宝物',
@@ -882,36 +879,34 @@
 
     // ===== 自動リトライ機能 =====
     let retryCount = 0;
-    const MAX_RETRIES = 12; // 最大12回(約60秒)
+    const MAX_RETRIES = 12;
     let retryTimer = null;
 
     function startAutoRetry() {
       if (retryCount >= MAX_RETRIES) {
-        console.log('[AutoRetry] 最大リトライ回数に到達');
-        // リトライ上限に達したらヒントテキストを更新
+        console.log('[AutoRetry] 最大リトライ回数に到達しました');
         const hintText = document.querySelector('.hint-text');
         if (hintText) {
-          hintText.textContent = languages[currentLang].step2Desc || 
-            '出店者さんに「これください!」と伝えてくださいね';
-          hintText.style.color = 'var(--hakken)';
-          hintText.style.fontWeight = '700';
+          hintText.textContent = currentLang === 'ja' ? 
+            '出店者さんがまだ準備していない可能性があります。しばらく待ってから再度アクセスしてください。' :
+            currentLang === 'en' ?
+            'The seller may not be ready yet. Please wait and try again later.' :
+            '摊主可能还没准备好。请稍候再试。';
+          hintText.style.color = 'var(--warn)';
         }
         return;
       }
-      
       retryTimer = setTimeout(() => {
         retryCount++;
         console.log(`[AutoRetry] リトライ ${retryCount}/${MAX_RETRIES}`);
         fetchLatest();
-      }, 5000); // 5秒ごと
+      }, 5000);
     }
 
     function showEmptyState(normalView, emptyView) {
       normalView.style.display = 'none';
       emptyView.style.display = 'block';
       document.getElementById('payBtn').disabled = true;
-      
-      // 自動リトライ開始
       if (!retryTimer) {
         startAutoRetry();
       }
@@ -920,8 +915,6 @@
     function showNormalView(normalView, emptyView) {
       normalView.style.display = 'block';
       emptyView.style.display = 'none';
-      
-      // リトライタイマーをクリア
       if (retryTimer) {
         clearTimeout(retryTimer);
         retryTimer = null;
@@ -929,14 +922,12 @@
       }
     }
 
-    // ===== セキュリティトグル =====
+    // ===== セキュリティトグルボタン =====
     const securityToggle = document.getElementById('securityToggle');
     const securityDetails = document.getElementById('securityDetails');
-    
     if (securityToggle && securityDetails) {
       securityToggle.addEventListener('click', function() {
         const isExpanded = securityToggle.getAttribute('aria-expanded') === 'true';
-        
         if (isExpanded) {
           securityToggle.setAttribute('aria-expanded', 'false');
           securityDetails.style.display = 'none';
@@ -947,27 +938,21 @@
       });
     }
 
-    // ---- Language switcher ----
+    // ---- 言語切替イベント ----
     document.querySelectorAll('.lang-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         switchLanguage(btn.dataset.lang);
       });
     });
 
-    // ---- Auto language detection ----
+    // ---- 自動言語検出 ----
     const ua = navigator.language || 'en';
-
-    // 日本語 → 日本語
-    if (ua.startsWith('ja')) {
-      switchLanguage('ja');
-    }
-    // 中国語(簡体・繁体) → 中国語
-    else if (ua.startsWith('zh')) {
-      switchLanguage('zh');
-    }
-    // その他すべて → 英語
-    else {
-      switchLanguage('en');
+    if (ua.startsWith('ja')) { 
+      switchLanguage('ja'); 
+    } else if (ua.startsWith('zh')) { 
+      switchLanguage('zh'); 
+    } else { 
+      switchLanguage('en'); 
     }
 
     // ---- Fetch data ----
@@ -975,7 +960,7 @@
     const sellerId = getParam('s');
     const normalView = document.getElementById('normalView');
     const emptyView = document.getElementById('emptyView');
-    let currentOrderData = null; // 注文データを保存
+    let currentOrderData = null;
 
     function fetchLatest(){
       // orderIdまたはsellerIdが必要
@@ -987,12 +972,12 @@
         return;
       }
 
-      // ✅ 修正: /api/price/latest を使用（PostgreSQL + server.js）
-      let url = '/api/price/latest';
+      // ✅ 修正: orderIdがある場合は /api/orders/detail を使用
+      let url;
       if (orderId) {
-        url += `?order=${encodeURIComponent(orderId)}`;
+        url = `/api/orders/detail?orderId=${encodeURIComponent(orderId)}`;
       } else if (sellerId) {
-        url += `?s=${encodeURIComponent(sellerId)}`;
+        url = `/api/price/latest?s=${encodeURIComponent(sellerId)}`;
       }
 
       console.log('[FleaPay] API呼び出し:', url);
@@ -1075,7 +1060,7 @@
                     sellerId: currentOrderData.sellerId,
                     orderId: currentOrderData.orderId,
                     summary: currentOrderData.summary,
-                    latest: !orderId // orderIdがない場合は最新注文を使用
+                    latest: !orderId
                   })
                 });
                 
@@ -1139,7 +1124,7 @@
         });
     }
 
-    // Initial load
+    // 初期読み込み
     fetchLatest();
   </script>
 </body>
