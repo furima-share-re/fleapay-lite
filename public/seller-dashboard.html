@@ -972,7 +972,7 @@
           // KPI（純売上）
 
           // 1. きょうの日付（JST）を YYYY-MM-DD 文字列に
-          const nowJst   = new Date(new Date().toLocaleString("en-US",{ timeZone:"Asia/Tokyo" }));
+          // ★ const nowJst は既に上で定義済み ★
           const todayStr = nowJst.toISOString().slice(0,10);
 
           let todayNet   = 0;  // きょうの純売上
@@ -1029,7 +1029,7 @@
           }
 
           if (homeHintEl) {
-            if (count === 0) {
+            if (countToday === 0) {
               homeHintEl.textContent = "きょうの けっさい は まだ ありません。さいしょの 1件を お待ちしています。";
             } else {
               homeHintEl.textContent = "きょうの うりあげ を Stripe の テストデータから ひょうじ中です。";
