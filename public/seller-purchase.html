@@ -1483,7 +1483,7 @@
         qrURL = data.qrURL;
         debugLog(`🔗 Using server-provided qrURL: ${qrURL}`);
       } else if(data.orderId){
-        qrURL = `${baseURL}/checkout.html?o=${data.orderId}`;
+        qrURL = `${baseURL}/checkout.html?o=${data.orderId}&s=${sellerId}`;
         debugLog(`🔗 Using orderId-based qrURL: ${qrURL}`);
       } else {
         qrURL = `${baseURL}/checkout.html?s=${sellerId}`;
