@@ -544,6 +544,7 @@ app.get("/api/seller/order-detail", async (req, res) => {
 
     res.json({
       orderId: row.id,
+      sellerId: sellerId,          // ★ 追加（超重要）★
       memo: row.memo || "",
       amount: row.amount,
       createdAt: row.created_at,
