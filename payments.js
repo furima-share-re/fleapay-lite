@@ -35,12 +35,12 @@ export function registerPaymentRoutes(app, deps) {
 
       try {
         if (process.env.SKIP_WEBHOOK_VERIFY === "1") {
-          // 🔍 テスト用：署名検証をスキップしてそのまま JSON パース
+          // 🔍 テスト用:署名検証をスキップしてそのまま JSON パース
           const raw = req.body.toString("utf8");
           console.log("[WEBHOOK] SKIP_WEBHOOK_VERIFY=1, raw body =", raw);
           event = JSON.parse(raw);
         } else {
-          // 通常ルート：署名検証あり
+          // 通常ルート:署名検証あり
           event = stripe.webhooks.constructEvent(
             req.body,
             sig,
@@ -261,7 +261,7 @@ export function registerPaymentRoutes(app, deps) {
     }
   );
 
-  // ★ 追加：決済系API用の JSON パーサー
+  // ★ 追加:決済系API用の JSON パーサー
   // webhook は上で raw を使っているので影響しません
   app.use(express.json({ limit: "1mb" }));
 
@@ -452,7 +452,7 @@ export function registerPaymentRoutes(app, deps) {
   });
 
  
-  // ====== 決済画面生成(Checkout Session) ======
+  // ====== 決済画面生成(Checkout Session) - 🔧 修正版 ======
   app.post("/api/checkout/session", async (req, res) => {
     try {
       // ★ 修正: 安全な req.body 処理
@@ -503,6 +503,7 @@ export function registerPaymentRoutes(app, deps) {
       const successUrl = `${BASE_URL}/success.html?order=${order.id}`;
       const cancelUrl = `${BASE_URL}/checkout.html?s=${order.seller_id}&order=${order.id}`;
 
+      // 🔧 修正: Platformアカウントでセッションを作成
       const sessionParams = {
         mode: "payment",
         success_url: successUrl,
@@ -521,6 +522,7 @@ export function registerPaymentRoutes(app, deps) {
         ],
         payment_intent_data: {
           application_fee_amount: Math.floor(order.amount * 0.1), // 10%手数料
+          on_behalf_of: stripeAccountId, // 🔧 接続アカウントを指定
           metadata: {
             sellerId: order.seller_id,
             orderId: order.id,
@@ -528,10 +530,8 @@ export function registerPaymentRoutes(app, deps) {
         },
       };
 
-      const session = await stripe.checkout.sessions.create(
-        sessionParams,
-        { stripeAccount: stripeAccountId }
-      );
+      // 🔧 修正: stripeAccountオプションを削除してPlatform側で作成
+      const session = await stripe.checkout.sessions.create(sessionParams);
 
       res.json({ url: session.url, sessionId: session.id });
 
