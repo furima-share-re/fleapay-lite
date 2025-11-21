@@ -867,23 +867,28 @@
             return;
           }
 
-          // サブスク制御:kids以外はブロック
+          // ★★★ 修正①: サブスク制御:kids以外はブロック(return は削除) ★★★
           if (
             data &&
             (data.isSubscribed === false ||
              !data.planType ||
              data.planType !== "kids")
           ){
+            // キッズプラン未加入 → メインカードだけ隠して、注意メッセージを出す
             if (mainCardEl) mainCardEl.style.display = "none";
             if (blockEl)    blockEl.style.display    = "block";
-            return;
+          } else {
+            // キッズプラン加入 → 通常表示
+            if (mainCardEl) mainCardEl.style.display = "block";
+            if (blockEl)    blockEl.style.display    = "none";
           }
+          // ★ return は書かない ★
 
           // 店名表示
           const disp = data.displayName || data.sellerId || "おみせ";
           if (kidNameEl) kidNameEl.textContent = disp + " の 若旦那 / 若女将";
 
-          // ▼ 修正①: 売上KPI（/api/seller/summary の新形式＋互換フィールド両対応）
+          // ▼ 修正②: 売上KPI（/api/seller/summary の新形式＋互換フィールド両対応）
           const todayNet =
             (data.salesToday && typeof data.salesToday.net === "number")
               ? data.salesToday.net
@@ -986,10 +991,11 @@
 
           // ▼ ここまで きょうの目標 ▼
 
-          // ▼ 修正②: さいきんの 取引3件（日時追加）
+          // ★★★ 修正③: さいきんの 取引3件（日時追加・確実に表示） ★★★
           if (recentListEl){
             recentListEl.innerHTML = "";
             const list = (data.recent || []).slice(0,3);
+
             if (!list.length){
               const li = document.createElement("li");
               li.className = "tx-item";
@@ -1008,7 +1014,7 @@
                 const summary = (tx.summary || tx.memo || "しょうひん").split("\n")[0];
                 const amt = Number(tx.amount || tx.net_amount || 0);
 
-                // created(秒) or createdAt(ISO文字列) から日時を作成
+                // created(秒) or createdAt(ISO文字列) から日時を作る
                 let created = null;
                 if (typeof tx.created === "number") {
                   created = new Date(tx.created * 1000);
@@ -1016,15 +1022,15 @@
                   created = new Date(tx.createdAt);
                 }
 
-                let whenText = "日時データ なし";
+                let whenText = "この とき の おかいもの";
                 if (created && !isNaN(created.getTime())) {
-                  // JSTにそろえてから表示（サーバーはUTC想定）
                   const jst = new Date(created.toLocaleString("en-US", { timeZone:"Asia/Tokyo" }));
                   const y  = jst.getFullYear();
                   const m  = String(jst.getMonth()+1).padStart(2,"0");
                   const d  = String(jst.getDate()).padStart(2,"0");
-                  const t  = formatTime(jst);
-                  whenText = `${y}-${m}-${d} ${t} ごろ の おかいもの`;
+                  const hh = String(jst.getHours()).padStart(2,"0");
+                  const mm = String(jst.getMinutes()).padStart(2,"0");
+                  whenText = `${y}-${m}-${d} ${hh}:${mm} ごろ の おかいもの`;
                 }
 
                 li.innerHTML = `

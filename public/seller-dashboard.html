@@ -969,25 +969,53 @@
           const nowJst = new Date(new Date().toLocaleString("en-US",{ timeZone:"Asia/Tokyo" }));
           if (todayLabelEl) todayLabelEl.textContent = formatDateJp(nowJst) + " の うりあげ";
 
-          // KPI（純売上）: /api/seller/summary の新形式＋互換フィールド両対応
-          const todayNet =
-            (data.salesToday && typeof data.salesToday.net === "number")
-              ? data.salesToday.net
-              : (typeof data.salesTodayNet === "number" ? data.salesTodayNet : 0);
+          // KPI（純売上）
+          // API の返し方が変わっても動くように多めに分岐
+          let todayNet = 0;
 
-          const count =
-            (typeof data.countToday === "number")
-              ? data.countToday
-              : (data.salesToday && typeof data.salesToday.count === "number"
-                  ? data.salesToday.count
-                  : 0);
+          // ① 今日の純売上（net）
+          if (typeof data.salesToday === "number") {
+            // 旧仕様：salesToday がそのまま金額
+            todayNet = data.salesToday;
+          } else if (data.salesToday && typeof data.salesToday.net === "number") {
+            // 新仕様：{ gross, net, fee }
+            todayNet = data.salesToday.net;
+          } else if (typeof data.salesTodayNet === "number") {
+            // 互換用フィールドがある場合
+            todayNet = data.salesTodayNet;
+          }
 
-          const avg =
-            (typeof data.avgToday === "number")
-              ? data.avgToday
-              : (data.salesToday && typeof data.salesToday.avgNet === "number"
-                  ? data.salesToday.avgNet
-                  : (count > 0 ? Math.round(todayNet / count) : 0));
+          // ② 今日の件数
+          let count = 0;
+          if (typeof data.countToday === "number") {
+            count = data.countToday;
+          } else if (data.salesToday && typeof data.salesToday.count === "number") {
+            count = data.salesToday.count;
+          } else if (Array.isArray(data.recent)) {
+            // recent から「今日の取引数」を数えるフォールバック
+            const todayStr = nowJst.toISOString().slice(0, 10); // "YYYY-MM-DD"
+            count = data.recent.filter(tx => {
+              let d = null;
+              if (typeof tx.created === "number") {
+                d = new Date(tx.created * 1000);
+              } else if (tx.createdAt) {
+                d = new Date(tx.createdAt);
+              }
+              if (!d || isNaN(d.getTime())) return false;
+              const jst = new Date(d.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+              return jst.toISOString().slice(0, 10) === todayStr;
+            }).length;
+          }
+
+          // ③ 平均客単価
+          let avg = 0;
+          if (typeof data.avgToday === "number") {
+            avg = data.avgToday;
+          } else if (data.salesToday && typeof data.salesToday.avgNet === "number") {
+            avg = data.salesToday.avgNet;
+          } else if (count > 0) {
+            avg = Math.round(todayNet / count);
+          }
 
           if (kpiTotalEl) kpiTotalEl.textContent = formatYen(todayNet);
           if (kpiCountEl) kpiCountEl.textContent = `${count}件`;

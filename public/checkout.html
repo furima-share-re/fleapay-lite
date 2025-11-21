@@ -1028,11 +1028,12 @@
           // 正常データチェック
           if (data && data.amount && parseInt(data.amount, 10) > 0) {
             // 注文データを保存
+            // ✅ 修正: sellerId, summary (memoとsummary両方をサポート) を追加
             currentOrderData = {
               orderId: data.orderId,
-              sellerId: data.sellerId,
+              sellerId: data.sellerId || sellerId,  // レスポンスから取得、なければURLパラメータから
               amount: data.amount,
-              summary: data.summary || ''
+              summary: data.summary || data.memo || ''  // summary優先、なければmemo
             };
 
             // 正常データ → 通常表示
@@ -1043,7 +1044,8 @@
             document.getElementById('amount').textContent = formatJPY(amountInt);
             document.getElementById('amount').classList.remove('loading');
 
-            const summaryText = data.summary ? data.summary.trim() : '';
+            // ✅ 修正: summaryとmemo両方をサポート
+            const summaryText = (data.summary || data.memo || '').trim();
             const summaryEl = document.getElementById('summary');
             if (summaryText) {
               summaryEl.textContent = summaryText;
