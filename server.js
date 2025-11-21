@@ -68,6 +68,8 @@ if (!HAS_S3_CONFIG) {
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
 const BASE_URL = (process.env.BASE_URL || "http://localhost:3000").replace(/\/+$/, "");
 const PORT = process.env.PORT || 3000;
+// pending 状態の注文を何分まで有効とみなすか(環境変数優先)
+const PENDING_TTL_MIN = parseInt(process.env.PENDING_TTL_MIN || "30", 10);
 
 // ====== multer(10MB、拡張子ゆるめ、メモリ格納) ======
 const upload = multer({
@@ -218,6 +220,7 @@ registerPaymentRoutes(app, {
   audit,
   sanitizeError,
   requireAdmin,
+  PENDING_TTL_MIN,   // ← 追加
 });
 
 // それ以外のAPIは JSON パーサー使用

@@ -21,6 +21,7 @@ export function registerPaymentRoutes(app, deps) {
     audit,
     sanitizeError,
     requireAdmin,
+    PENDING_TTL_MIN,   // ← 追加
   } = deps;
 
   // ====== Stripe webhook (raw body 必須) ======
@@ -485,7 +486,7 @@ export function registerPaymentRoutes(app, deps) {
     }
   });
 
-  // ====== 金額取得API ======
+  // ====== 金額取得API (🟢 TTL付きに改善) ======
   app.get("/api/price/latest", async (req, res) => {
     const sellerId = req.query.s;
     if (!sellerId) {
@@ -494,7 +495,7 @@ export function registerPaymentRoutes(app, deps) {
 
     try {
       const result = await pool.query(
-        `select id, seller_id, amount, summary
+        `select id, seller_id, amount, summary, status, created_at
          from orders
          where seller_id=$1
          order by created_at desc
@@ -503,26 +504,45 @@ export function registerPaymentRoutes(app, deps) {
       );
 
       if (result.rowCount === 0) {
-        // sellerId はそのまま返しておくとデバッグしやすい
         return res.json({
           orderId: null,
           sellerId,
           amount: null,
-          summary: null
+          summary: null,
+          error: "not_found",
         });
       }
 
       const row = result.rows[0];
 
-      res.json({
+      const createdAt = row.created_at instanceof Date
+        ? row.created_at
+        : new Date(row.created_at);
+
+      const expireMs = PENDING_TTL_MIN * 60 * 1000;
+      const isExpiredByTime = Date.now() - createdAt.getTime() > expireMs;
+      const isInactiveStatus = row.status !== "pending";
+
+      if (isExpiredByTime || isInactiveStatus) {
+        // checkout.html 側で「時間切れ」表示に切り替える
+        return res.json({
+          orderId: row.id,
+          sellerId: row.seller_id,
+          amount: null,
+          summary: null,
+          error: "expired",
+        });
+      }
+
+      return res.json({
         orderId: row.id,
         sellerId: row.seller_id,
         amount: row.amount,
-        summary: row.summary
+        summary: row.summary,
       });
     } catch (e) {
       console.error("get latest price error", e);
-      res.status(500).json(sanitizeError(e));
+      return res.status(500).json(sanitizeError(e));
     }
   });
 
