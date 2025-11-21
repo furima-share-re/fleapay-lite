@@ -451,6 +451,35 @@ export function registerPaymentRoutes(app, deps) {
     }
   });
 
+  // ====== 🆕 出店者用API: 注文詳細取得 ======
+  app.get("/api/seller/order-detail", async (req, res) => {
+    const sellerId = req.query.s;
+    const orderId = req.query.orderId;
+
+    if (!sellerId || !orderId) {
+      return res.status(400).json({ error: "missing_params" });
+    }
+
+    try {
+      const r = await pool.query(
+        `SELECT id AS orderId, seller_id, amount, summary, status
+         FROM orders
+         WHERE id = $1 AND seller_id = $2
+         LIMIT 1`,
+        [orderId, sellerId]
+      );
+
+      if (r.rowCount === 0) {
+        return res.status(404).json({ error: "not_found" });
+      }
+
+      const row = r.rows[0];
+      res.json(row);
+    } catch (e) {
+      console.error("order_detail_error", e);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
  
   // ====== 決済画面生成(Checkout Session) - 🔧 修正版 ======
   app.post("/api/checkout/session", async (req, res) => {
