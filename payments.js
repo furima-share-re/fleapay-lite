@@ -267,6 +267,7 @@ export function registerPaymentRoutes(app, deps) {
           o.amount,
           o.summary              AS memo,
           om.is_cash,
+          om.category            AS raw_category,
           CASE 
             WHEN om.is_cash THEN 'cash'
             WHEN sp.id IS NOT NULL THEN 'card'
@@ -292,11 +293,29 @@ export function registerPaymentRoutes(app, deps) {
         amount: r.amount,
         memo: r.memo || "",
         isCash: !!r.is_cash,
+        rawCategory: r.raw_category,
         paymentMethod: r.payment_method,
         customerType: r.customer_type || "unknown",
         gender: r.gender || "unknown",
         ageBand: r.age_band || "unknown"
       }));
+
+      // ③ データ精度スコア計算（購入者属性が入力された割合）
+      const scoreRes = await pool.query(
+        `
+        SELECT 
+          COUNT(*) as total,
+          COUNT(ba.customer_type) as with_attrs
+        FROM orders o
+        LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
+        WHERE o.seller_id = $1
+        `,
+        [sellerId]
+      );
+      
+      const total = parseInt(scoreRes.rows[0].total) || 0;
+      const withAttrs = parseInt(scoreRes.rows[0].with_attrs) || 0;
+      const dataScore = total > 0 ? Math.round((withAttrs / total) * 100) : 0;
 
       res.json({
         sellerId,
@@ -312,10 +331,67 @@ export function registerPaymentRoutes(app, deps) {
           net:   Number(kpiTotal.rows[0].net   || 0),
           fee:   Number(kpiTotal.rows[0].fee   || 0)
         },
+        dataScore,
         recent
       });
     } catch (e) {
       console.error("seller_summary_error", e);
+      res.status(500).json({ error: "server_error" });
+    }
+  });
+
+  // ====== 🆕 注文詳細取得API ======
+  app.get("/api/seller/order-detail", async (req, res) => {
+    const sellerId = req.query.s;
+    const orderId = req.query.orderId;
+
+    if (!sellerId || !orderId) {
+      return res.status(400).json({ error: "seller_id_and_order_id_required" });
+    }
+
+    try {
+      // 注文情報取得（seller_idで権限チェック）
+      const orderRes = await pool.query(
+        `
+        SELECT 
+          o.id,
+          o.seller_id,
+          o.amount,
+          o.summary,
+          o.image_url,
+          om.category,
+          om.buyer_language,
+          ba.customer_type,
+          ba.gender,
+          ba.age_band
+        FROM orders o
+        LEFT JOIN order_metadata om ON om.order_id = o.id
+        LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
+        WHERE o.id = $1 AND o.seller_id = $2
+        LIMIT 1
+        `,
+        [orderId, sellerId]
+      );
+
+      if (orderRes.rowCount === 0) {
+        return res.status(404).json({ error: "order_not_found" });
+      }
+
+      const order = orderRes.rows[0];
+
+      res.json({
+        orderId: order.id,
+        imageUrl: order.image_url || null,
+        memo: order.summary || "",
+        amount: order.amount || 0,
+        customerType: order.customer_type || "",
+        gender: order.gender || "",
+        ageBand: order.age_band || "",
+        itemCategory: order.category || "",
+        buyerLanguage: order.buyer_language || ""
+      });
+    } catch (e) {
+      console.error("order_detail_error", e);
       res.status(500).json({ error: "server_error" });
     }
   });
