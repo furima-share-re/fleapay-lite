@@ -498,21 +498,31 @@ export function registerPaymentRoutes(app, deps) {
 
     try {
       const result = await pool.query(
-        `select amount, summary 
-         from orders 
-         where seller_id=$1 
-         order by created_at desc 
+        `select id, seller_id, amount, summary
+         from orders
+         where seller_id=$1
+         order by created_at desc
          limit 1`,
         [sellerId]
       );
 
       if (result.rowCount === 0) {
-        return res.json({ amount: null, summary: null });
+        // sellerId はそのまま返しておくとデバッグしやすい
+        return res.json({
+          orderId: null,
+          sellerId,
+          amount: null,
+          summary: null
+        });
       }
 
+      const row = result.rows[0];
+
       res.json({
-        amount: result.rows[0].amount,
-        summary: result.rows[0].summary
+        orderId: row.id,
+        sellerId: row.seller_id,
+        amount: row.amount,
+        summary: row.summary
       });
     } catch (e) {
       console.error("get latest price error", e);
