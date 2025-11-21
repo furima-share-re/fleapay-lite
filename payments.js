@@ -37,7 +37,7 @@ export function registerPaymentRoutes(app, deps) {
     try {
       const t = event.type;
 
-      // 🟢 決済成功時にUPSERTパターンを使用（Race Condition回避）
+      // 🟢 決済成功時にUPSERTパターンを使用(Race Condition回避)
       if (t === "payment_intent.succeeded") {
         const pi = event.data.object;
         const sellerId = pi.metadata?.sellerId || "";
@@ -71,7 +71,7 @@ export function registerPaymentRoutes(app, deps) {
 
           const netAmount = fee !== null ? amount - fee : amount;
 
-          // ✅ UPSERTパターン（ON CONFLICT）
+          // ✅ UPSERTパターン(ON CONFLICT)
           await pool.query(
             `insert into stripe_payments (
               seller_id, order_id, payment_intent_id, charge_id, balance_tx_id,
@@ -203,7 +203,11 @@ export function registerPaymentRoutes(app, deps) {
     res.json({ received: true });
   });
 
-  // ====== 🆕 出店者用API: 売上サマリー取得（サブスク判定追加） ======
+  // ★ 追加：決済系API用の JSON パーサー
+  // webhook は上で raw を使っているので影響しません
+  app.use(express.json({ limit: "1mb" }));
+
+  // ====== 🆕 出店者用API: 売上サマリー取得(サブスク判定追加) ======
   app.get("/api/seller/summary", async (req, res) => {
     const sellerId = req.query.s;
     if (!sellerId) {
@@ -211,7 +215,7 @@ export function registerPaymentRoutes(app, deps) {
     }
 
     try {
-      // 0) サブスク状態の判定（履歴テーブルから現在プランを取得）
+      // 0) サブスク状態の判定(履歴テーブルから現在プランを取得)
       const subRes = await pool.query(
         `
         SELECT plan_type, started_at, ended_at, status
@@ -232,7 +236,7 @@ export function registerPaymentRoutes(app, deps) {
         isSubscribed = (planType === "pro" || planType === "kids");
       }
 
-      // ① 売上KPI（JST基準で正しく集計）
+      // ① 売上KPI(JST基準で正しく集計)
       const { todayStart, tomorrowStart } = jstDayBounds();
 
       const kpiToday = await pool.query(
@@ -268,7 +272,7 @@ export function registerPaymentRoutes(app, deps) {
         [sellerId]
       );
 
-      // ② 取引履歴（orders を基準に、カードも現金も一緒に出す）
+      // ② 取引履歴(orders を基準に、カードも現金も一緒に出す)
       const recentRes = await pool.query(
         `
         SELECT
@@ -335,7 +339,7 @@ export function registerPaymentRoutes(app, deps) {
         };
       });
 
-      // ③ データ精度スコア計算（購入者属性が入力された割合）
+      // ③ データ精度スコア計算(購入者属性が入力された割合)
       const scoreRes = await pool.query(
         `
         SELECT 
@@ -386,11 +390,13 @@ export function registerPaymentRoutes(app, deps) {
   });
 
  
-  // ====== 決済画面生成（Checkout Session） ======
+  // ====== 決済画面生成(Checkout Session) ======
   app.post("/api/checkout/session", async (req, res) => {
     try {
-      const { sellerId, latest, summary } = req.body || {};
-      const orderId = req.body.orderId || req.query.order || "";
+      // ★ 修正: 安全な req.body 処理
+      const body = req.body || {};
+      const { sellerId, latest, summary, orderId: bodyOrderId } = body;
+      const orderId = bodyOrderId || req.query.order || "";
 
       if (!sellerId && !orderId) {
         return res.status(400).json({ error: "seller_id_or_order_id_required" });
@@ -549,7 +555,7 @@ export function registerPaymentRoutes(app, deps) {
         ]);
       };
 
-      // 1) 決済（charge.succeeded）
+      // 1) 決済(charge.succeeded)
       const chargeParams = { limit: 100 };
       if (createdFilter) chargeParams.created = createdFilter;
 
@@ -560,7 +566,7 @@ export function registerPaymentRoutes(app, deps) {
       const succeededCharges = chargesList.data.filter(c => c.status === 'succeeded');
       const grossAmount = succeededCharges.reduce((sum, c) => sum + (c.amount || 0), 0);
 
-      // 2) チャージバック（disputes）
+      // 2) チャージバック(disputes)
       const disputeParams = { limit: 100 };
       if (createdFilter) disputeParams.created = createdFilter;
 
@@ -568,7 +574,7 @@ export function registerPaymentRoutes(app, deps) {
         stripe.disputes.list(disputeParams)
       );
 
-      // 🟢 期限間近のチャージバック（3日以内）
+      // 🟢 期限間近のチャージバック(3日以内)
       const urgentDisputes = disputesList.data.filter(d => {
         const dueBy = d.evidence_details?.due_by;
         if (!dueBy) return false;
@@ -576,7 +582,7 @@ export function registerPaymentRoutes(app, deps) {
         return daysUntilDue <= 3 && daysUntilDue > 0;
       });
 
-      // 3) 返金（refunds）
+      // 3) 返金(refunds)
       const refundParams = { limit: 100 };
       if (createdFilter) refundParams.created = createdFilter;
 
@@ -829,7 +835,7 @@ export function registerPaymentRoutes(app, deps) {
   });
 }
 
-// ====== util（payments.js内で使用するヘルパー関数） ======
+// ====== util(payments.js内で使用するヘルパー関数) ======
 // Note: これらの関数は deps 経由で渡された pool を使用します
 
 async function resolveSellerAccountId(pool, sellerId) {
