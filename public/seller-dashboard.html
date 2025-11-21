@@ -970,56 +970,58 @@
           if (todayLabelEl) todayLabelEl.textContent = formatDateJp(nowJst) + " の うりあげ";
 
           // KPI（純売上）
-          // API の返し方が変わっても動くように多めに分岐
-          let todayNet = 0;
 
-          // ① 今日の純売上（net）
-          if (typeof data.salesToday === "number") {
-            // 旧仕様：salesToday がそのまま金額
-            todayNet = data.salesToday;
-          } else if (data.salesToday && typeof data.salesToday.net === "number") {
-            // 新仕様：{ gross, net, fee }
-            todayNet = data.salesToday.net;
-          } else if (typeof data.salesTodayNet === "number") {
-            // 互換用フィールドがある場合
-            todayNet = data.salesTodayNet;
-          }
+          // 1. きょうの日付（JST）を YYYY-MM-DD 文字列に
+          const nowJst   = new Date(new Date().toLocaleString("en-US",{ timeZone:"Asia/Tokyo" }));
+          const todayStr = nowJst.toISOString().slice(0,10);
 
-          // ② 今日の件数
-          let count = 0;
-          if (typeof data.countToday === "number") {
-            count = data.countToday;
-          } else if (data.salesToday && typeof data.salesToday.count === "number") {
-            count = data.salesToday.count;
-          } else if (Array.isArray(data.recent)) {
-            // recent から「今日の取引数」を数えるフォールバック
-            const todayStr = nowJst.toISOString().slice(0, 10); // "YYYY-MM-DD"
-            count = data.recent.filter(tx => {
-              let d = null;
+          let todayNet   = 0;  // きょうの純売上
+          let countToday = 0;  // きょうの件数
+          let avgToday   = 0;  // きょうの平均客単価
+
+          // 2. まず API が salesToday を持っていればそれを優先して使う
+          if (data.salesToday && typeof data.salesToday.net === "number" && data.salesToday.net > 0) {
+            todayNet   = data.salesToday.net;
+            countToday = typeof data.salesToday.count === "number"
+              ? data.salesToday.count
+              : (typeof data.countToday === "number" ? data.countToday : 0);
+            avgToday   = typeof data.salesToday.avgNet === "number"
+              ? data.salesToday.avgNet
+              : (typeof data.avgToday === "number" ? data.avgToday : (countToday > 0 ? Math.round(todayNet / countToday) : 0));
+          } else {
+            // 3. salesToday が無い / 0 のときは recent から "きょうの分だけ" 合計を出す
+            (data.recent || []).forEach(tx => {
+
+              // created(秒) or createdAt(ISO文字列) から日付を取得
+              let created = null;
               if (typeof tx.created === "number") {
-                d = new Date(tx.created * 1000);
+                created = new Date(tx.created * 1000);
               } else if (tx.createdAt) {
-                d = new Date(tx.createdAt);
+                created = new Date(tx.createdAt);
               }
-              if (!d || isNaN(d.getTime())) return false;
-              const jst = new Date(d.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-              return jst.toISOString().slice(0, 10) === todayStr;
-            }).length;
+              if (!created || isNaN(created.getTime())) return;
+
+              // JST にそろえて日付比較
+              const jst = new Date(created.toLocaleString("en-US",{ timeZone:"Asia/Tokyo" }));
+              const dStr = jst.toISOString().slice(0,10);
+              if (dStr !== todayStr) return; // きょう以外は無視
+
+              const amt = Number(tx.amount || tx.net_amount || 0);
+              if (!Number.isFinite(amt)) return;
+
+              todayNet   += amt;
+              countToday += 1;
+            });
+
+            if (countToday > 0) {
+              avgToday = Math.round(todayNet / countToday);
+            }
           }
 
-          // ③ 平均客単価
-          let avg = 0;
-          if (typeof data.avgToday === "number") {
-            avg = data.avgToday;
-          } else if (data.salesToday && typeof data.salesToday.avgNet === "number") {
-            avg = data.salesToday.avgNet;
-          } else if (count > 0) {
-            avg = Math.round(todayNet / count);
-          }
-
+          // 4. 画面に反映
           if (kpiTotalEl) kpiTotalEl.textContent = formatYen(todayNet);
-          if (kpiCountEl) kpiCountEl.textContent = `${count}件`;
-          if (kpiAvgEl)   kpiAvgEl.textContent   = formatYen(avg || 0);
+          if (kpiCountEl) kpiCountEl.textContent = `${countToday}件`;
+          if (kpiAvgEl)   kpiAvgEl.textContent   = formatYen(avgToday || 0);
 
           // 🟦 (A) データ精度スコアの表示
           if (dataScoreEl && data.dataScore !== undefined) {
