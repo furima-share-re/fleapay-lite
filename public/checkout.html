@@ -1104,7 +1104,7 @@
                 const result = await response.json();
                 console.log('[FleaPay] 決済セッション作成成功:', result);
                 
-                if (result.ok && result.url) {
+                if (result.url) {
                   console.log('[FleaPay] Stripeへリダイレクト:', result.url);
                   window.location.href = result.url;
                 } else {
