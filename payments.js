@@ -236,15 +236,22 @@ export function registerPaymentRoutes(app, deps) {
       const kpiToday = await pool.query(
         `
         SELECT
-          COALESCE(SUM(amount_gross), 0) AS gross,
-          COALESCE(SUM(amount_net), 0)   AS net,
-          COALESCE(SUM(amount_fee), 0)   AS fee
+          COUNT(*)                           AS cnt,
+          COALESCE(SUM(amount_gross), 0)     AS gross,
+          COALESCE(SUM(amount_net),   0)     AS net,
+          COALESCE(SUM(amount_fee),   0)     AS fee
         FROM stripe_payments
         WHERE seller_id = $1
           AND created_at::date = CURRENT_DATE
         `,
         [sellerId]
       );
+
+      const todayGross = Number(kpiToday.rows[0].gross || 0);
+      const todayNet   = Number(kpiToday.rows[0].net   || 0);
+      const todayFee   = Number(kpiToday.rows[0].fee   || 0);
+      const countToday = parseInt(kpiToday.rows[0].cnt, 10) || 0;
+      const avgToday   = countToday > 0 ? Math.round(todayNet / countToday) : 0;
 
       const kpiTotal = await pool.query(
         `
@@ -287,18 +294,43 @@ export function registerPaymentRoutes(app, deps) {
         [sellerId]
       );
 
-      const recent = recentRes.rows.map(r => ({
-        orderId: r.order_id,
-        createdAt: r.created_at,
-        amount: r.amount,
-        memo: r.memo || "",
-        isCash: !!r.is_cash,
-        rawCategory: r.raw_category,
-        paymentMethod: r.payment_method,
-        customerType: r.customer_type || "unknown",
-        gender: r.gender || "unknown",
-        ageBand: r.age_band || "unknown"
-      }));
+      const recent = recentRes.rows.map(r => {
+        const amt = Number(r.amount || 0);
+        const created = r.created_at;
+        const createdSec = created ? Math.floor(new Date(created).getTime() / 1000) : null;
+
+        return {
+          // 新しいフィールド名
+          orderId: r.order_id,
+          createdAt: created,
+          amount: amt,
+          memo: r.memo || "",
+          isCash: !!r.is_cash,
+          rawCategory: r.raw_category,
+          paymentMethod: r.payment_method,
+          customerType: r.customer_type || "unknown",
+          gender: r.gender || "unknown",
+          ageBand: r.age_band || "unknown",
+
+          // 旧フロント互換フィールド
+          created: createdSec,                // 秒単位タイムスタンプ
+          summary: r.memo || "",
+          net_amount: amt,
+          status: r.is_cash ? "現金" : "通常",
+          is_cash: !!r.is_cash,
+          raw_category: r.raw_category,
+          payment_method: r.payment_method,
+          customer_type: r.customer_type || "unknown",
+          age_band: r.age_band || "unknown",
+
+          // 旧コードが想定していた buyer オブジェクト
+          buyer: {
+            customer_type: r.customer_type || "unknown",
+            gender: r.gender || "unknown",
+            age_band: r.age_band || "unknown",
+          },
+        };
+      });
 
       // ③ データ精度スコア計算（購入者属性が入力された割合）
       const scoreRes = await pool.query(
@@ -321,16 +353,26 @@ export function registerPaymentRoutes(app, deps) {
         sellerId,
         planType,
         isSubscribed,
+
+        // 新フォーマット
         salesToday: {
-          gross: Number(kpiToday.rows[0].gross || 0),
-          net:   Number(kpiToday.rows[0].net   || 0),
-          fee:   Number(kpiToday.rows[0].fee   || 0)
+          gross: todayGross,
+          net:   todayNet,
+          fee:   todayFee,
+          count: countToday,
+          avgNet: avgToday,
         },
         salesTotal: {
           gross: Number(kpiTotal.rows[0].gross || 0),
           net:   Number(kpiTotal.rows[0].net   || 0),
           fee:   Number(kpiTotal.rows[0].fee   || 0)
         },
+
+        // ★ 旧フロント用の互換フィールド
+        salesTodayNet: todayNet,
+        countToday,
+        avgToday,
+
         dataScore,
         recent
       });
