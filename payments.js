@@ -297,8 +297,8 @@ export function registerPaymentRoutes(app, deps) {
         LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
         WHERE o.seller_id = $1
           AND (
-            om.is_cash = true         -- 現金はステータスに関係なく表示
-            OR o.status = 'paid'      -- 現金以外（QR/カード）は「支払い完了のみ」表示
+            om.is_cash = true              -- 現金はステータスに関係なく表示
+            OR sp.status = 'succeeded'     -- カード決済はStripe成功のみ表示
           )
         ORDER BY o.created_at DESC
         LIMIT 20
