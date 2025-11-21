@@ -453,35 +453,44 @@ export function registerPaymentRoutes(app, deps) {
 
   // ====== 🆕 出店者用API: 注文詳細取得 ======
   app.get("/api/seller/order-detail", async (req, res) => {
-    const sellerId = req.query.s;
-    const orderId = req.query.orderId;
-
-    if (!sellerId || !orderId) {
-      return res.status(400).json({ error: "missing_params" });
-    }
-
     try {
-      const r = await pool.query(
-        `SELECT id AS orderId, seller_id, amount, summary, status
-         FROM orders
-         WHERE id = $1 AND seller_id = $2
-         LIMIT 1`,
+      const sellerId = req.query.s;
+      const orderId = req.query.orderId;
+
+      if (!sellerId || !orderId) {
+        return res.status(400).json({ error: "missing_params" });
+      }
+
+      const result = await pool.query(
+        `select id as order_id, seller_id, amount, summary, status, created_at
+         from orders
+         where id = $1 and seller_id = $2
+         limit 1`,
         [orderId, sellerId]
       );
 
-      if (r.rowCount === 0) {
+      if (result.rowCount === 0) {
         return res.status(404).json({ error: "not_found" });
       }
 
-      const row = r.rows[0];
-      res.json(row);
+      const row = result.rows[0];
+
+      // checkout.html が期待している形に合わせる
+      return res.json({
+        orderId: row.order_id,
+        sellerId: row.seller_id,
+        amount: row.amount,
+        summary: row.summary,
+        status: row.status,
+        createdAt: row.created_at,
+      });
     } catch (e) {
-      console.error("order_detail_error", e);
-      res.status(500).json({ error: "server_error" });
+      console.error("seller_order_detail_error", e);
+      return res.status(500).json({ error: "server_error" });
     }
   });
  
-  // ====== 決済画面生成(Checkout Session) - 🔧 修正版 ======
+  // ====== 決済画面生成(Checkout Session) - 🔧 修正版: on_behalf_of を削除 ======
   app.post("/api/checkout/session", async (req, res) => {
     try {
       // ★ 修正: 安全な req.body 処理
@@ -523,16 +532,22 @@ export function registerPaymentRoutes(app, deps) {
         order = insertRes.rows[0];
       }
 
-      // Stripe Checkout Session作成
-      const stripeAccountId = await resolveSellerAccountId(pool, order.seller_id);
-      if (!stripeAccountId) {
-        return res.status(400).json({ error: "seller_stripe_account_not_found" });
+      // 金額バリデーション: 0円以下の注文は決済させない
+      if (!order.amount || Number(order.amount) <= 0) {
+        console.error("[Checkout] invalid order amount", {
+          orderId: order.id,
+          amount: order.amount,
+        });
+        return res.status(400).json({
+          error: "invalid_amount",
+          message: "金額が0円のため決済を開始できません。",
+        });
       }
 
+      // 🔧 修正: 完全にプラットフォーム名義の決済にする(on_behalf_of を削除)
       const successUrl = `${BASE_URL}/success.html?order=${order.id}`;
       const cancelUrl = `${BASE_URL}/checkout.html?s=${order.seller_id}&order=${order.id}`;
 
-      // 🔧 修正: Platformアカウントでセッションを作成
       const sessionParams = {
         mode: "payment",
         success_url: successUrl,
@@ -550,8 +565,7 @@ export function registerPaymentRoutes(app, deps) {
           },
         ],
         payment_intent_data: {
-          application_fee_amount: Math.floor(order.amount * 0.1), // 10%手数料
-          on_behalf_of: stripeAccountId, // 🔧 接続アカウントを指定
+          // ← FleaPay(プラットフォーム)名義の決済にする
           metadata: {
             sellerId: order.seller_id,
             orderId: order.id,
@@ -559,7 +573,7 @@ export function registerPaymentRoutes(app, deps) {
         },
       };
 
-      // 🔧 修正: stripeAccountオプションを削除してPlatform側で作成
+      // プラットフォームアカウントでセッションを作成(stripeAccountオプションなし)
       const session = await stripe.checkout.sessions.create(sessionParams);
 
       res.json({ url: session.url, sessionId: session.id });
