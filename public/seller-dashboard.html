@@ -651,7 +651,8 @@
 
         <div class="field">
           <div class="field-label">商品メモ</div>
-          <div class="field-value" id="modal-summary"></div>
+          <!-- 編集可能にするため textarea に変更 -->
+          <textarea id="modal-summary" class="field-select" rows="2" style="resize:vertical;"></textarea>
         </div>
 
         <div class="field">
@@ -1108,8 +1109,9 @@
         const params = new URLSearchParams(location.search);
         const sellerId = params.get("s") || "";
         
+        // 画像や属性を含む専用APIを呼ぶ
         const res = await fetch(
-          `/api/seller/order-detail?s=${encodeURIComponent(sellerId)}&orderId=${encodeURIComponent(orderId)}`
+          `/api/seller/order-detail-full?s=${encodeURIComponent(sellerId)}&orderId=${encodeURIComponent(orderId)}`
         );
         const data = await res.json();
         
@@ -1148,8 +1150,8 @@
           }
         }
 
-        // 🟩 商品メモ（サーバーは memo を返す）
-        if (sumEl) sumEl.textContent = data.memo || "";
+        // 🟩 商品メモ（サーバーは memo を返す）※ textarea に value でセット
+        if (sumEl) sumEl.value = data.memo || "";
 
         // 🟩 金額（サーバーは amount を返す）
         if (amtEl) amtEl.textContent = "¥" + (data.amount || 0).toLocaleString("ja-JP");
@@ -1193,12 +1195,14 @@
           const params = new URLSearchParams(location.search);
           const sellerId = params.get("s") || "";
 
-          const typeEl  = document.getElementById("modal-customer-type");
-          const genEl   = document.getElementById("modal-gender");
-          const ageEl   = document.getElementById("modal-age");
-          const catEl   = document.getElementById("modal-category");
-          const langEl  = document.getElementById("modal-language");
+          const sumEl  = document.getElementById("modal-summary");
+          const typeEl = document.getElementById("modal-customer-type");
+          const genEl  = document.getElementById("modal-gender");
+          const ageEl  = document.getElementById("modal-age");
+          const catEl  = document.getElementById("modal-category");
+          const langEl = document.getElementById("modal-language");
 
+          const summary       = sumEl?.value  || "";
           const customer_type = typeEl?.value || "";
           const gender        = genEl?.value  || "";
           const age_band      = ageEl?.value  || "";
@@ -1232,6 +1236,16 @@
                 category,
                 buyer_language,
                 // is_cash は今回はダッシュボード編集では変更しないので送らなくてもOK
+              })
+            });
+
+            // 3) 商品メモ(summary) を保存
+            await fetch("/api/orders/update-summary", {
+              method:"POST",
+              headers:{ "Content-Type":"application/json" },
+              body:JSON.stringify({
+                orderId: currentDetailOrderId,
+                summary
               })
             });
 
