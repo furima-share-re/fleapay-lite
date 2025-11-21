@@ -986,10 +986,10 @@
         return;
       }
 
-      // ✅ 修正: orderIdがある場合は /api/orders/detail を使用
+      // ✅ 修正: orderIdがある場合は /api/seller/order-detail を使用
       let url;
       if (orderId) {
-        url = `/api/orders/detail?orderId=${encodeURIComponent(orderId)}`;
+        url = `/api/seller/order-detail?s=${sellerId}&orderId=${encodeURIComponent(orderId)}`;
       } else if (sellerId) {
         url = `/api/price/latest?s=${encodeURIComponent(sellerId)}`;
       }
