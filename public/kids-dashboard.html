@@ -296,7 +296,7 @@
       margin-bottom:6px;
     }
 
-    /* === 新規追加：こども実績 === */
+    /* === 新規追加:こども実績 === */
     .kids-header {
       text-align:center;
       margin-bottom:16px;
@@ -383,7 +383,7 @@
       border:1px solid #bae6fd;
     }
 
-    /* === 新規追加：絵本リンク === */
+    /* === 新規追加:絵本リンク === */
     .ehon-link {
       display: block;
       margin: 20px 0;
@@ -402,7 +402,7 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
-    /* === 新規追加：きょうの目標カード用 CSS === */
+    /* === 新規追加:きょうの目標カード用 CSS === */
     .goal-row{
       display:flex;
       justify-content:space-between;
@@ -458,18 +458,21 @@
       <div class="kid-chip" id="kid-name">おみせ</div>
     </header>
 
-    <!-- ▼ 新規追加：若旦那/若女将 ダッシュボード -->
+    <!-- ▼ 新規追加:若旦那/若女将 ダッシュボード -->
     <div class="kids-header">
       <h1>若旦那 / 若女将 ダッシュボード</h1>
-      <div id="currentTitle" class="title-pill">称号：まだこれから！</div>
+      <div id="currentTitle" class="title-pill">称号:まだこれから!</div>
     </div>
 
-    <!-- ▼ 新規追加：絵本リンク -->
+    <!-- ▼ 新規追加:絵本リンク -->
     <a href="kids-ehon.html" class="ehon-link">
       📘 にんじゃたいの えほん をよむ
     </a>
 
-    <!-- ▼ 新規追加：こども実績 -->
+    <!-- ▼ 新規追加:QR / カード決済リンク -->
+    <a id="toPayment" class="ehon-link">💳 QR / カード決済 へすすむ</a>
+
+    <!-- ▼ 新規追加:こども実績 -->
     <section class="card kids-stats">
       <div class="card-header">
         <div>
@@ -506,7 +509,7 @@
       </div>
     </section>
 
-    <!-- ▼ 新規追加：バッジ -->
+    <!-- ▼ 新規追加:バッジ -->
     <section class="card kids-badges">
       <div class="card-header">
         <div>
@@ -520,10 +523,10 @@
       <div id="badgeList" class="badge-list">
         <!-- JSでバッジを追加 -->
       </div>
-      <p class="hint">バッジは あなた の がんばり の あかし です。もっと ふやそう！</p>
+      <p class="hint">バッジは あなた の がんばり の あかし です。もっと ふやそう!</p>
     </section>
 
-    <!-- ▼ 新規追加：称号 -->
+    <!-- ▼ 新規追加:称号 -->
     <section class="card kids-titles">
       <div class="card-header">
         <div>
@@ -537,10 +540,10 @@
       <div id="titleList" class="title-list">
         <!-- JSで称号を追加 -->
       </div>
-      <p class="hint">称号は あなた の レベル を あらわします。もっと すごい 称号を めざそう！</p>
+      <p class="hint">称号は あなた の レベル を あらわします。もっと すごい 称号を めざそう!</p>
     </section>
 
-    <!-- ▼ 新規追加：きょうの目標 -->
+    <!-- ▼ 新規追加:きょうの目標 -->
     <section class="card" id="goal-card">
       <div class="card-header">
         <div>
@@ -574,7 +577,7 @@
       </p>
     </section>
 
-    <!-- ▼ メインカード：きょうの売上 -->
+    <!-- ▼ メインカード:きょうの売上 -->
     <section id="sec-main" class="card" aria-live="polite">
       <div class="card-header">
         <div>
@@ -625,7 +628,7 @@
           <div class="meter-fill" id="meter-fill"></div>
         </div>
         <div class="meter-text">
-          きょうの がんばり：<span id="meter-text">—%</span>
+          きょうの がんばり:<span id="meter-text">—%</span>
         </div>
       </div>
 
@@ -635,7 +638,7 @@
       </p>
 
       <div class="footer-helpers">
-        <span>いっしょに おてつだい：</span>
+        <span>いっしょに おてつだい:</span>
         <span class="helper-badge">🌸 キモニャ(みつける係)</span>
         <span class="helper-badge">🥷 ニンシャ(かち を まもる係)</span>
         <span class="helper-badge">🐱 ネコマル(おうえん係)</span>
@@ -650,7 +653,7 @@
             <span class="emoji">🎯</span>
             <span>きょうの ミッション</span>
           </div>
-          <div class="card-sub">三つ できたら 100点！</div>
+          <div class="card-sub">三つ できたら 100点!</div>
         </div>
       </div>
 
@@ -658,7 +661,7 @@
         <li class="mission-item">
           <div class="mission-check" data-mission="1">✓</div>
           <div>
-            <div class="mission-text-main">お客さんに「いらっしゃいませ！」と いえた</div>
+            <div class="mission-text-main">お客さんに「いらっしゃいませ!」と いえた</div>
             <div class="mission-text-sub">さいしょの ひとことを 元気に いってみよう</div>
           </div>
         </li>
@@ -748,7 +751,7 @@
       const mainCardEl   = $("#sec-main");
       const blockEl      = $("#block-message");
 
-      // 新規追加：きょうの目標カード用の要素参照
+      // 新規追加:きょうの目標カード用の要素参照
       const goalCashlessRowEl = $("#goal-row-cashless");
       const goalAttrsRowEl    = $("#goal-row-attrs");
       const goalCashlessEl    = $("#goal-cashless-count");
@@ -777,7 +780,7 @@
         todayLabelEl.textContent = formatDateJp(nowJst) + " の うりあげ";
       }
 
-      // ====== 新規追加：こども実績サマリーを読み込む ======
+      // ====== 新規追加:こども実績サマリーを読み込む ======
       async function loadKidsSummary() {
         try {
           const res = await fetch(`/api/seller/kids-summary?s=${encodeURIComponent(sellerId)}`);
@@ -809,16 +812,16 @@
               const tb = b.first_earned_at ? new Date(b.first_earned_at).getTime() : 0;
               return tb - ta;
             });
-            titleEl.textContent = "称号：" + titles[0].label;
+            titleEl.textContent = "称号:" + titles[0].label;
           } else {
-            titleEl.textContent = "称号：まだこれから！";
+            titleEl.textContent = "称号:まだこれから!";
           }
 
           // バッジ一覧
           const badgeList = $("#badgeList");
           badgeList.innerHTML = "";
           if (badges.length === 0) {
-            badgeList.innerHTML = '<div class="hint">まだ バッジが ありません。がんばって ゲット しよう！</div>';
+            badgeList.innerHTML = '<div class="hint">まだ バッジが ありません。がんばって ゲット しよう!</div>';
           } else {
             badges.forEach((b) => {
               const div = document.createElement("div");
@@ -832,7 +835,7 @@
           const titleList = $("#titleList");
           titleList.innerHTML = "";
           if (titles.length === 0) {
-            titleList.innerHTML = '<div class="hint">まだ 称号が ありません。がんばって ゲット しよう！</div>';
+            titleList.innerHTML = '<div class="hint">まだ 称号が ありません。がんばって ゲット しよう!</div>';
           } else {
             titles.forEach((t) => {
               const div = document.createElement("div");
@@ -857,7 +860,7 @@
             return;
           }
 
-          // サブスク制御：kids以外はブロック
+          // サブスク制御:kids以外はブロック
           if (
             data &&
             (data.isSubscribed === false ||
@@ -896,7 +899,7 @@
           if (kpiMaxEl) kpiMaxEl.textContent = maxAmount ? formatYen(maxAmount) : "¥—";
 
           if (count === 0 && mainHintEl){
-            mainHintEl.textContent = "きょう の うりあげ は まだ 0 件です。さいしょの 1件 を 目指そう！";
+            mainHintEl.textContent = "きょう の うりあげ は まだ 0 件です。さいしょの 1件 を 目指そう!";
           }
 
           // がんばりメーター(dataScoreをそのまま%表示)
@@ -911,7 +914,7 @@
 
           // ▼ ここから きょうの目標のための集計 ▼
 
-          // きょうの日付（JST）を YYYY-MM-DD 文字列に
+          // きょうの日付(JST)を YYYY-MM-DD 文字列に
           const todayStr = nowJst.toISOString().slice(0,10);
 
           let cashlessToday = 0;
@@ -926,7 +929,7 @@
             const dStr = jst.toISOString().slice(0,10);
             if (dStr !== todayStr) return;
 
-            // QR / カード決済（paymentMethod === 'card' を想定）
+            // QR / カード決済(paymentMethod === 'card' を想定)
             if (tx.paymentMethod === "card") {
               cashlessToday++;
             }
@@ -1032,7 +1035,13 @@
 
       initMissions();
       loadSummary();
-      loadKidsSummary(); // 新規追加：こども実績を読み込む
+      loadKidsSummary(); // 新規追加:こども実績を読み込む
+
+      // ▼ 新規追加:QR / カード決済リンクを動的に設定 ▼
+      const toPaymentEl = document.getElementById("toPayment");
+      if (toPaymentEl && sellerId) {
+        toPaymentEl.href = `/seller-purchase.html?s=${encodeURIComponent(sellerId)}`;
+      }
     })();
   </script>
 </body>
