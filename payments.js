@@ -24,185 +24,242 @@ export function registerPaymentRoutes(app, deps) {
     PENDING_TTL_MIN,   // ← 追加
   } = deps;
 
-  // ====== Stripe webhook (raw body 必須) ======
-  app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
-    const sig = req.headers["stripe-signature"];
-    let event;
-    try {
-      event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-    } catch (err) {
-      console.error("webhook construct error", err);
-      return res.status(400).json({ error: `Webhook Error: ${err.message}` });
-    }
+  // ====== 🔍 Stripe webhook (raw body 必須) - デバッグログ追加版 ======
+  app.post(
+    "/webhooks/stripe",
+    express.raw({ type: "application/json" }),
+    async (req, res) => {
+      console.log("[WEBHOOK] hit /webhooks/stripe");
+      const sig = req.headers["stripe-signature"];
+      let event;
 
-    try {
-      const t = event.type;
-
-      // 🟢 決済成功時にUPSERTパターンを使用(Race Condition回避)
-      if (t === "payment_intent.succeeded") {
-        const pi = event.data.object;
-        const sellerId = pi.metadata?.sellerId || "";
-        const orderId = pi.metadata?.orderId || null;
-
-        if (!sellerId) {
-          console.warn("pi.succeeded without sellerId, skip", pi.id);
+      try {
+        if (process.env.SKIP_WEBHOOK_VERIFY === "1") {
+          // 🔍 テスト用：署名検証をスキップしてそのまま JSON パース
+          const raw = req.body.toString("utf8");
+          console.log("[WEBHOOK] SKIP_WEBHOOK_VERIFY=1, raw body =", raw);
+          event = JSON.parse(raw);
         } else {
-          const amount = typeof pi.amount_received === "number" ? pi.amount_received : 
-                        typeof pi.amount === "number" ? pi.amount : 0;
-          const currency = pi.currency || "jpy";
-          const chargeId = pi.latest_charge || null;
-          const created = pi.created ? new Date(pi.created * 1000) : new Date();
+          // 通常ルート：署名検証あり
+          event = stripe.webhooks.constructEvent(
+            req.body,
+            sig,
+            process.env.STRIPE_WEBHOOK_SECRET
+          );
+        }
+      } catch (err) {
+        console.error("[WEBHOOK] construct error", err);
+        return res
+          .status(400)
+          .json({ error: `Webhook Error: ${err.message}` });
+      }
 
-          // Charge情報から手数料を取得
-          let fee = null;
-          let balanceTxId = null;
-          if (chargeId) {
-            try {
-              const charge = await stripe.charges.retrieve(chargeId);
-              balanceTxId = charge.balance_transaction || null;
-              
-              if (balanceTxId && typeof balanceTxId === 'string') {
-                const balanceTx = await stripe.balanceTransactions.retrieve(balanceTxId);
-                fee = balanceTx.fee || 0;
+      try {
+        const t = event.type;
+        console.log("[WEBHOOK] event.type =", t);
+
+        // 🟢 決済成功時にUPSERTパターンを使用(Race Condition回避)
+        if (t === "payment_intent.succeeded") {
+          const pi = event.data.object;
+          console.log(
+            "[WEBHOOK] payment_intent.succeeded pi.id=",
+            pi.id,
+            "sellerId=",
+            pi.metadata?.sellerId,
+            "orderId=",
+            pi.metadata?.orderId
+          );
+
+          const sellerId = pi.metadata?.sellerId || "";
+          const orderId = pi.metadata?.orderId || null;
+
+          if (!sellerId) {
+            console.warn("[WEBHOOK] pi.succeeded without sellerId, skip", pi.id);
+          } else {
+            const amount = typeof pi.amount_received === "number" ? pi.amount_received : 
+                          typeof pi.amount === "number" ? pi.amount : 0;
+            const currency = pi.currency || "jpy";
+            const chargeId = pi.latest_charge || null;
+            const created = pi.created ? new Date(pi.created * 1000) : new Date();
+
+            // Charge情報から手数料を取得
+            let fee = null;
+            let balanceTxId = null;
+            if (chargeId) {
+              try {
+                console.log("[WEBHOOK] Fetching charge info for chargeId=", chargeId);
+                const charge = await stripe.charges.retrieve(chargeId);
+                balanceTxId = charge.balance_transaction || null;
+                
+                if (balanceTxId && typeof balanceTxId === 'string') {
+                  console.log("[WEBHOOK] Fetching balance transaction for balanceTxId=", balanceTxId);
+                  const balanceTx = await stripe.balanceTransactions.retrieve(balanceTxId);
+                  fee = balanceTx.fee || 0;
+                  console.log("[WEBHOOK] Retrieved fee=", fee);
+                }
+              } catch (stripeErr) {
+                console.error("[WEBHOOK] Failed to retrieve charge/balance info", stripeErr);
               }
+            }
+
+            const netAmount = fee !== null ? amount - fee : amount;
+
+            console.log("[WEBHOOK] Upserting payment: amount=", amount, "fee=", fee, "netAmount=", netAmount);
+
+            // ✅ UPSERTパターン(ON CONFLICT)
+            await pool.query(
+              `insert into stripe_payments (
+                seller_id, order_id, payment_intent_id, charge_id, balance_tx_id,
+                amount_gross, amount_fee, amount_net, currency, status, refunded_total, 
+                raw_event, created_at, updated_at
+              ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now())
+              on conflict (payment_intent_id)
+              do update set
+                charge_id = excluded.charge_id,
+                balance_tx_id = excluded.balance_tx_id,
+                amount_gross = excluded.amount_gross,
+                amount_fee = excluded.amount_fee,
+                amount_net = excluded.amount_net,
+                status = excluded.status,
+                raw_event = excluded.raw_event,
+                updated_at = now()`,
+              [
+                sellerId, orderId, pi.id, chargeId, balanceTxId,
+                amount, fee, netAmount, currency, "succeeded", 0,
+                event, created
+              ]
+            );
+
+            console.log("[WEBHOOK] Payment upserted successfully for pi.id=", pi.id);
+
+            // ordersテーブルのステータス更新
+            if (orderId) {
+              console.log("[WEBHOOK] Updating order status for orderId=", orderId);
+              await pool.query(
+                `update orders set status='paid', stripe_sid=$1, updated_at=now() where id=$2`,
+                [pi.id, orderId]
+              );
+              console.log("[WEBHOOK] Order status updated to 'paid' for orderId=", orderId);
+            }
+
+            audit("pi_succeeded", { sellerId, orderId, pi: pi.id, amount, fee, netAmount });
+            console.log("[WEBHOOK] Audit log created for pi_succeeded");
+          }
+        }
+
+        // --- 返金:charge.refunded ---
+        if (t === "charge.refunded" || t === "charge.refund.updated") {
+          console.log("[WEBHOOK] Processing refund event:", t);
+          const ch = event.data.object;
+          const piId = ch.payment_intent || null;
+          const amount = typeof ch.amount === "number" ? ch.amount : 0;
+          const refunded = typeof ch.amount_refunded === "number" ? ch.amount_refunded : 0;
+          
+          console.log("[WEBHOOK] Refund details: piId=", piId, "amount=", amount, "refunded=", refunded);
+
+          let fee = 0;
+          const balanceTxId = ch.balance_transaction;
+          if (balanceTxId && typeof balanceTxId === 'string') {
+            try {
+              console.log("[WEBHOOK] Fetching balance transaction for refund, balanceTxId=", balanceTxId);
+              const balanceTx = await stripe.balanceTransactions.retrieve(balanceTxId);
+              fee = balanceTx.fee || 0;
+              console.log("[WEBHOOK] Refund fee retrieved:", fee);
             } catch (stripeErr) {
-              console.error("Failed to retrieve charge/balance info", stripeErr);
+              console.error("[WEBHOOK] Failed to retrieve balance transaction for refund", stripeErr);
             }
           }
+          
+          const net = Math.max(amount - refunded - fee, 0);
+          const status = refunded >= amount ? "refunded" : "partially_refunded";
 
-          const netAmount = fee !== null ? amount - fee : amount;
+          console.log("[WEBHOOK] Calculated net=", net, "status=", status);
 
-          // ✅ UPSERTパターン(ON CONFLICT)
-          await pool.query(
-            `insert into stripe_payments (
-              seller_id, order_id, payment_intent_id, charge_id, balance_tx_id,
-              amount_gross, amount_fee, amount_net, currency, status, refunded_total, 
-              raw_event, created_at, updated_at
-            ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now())
-            on conflict (payment_intent_id)
-            do update set
-              charge_id = excluded.charge_id,
-              balance_tx_id = excluded.balance_tx_id,
-              amount_gross = excluded.amount_gross,
-              amount_fee = excluded.amount_fee,
-              amount_net = excluded.amount_net,
-              status = excluded.status,
-              raw_event = excluded.raw_event,
-              updated_at = now()`,
-            [
-              sellerId, orderId, pi.id, chargeId, balanceTxId,
-              amount, fee, netAmount, currency, "succeeded", 0,
-              event, created
-            ]
-          );
-
-          // ordersテーブルのステータス更新
-          if (orderId) {
-            await pool.query(
-              `update orders set status='paid', stripe_sid=$1, updated_at=now() where id=$2`,
-              [pi.id, orderId]
+          if (piId) {
+            const r = await pool.query(
+              `update stripe_payments set 
+                amount_gross=$2, amount_fee=$3, amount_net=$4, refunded_total=$5, status=$6, 
+                charge_id=$7, raw_event=$8, updated_at=now()
+              where payment_intent_id=$1 returning seller_id`,
+              [piId, amount, fee, net, refunded, status, ch.id, event]
             );
-          }
 
-          audit("pi_succeeded", { sellerId, orderId, pi: pi.id, amount, fee, netAmount });
+            if (r.rowCount === 0) {
+              console.warn("[WEBHOOK] refund for unknown pi", piId);
+            } else {
+              console.log("[WEBHOOK] Refund updated successfully for piId=", piId);
+              audit("charge_refund", { pi: piId, amount, refunded, fee, net, status });
+            }
+          }
         }
+
+        // --- チャージバック発生:charge.dispute.created ---
+        if (t === "charge.dispute.created") {
+          console.log("[WEBHOOK] Processing charge.dispute.created");
+          const dispute = event.data.object;
+          const chargeId = dispute.charge || null;
+
+          console.log("[WEBHOOK] Dispute created for chargeId=", chargeId);
+
+          if (chargeId) {
+            const r = await pool.query(
+              `update stripe_payments set 
+                status='disputed', dispute_status='needs_response', 
+                amount_net=0, raw_event=$2, updated_at=now()
+              where charge_id=$1 returning seller_id, payment_intent_id`,
+              [chargeId, event]
+            );
+
+            if (r.rowCount === 0) {
+              console.warn("[WEBHOOK] dispute.created: no payment for charge", chargeId);
+            } else {
+              const row = r.rows[0];
+              console.log("[WEBHOOK] Dispute recorded for sellerId=", row.seller_id, "pi=", row.payment_intent_id);
+              audit("dispute_created", { sellerId: row.seller_id, pi: row.payment_intent_id });
+            }
+          }
+        }
+
+        // --- チャージバッククローズ:charge.dispute.closed ---
+        if (t === "charge.dispute.closed") {
+          console.log("[WEBHOOK] Processing charge.dispute.closed");
+          const dispute = event.data.object;
+          const chargeId = dispute.charge || null;
+          const outcome = dispute.status;
+
+          console.log("[WEBHOOK] Dispute closed for chargeId=", chargeId, "outcome=", outcome);
+
+          if (chargeId) {
+            const disputeStatus = outcome === "won" ? "won" : "lost";
+            const newStatus = outcome === "won" ? "succeeded" : "disputed";
+
+            const r = await pool.query(
+              `update stripe_payments set 
+                status=$2, dispute_status=$3,
+                amount_net = case when $2='disputed' then 0 else amount_gross - coalesce(amount_fee, 0) - refunded_total end,
+                raw_event=$4, updated_at=now()
+              where charge_id=$1 returning seller_id, payment_intent_id`,
+              [chargeId, newStatus, disputeStatus, event]
+            );
+
+            if (r.rowCount === 0) {
+              console.warn("[WEBHOOK] dispute.closed: no payment for charge", chargeId);
+            } else {
+              const row = r.rows[0];
+              console.log("[WEBHOOK] Dispute closed successfully, status=", newStatus);
+              audit("dispute_closed", { sellerId: row.seller_id, pi: row.payment_intent_id, status: newStatus });
+            }
+          }
+        }
+
+        console.log("[WEBHOOK] Event processing completed successfully for event.type=", t);
+        return res.json({ received: true });
+      } catch (err) {
+        console.error("[WEBHOOK] handler error", err);
+        return res.status(500).json({ error: "handler error" });
       }
-
-      // --- 返金:charge.refunded ---
-      if (t === "charge.refunded" || t === "charge.refund.updated") {
-        const ch = event.data.object;
-        const piId = ch.payment_intent || null;
-        const amount = typeof ch.amount === "number" ? ch.amount : 0;
-        const refunded = typeof ch.amount_refunded === "number" ? ch.amount_refunded : 0;
-        
-        let fee = 0;
-        const balanceTxId = ch.balance_transaction;
-        if (balanceTxId && typeof balanceTxId === 'string') {
-          try {
-            const balanceTx = await stripe.balanceTransactions.retrieve(balanceTxId);
-            fee = balanceTx.fee || 0;
-          } catch (stripeErr) {
-            console.error("Failed to retrieve balance transaction for refund", stripeErr);
-          }
-        }
-        
-        const net = Math.max(amount - refunded - fee, 0);
-        const status = refunded >= amount ? "refunded" : "partially_refunded";
-
-        if (piId) {
-          const r = await pool.query(
-            `update stripe_payments set 
-              amount_gross=$2, amount_fee=$3, amount_net=$4, refunded_total=$5, status=$6, 
-              charge_id=$7, raw_event=$8, updated_at=now()
-            where payment_intent_id=$1 returning seller_id`,
-            [piId, amount, fee, net, refunded, status, ch.id, event]
-          );
-
-          if (r.rowCount === 0) {
-            console.warn("refund for unknown pi", piId);
-          } else {
-            audit("charge_refund", { pi: piId, amount, refunded, fee, net, status });
-          }
-        }
-      }
-
-      // --- チャージバック発生:charge.dispute.created ---
-      if (t === "charge.dispute.created") {
-        const dispute = event.data.object;
-        const chargeId = dispute.charge || null;
-
-        if (chargeId) {
-          const r = await pool.query(
-            `update stripe_payments set 
-              status='disputed', dispute_status='needs_response', 
-              amount_net=0, raw_event=$2, updated_at=now()
-            where charge_id=$1 returning seller_id, payment_intent_id`,
-            [chargeId, event]
-          );
-
-          if (r.rowCount === 0) {
-            console.warn("dispute.created: no payment for charge", chargeId);
-          } else {
-            const row = r.rows[0];
-            audit("dispute_created", { sellerId: row.seller_id, pi: row.payment_intent_id });
-          }
-        }
-      }
-
-      // --- チャージバッククローズ:charge.dispute.closed ---
-      if (t === "charge.dispute.closed") {
-        const dispute = event.data.object;
-        const chargeId = dispute.charge || null;
-        const outcome = dispute.status;
-
-        if (chargeId) {
-          const disputeStatus = outcome === "won" ? "won" : "lost";
-          const newStatus = outcome === "won" ? "succeeded" : "disputed";
-
-          const r = await pool.query(
-            `update stripe_payments set 
-              status=$2, dispute_status=$3,
-              amount_net = case when $2='disputed' then 0 else amount_gross - coalesce(amount_fee, 0) - refunded_total end,
-              raw_event=$4, updated_at=now()
-            where charge_id=$1 returning seller_id, payment_intent_id`,
-            [chargeId, newStatus, disputeStatus, event]
-          );
-
-          if (r.rowCount === 0) {
-            console.warn("dispute.closed: no payment for charge", chargeId);
-          } else {
-            const row = r.rows[0];
-            audit("dispute_closed", { sellerId: row.seller_id, pi: row.payment_intent_id, status: newStatus });
-          }
-        }
-      }
-
-    } catch (e) {
-      console.error("webhook handler error", e);
     }
-
-    res.json({ received: true });
-  });
+  );
 
   // ★ 追加：決済系API用の JSON パーサー
   // webhook は上で raw を使っているので影響しません
