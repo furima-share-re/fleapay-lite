@@ -331,9 +331,7 @@ export function registerPaymentRoutes(app, deps) {
               WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN COALESCE(sp.amount_fee, 0)
               ELSE 0
             END
-          ), 0) AS fee,
-          -- ★ 仕入額合計を追加
-          COALESCE(SUM(o.cost_amount), 0) AS cost
+          ), 0) AS fee
         FROM orders o
         LEFT JOIN order_metadata  om ON om.order_id = o.id
         LEFT JOIN stripe_payments sp ON sp.order_id = o.id
@@ -351,19 +349,48 @@ export function registerPaymentRoutes(app, deps) {
       const todayGross = Number(kpiToday.rows[0].gross || 0);
       const todayNet   = Number(kpiToday.rows[0].net   || 0);
       const todayFee   = Number(kpiToday.rows[0].fee   || 0);
-      const todayCost  = Number(kpiToday.rows[0].cost  || 0);  // ★ 仕入額
-      const todayProfit = todayNet - todayCost;                // ★ 利益 = 純売上 - 仕入額
       const countToday = parseInt(kpiToday.rows[0].cnt, 10) || 0;
       const avgToday   = countToday > 0 ? Math.round(todayNet / countToday) : 0;
 
+      // ② 累計売上KPI(現金+カード統合)
+      //    → 今日の売上と同じロジックで全期間を集計
       const kpiTotal = await pool.query(
         `
         SELECT
-          COALESCE(SUM(amount_gross), 0) AS gross,
-          COALESCE(SUM(amount_net), 0)   AS net,
-          COALESCE(SUM(amount_fee), 0)   AS fee
-        FROM stripe_payments
-        WHERE seller_id = $1
+          -- 売上合計(gross)
+          COALESCE(SUM(
+            CASE 
+              WHEN om.is_cash = true THEN o.amount
+              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+              ELSE 0
+            END
+          ), 0) AS gross,
+          -- 純売上(net)
+          COALESCE(SUM(
+            CASE 
+              WHEN om.is_cash = true THEN o.amount
+              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+              ELSE 0
+            END
+          ), 0) AS net,
+          -- 手数料(fee)
+          COALESCE(SUM(
+            CASE 
+              WHEN om.is_cash = true THEN 0
+              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN COALESCE(sp.amount_fee, 0)
+              ELSE 0
+            END
+          ), 0) AS fee,
+          -- ★ 累計の仕入額も追加
+          COALESCE(SUM(o.cost_amount), 0) AS cost
+        FROM orders o
+        LEFT JOIN order_metadata  om ON om.order_id = o.id
+        LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+        WHERE o.seller_id = $1
+          AND (
+            om.is_cash = true
+            OR sp.status = 'succeeded'
+          )
         `,
         [sellerId]
       );
@@ -468,13 +495,13 @@ export function registerPaymentRoutes(app, deps) {
           fee:   todayFee,
           count: countToday,
           avgNet: avgToday,
-          cost: todayCost,      // ★ 仕入額を追加
-          profit: todayProfit,  // ★ 利益を追加
         },
         salesTotal: {
           gross: Number(kpiTotal.rows[0].gross || 0),
           net:   Number(kpiTotal.rows[0].net   || 0),
-          fee:   Number(kpiTotal.rows[0].fee   || 0)
+          fee:   Number(kpiTotal.rows[0].fee   || 0),
+          cost:  Number(kpiTotal.rows[0].cost  || 0),  // ★ 累計仕入額を追加
+          profit: Number(kpiTotal.rows[0].net || 0) - Number(kpiTotal.rows[0].cost || 0)  // ★ 累計利益を追加
         },
 
         // ★ 旧フロント用の互換フィールド
