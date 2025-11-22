@@ -331,7 +331,9 @@ export function registerPaymentRoutes(app, deps) {
               WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN COALESCE(sp.amount_fee, 0)
               ELSE 0
             END
-          ), 0) AS fee
+          ), 0) AS fee,
+          -- 仕入額(cost)
+          COALESCE(SUM(o.cost_amount), 0) AS cost
         FROM orders o
         LEFT JOIN order_metadata  om ON om.order_id = o.id
         LEFT JOIN stripe_payments sp ON sp.order_id = o.id
@@ -349,6 +351,8 @@ export function registerPaymentRoutes(app, deps) {
       const todayGross = Number(kpiToday.rows[0].gross || 0);
       const todayNet   = Number(kpiToday.rows[0].net   || 0);
       const todayFee   = Number(kpiToday.rows[0].fee   || 0);
+      const todayCost  = Number(kpiToday.rows[0].cost  || 0);
+      const todayProfit = todayNet - todayCost;
       const countToday = parseInt(kpiToday.rows[0].cnt, 10) || 0;
       const avgToday   = countToday > 0 ? Math.round(todayNet / countToday) : 0;
 
@@ -493,6 +497,8 @@ export function registerPaymentRoutes(app, deps) {
           gross: todayGross,
           net:   todayNet,
           fee:   todayFee,
+          cost:  todayCost,
+          profit: todayProfit,
           count: countToday,
           avgNet: avgToday,
         },
