@@ -492,6 +492,23 @@
           </div>
         </div>
 
+        <!-- 🟦 🆕 仕入額 -->
+        <div class="kpi-row">
+          <div class="kpi">
+            <div class="kpi-label">きょうの 仕入額</div>
+            <div class="kpi-value" id="kpi-cost">¥—</div>
+          </div>
+        </div>
+
+        <!-- 🟩 🆕 利益 -->
+        <div class="kpi-row">
+          <div class="kpi">
+            <div class="kpi-label">きょうの 利益</div>
+            <div class="kpi-value" id="kpi-profit">¥—</div>
+            <div class="kpi-note">純売上 − 仕入額</div>
+          </div>
+        </div>
+
         <div class="kpi-row">
           <div class="kpi">
             <div class="kpi-label">決済回数</div>
@@ -658,6 +675,19 @@
         <div class="field">
           <div class="field-label">金額</div>
           <div class="field-value" id="modal-amount"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">仕入額</div>
+          <input
+            id="modal-cost"
+            class="field-select"
+            type="number"
+            min="0"
+            step="1"
+            inputmode="numeric"
+            placeholder="例: 200"
+          />
         </div>
 
         <hr/>
@@ -1024,6 +1054,16 @@
           if (kpiCountEl) kpiCountEl.textContent = `${countToday}件`;
           if (kpiAvgEl)   kpiAvgEl.textContent   = formatYen(avgToday || 0);
 
+          // 🟦 仕入額・利益の表示
+          const costToday = data.salesToday?.cost ?? 0;
+          const profitToday = data.salesToday?.profit ?? (todayNet - costToday);
+
+          // DOMへ描画
+          const kpiCostEl = document.querySelector("#kpi-cost");
+          const kpiProfitEl = document.querySelector("#kpi-profit");
+          if (kpiCostEl) kpiCostEl.textContent = formatYen(costToday);
+          if (kpiProfitEl) kpiProfitEl.textContent = formatYen(profitToday);
+
           // 🟦 (A) データ精度スコアの表示
           if (dataScoreEl && data.dataScore !== undefined) {
             dataScoreEl.textContent = data.dataScore + "%";
@@ -1126,6 +1166,7 @@
         const imgWrapper = document.getElementById("order-image-wrapper");
         const sumEl      = document.getElementById("modal-summary");
         const amtEl      = document.getElementById("modal-amount");
+        const costEl     = document.getElementById("modal-cost");
         const typeEl     = document.getElementById("modal-customer-type");
         const genEl      = document.getElementById("modal-gender");
         const ageEl      = document.getElementById("modal-age");
@@ -1155,6 +1196,12 @@
 
         // 🟩 金額（サーバーは amount を返す）
         if (amtEl) amtEl.textContent = "¥" + (data.amount || 0).toLocaleString("ja-JP");
+
+        // 🟩 仕入額
+        if (costEl) {
+          const c = typeof data.costAmount === "number" ? data.costAmount : 0;
+          costEl.value = c > 0 ? String(c) : "";
+        }
 
         // 🟩 購入者属性（サーバーは buyer オブジェクトではなく直接返す）
         if (typeEl) typeEl.value = data.customerType || "";
@@ -1201,6 +1248,7 @@
           const ageEl  = document.getElementById("modal-age");
           const catEl  = document.getElementById("modal-category");
           const langEl = document.getElementById("modal-language");
+          const costEl = document.getElementById("modal-cost");
 
           const summary       = sumEl?.value  || "";
           const customer_type = typeEl?.value || "";
@@ -1208,6 +1256,8 @@
           const age_band      = ageEl?.value  || "";
           const category      = catEl?.value  || "";
           const buyer_language= langEl?.value || "";
+          const cost_raw      = costEl?.value || "";
+          const costAmount    = cost_raw ? Number(cost_raw) : 0;
 
           try {
             saveBtn.disabled = true;
@@ -1248,6 +1298,18 @@
                 summary
               })
             });
+
+            // 4) 仕入額(cost_amount) を保存（0以上のときだけ）
+            if (cost_raw !== "") {
+              await fetch("/api/orders/update-cost", {
+                method:"POST",
+                headers:{ "Content-Type":"application/json" },
+                body:JSON.stringify({
+                  orderId: currentDetailOrderId,
+                  costAmount: costAmount
+                })
+              });
+            }
 
             alert("保存しました");
             closeOrderDetail();
