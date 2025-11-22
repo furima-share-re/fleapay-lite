@@ -295,19 +295,53 @@ export function registerPaymentRoutes(app, deps) {
       }
 
       // ① 売上KPI(JST基準で正しく集計)
+      //    → 「取引明細に出ているもの(現金+カード成功)」をすべて対象にする
       const { todayStart, tomorrowStart } = jstDayBounds();
 
       const kpiToday = await pool.query(
         `
         SELECT
-          COUNT(*)                           AS cnt,
-          COALESCE(SUM(amount_gross), 0)     AS gross,
-          COALESCE(SUM(amount_net),   0)     AS net,
-          COALESCE(SUM(amount_fee),   0)     AS fee
-        FROM stripe_payments
-        WHERE seller_id = $1
-          AND created_at >= $2
-          AND created_at <  $3
+          COUNT(*) AS cnt,
+          -- 売上合計(gross)
+          --   現金 : orders.amount
+          --   カード: stripe_payments.amount_gross
+          COALESCE(SUM(
+            CASE 
+              WHEN om.is_cash = true THEN o.amount
+              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+              ELSE 0
+            END
+          ), 0) AS gross,
+          -- 純売上(net)
+          --   現金 : 手数料0なのでそのまま amount
+          --   カード: amount_net(返金・チャージバック反映後)
+          COALESCE(SUM(
+            CASE 
+              WHEN om.is_cash = true THEN o.amount
+              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+              ELSE 0
+            END
+          ), 0) AS net,
+          -- 手数料(fee)
+          --   現金 : 0
+          --   カード: amount_fee
+          COALESCE(SUM(
+            CASE 
+              WHEN om.is_cash = true THEN 0
+              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN COALESCE(sp.amount_fee, 0)
+              ELSE 0
+            END
+          ), 0) AS fee
+        FROM orders o
+        LEFT JOIN order_metadata  om ON om.order_id = o.id
+        LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+        WHERE o.seller_id = $1
+          AND o.created_at >= $2
+          AND o.created_at <  $3
+          AND (
+            om.is_cash = true            -- 現金
+            OR sp.status = 'succeeded'   -- カード成功
+          )
         `,
         [sellerId, todayStart, tomorrowStart]
       );
