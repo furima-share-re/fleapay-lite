@@ -256,6 +256,7 @@ async function initDb() {
       seller_id text not null,
       order_no integer not null,
       amount integer not null,
+      cost_amount integer default 0,
       summary text,
       frame_id text,
       status text not null default 'pending',
@@ -483,16 +484,21 @@ app.post("/api/orders/metadata", async (req, res) => {
       return res.status(400).json({ error: "order_id_required" });
     }
 
+    // is_cash が送られてこなかった場合は、既存の値を維持する
+    const normalizedIsCash =
+      typeof is_cash === "boolean" ? is_cash : null;
+
     await pool.query(
       `insert into order_metadata (order_id, category, buyer_language, is_cash)
        values ($1, $2, $3, $4)
        on conflict (order_id)
        do update set
-         category = excluded.category,
-         buyer_language = excluded.buyer_language,
-         is_cash = excluded.is_cash,
-         updated_at = now()`,
-      [orderId, category || null, buyer_language || null, !!is_cash]
+         category        = excluded.category,
+         buyer_language  = excluded.buyer_language,
+         -- is_cash が null のときは既存の値を残す
+         is_cash         = coalesce(excluded.is_cash, order_metadata.is_cash),
+         updated_at      = now()`,
+      [orderId, category || null, buyer_language || null, normalizedIsCash]
     );
 
     audit("order_metadata_saved", { orderId, category, buyer_language, is_cash });
@@ -528,6 +534,36 @@ app.post("/api/orders/update-summary", async (req, res) => {
   }
 });
 
+// ====== 🆕 仕入額(cost_amount) 更新API ======
+app.post("/api/orders/update-cost", async (req, res) => {
+  try {
+    const { orderId, costAmount } = req.body || {};
+
+    if (!orderId) {
+      return res.status(400).json({ error: "order_id_required" });
+    }
+
+    const cost = Number(costAmount);
+    if (!Number.isFinite(cost) || cost < 0) {
+      return res.status(400).json({ error: "invalid_cost" });
+    }
+
+    await pool.query(
+      `update orders
+         set cost_amount = $2,
+             updated_at  = now()
+       where id = $1`,
+      [orderId, Math.round(cost)]
+    );
+
+    audit("order_cost_updated", { orderId, cost: Math.round(cost) });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("/api/orders/update-cost error", e);
+    res.status(500).json(sanitizeError(e));
+  }
+});
+
 // ====== 🆕 出店者用: 注文1件の詳細（写真＋属性）取得（orders基準に修正） ======
 // ※ payments.js 側の /api/seller/order-detail と競合しないようにパス名を変更
 app.get("/api/seller/order-detail-full", async (req, res) => {
@@ -545,6 +581,7 @@ app.get("/api/seller/order-detail-full", async (req, res) => {
         o.id,
         o.summary              AS memo,
         o.amount,
+        o.cost_amount,
         o.created_at,
         om.is_cash,
         ba.customer_type,
@@ -576,6 +613,7 @@ app.get("/api/seller/order-detail-full", async (req, res) => {
       sellerId: sellerId,          // ★ 追加（超重要）★
       memo: row.memo || "",
       amount: row.amount,
+      costAmount: row.cost_amount || 0,  // ★ 追加
       createdAt: row.created_at,
       isCash: !!row.is_cash,
       customerType: row.customer_type || "unknown",
@@ -1123,8 +1161,9 @@ app.post("/api/pending/start", async (req, res) => {
   try {
     if (!isSameOrigin(req)) return res.status(403).json({ error: "forbidden_origin" });
 
-    const { sellerId, amount, summary, imageData, aiAnalysis, paymentMethod } = req.body || {};
+    const { sellerId, amount, summary, imageData, aiAnalysis, paymentMethod, costAmount } = req.body || {};
     const amt = Number(amount);
+    const costAmt = Number(costAmount) || 0;
 
     if (!sellerId || !Number.isInteger(amt) || amt < 100) {
       return res.status(400).json({ error: "invalid input" });
@@ -1139,10 +1178,10 @@ app.post("/api/pending/start", async (req, res) => {
     const orderNo = await getNextOrderNo(sellerId);
 
     const orderResult = await pool.query(
-      `insert into orders (seller_id, order_no, amount, summary, status)
-       values ($1, $2, $3, $4, 'pending')
-       returning id, seller_id, order_no, amount, summary, status, created_at`,
-      [sellerId, orderNo, amt, summary || null]
+      `insert into orders (seller_id, order_no, amount, summary, status, cost_amount)
+       values ($1, $2, $3, $4, 'pending', $5)
+       returning id, seller_id, order_no, amount, summary, status, created_at, cost_amount`,
+      [sellerId, orderNo, amt, summary || null, costAmt]
     );
 
     const order = orderResult.rows[0];
