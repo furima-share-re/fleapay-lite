@@ -5,44 +5,18 @@
        FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
        ★フリマ実態に合わせて簡略化版
        
-       【パッチ適用済み v14 - パターンA問題修正】
+       【パッチ適用済み v15 - キーパッド追加】
        ★変更点★
+       1. Step3に画面内キーパッド追加（電卓スタイルのボタン）
+       2. 金額入力欄をreadonly化（ネイティブキーボード非表示）
+       3. inputmode="none"でモバイルキーボードを抑制
+       4. キーパッドボタン：1-9, 0, C（クリア）, ⌫（削除）
+       5. 最大6桁制限（999,999円まで）
+       
+       【v14の変更点】
        1. QR URL生成ロジック：checkoutUrl最優先、フォールバック時は?order=使用
        2. パラメータ統一：?o= → ?order=（checkout.html側との互換性）
        3. skipボタンバグ修正：QRコンテナの表示制御追加
-       
-       【v13の変更点】
-       1. Step0-1：🌸絵文字 → /images/kimonya.svg に変更
-       2. キャラクター画像を<img>タグで表示（絶対パス使用）
-       3. 適切なスタイリング（中央配置、バウンスアニメーション維持）
-       
-       【v12の変更点】
-       1. Step4：支払い方法にキャッシュレスバッジヒント追加
-       2. Step5：購入者属性に「データ名人メーター」説明追加
-       3. 保存ボタンを「メーターUP」表現に変更
-       4. 現金決済時にキャッシュレスバッジへのヒント追加
-       
-       【v11の変更点】
-       1. サブスクチェック機能追加（プロ/キッズプラン専用）
-       2. sellerId未設定時のブロック処理追加
-       3. 非サブスク会員へのメッセージ表示
-       
-       【v10.1の変更点】
-       1. Step4に支払い方法選択UI追加（現金/QR・カード）
-       2. paymentMethodをサーバーへ送信
-       3. 現金の場合はQRコード表示をスキップ
-       4. renderStep4で初期値を確実にキャッシュレスに設定
-       
-       【過去のパッチ】
-       v9: 購入者属性タグ追加
-       v8: キッズモード ウェルカム画面追加
-       v7: iPad撮影ボタン見切れ修正
-       v6: カメラ拡大問題修正（クロップ95%、ズーム無効化）
-       v5: QR URL優先順位修正
-       v4: AI total 自動反映
-       v3: UX改善（ボタン無効化、価格入力クリア）
-       v2: OCR精度向上（高解像度、オートフォーカス等）
-       v1: 撮影画面フルスクリーン化
        ========================================================= -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -204,7 +178,6 @@
         opacity:0;
       }
     }
-    /* ★変更：キモニャキャラクター用スタイル（imgタグ対応） */
     .kimonya-character{
       position:absolute;
       top:50%;
@@ -582,6 +555,36 @@
       padding:0.5rem 0;
     }
     
+    /* ========== キーパッド ========== */
+    .keypad{
+      margin-top:0.5rem;
+      user-select:none;
+    }
+    .keypad-row{
+      display:flex;
+      gap:0.5rem;
+      margin-bottom:0.5rem;
+    }
+    .key-btn{
+      flex:1;
+      padding:0.75rem 0;
+      font-size:1.3rem;
+      font-weight:600;
+      border-radius:var(--radius);
+      border:none;
+      background:#e2e8f0;
+      box-shadow:var(--shadow);
+      cursor:pointer;
+      transition:transform 0.05s, background 0.1s;
+    }
+    .key-btn:active{
+      transform:scale(0.97);
+      background:#cbd5e1;
+    }
+    .key-btn.key-wide{
+      flex:1.4;
+    }
+    
     /* ========== Step4: 最終確認 ========== */
     .confirm-card{
       background:#f8fafc;
@@ -735,7 +738,6 @@
     <div class="welcome-container">
       <div class="character-animation">
         <div class="sakura-particles"></div>
-        <!-- ★変更：絵文字からSVG画像に変更 -->
         <img 
           src="/images/kimonya.svg" 
           alt="キモニャ店長" 
@@ -878,9 +880,36 @@
                id="totalPriceInput" 
                placeholder="0" 
                min="0" 
-               step="1"/>
+               step="1"
+               inputmode="none"
+               readonly />
       </div>
     </div>
+    
+    <!-- ★追加：キーパッド -->
+    <div class="keypad" id="priceKeypad">
+      <div class="keypad-row">
+        <button type="button" class="key-btn" data-key="1">1</button>
+        <button type="button" class="key-btn" data-key="2">2</button>
+        <button type="button" class="key-btn" data-key="3">3</button>
+      </div>
+      <div class="keypad-row">
+        <button type="button" class="key-btn" data-key="4">4</button>
+        <button type="button" class="key-btn" data-key="5">5</button>
+        <button type="button" class="key-btn" data-key="6">6</button>
+      </div>
+      <div class="keypad-row">
+        <button type="button" class="key-btn" data-key="7">7</button>
+        <button type="button" class="key-btn" data-key="8">8</button>
+        <button type="button" class="key-btn" data-key="9">9</button>
+      </div>
+      <div class="keypad-row">
+        <button type="button" class="key-btn key-wide" data-key="clear">C</button>
+        <button type="button" class="key-btn" data-key="0">0</button>
+        <button type="button" class="key-btn" data-key="del">⌫</button>
+      </div>
+    </div>
+    <!-- ★ここまで追加 -->
     
     <button class="btn" id="nextToConfirm" disabled>👀 さいしゅう かくにん</button>
   </div>
@@ -910,7 +939,6 @@
       <label for="parentCheck">内容を確認しました</label>
     </div>
 
-    <!-- ★追加：支払い方法えらぶ -->
     <h2><span class="emoji">💳</span> しはらい ほうほう</h2>
     <div class="payment-method-group">
       <button type="button" class="pay-btn selected" data-method="cashless">
@@ -920,13 +948,11 @@
         💴 現金で もらった
       </button>
     </div>
-    <!-- ★追加：ダッシュボード成長ヒント -->
     <p style="font-size:0.8rem;color:#64748b;margin-top:-0.5rem;margin-bottom:1.5rem;">
       💡「QR / カード（ネコマルおすすめ）」を えらぶと、<br>
       若旦那・若女将ダッシュボードの
       <strong>キャッシュレスバッジ</strong> に ちかづきます。
     </p>
-    <!-- ここまで追加 -->
 
     <button class="btn" id="registerBtn" disabled>✅ とうろく する</button>
   </div>
@@ -943,7 +969,6 @@
       <div id="qrcode"></div>
     </div>
     
-    <!-- ▼ 購入者タグ入力エリア -->
     <div class="buyer-attrs">
       <h2><span class="emoji">🙋‍♀️</span> かってくれた ひと</h2>
       <p class="buyer-hint">
@@ -955,7 +980,6 @@
         ※なまえ や れんらくさき は ひつよう ありません。
       </p>
 
-      <!-- 国籍/区分 -->
       <div class="attr-group">
         <div class="attr-label">国籍/区分</div>
         <div class="attr-buttons" data-attr="customer_type">
@@ -964,7 +988,6 @@
         </div>
       </div>
 
-      <!-- 性別 -->
       <div class="attr-group">
         <div class="attr-label">性別</div>
         <div class="attr-buttons" data-attr="gender">
@@ -974,7 +997,6 @@
         </div>
       </div>
 
-      <!-- 年齢帯 -->
       <div class="attr-group">
         <div class="attr-label">年齢帯</div>
         <div class="attr-buttons" data-attr="age_band">
@@ -990,7 +1012,6 @@
       </button>
       <p class="buyer-hint" id="buyerAttrStatus"></p>
     </div>
-    <!-- ▲ 購入者タグ入力エリアここまで -->
     
     <button class="btn btn-secondary" onclick="location.reload()">
       🔄 つぎの しょうひん を とうろく
@@ -1037,11 +1058,8 @@
   let sellerId = null;
   let videoStream = null;
   let torchEnabled = false;
-  
-  // ★追加：支払い方法（デフォルトはキャッシュレス）
   let paymentMethod = "cashless";
   
-  // オーダーID & 購入者属性の一時保存
   let currentOrderId = null;
   const buyerAttrs = {
     customer_type: null,
@@ -1050,7 +1068,6 @@
   };
   
   // ========== サブスクリプションチェック ==========
-  // サブスク状態を確認し、未加入なら画面をブロック
   async function ensureSubscribedSeller() {
     debugLog('📡 サブスクチェック開始...');
     
@@ -1116,7 +1133,6 @@
       console.error("ensureSubscribedSeller error", e);
       debugLog(`❌ 例外発生: ${e.message}`);
       
-      // 開発/テスト環境では例外時も通過させる
       if (window.location.hostname === 'localhost' || 
           window.location.hostname.includes('127.0.0.1') || 
           window.location.hostname.includes('render.com') ||
@@ -1174,7 +1190,6 @@
       const baseURL = window.location.origin;
       const qrURL = `${baseURL}/checkout.html?s=${sellerId}`;
       
-      // ★v14修正：QRコンテナを表示
       const qrContainer = document.querySelector('.qr-container');
       if (qrContainer) qrContainer.style.display = 'block';
       
@@ -1394,6 +1409,52 @@
       showStep('step4');
       renderStep4();
     });
+
+    // ★追加：キーパッド初期化
+    setupPriceKeypad(totalPriceInput, nextBtn);
+  }
+  
+  /* ========== キーパッドのセットアップ ========== */
+  function setupPriceKeypad(inputEl, nextBtn){
+    const keypad = document.getElementById('priceKeypad');
+    if (!keypad || !inputEl) return;
+
+    keypad.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-key]');
+      if (!btn) return;
+
+      const key = btn.dataset.key;
+      let val = inputEl.value || '';
+
+      if (key === 'clear') {
+        val = '';
+      } else if (key === 'del') {
+        val = val.slice(0, -1);
+      } else {
+        // 0〜9の数字
+        if (val.length >= 6) {
+          // 桁数制限（例: 最大999,999円）
+          return;
+        }
+        if (val === '0') {
+          val = '';
+        }
+        val += key;
+      }
+
+      // 先頭の 0 を抑制
+      if (val.length > 1 && val[0] === '0') {
+        val = val.replace(/^0+/, '');
+        if (val === '') val = '0';
+      }
+
+      inputEl.value = val;
+
+      const num = parseInt(val || '0', 10);
+      nextBtn.disabled = !(num > 0);
+
+      debugLog(`⌨️ keypad input = ${val} (${num})`);
+    });
   }
   
   /* ========== Step4: 最終確認 ========== */
@@ -1414,16 +1475,13 @@
     const totalVal = parseInt(document.getElementById('totalPriceInput').value, 10) || 0;
     confirmTotal.textContent = `¥${totalVal.toLocaleString()}`;
     
-    // 保護者チェック
     parentCheck.addEventListener('change', () => {
       registerBtn.disabled = !parentCheck.checked;
     });
 
-    // ★追加：支払い方法ボタンの初期化と設定
-    paymentMethod = "cashless"; // ★デフォルトをキャッシュレスに明示的に設定
+    paymentMethod = "cashless";
     const payButtons = document.querySelectorAll('.pay-btn');
     
-    // ★初期状態を確実に設定
     payButtons.forEach(btn => {
       if (btn.getAttribute('data-method') === 'cashless') {
         btn.classList.add('selected');
@@ -1433,17 +1491,15 @@
     });
     debugLog(`💳 Payment method initialized: ${paymentMethod}`);
     
-    // ★イベントリスナー設定
     payButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        paymentMethod = btn.getAttribute('data-method'); // "cashless" or "cash"
+        paymentMethod = btn.getAttribute('data-method');
         payButtons.forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
         debugLog(`💳 paymentMethod = ${paymentMethod}`);
       });
     });
     
-    // 登録ボタン
     registerBtn.addEventListener('click', async () => {
       registerBtn.disabled = true;
       registerBtn.textContent = '📤 とうろく ちゅう…';
@@ -1458,7 +1514,7 @@
     debugLog(`sellerId: ${sellerId}`);
     debugLog(`amount: ${amount}`);
     debugLog(`summary: ${summary}`);
-    debugLog(`paymentMethod: ${paymentMethod}`); // ★追加
+    debugLog(`paymentMethod: ${paymentMethod}`);
     
     const payload = {
       sellerId: sellerId,
@@ -1466,7 +1522,6 @@
       summary: summary,
       imageData: capturedImageDataURL,
       aiAnalysis: aiAnalysisResult || {},
-      // ★追加
       paymentMethod: paymentMethod
     };
     
@@ -1492,7 +1547,6 @@
       const baseURL = window.location.origin;
       let qrURL;
       
-      // ★v14修正：checkoutUrlを最優先、フォールバック時は?order=を使用
       if(data.checkoutUrl){
         qrURL = data.checkoutUrl;
         debugLog(`🔗 Using server-provided checkoutUrl: ${qrURL}`);
@@ -1509,12 +1563,10 @@
       
       showStep('step5');
 
-      // ★追加：現金かどうかで分岐
       const qrContainer = document.querySelector('.qr-container');
       const msgP = document.querySelector('#step5 > p');
 
       if (paymentMethod === "cash") {
-        // 現金：QRを隠してメッセージだけ
         if (qrContainer) qrContainer.style.display = 'none';
         if (msgP) {
           msgP.textContent =
@@ -1523,7 +1575,6 @@
         }
         debugLog('🪙 現金決済として登録（QRなし）');
       } else {
-        // キャッシュレス：従来通りQR表示
         if (qrContainer) qrContainer.style.display = 'block';
         if (msgP) msgP.textContent = 'このQRコードを おきゃくさんに みせてね';
         displayQR(qrURL);
@@ -1647,13 +1698,11 @@
 
     const ok = await ensureSubscribedSeller();
     if (!ok) {
-      // サブスク未加入 or エラー時はここで止める
       debugLog('⚠️ Subscription check failed. UI blocked.');
       return;
     }
     debugLog('✅ Subscription check passed.');
     
-    // サブスクチェック成功後、イベントリスナーを登録
     setupEventListeners();
   })();
   
