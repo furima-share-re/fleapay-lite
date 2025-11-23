@@ -1,0 +1,1296 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FleaPay｜出店者レジ（大人モード）</title>
+
+  <!-- Normalize（子ども版と同じ系統） -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/modern-normalize/2.0.0/modern-normalize.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer"/>
+
+  <style>
+    :root{
+      /* 江戸っぽい配色：藍＋ベージュ系 */
+      --bg: #f4f0e8;
+      --panel: #ffffff;
+      --border: #d4c8b8;
+      --ink: #1f2933;
+      --muted: #6b7280;
+      --accent: #1d4f91;   /* 藍色 */
+      --accent-soft: #e0e7ff;
+      --danger: #b91c1c;
+      --radius: 14px;
+      --shadow: 0 8px 18px rgba(15,23,42,0.15);
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+      background:
+        radial-gradient(circle at 0 0, rgba(148,163,184,.12), transparent 55%),
+        radial-gradient(circle at 100% 100%, rgba(148,163,184,.12), transparent 55%),
+        var(--bg);
+      color:var(--ink);
+      -webkit-font-smoothing:antialiased;
+    }
+
+    #app{
+      max-width:520px;
+      margin:0 auto;
+      min-height:100vh;
+      background:linear-gradient(180deg, #fdfaf5 0%, #f7f2e9 40%, #fff 100%);
+      display:flex;
+      flex-direction:column;
+    }
+
+    header{
+      padding:10px 14px 6px;
+      border-bottom:1px solid rgba(148,163,184,.25);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      background:rgba(255,255,255,.85);
+      backdrop-filter:blur(10px);
+      position:sticky;
+      top:0;
+      z-index:10;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .brand-mark{
+      width:30px;
+      height:30px;
+      border-radius:999px;
+      background:
+        radial-gradient(circle at 25% 25%, #fff 0, #fff 28%, #1d4f91 60%, #111827 100%);
+      box-shadow:0 0 0 2px rgba(15,23,42,.06);
+      position:relative;
+      overflow:hidden;
+    }
+    .brand-mark::after{
+      content:"市";
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:0.9rem;
+      color:#fef9c3;
+      text-shadow:0 1px 2px rgba(15,23,42,.6);
+    }
+    .brand-text-main{
+      font-size:.95rem;
+      font-weight:700;
+      letter-spacing:.06em;
+    }
+    .brand-text-sub{
+      font-size:.72rem;
+      color:var(--muted);
+    }
+    .seller-chip{
+      max-width:40%;
+      font-size:.75rem;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,.5);
+      background:rgba(255,255,255,.9);
+      color:var(--muted);
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      overflow:hidden;
+    }
+
+    main{
+      flex:1;
+      padding:12px 14px 18px;
+    }
+
+    .step{ display:none; }
+    .step.active{ display:block; }
+
+    .card{
+      background:var(--panel);
+      border-radius:var(--radius);
+      border:1px solid var(--border);
+      box-shadow:var(--shadow);
+      padding:14px 14px 16px;
+      margin-bottom:14px;
+    }
+
+    .step-title{
+      font-size:1.05rem;
+      font-weight:700;
+      margin:0 0 4px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .step-title span.icon{
+      font-size:1.25rem;
+    }
+    .step-sub{
+      font-size:.82rem;
+      color:var(--muted);
+      margin:0 0 10px;
+      line-height:1.5;
+    }
+
+    .btn{
+      width:100%;
+      border:none;
+      border-radius:999px;
+      padding:12px 14px;
+      font-size:.95rem;
+      font-weight:600;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      transition:transform .08s ease, box-shadow .08s ease, background .12s ease;
+    }
+    .btn:active{
+      transform:translateY(1px) scale(.99);
+      box-shadow:0 4px 8px rgba(0,0,0,.06) inset;
+    }
+    .btn-primary{
+      background:linear-gradient(135deg, #1d4f91 0%, #0ea5e9 100%);
+      color:#fff;
+      box-shadow:0 12px 22px rgba(15,23,42,.35);
+    }
+    .btn-secondary{
+      background:#f3f4f6;
+      color:#111827;
+      border:1px solid #d1d5db;
+    }
+    .btn-ghost{
+      background:transparent;
+      color:var(--muted);
+      border:1px dashed #cbd5e1;
+    }
+    .btn:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+      transform:none;
+      box-shadow:none;
+    }
+
+    .hint{
+      font-size:.78rem;
+      color:var(--muted);
+      margin-top:6px;
+    }
+
+    /* ▼ Step: ガイド */
+    .guide-list{
+      list-style:none;
+      padding:0;
+      margin:6px 0 0;
+    }
+    .guide-item{
+      display:flex;
+      align-items:flex-start;
+      gap:8px;
+      padding:8px 0;
+      border-bottom:1px dashed rgba(209,213,219,.6);
+      font-size:.86rem;
+    }
+    .guide-item:last-child{ border-bottom:none; }
+    .guide-step{
+      width:22px;
+      height:22px;
+      border-radius:999px;
+      background:var(--accent-soft);
+      color:var(--accent);
+      font-size:.75rem;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-shrink:0;
+      font-weight:600;
+    }
+    .guide-body{
+      flex:1;
+    }
+    .guide-label{
+      font-weight:600;
+      margin-bottom:2px;
+      font-size:.85rem;
+    }
+    .guide-text{
+      font-size:.8rem;
+      color:var(--muted);
+    }
+
+    /* ▼ Step: カメラ */
+    #camera-step{
+      padding:0;
+      background:#000;
+      border-radius:var(--radius);
+      overflow:hidden;
+    }
+    #videoContainer{
+      position:relative;
+      width:100%;
+      height:calc(100vh - 72px);
+      max-height:780px;
+      background:#000;
+    }
+    #video{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+    #canvas{ display:none; }
+
+    #cameraOverlay{
+      position:absolute;
+      inset:0;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      padding:10px 10px 18px;
+      padding-bottom:max(18px, env(safe-area-inset-bottom));
+      pointer-events:none;
+    }
+    .camera-top{
+      background:rgba(15,23,42,.7);
+      color:#e5e7eb;
+      padding:8px 10px;
+      border-radius:10px;
+      font-size:.78rem;
+      max-width:260px;
+    }
+    .camera-top-title{
+      font-weight:600;
+      margin-bottom:2px;
+    }
+    .camera-frame{
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform:translate(-50%, -50%);
+      width:78%;
+      height:60%;
+      border-radius:16px;
+      border:2px solid rgba(248,250,252,.9);
+      box-shadow:0 0 0 1px rgba(15,23,42,.3);
+    }
+    .camera-frame::after{
+      content:"商品全体が入るようにあわせてください";
+      position:absolute;
+      left:50%;
+      bottom:-36px;
+      transform:translateX(-50%);
+      font-size:.78rem;
+      color:#e5e7eb;
+      background:rgba(15,23,42,.75);
+      padding:4px 10px;
+      border-radius:999px;
+    }
+    .camera-bottom{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:18px;
+      pointer-events:auto;
+    }
+    #captureBtn{
+      width:82px;
+      height:82px;
+      border-radius:50%;
+      border:5px solid #e5e7eb;
+      background:#f9fafb;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:1.35rem;
+      cursor:pointer;
+      transition:transform .08s ease;
+    }
+    #captureBtn:active{ transform:scale(.96); }
+    #torchBtn{
+      width:48px;
+      height:48px;
+      border-radius:50%;
+      border:2px solid #e5e7eb;
+      background:rgba(15,23,42,.5);
+      color:#f9fafb;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:1.2rem;
+      cursor:pointer;
+    }
+    #torchBtn.active{
+      background:#facc15;
+      color:#1f2937;
+      border-color:#fbbf24;
+    }
+    #closeCameraBtn{
+      position:absolute;
+      top:10px;
+      right:10px;
+      width:30px;
+      height:30px;
+      border-radius:999px;
+      border:none;
+      background:rgba(15,23,42,.6);
+      color:#e5e7eb;
+      font-size:1.05rem;
+      cursor:pointer;
+      padding:0;
+      pointer-events:auto;
+    }
+
+    /* ▼ Step: AI解析中 */
+    .loading-wrap{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:40px 14px 26px;
+      text-align:center;
+    }
+    .spinner{
+      width:56px;
+      height:56px;
+      border-radius:999px;
+      border:6px solid #e5e7eb;
+      border-top-color:var(--accent);
+      animation:spin 1s linear infinite;
+      margin-bottom:12px;
+    }
+    @keyframes spin{
+      to{ transform:rotate(360deg); }
+    }
+    .loading-text-main{
+      font-size:.95rem;
+      font-weight:600;
+      margin-bottom:4px;
+    }
+    .loading-text-sub{
+      font-size:.8rem;
+      color:var(--muted);
+    }
+
+    /* ▼ Step: 金額入力 */
+    .preview{
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid rgba(209,213,219,.7);
+      margin-bottom:10px;
+      background:#f9fafb;
+    }
+    .preview img{
+      display:block;
+      width:100%;
+      height:auto;
+    }
+    .field-label{
+      font-size:.8rem;
+      font-weight:600;
+      margin:10px 0 4px;
+    }
+    .field-box{
+      background:#f9fafb;
+      border-radius:10px;
+      border:1px solid #e5e7eb;
+      padding:8px 10px;
+      font-size:.86rem;
+      color:var(--ink);
+      min-height:34px;
+      line-height:1.5;
+    }
+    .field-box.muted{
+      color:var(--muted);
+      font-size:.8rem;
+    }
+
+    .price-input-row{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      margin-top:4px;
+    }
+    .price-pill{
+      padding:6px 8px;
+      border-radius:999px;
+      background:#f3f4f6;
+      font-size:.85rem;
+      color:var(--muted);
+    }
+    .price-input-wrap{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      background:#f9fafb;
+      border-radius:999px;
+      border:1px solid #d1d5db;
+      padding:3px 10px;
+    }
+    .price-input-wrap.focus{
+      border-color:var(--accent);
+      box-shadow:0 0 0 1px rgba(37,99,235,.3);
+      background:#fff;
+    }
+    .price-input-wrap span{
+      font-weight:600;
+      font-size:1rem;
+      color:#4b5563;
+    }
+    .price-input-wrap input{
+      flex:1;
+      border:none;
+      background:transparent;
+      font-size:1.2rem;
+      font-weight:600;
+      padding:4px 0;
+      outline:none;
+      text-align:right;
+    }
+    .price-help{
+      font-size:.78rem;
+      color:var(--muted);
+      margin-top:4px;
+    }
+
+    /* ▼ Step: 最終確認＋支払い方法 */
+    .summary-card{
+      margin-top:4px;
+      border-radius:12px;
+      border:1px solid #e5e7eb;
+      background:#f9fafb;
+      padding:10px 10px 8px;
+      font-size:.86rem;
+    }
+    .summary-row{
+      display:flex;
+      justify-content:space-between;
+      margin-bottom:3px;
+    }
+    .summary-row strong{
+      font-weight:600;
+    }
+    .summary-row-total{
+      margin-top:6px;
+      padding-top:6px;
+      border-top:1px dashed #d4d4d8;
+      font-weight:700;
+      font-size:1.05rem;
+      color:#111827;
+    }
+
+    .payment-method-group{
+      display:flex;
+      gap:8px;
+      margin:8px 0 6px;
+    }
+    .pay-btn{
+      flex:1;
+      border-radius:999px;
+      border:1px solid #d1d5db;
+      background:#f9fafb;
+      padding:8px 8px;
+      font-size:.78rem;
+      cursor:pointer;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      gap:2px;
+      transition:background .12s ease,border-color .12s ease,box-shadow .12s ease;
+    }
+    .pay-btn span.main{
+      font-weight:600;
+      font-size:.82rem;
+    }
+    .pay-btn span.sub{
+      font-size:.72rem;
+      color:var(--muted);
+    }
+    .pay-btn.selected{
+      background:#e0edff;
+      border-color:#2563eb;
+      box-shadow:0 0 0 1px rgba(37,99,235,.3);
+    }
+    .small-note{
+      font-size:.75rem;
+      color:var(--muted);
+      margin-top:2px;
+    }
+
+    /* ▼ Step: 完了画面 */
+    .result-main{
+      text-align:center;
+      margin-bottom:14px;
+    }
+    .result-main h2{
+      margin:0 0 4px;
+      font-size:1.1rem;
+    }
+    .result-main p{
+      margin:0;
+      font-size:.85rem;
+      color:var(--muted);
+    }
+    .qr-box{
+      margin:14px auto 10px;
+      padding:12px 12px 14px;
+      max-width:260px;
+      border-radius:14px;
+      background:#f9fafb;
+      border:1px solid #e5e7eb;
+      text-align:center;
+    }
+    #qrcode{
+      display:inline-block;
+      padding:8px;
+      background:#fff;
+      border-radius:10px;
+    }
+
+    footer{
+      padding:8px 14px 14px;
+      font-size:.7rem;
+      color:#9ca3af;
+      text-align:center;
+    }
+
+    /* デバッグ */
+    #debugToggle{
+      position:fixed;
+      right:10px;
+      bottom:10px;
+      font-size:.7rem;
+      padding:4px 8px;
+      border-radius:999px;
+      background:#020617;
+      color:#a7f3d0;
+      border:1px solid #22c55e;
+      cursor:pointer;
+      z-index:50;
+    }
+    #debugPanel{
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:0;
+      max-height:200px;
+      overflow-y:auto;
+      background:rgba(15,23,42,.95);
+      color:#a7f3d0;
+      font-family:SFMono-Regular,Menlo,monospace;
+      font-size:.7rem;
+      padding:4px 6px;
+      display:none;
+      z-index:40;
+    }
+    #debugPanel.show{ display:block; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div>
+        <div class="brand-text-main">EDO ICHIBA レジ</div>
+        <div class="brand-text-sub">FleaPay｜大人モード</div>
+      </div>
+    </div>
+    <div class="seller-chip" id="seller-name">出店者</div>
+  </header>
+
+  <main>
+
+    <!-- Step A: ガイド -->
+    <section id="step-intro" class="step active">
+      <div class="card">
+        <h1 class="step-title">
+          <span class="icon">🧾</span>
+          かんたんレジ（スマホ専用）
+        </h1>
+        <p class="step-sub">
+          「商品をうつす → 金額を入れる → QRか現金で会計」の
+          3ステップだけです。パソコン操作は必要ありません。
+        </p>
+
+        <ul class="guide-list">
+          <li class="guide-item">
+            <div class="guide-step">1</div>
+            <div class="guide-body">
+              <div class="guide-label">商品をカメラで撮る</div>
+              <div class="guide-text">
+                値札がなくてもOKです。商品全体が入るようにスマホをかざしてください。
+              </div>
+            </div>
+          </li>
+          <li class="guide-item">
+            <div class="guide-step">2</div>
+            <div class="guide-body">
+              <div class="guide-label">合計金額を入れる</div>
+              <div class="guide-text">
+                細かい内訳は不要です。「この商品ぜんぶでいくらか」を1つ入れるだけです。
+              </div>
+            </div>
+          </li>
+          <li class="guide-item">
+            <div class="guide-step">3</div>
+            <div class="guide-body">
+              <div class="guide-label">受け取り方をえらぶ</div>
+              <div class="guide-text">
+                「現金でもらう」か「QR・カードで決済」のどちらかを選びます。
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        <button id="startCameraFlow" class="btn btn-primary" style="margin-top:12px;">
+          📷 カメラをひらいて はじめる
+        </button>
+
+        <p class="hint">
+          ※ 通信状況が悪いときは、少し待ってからもう一度お試しください。
+        </p>
+      </div>
+    </section>
+
+    <!-- Step B: カメラ -->
+    <section id="step-camera" class="step">
+      <div class="card" id="camera-step">
+        <div id="videoContainer">
+          <video id="video" autoplay playsinline></video>
+          <canvas id="canvas"></canvas>
+
+          <div id="cameraOverlay">
+            <button id="closeCameraBtn" title="撮影をやめる">×</button>
+
+            <div class="camera-top">
+              <div class="camera-top-title">商品をうつしてください</div>
+              <div>商品全体がうつるように、スマホを少しはなして持つときれいに写ります。</div>
+            </div>
+
+            <div class="camera-frame"></div>
+
+            <div class="camera-bottom">
+              <button id="torchBtn" title="ライト"><span>💡</span></button>
+              <button id="captureBtn" title="撮影"><span>📷</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step C: AI解析中 -->
+    <section id="step-analyzing" class="step">
+      <div class="card">
+        <div class="loading-wrap">
+          <div class="spinner"></div>
+          <div class="loading-text-main">商品情報をよみとっています…</div>
+          <div class="loading-text-sub">
+            画像をAIに送っています。通信状況によって、10〜20秒ほどかかることがあります。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step D: 金額入力 -->
+    <section id="step-form" class="step">
+      <div class="card">
+        <h2 class="step-title">
+          <span class="icon">🖼️</span>
+          写真と商品メモの確認
+        </h2>
+
+        <div class="preview">
+          <img id="previewImg" alt="商品写真">
+        </div>
+
+        <div class="field-label">商品メモ（AI推定）</div>
+        <div id="itemSummary" class="field-box field-box-readonly">
+          （AIが読み取った商品メモが表示されます）
+        </div>
+        <p class="hint">
+          商品名や内容は、あとでダッシュボード画面から編集できます。ここでは確認だけでOKです。
+        </p>
+      </div>
+
+      <div class="card">
+        <h2 class="step-title">
+          <span class="icon">💴</span>
+          合計金額を入力
+        </h2>
+        <p class="step-sub">
+          この商品セット「ぜんぶでいくらか」を入れてください。1円単位でOKです。
+        </p>
+
+        <div class="field-label">合計金額</div>
+        <div class="price-input-row">
+          <div class="price-pill">税込</div>
+          <div class="price-input-wrap" id="priceWrap">
+            <span>¥</span>
+            <input type="number"
+                   id="amountInput"
+                   inputmode="numeric"
+                   min="0"
+                   step="1"
+                   placeholder="0" />
+          </div>
+        </div>
+        <div class="price-help">
+          ※ 細かい内訳や在庫数は不要です。この1つの数字だけで売上が集計されます。
+        </div>
+
+        <button id="toConfirmBtn" class="btn btn-primary" style="margin-top:14px;" disabled>
+          次へ（支払い方法をえらぶ）
+        </button>
+      </div>
+    </section>
+
+    <!-- Step E: 最終確認＋支払い方法 -->
+    <section id="step-confirm" class="step">
+      <div class="card">
+        <h2 class="step-title">
+          <span class="icon">✅</span>
+          内容の確認
+        </h2>
+
+        <div class="summary-card">
+          <div class="summary-row">
+            <span>商品メモ</span>
+            <span id="confirmSummary" style="max-width:55%;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+          </div>
+          <div class="summary-row summary-row-total">
+            <span>合計</span>
+            <span id="confirmAmount">¥0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="step-title">
+          <span class="icon">💳</span>
+          受け取り方法
+        </h2>
+        <p class="step-sub">
+          お客さまから「現金で受け取る」か「QR・カードで支払ってもらう」かを選んでください。
+        </p>
+
+        <div class="payment-method-group">
+          <button type="button" class="pay-btn selected" data-method="cashless">
+            <span class="main">QR・カードで受け取る</span>
+            <span class="sub">スマホ画面にQRを表示して、お客さまに読み取ってもらいます</span>
+          </button>
+          <button type="button" class="pay-btn" data-method="cash">
+            <span class="main">現金でもらう</span>
+            <span class="sub">そのまま現金を受け取り、記録だけレジに残します</span>
+          </button>
+        </div>
+
+        <p class="small-note">
+          ※ QR・カード決済を使うと、売上管理や集計がより正確になります。
+        </p>
+
+        <button id="registerBtn" class="btn btn-primary" style="margin-top:10px;">
+          登録して 会計に進む
+        </button>
+      </div>
+    </section>
+
+    <!-- Step F: 完了 -->
+    <section id="step-done" class="step">
+      <div class="card">
+        <div class="result-main">
+          <h2 id="doneTitle">記録が完了しました</h2>
+          <p id="doneMessage">
+            お客さまにQRコードを見せて、お支払いをお願いしてください。
+          </p>
+        </div>
+
+        <div id="qrSection" class="qr-box">
+          <div id="qrcode"></div>
+          <p class="small-note" style="margin-top:8px;">
+            お客さまのスマホでこのQRを読み取ってもらうと、決済画面が開きます。
+          </p>
+        </div>
+
+        <button class="btn btn-secondary" id="nextItemBtn" style="margin-top:4px;">
+          つぎの商品を登録する
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    FleaPay / EDO ICHIBA WORKS｜出店者レジ 大人モード
+  </footer>
+</div>
+
+<button id="debugToggle">🐛 log</button>
+<div id="debugPanel"></div>
+
+<!-- QRコード生成ライブラリ -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  // ===== デバッグログ =====
+  const debugPanel = document.getElementById("debugPanel");
+  const debugToggle = document.getElementById("debugToggle");
+  let debugVisible = false;
+
+  debugToggle.addEventListener("click", () => {
+    debugVisible = !debugVisible;
+    debugPanel.classList.toggle("show", debugVisible);
+  });
+
+  function log(msg){
+    const t = new Date().toLocaleTimeString("ja-JP");
+    const line = document.createElement("div");
+    line.textContent = "["+t+"] " + msg;
+    debugPanel.appendChild(line);
+    debugPanel.scrollTop = debugPanel.scrollHeight;
+    console.log(msg);
+  }
+
+  // ===== 画面制御 =====
+  function showStep(id){
+    document.querySelectorAll(".step").forEach(sec => {
+      sec.classList.toggle("active", sec.id === id);
+    });
+    window.scrollTo({ top:0, behavior:"instant" });
+    log("step -> " + id);
+  }
+
+  // ===== 状態 =====
+  let sellerId = null;
+  let videoStream = null;
+  let torchEnabled = false;
+  let capturedImageDataURL = null;
+  let aiAnalysisResult = null;
+  let paymentMethod = "cashless";  // "cash" / "cashless"
+  let currentOrderId = null;
+
+  // ===== sellerId 取得 & サブスクチェック =====
+  function getSellerIdFromURL(){
+    const params = new URLSearchParams(window.location.search);
+    const s = params.get("s");
+    if (!s) {
+      log("sellerId missing in URL. using seller_demo");
+      return "seller_demo";
+    }
+    return s;
+  }
+
+  async function ensureSubscribedSeller(){
+    if (!sellerId) return false;
+    try{
+      const res = await fetch("/api/seller/summary?s="+encodeURIComponent(sellerId));
+      const data = await res.json();
+      log("summary: " + JSON.stringify(data));
+      if (!res.ok){
+        showBlocked("売上情報の取得に失敗しました。時間をおいて再度お試しください。");
+        return false;
+      }
+      const nameEl = document.getElementById("seller-name");
+      if (nameEl){
+        nameEl.textContent = data.displayName || data.sellerId || "出店者";
+      }
+
+      if (data.isSubscribed === false || data.planType === "standard" || !data.planType){
+        showBlocked("このレジ画面は、対象のプランご契約中の出店者さま専用です。運営までお問合せください。");
+        return false;
+      }
+      return true;
+    } catch(e){
+      log("ensureSubscribedSeller error: " + e.message);
+      // ローカル/テスト環境では通す
+      if (location.hostname === "localhost" ||
+          location.hostname.includes("127.0.0.1") ||
+          location.hostname.includes("render.com") ||
+          location.hostname.includes("onrender.com")) {
+        return true;
+      }
+      showBlocked("通信エラーが発生しました。ネットワークをご確認ください。");
+      return false;
+    }
+  }
+
+  function showBlocked(message){
+    const app = document.getElementById("app");
+    if (!app) return;
+    app.innerHTML = `
+      <div style="max-width:520px;margin:0 auto;padding:24px 18px;font-family:system-ui;">
+        <h1 style="font-size:1.05rem;font-weight:700;margin-bottom:8px;">このレジ画面はご利用いただけません</h1>
+        <p style="font-size:.88rem;line-height:1.7;margin:0;">${message}</p>
+      </div>
+    `;
+  }
+
+  // ===== カメラ関連 =====
+  async function openCamera(){
+    const video = document.getElementById("video");
+    const torchBtn = document.getElementById("torchBtn");
+
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal:"environment" },
+          width: { ideal:1600 },
+          height:{ ideal:1200 },
+          aspectRatio:{ ideal:4/3 }
+        },
+        audio:false
+      });
+      videoStream = stream;
+      video.srcObject = stream;
+      log("camera started");
+
+      const track = stream.getVideoTracks()[0];
+      const caps = track.getCapabilities?.() || {};
+
+      // オートフォーカス
+      if (caps.focusMode && caps.focusMode.includes("continuous")){
+        try{
+          await track.applyConstraints({ advanced:[{ focusMode:"continuous" }] });
+          log("continuous autofocus enabled");
+        } catch(e){
+          log("focus constraint error: " + e.message);
+        }
+      }
+
+      // トーチ
+      if (caps.torch){
+        torchBtn.style.display = "flex";
+        torchBtn.onclick = async () => {
+          torchEnabled = !torchEnabled;
+          try{
+            await track.applyConstraints({ advanced:[{ torch:torchEnabled }] });
+            torchBtn.classList.toggle("active", torchEnabled);
+            log("torch -> " + torchEnabled);
+          } catch(e){
+            log("torch error: " + e.message);
+          }
+        };
+      } else {
+        torchBtn.style.display = "none";
+      }
+
+    } catch(e){
+      alert("カメラを起動できませんでした。ブラウザの設定を確認してください。");
+      log("camera error: " + e.message);
+      showStep("step-intro");
+    }
+  }
+
+  function closeCamera(){
+    if (videoStream){
+      videoStream.getTracks().forEach(t => t.stop());
+      videoStream = null;
+      log("camera stopped");
+    }
+  }
+
+  function captureImage(){
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+
+    const vw = video.videoWidth || 640;
+    const vh = video.videoHeight || 480;
+    const sx = vw * 0.025;
+    const sy = vh * 0.025;
+    const sw = vw * 0.95;
+    const sh = vh * 0.95;
+
+    const needRotate = vw > vh && window.innerHeight > window.innerWidth;
+    const SIZE = 1024;
+
+    canvas.width = SIZE;
+    canvas.height = SIZE;
+    const ctx = canvas.getContext("2d");
+    ctx.filter = "contrast(1.25) brightness(1.05)";
+
+    if (needRotate){
+      ctx.save();
+      ctx.translate(SIZE/2, SIZE/2);
+      ctx.rotate(-Math.PI/2);
+      ctx.drawImage(video, sx, sy, sw, sh, -SIZE/2, -SIZE/2, SIZE, SIZE);
+      ctx.restore();
+    } else {
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
+    }
+    ctx.filter = "none";
+
+    capturedImageDataURL = canvas.toDataURL("image/jpeg", 0.95);
+    log("image captured, size=" + (capturedImageDataURL.length/1024|0) + "KB");
+  }
+
+  // ===== AI解析 =====
+  async function analyzeImage(){
+    if (!capturedImageDataURL){
+      alert("画像が取得できませんでした。もう一度撮影してください。");
+      showStep("step-camera");
+      return;
+    }
+    showStep("step-analyzing");
+
+    const blob = dataURLtoBlob(capturedImageDataURL);
+    const form = new FormData();
+    form.append("image", blob, "item.jpg");
+
+    try{
+      const res = await fetch("/api/analyze-item", {
+        method:"POST",
+        body:form
+      });
+      if (!res.ok){
+        throw new Error("HTTP " + res.status);
+      }
+      const data = await res.json();
+      aiAnalysisResult = data || {};
+      log("analyze result: " + JSON.stringify(data));
+
+      renderFormStep();
+      showStep("step-form");
+    } catch(e){
+      log("analyze error: " + e.message);
+      alert("AI解析に失敗しました。通信状況を確認して、もう一度お試しください。");
+      showStep("step-intro");
+      closeCamera();
+    }
+  }
+
+  function renderFormStep(){
+    const img = document.getElementById("previewImg");
+    const summaryBox = document.getElementById("itemSummary");
+    const amountInput = document.getElementById("amountInput");
+    const toConfirmBtn = document.getElementById("toConfirmBtn");
+    const priceWrap = document.getElementById("priceWrap");
+
+    img.src = capturedImageDataURL;
+    img.alt = "商品写真";
+
+    const summary = (aiAnalysisResult && aiAnalysisResult.summary) || "";
+    if (summary){
+      summaryBox.textContent = summary;
+    } else {
+      summaryBox.textContent = "（AIで商品情報を読み取れませんでした。商品内容は後からダッシュボードで入力できます）";
+      summaryBox.classList.add("muted");
+    }
+
+    // AIで合計金額が出ていれば初期値に利用
+    let autoAmount = 0;
+    if (aiAnalysisResult && aiAnalysisResult.total){
+      const n = parseInt(aiAnalysisResult.total, 10);
+      if (n > 0) autoAmount = n;
+    }
+    if (autoAmount > 0){
+      amountInput.value = autoAmount;
+      toConfirmBtn.disabled = false;
+    } else {
+      amountInput.value = "";
+      toConfirmBtn.disabled = true;
+    }
+
+    amountInput.addEventListener("focus", () => {
+      priceWrap.classList.add("focus");
+    });
+    amountInput.addEventListener("blur", () => {
+      priceWrap.classList.remove("focus");
+    });
+    amountInput.addEventListener("input", () => {
+      const val = parseInt(amountInput.value, 10);
+      toConfirmBtn.disabled = !(val > 0);
+    });
+
+    toConfirmBtn.onclick = () => {
+      renderConfirmStep();
+      showStep("step-confirm");
+    };
+  }
+
+  function renderConfirmStep(){
+    const summary = (aiAnalysisResult && aiAnalysisResult.summary) || "（商品メモなし）";
+    const confirmSummary = document.getElementById("confirmSummary");
+    const confirmAmount = document.getElementById("confirmAmount");
+    const amountInput = document.getElementById("amountInput");
+
+    const amount = parseInt(amountInput.value, 10) || 0;
+    confirmSummary.textContent = summary;
+    confirmAmount.textContent = "¥" + amount.toLocaleString("ja-JP");
+
+    // 支払い方法ボタン初期化
+    paymentMethod = "cashless";
+    const payBtns = document.querySelectorAll(".pay-btn");
+    payBtns.forEach(btn => {
+      btn.classList.toggle("selected", btn.dataset.method === "cashless");
+      btn.onclick = () => {
+        paymentMethod = btn.dataset.method;
+        payBtns.forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        log("paymentMethod -> " + paymentMethod);
+      };
+    });
+
+    const registerBtn = document.getElementById("registerBtn");
+    registerBtn.disabled = false;
+    registerBtn.textContent = "登録して 会計に進む";
+    registerBtn.onclick = async () => {
+      registerBtn.disabled = true;
+      registerBtn.textContent = "登録中…";
+      await registerSale(summary, amount);
+    };
+  }
+
+  // ===== 売上登録 =====
+  async function registerSale(summary, amount){
+    log("registerSale start, amount="+amount+", paymentMethod="+paymentMethod);
+
+    const payload = {
+      sellerId: sellerId,
+      amount: amount,
+      summary: summary,
+      imageData: capturedImageDataURL,
+      aiAnalysis: aiAnalysisResult || {},
+      paymentMethod: paymentMethod
+    };
+
+    try{
+      const res = await fetch("/api/pending/start", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify(payload)
+      });
+      if (!res.ok){
+        throw new Error("HTTP " + res.status);
+      }
+      const data = await res.json();
+      log("registerSale response: " + JSON.stringify(data));
+      currentOrderId = data.orderId || null;
+
+      const base = window.location.origin;
+      let qrURL = null;
+
+      if (data.checkoutUrl){
+        qrURL = data.checkoutUrl;
+      } else if (data.qrURL){
+        qrURL = data.qrURL;
+      } else if (data.orderId){
+        qrURL = base + "/checkout.html?s=" + encodeURIComponent(sellerId) +
+          "&order=" + encodeURIComponent(data.orderId);
+      } else {
+        qrURL = base + "/checkout.html?s=" + encodeURIComponent(sellerId);
+      }
+
+      renderDoneStep(qrURL);
+      showStep("step-done");
+
+    } catch(e){
+      log("registerSale error: " + e.message);
+      alert("登録に失敗しました。時間をおいて再度お試しください。");
+      showStep("step-intro");
+    }
+  }
+
+  function renderDoneStep(qrURL){
+    const doneTitle = document.getElementById("doneTitle");
+    const doneMessage = document.getElementById("doneMessage");
+    const qrSection = document.getElementById("qrSection");
+    const qrcodeDiv = document.getElementById("qrcode");
+    const nextItemBtn = document.getElementById("nextItemBtn");
+
+    if (paymentMethod === "cash"){
+      doneTitle.textContent = "現金での受け取りを記録しました";
+      doneMessage.textContent = "この売上はダッシュボードに反映されます。つぎの商品を登録しても大丈夫です。";
+      qrSection.style.display = "none";
+    } else {
+      doneTitle.textContent = "QR決済の準備ができました";
+      doneMessage.textContent = "お客さまにQRを見せて、読み取ってもらってください。";
+      qrSection.style.display = "block";
+
+      qrcodeDiv.innerHTML = "";
+      try{
+        new QRCode(qrcodeDiv, {
+          text: qrURL,
+          width:200,
+          height:200,
+          colorDark:"#000000",
+          colorLight:"#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } catch(e){
+        log("QR error: " + e.message);
+        qrcodeDiv.innerHTML = "<p style='font-size:.8rem;color:#b91c1c;'>QRコードの生成に失敗しました。</p><p style='word-break:break-all;font-size:.7rem;'>" +
+          (qrURL || "") + "</p>";
+      }
+    }
+
+    nextItemBtn.onclick = () => {
+      // 状態をクリアして最初から
+      capturedImageDataURL = null;
+      aiAnalysisResult = null;
+      currentOrderId = null;
+      showStep("step-intro");
+    };
+  }
+
+  // ===== ヘルパー =====
+  function dataURLtoBlob(dataURL){
+    const arr = dataURL.split(",");
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8 = new Uint8Array(n);
+    while(n--){
+      u8[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8], { type:mime });
+  }
+
+  // ===== イベント登録 =====
+  function setupEvents(){
+    document.getElementById("startCameraFlow").onclick = () => {
+      showStep("step-camera");
+      openCamera();
+    };
+
+    document.getElementById("captureBtn").onclick = () => {
+      captureImage();
+      closeCamera();
+      analyzeImage();
+    };
+
+    document.getElementById("closeCameraBtn").onclick = () => {
+      closeCamera();
+      showStep("step-intro");
+    };
+  }
+
+  // ===== 初期化 =====
+  (async () => {
+    sellerId = getSellerIdFromURL();
+    log("init sellerId=" + sellerId);
+
+    const ok = await ensureSubscribedSeller();
+    if (!ok) return;
+
+    setupEvents();
+  })();
+})();
+</script>
+</body>
+</html>
