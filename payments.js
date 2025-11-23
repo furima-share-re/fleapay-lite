@@ -593,6 +593,63 @@ export function registerPaymentRoutes(app, deps) {
       return res.status(500).json({ error: "server_error" });
     }
   });
+
+  // ====== 🆕 決済結果取得API(success.html 用) ======
+  app.get("/api/checkout/result", async (req, res) => {
+    try {
+      const orderId = req.query.orderId;
+      if (!orderId) {
+        return res.status(400).json({ error: "order_id_required" });
+      }
+
+      const result = await pool.query(
+        `
+        SELECT
+          o.id            AS order_id,
+          o.seller_id,
+          o.amount,
+          o.status       AS order_status,
+          o.created_at,
+          sp.status      AS payment_status,
+          sp.amount_gross,
+          sp.amount_net,
+          sp.currency,
+          sp.created_at  AS paid_at
+        FROM orders o
+        LEFT JOIN stripe_payments sp
+          ON sp.order_id = o.id
+        WHERE o.id = $1
+        ORDER BY sp.created_at DESC NULLS LAST
+        LIMIT 1
+        `,
+        [orderId]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: "order_not_found" });
+      }
+
+      const row = result.rows[0];
+
+      const isPaid =
+        row.order_status === "paid" ||
+        row.payment_status === "succeeded";
+
+      res.json({
+        orderId: row.order_id,
+        sellerId: row.seller_id,
+        amount: row.amount,
+        currency: row.currency || "jpy",
+        orderStatus: row.order_status,
+        paymentStatus: row.payment_status || null,
+        isPaid,
+        paidAt: row.paid_at
+      });
+    } catch (e) {
+      console.error("/api/checkout/result error", e);
+      return res.status(500).json({ error: "server_error" });
+    }
+  });
  
   // ====== 決済画面生成(Checkout Session) - 🔧 修正版: on_behalf_of を削除 ======
   app.post("/api/checkout/session", async (req, res) => {
