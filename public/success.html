@@ -127,6 +127,16 @@
       margin-bottom:12px;
       font-size:13px;
     }
+    .badge.badge-pending{
+      background: linear-gradient(135deg,#ffd66b,#ffe9a6);
+      color:#5c3b05;
+      box-shadow:0 8px 18px rgba(120,80,10,.23);
+    }
+    .badge.badge-error{
+      background: linear-gradient(135deg,#ff8a7a,#ffd1c9);
+      color:#5b1010;
+      box-shadow:0 8px 18px rgba(130,30,30,.25);
+    }
     @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
 
     .notice {
@@ -150,6 +160,45 @@
       margin-top:4px;
       color: rgba(60,60,60,0.8);
       font-size: 11px;
+    }
+
+    /* 🆕 決済ステータス & 金額 */
+    .payment-info{
+      background: rgba(255,255,255,0.96);
+      border: 1px dashed rgba(60,70,50,0.32);
+      border-radius: 14px;
+      padding: 10px 14px;
+      margin: 0 auto 14px;
+      font-size: 13px;
+      color: #234236;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+      max-width: 520px;
+      text-align:left;
+    }
+    .payment-info-row{
+      display:flex;
+      align-items:baseline;
+      justify-content:space-between;
+      gap:8px;
+      margin-bottom:4px;
+    }
+    .payment-info-label{
+      font-weight:900;
+      font-size:12px;
+      color:#234236;
+    }
+    .payment-info-value{
+      font-weight:900;
+      font-size:14px;
+    }
+    .payment-info-value.status-ok{ color:#0b6940; }
+    .payment-info-value.status-pending{ color:#b86a00; }
+    .payment-info-value.status-error{ color:#9b1c31; }
+    .payment-info-hint{
+      margin-top:6px;
+      font-size:11px;
+      color:rgba(60,60,60,0.9);
+      line-height:1.6;
     }
 
     .meta{
@@ -185,6 +234,7 @@
     @media(max-width:520px){
       .card{padding:28px 18px 22px}
       .notice{text-align:left; font-size:12px;}
+      .payment-info{font-size:12px;}
     }
   </style>
 </head>
@@ -245,7 +295,7 @@
 
   <div class="card-wrap">
     <article class="card parallax" style="--depth:.12">
-      <div class="badge">
+      <div id="statusBadge" class="badge">
         <span>✓</span>
         <span data-i18n="badge">Payment Completed / 決済完了</span>
         <span>✓</span>
@@ -256,6 +306,21 @@
       <p class="lead" data-i18n="lead">
         この画面を出店スタッフにお見せください。
       </p>
+
+      <!-- 🆕 決済ステータス & 金額表示 -->
+      <div id="paymentInfo" class="payment-info">
+        <div class="payment-info-row">
+          <span class="payment-info-label">決済ステータス</span>
+          <span id="paymentStatusValue" class="payment-info-value status-pending">確認中…</span>
+        </div>
+        <div class="payment-info-row">
+          <span class="payment-info-label">お支払い金額</span>
+          <span id="paymentAmountValue" class="payment-info-value">-</span>
+        </div>
+        <p id="paymentStaffHint" class="payment-info-hint">
+          店員さんへ：この画面で「決済ステータス」と「お支払い金額」が表示されているかご確認ください。
+        </p>
+      </div>
 
       <div class="notice">
         <p data-i18n="notice">
@@ -358,6 +423,8 @@
       }
     };
 
+    let paymentData = null;
+
     function applyLang(lang){
       const t = dict[lang] || dict.ja;
       document.querySelectorAll('[data-i18n]').forEach(el=>{
@@ -370,6 +437,95 @@
         btn.classList.toggle('active', btn.getAttribute('data-lang')===lang);
       });
       document.documentElement.lang = lang;
+
+      // 多言語切り替え後も、決済ステータスUIは維持する
+      if (typeof applyPaymentToUI === 'function') {
+        applyPaymentToUI();
+      }
+    }
+
+    function getParam(name){
+      try{
+        const url = new URL(location.href);
+        return url.searchParams.get(name);
+      }catch(e){
+        return null;
+      }
+    }
+
+    function formatJPY(n){
+      return new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY'}).format(n);
+    }
+
+    function applyPaymentToUI(){
+      const statusEl = document.getElementById('paymentStatusValue');
+      const amountEl = document.getElementById('paymentAmountValue');
+      const staffHintEl = document.getElementById('paymentStaffHint');
+      const badgeEl = document.getElementById('statusBadge');
+      const badgeTextSpan = badgeEl ? badgeEl.querySelector('[data-i18n="badge"]') : null;
+
+      if (!statusEl || !amountEl || !staffHintEl || !badgeEl) return;
+
+      // 一旦リセット
+      statusEl.classList.remove('status-ok','status-pending','status-error');
+      badgeEl.classList.remove('badge-pending','badge-error');
+
+      if (!paymentData) {
+        statusEl.textContent = '状態不明';
+        statusEl.classList.add('status-error');
+        staffHintEl.textContent =
+          '店員さんへ：ネットワーク等の理由で決済状態を取得できませんでした。ダッシュボードの取引履歴からご確認ください。';
+        if (badgeTextSpan){
+          badgeTextSpan.textContent = 'Payment Status Unknown / 決済状態不明';
+        }
+        badgeEl.classList.add('badge-error');
+        return;
+      }
+
+      const amount = Number(paymentData.amount || 0);
+      const amountText = amount > 0 ? formatJPY(amount) : '-';
+      amountEl.textContent = amountText;
+
+      if (paymentData.isPaid) {
+        // ✅ 決済完了
+        statusEl.textContent = '完了';
+        statusEl.classList.add('status-ok');
+        staffHintEl.textContent =
+          `店員さんへ：この画面で「決済ステータス：完了」「お支払い金額：${amountText}」と表示されていれば、決済は完了しています。`;
+        if (badgeTextSpan){
+          badgeTextSpan.textContent = 'Payment Completed / 決済完了';
+        }
+      } else {
+        // ⏱ 未完了 / 確認中
+        statusEl.textContent = '未完了／確認中';
+        statusEl.classList.add('status-pending');
+        staffHintEl.textContent =
+          '店員さんへ：この画面では決済がまだ完了していません。Fleapayダッシュボードで当該取引のステータスをご確認のうえ、商品をお渡しください。';
+        if (badgeTextSpan){
+          badgeTextSpan.textContent = 'Payment Not Completed / 決済未完了';
+        }
+        badgeEl.classList.add('badge-pending');
+      }
+    }
+
+    async function loadPaymentResult(){
+      const orderId = getParam('order');
+      if (!orderId) {
+        // order パラメータがない → 状態不明として表示
+        paymentData = null;
+        applyPaymentToUI();
+        return;
+      }
+      try{
+        const res = await fetch('/api/checkout/result?orderId=' + encodeURIComponent(orderId));
+        if (!res.ok) throw new Error('http_' + res.status);
+        paymentData = await res.json();
+        applyPaymentToUI();
+      }catch(e){
+        console.error('loadPaymentResult error', e);
+        paymentData = null;
+        applyPaymentToUI();
+      }
     }
 
     document.querySelectorAll('.lang button').forEach(btn=>{
@@ -386,6 +542,9 @@
       else if(nav.startsWith('zh')) applyLang('zh');
       else applyLang('ja');
     })();
+
+    // ページ表示時に決済結果を読み込み
+    loadPaymentResult();
   </script>
 </body>
 </html>
