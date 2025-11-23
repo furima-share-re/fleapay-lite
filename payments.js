@@ -663,7 +663,7 @@ export function registerPaymentRoutes(app, deps) {
     }
   });
 
-  // ====== 金額取得API (🟢 TTL付きに改善) ======
+  // ====== 金額取得API (🟢 TTL付きに改善 + 現金除外パッチ適用) ======
   app.get("/api/price/latest", async (req, res) => {
     const sellerId = req.query.s;
     if (!sellerId) {
@@ -671,11 +671,23 @@ export function registerPaymentRoutes(app, deps) {
     }
 
     try {
+      // ✅ パッチ適用: 現金注文を除外し、pending ステータスのみを取得
       const result = await pool.query(
-        `select id, seller_id, amount, summary, status, created_at
-         from orders
-         where seller_id=$1
-         order by created_at desc
+        `select 
+           o.id, 
+           o.seller_id, 
+           o.amount, 
+           o.summary, 
+           o.status, 
+           o.created_at
+         from orders o
+         left join order_metadata om
+           on om.order_id = o.id
+         where
+           o.seller_id = $1
+           and o.status = 'pending'               -- 未決済のみ
+           and coalesce(om.is_cash, false) = false -- 現金を除外
+         order by o.created_at desc
          limit 1`,
         [sellerId]
       );

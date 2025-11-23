@@ -1418,6 +1418,7 @@ app.get("/success.html", serveHtmlWithFallback("success.html"));
 app.get("/checkout.html", serveHtmlWithFallback("checkout.html"));
 app.get("/cancel.html", serveHtmlWithFallback("cancel.html"));
 app.get("/seller-purchase.html", serveHtmlWithFallback("seller-purchase.html"));
+app.get("/seller-purchase-standard.html", serveHtmlWithFallback("seller-purchase-standard.html"));
 app.get("/seller-dashboard.html", serveHtmlWithFallback("seller-dashboard.html"));
 app.get("/admin-dashboard.html", serveHtmlWithFallback("admin-dashboard.html"));
 app.get("/admin-payments.html", serveHtmlWithFallback("admin-payments.html"));
