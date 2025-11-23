@@ -535,9 +535,19 @@ export function registerPaymentRoutes(app, deps) {
       }
 
       const result = await pool.query(
-        `select id as order_id, seller_id, amount, summary, status, created_at
-         from orders
-         where id = $1 and seller_id = $2
+        `select
+           o.id as order_id,
+           o.seller_id,
+           o.amount,
+           o.summary,
+           o.status,
+           o.created_at,
+           coalesce(om.is_cash, false) as is_cash
+         from orders o
+         left join order_metadata om
+           on om.order_id = o.id
+         where o.id = $1
+           and o.seller_id = $2
          limit 1`,
         [orderId, sellerId]
       );
@@ -548,7 +558,28 @@ export function registerPaymentRoutes(app, deps) {
 
       const row = result.rows[0];
 
-      // checkout.html が期待している形に合わせる
+      // ==== 有効期限 & ステータス & 現金チェック ====
+      const createdAt = row.created_at instanceof Date
+        ? row.created_at
+        : new Date(row.created_at);
+
+      const expireMs = PENDING_TTL_MIN * 60 * 1000;
+      const isExpiredByTime = Date.now() - createdAt.getTime() > expireMs;
+      const isInactiveStatus = row.status !== "pending";
+      const isCash = row.is_cash === true;
+
+      if (isExpiredByTime || isInactiveStatus || isCash) {
+        // checkout.html 側は error==='expired' を見て「時間切れ」表示へ切り替える想定
+        return res.json({
+          orderId: row.order_id,
+          sellerId: row.seller_id,
+          amount: null,
+          summary: null,
+          error: "expired",
+        });
+      }
+
+      // checkout.html が期待している形に合わせる（通常ケース）
       return res.json({
         orderId: row.order_id,
         sellerId: row.seller_id,
