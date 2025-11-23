@@ -881,6 +881,8 @@
     let retryCount = 0;
     const MAX_RETRIES = 12;
     let retryTimer = null;
+    // 期限切れなど「リトライしても意味がない状態」のときは false にする
+    let allowAutoRetry = true;
 
     function startAutoRetry() {
       if (retryCount >= MAX_RETRIES) {
@@ -907,7 +909,8 @@
       normalView.style.display = 'none';
       emptyView.style.display = 'block';
       document.getElementById('payBtn').disabled = true;
-      if (!retryTimer) {
+      // allowAutoRetry が true のときだけ自動リトライ
+      if (!retryTimer && allowAutoRetry) {
         startAutoRetry();
       }
     }
@@ -1013,15 +1016,85 @@
 
           // エラーチェック
           if (data.error) {
+            const titleEl = document.querySelector('.exciting-title');
+            const subTitleEl = document.querySelector('.sub-title');
+            const hintEl = document.querySelector('.hint-text');
+
             if (data.error === 'expired') {
               console.warn('[FleaPay] 注文が期限切れです（10分経過）');
+              // 期限切れはリトライしてもムダなので止める
+              allowAutoRetry = false;
+
+              if (titleEl) {
+                titleEl.textContent =
+                  currentLang === 'en'
+                    ? 'This payment link has expired'
+                    : currentLang === 'zh'
+                      ? '此付款链接已失效'
+                      : 'この決済は時間切れです';
+              }
+              if (subTitleEl) {
+                subTitleEl.textContent =
+                  currentLang === 'en'
+                    ? 'Please ask the seller to show you a new QR code.'
+                    : currentLang === 'zh'
+                      ? '请让摊主重新出示一个新的二维码。'
+                      : '出店者さんに、新しいQRコードを見せてもらってください。';
+              }
+              if (hintEl) {
+                hintEl.textContent =
+                  currentLang === 'en'
+                    ? 'The QR code has expired. Please check with the seller again.'
+                    : currentLang === 'zh'
+                      ? '二维码已过期,请再次向摊主确认。'
+                      : 'QRコードの有効時間を過ぎました。出店者さんにもう一度確認してください。';
+              }
+
               showEmptyState(normalView, emptyView);
+              // ローディング状態解除
+              document.getElementById('amount')?.classList.remove('loading');
+              document.getElementById('summary')?.classList.remove('loading');
+              document.body.classList.remove('loading');
+              document.body.classList.add('ready');
               return;
+
             } else if (data.error === 'not_found') {
               console.warn('[FleaPay] 注文が見つかりません');
+              allowAutoRetry = false;
+
+              if (titleEl) {
+                titleEl.textContent =
+                  currentLang === 'en'
+                    ? 'Order not found'
+                    : currentLang === 'zh'
+                      ? '未找到对应订单'
+                      : '注文が見つかりません';
+              }
+              if (subTitleEl) {
+                subTitleEl.textContent =
+                  currentLang === 'en'
+                    ? 'Please ask the seller to show the QR code again.'
+                    : currentLang === 'zh'
+                      ? '请让摊主重新出示二维码。'
+                      : '出店者さんに、もう一度QRコードを出してもらってください。';
+              }
+              if (hintEl) {
+                hintEl.textContent =
+                  currentLang === 'en'
+                    ? 'The URL may be old or already invalid.'
+                    : currentLang === 'zh'
+                      ? '链接可能已经失效。'
+                      : 'URLが古いか、すでに無効になっている可能性があります。';
+              }
+
               showEmptyState(normalView, emptyView);
+              document.getElementById('amount')?.classList.remove('loading');
+              document.getElementById('summary')?.classList.remove('loading');
+              document.body.classList.remove('loading');
+              document.body.classList.add('ready');
               return;
             }
+
             throw new Error(data.error);
           }
 
