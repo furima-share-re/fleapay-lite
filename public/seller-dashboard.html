@@ -996,15 +996,21 @@
           if (shopNameEl)   shopNameEl.textContent   = data.displayName || data.sellerId || "出店者";
           if (shopDisplayEl)shopDisplayEl.textContent= data.displayName || data.sellerId || "出店者";
 
-          // きょうの日付
-          const nowJst = new Date(new Date().toLocaleString("en-US",{ timeZone:"Asia/Tokyo" }));
-          if (todayLabelEl) todayLabelEl.textContent = formatDateJp(nowJst) + " の うりあげ";
+          // きょうの日付（JST）。UTC に +9時間してから「日付」を決める
+          const now = new Date();
+          const nowJst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+          if (todayLabelEl) {
+            todayLabelEl.textContent = formatDateJp(nowJst) + " の うりあげ";
+          }
 
           // KPI（純売上）
 
           // 1. きょうの日付（JST）を YYYY-MM-DD 文字列に
-          // ★ const nowJst は既に上で定義済み ★
-          const todayStr = nowJst.toISOString().slice(0,10);
+          //   toISOString() は UTC なので使わず、UTCフィールドを直接取り出す
+          const todayStr =
+            `${nowJst.getUTCFullYear()}-` +
+            `${String(nowJst.getUTCMonth() + 1).padStart(2,"0")}-` +
+            `${String(nowJst.getUTCDate()).padStart(2,"0")}`;
 
           let todayNet   = 0;  // きょうの純売上
           let countToday = 0;  // きょうの件数
@@ -1023,7 +1029,7 @@
             // 3. salesToday が無い / 0 のときは recent から "きょうの分だけ" 合計を出す
             (data.recent || []).forEach(tx => {
 
-              // created(秒) or createdAt(ISO文字列) から日付を取得
+              // created(秒) or createdAt(ISO文字列) から Date を生成
               let created = null;
               if (typeof tx.created === "number") {
                 created = new Date(tx.created * 1000);
@@ -1032,9 +1038,12 @@
               }
               if (!created || isNaN(created.getTime())) return;
 
-              // JST にそろえて日付比較
-              const jst = new Date(created.toLocaleString("en-US",{ timeZone:"Asia/Tokyo" }));
-              const dStr = jst.toISOString().slice(0,10);
+              // JST にそろえて日付比較（UTCに+9時間してから日付を出す）
+              const jst = new Date(created.getTime() + 9 * 60 * 60 * 1000);
+              const dStr =
+                `${jst.getUTCFullYear()}-` +
+                `${String(jst.getUTCMonth() + 1).padStart(2,"0")}-` +
+                `${String(jst.getUTCDate()).padStart(2,"0")}`;
               if (dStr !== todayStr) return; // きょう以外は無視
 
               const amt = Number(tx.amount || tx.net_amount || 0);
