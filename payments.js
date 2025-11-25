@@ -447,7 +447,7 @@ export function registerPaymentRoutes(app, deps) {
           createdAt: created,
           amount: amt,
           memo: r.memo || "",
-          // 🌍 世界相場（参考）: eBay US / eBay UK のうち高い方を別処理で world_* に保存する想定
+          // 🌍 世界相場(参考): eBay US / eBay UK のうち高い方を別処理で world_* に保存する想定
           worldMedian: r.world_price_median,
           worldHigh: r.world_price_high,
           worldLow: r.world_price_low,
@@ -832,7 +832,7 @@ export function registerPaymentRoutes(app, deps) {
     }
   });
 
-  // ====== 🌍 世界相場（参考）をバックグラウンドで更新するエンドポイント ======
+  // ====== 🌍 世界相場(参考)をバックグラウンドで更新するエンドポイント ======
   app.post("/api/orders/update-world-price", async (req, res) => {
     const { orderId, sellerId } = req.body || {};
     if (!orderId) {
@@ -1164,6 +1164,190 @@ export function registerPaymentRoutes(app, deps) {
 // 🌍 世界相場 更新ロジック
 // =====================
 
+// 🆕 eBay API 用の環境変数
+const EBAY_CLIENT_ID = process.env.EBAY_CLIENT_ID || "";
+const EBAY_CLIENT_SECRET = process.env.EBAY_CLIENT_SECRET || "";
+const EBAY_ENV = process.env.EBAY_ENV || "production"; // or "sandbox"
+
+// 🆕 eBay アクセストークンの簡易キャッシュ
+const ebayTokenCache = {
+  token: null,
+  expiresAt: 0, // epoch ms
+};
+
+// 🆕 為替レートキャッシュ (USD/JPY, GBP/JPY)
+let fxCache = {
+  usd_jpy: null,
+  gbp_jpy: null,
+  expiresAt: 0,
+};
+
+// 🆕 セット(lot / まとめ売り)っぽい summary なら世界相場を付けない(パターンA)
+function isSetLikeSummary(text = "") {
+  const t = text.toLowerCase();
+
+  // 日本語キーワード
+  const jpKeywords = [
+    "セット",
+    "まとめ売り",
+    "まとめて",
+    "大量",
+    "山盛り",
+    "福袋",
+    "オリパ",
+    "束",
+    "複数枚",
+    "箱",
+    "ボックス",
+    "box",
+    "パック",
+    "packs",
+  ];
+
+  // 英語キーワード
+  const enKeywords = [
+    "set",
+    "lot",
+    "bulk",
+    "bundle",
+    "mixed",
+    "random",
+  ];
+
+  return [...jpKeywords, ...enKeywords].some((kw) => t.includes(kw));
+}
+
+// 🆕 eBay OAuth トークン取得(client_credentials)
+async function getEbayAccessToken() {
+  if (!EBAY_CLIENT_ID || !EBAY_CLIENT_SECRET) {
+    console.warn("[world-price] EBAY_CLIENT_ID/SECRET not set, skip eBay call");
+    return null;
+  }
+
+  const now = Date.now();
+  // 有効期限まで 1 分以上あるならキャッシュを使う
+  if (ebayTokenCache.token && ebayTokenCache.expiresAt > now + 60_000) {
+    return ebayTokenCache.token;
+  }
+
+  const tokenUrl =
+    EBAY_ENV === "sandbox"
+      ? "https://api.sandbox.ebay.com/identity/v1/oauth2/token"
+      : "https://api.ebay.com/identity/v1/oauth2/token";
+
+  const basic = Buffer.from(
+    `${EBAY_CLIENT_ID}:${EBAY_CLIENT_SECRET}`,
+    "utf8"
+  ).toString("base64");
+
+  const body = new URLSearchParams();
+  body.set("grant_type", "client_credentials");
+  body.set("scope", "https://api.ebay.com/oauth/api_scope");
+
+  const res = await fetch(tokenUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basic}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: body.toString(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("[world-price] ebay token error", res.status, text);
+    return null;
+  }
+
+  const json = await res.json();
+  const accessToken = json.access_token;
+  const expiresIn = Number(json.expires_in || 0); // 秒
+
+  if (!accessToken) {
+    console.error("[world-price] ebay token missing in response");
+    return null;
+  }
+
+  ebayTokenCache.token = accessToken;
+  ebayTokenCache.expiresAt = Date.now() + expiresIn * 1000;
+
+  console.log("[world-price] ebay token refreshed, expiresIn(s)=", expiresIn);
+
+  return accessToken;
+}
+
+// 🆕 為替レート取得(外部API + 1時間キャッシュ)
+async function getFxRates() {
+  const now = Date.now();
+
+  if (fxCache.expiresAt > now && fxCache.usd_jpy && fxCache.gbp_jpy) {
+    return {
+      usd_jpy: fxCache.usd_jpy,
+      gbp_jpy: fxCache.gbp_jpy,
+    };
+  }
+
+  try {
+    const res = await fetch("https://open.er-api.com/v6/latest/USD");
+    const data = await res.json();
+
+    const usd_jpy = Number(data.rates?.JPY || 150);
+    const gbp_usd = Number(data.rates?.GBP || 0.79); // 1 USD あたりの GBP
+    // 1 GBP = (USD/GBP) * (JPY/USD)
+    const gbp_jpy = usd_jpy * (1 / gbp_usd);
+
+    fxCache = {
+      usd_jpy,
+      gbp_jpy,
+      expiresAt: now + 60 * 60 * 1000, // 1時間
+    };
+
+    console.log("[fx] updated:", fxCache);
+
+    return { usd_jpy, gbp_jpy };
+  } catch (e) {
+    console.error("[fx] fetch error", e);
+    // 取得失敗時は前回値 or デフォルト
+    return {
+      usd_jpy: fxCache.usd_jpy || 150,
+      gbp_jpy: fxCache.gbp_jpy || 190,
+    };
+  }
+}
+
+// 🆕 価格配列から統計値を計算(中央値・高め平均など)
+function buildPriceStats(pricesJpy) {
+  if (!pricesJpy.length) return null;
+
+  const sorted = [...pricesJpy].sort((a, b) => a - b);
+  const n = sorted.length;
+
+  // サンプルが5件以上あるときは 10〜90% だけ使って外れ値カット
+  let trimmed = sorted;
+  if (n >= 5) {
+    const start = Math.floor(n * 0.1);
+    const end = Math.ceil(n * 0.9);
+    trimmed = sorted.slice(start, end);
+  }
+
+  const m = trimmed.length;
+  if (!m) return null;
+
+  const median = trimmed[Math.floor(m / 2)];
+  const low = trimmed[0];
+
+  const highSlice = trimmed.slice(Math.floor(m * 0.75));
+  const highAvg =
+    highSlice.reduce((sum, v) => sum + v, 0) / (highSlice.length || 1);
+
+  return {
+    medianJpy: Math.round(median),
+    highJpy: Math.round(highAvg),
+    lowJpy: Math.round(low),
+    sampleCount: n, // 元の件数をサンプル数として持つ
+  };
+}
+
 async function queueWorldPriceUpdate(pool, orderId, sellerId) {
   // setImmediate で Express のレスポンス終了後に実行
   setImmediate(() => {
@@ -1188,15 +1372,25 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
     return;
   }
   const order = orderRes.rows[0];
+
   const keywordRaw = (order.summary || "").split("\n")[0].trim();
   if (!keywordRaw) {
     console.warn("[world-price] empty summary, skip", orderId);
     return;
   }
 
+  // 🆕 パターンA: セット/まとめ売りっぽい取引は世界相場なしで終了
+  if (isSetLikeSummary(keywordRaw)) {
+    console.log("[world-price] detected set/lot item, skip world price", {
+      orderId,
+      summary: keywordRaw,
+    });
+    return;
+  }
+
   // TODO: タイトルクレンジング(型番だけ抜く等)が必要ならここで。
 
-  // 2) eBay US / UK の相場を取得(★ダミー実装。実際は eBay API を叩く)
+  // 2) eBay US / UK の相場を取得
   const us = await fetchWorldPriceFromEbayMarketplace(keywordRaw, "EBAY_US");
   const uk = await fetchWorldPriceFromEbayMarketplace(keywordRaw, "EBAY_GB");
 
@@ -1246,76 +1440,125 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
   });
 }
 
-// ★ eBay Browse API から1マーケット分の相場を取得するダミー関数
-// 実運用ではここに実際の eBay 呼び出し＋USD/GBP→JPY換算ロジックを実装する。
 async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
-  // ここでは「あとで中身を実装する前提」の空実装にしておく。
-  // ひとまず null を返すので、world_price_* には何も入らない安全な状態。
-  console.log("[world-price] fetch stub", { keyword, marketplaceId });
-  return null;
+  console.log("[world-price] fetch", { keyword, marketplaceId });
 
-  /*
-  // 例イメージ(Node18+で global fetch が使える場合)
-  const token = process.env.EBAY_OAUTH_TOKEN;
-  const res = await fetch(
-    `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(
-      keyword
-    )}&limit=50&filter=buyingOptions:{FIXED_PRICE}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "X-EBAY-C-MARKETPLACE-ID": marketplaceId,
-      },
-    }
-  );
-  if (!res.ok) {
-    console.error("[world-price] ebay error", marketplaceId, await res.text());
+  const token = await getEbayAccessToken();
+  if (!token) {
+    console.warn("[world-price] no ebay token, skip");
     return null;
   }
+
+  // キーワード整形(1行目・長すぎる部分をカット)
+  let q = (keyword || "").trim();
+  if (q.length > 80) {
+    q = q.slice(0, 80);
+  }
+
+  // 「セット / lot」関連の単語は念のためここでも除去
+  q = q
+    .replace(/セット/g, "")
+    .replace(/まとめ売り/g, "")
+    .replace(/lot/gi, "")
+    .replace(/set/gi, "")
+    .trim();
+
+  if (!q) {
+    console.warn("[world-price] keyword empty after cleanup, skip");
+    return null;
+  }
+
+  const baseUrl =
+    EBAY_ENV === "sandbox"
+      ? "https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search"
+      : "https://api.ebay.com/buy/browse/v1/item_summary/search";
+
+  const url =
+    baseUrl +
+    `?q=${encodeURIComponent(q)}` +
+    "&limit=50" +
+    "&filter=buyingOptions:{FIXED_PRICE}";
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "X-EBAY-C-MARKETPLACE-ID": marketplaceId,
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(
+      "[world-price] ebay error",
+      marketplaceId,
+      res.status,
+      text
+    );
+    return null;
+  }
+
   const data = await res.json();
-  const prices = (data.itemSummaries || [])
-    .map((s) => Number(s.price?.value))
-    .filter((v) => Number.isFinite(v));
+  const items = Array.isArray(data.itemSummaries)
+    ? data.itemSummaries
+    : [];
 
-  if (!prices.length) return null;
+  if (!items.length) {
+    console.log("[world-price] no items", { marketplaceId, q });
+    return null;
+  }
 
-  prices.sort((a, b) => a - b);
-  const sampleCount = prices.length;
-  const median = prices[Math.floor(sampleCount / 2)];
-  const highSlice = prices.slice(Math.floor(sampleCount * 0.75));
-  const highAvg =
-    highSlice.reduce((a, b) => a + b, 0) / (highSlice.length || 1);
+  // 為替レート(自動取得)
+  const { usd_jpy: rateUsd, gbp_jpy: rateGbp } = await getFxRates();
 
-  // 通貨→JPY換算は別途レートを持ってくる
-  const rate = marketplaceId === "EBAY_US"
-    ? Number(process.env.RATE_USD_JPY || 150)
-    : Number(process.env.RATE_GBP_JPY || 190);
+  const pricesJpy = [];
 
-  return {
-    medianJpy: Math.round(median * rate),
-    highJpy: Math.round(highAvg * rate),
-    lowJpy: Math.round(prices[0] * rate),
-    sampleCount,
-  };
-  */
+  for (const it of items) {
+    const p = it.price;
+    if (!p || !p.value || !p.currency) continue;
+
+    const v = Number(p.value);
+    if (!Number.isFinite(v) || v <= 0) continue;
+
+    let rate = 0;
+    const curr = String(p.currency).toUpperCase();
+
+    if (curr === "USD") rate = rateUsd;
+    else if (curr === "GBP") rate = rateGbp;
+    else if (curr === "JPY") rate = 1;
+    else continue; // それ以外の通貨は今回は無視
+
+    const jpy = v * rate;
+    // 非現実的な値は雑に除外
+    if (jpy < 1 || jpy > 1_000_000_000) continue;
+
+    pricesJpy.push(jpy);
+  }
+
+  if (!pricesJpy.length) {
+    console.log("[world-price] no valid price", { marketplaceId, q });
+    return null;
+  }
+
+  const stats = buildPriceStats(pricesJpy);
+  if (!stats) return null;
+
+  console.log("[world-price] stats", {
+    marketplaceId,
+    q,
+    ...stats,
+  });
+
+  return stats;
 }
 
-// ====== util(payments.js内で使用するヘルパー関数) ======
-// Note: これらの関数は deps 経由で渡された pool を使用します
-
-async function resolveSellerAccountId(pool, sellerId) {
-  if (!sellerId) return null;
-  const r = await pool.query(
-    `select stripe_account_id from sellers where id=$1 limit 1`,
-    [sellerId]
-  );
-  return r.rows[0]?.stripe_account_id || null;
-}
+// =====================
+// 補助関数
+// =====================
 
 async function getNextOrderNo(pool, sellerId) {
   const r = await pool.query(
-    `select coalesce(max(order_no), 0) + 1 as next_no from orders where seller_id=$1`,
+    `select coalesce(max(order_no), 0) as max_no from orders where seller_id=$1`,
     [sellerId]
   );
-  return r.rows[0]?.next_no || 1;
+  return (r.rows[0].max_no || 0) + 1;
 }
