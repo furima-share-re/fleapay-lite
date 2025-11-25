@@ -839,6 +839,38 @@ export function registerPaymentRoutes(app, deps) {
       return res.status(400).json({ ok: false, error: "orderId is required" });
     }
 
+    // 🆕 eBay 連携の事前チェック
+    try {
+      // 1) eBay API 用の環境変数が無い場合 → 設定ミスとして即エラー
+      if (!EBAY_CLIENT_ID || !EBAY_CLIENT_SECRET) {
+        return res.status(500).json({
+          ok: false,
+          error: "ebay_not_configured",
+          message:
+            "eBay 連携が未設定のため、世界相場(参考)の取得は利用できません。\n運営側で eBay 接続設定を行ってください。",
+        });
+      }
+
+      // 2) 軽く eBay に接続できるか確認(トークンが取れなければ通信エラー扱い)
+      const token = await getEbayAccessToken();
+      if (!token) {
+        return res.status(502).json({
+          ok: false,
+          error: "ebay_unreachable",
+          message:
+            "eBay と通信できないため、世界相場(参考)の取得に失敗しました。\n時間をおいてもう一度お試しください。",
+        });
+      }
+    } catch (e) {
+      console.error("[world-price] precheck error", e);
+      return res.status(502).json({
+        ok: false,
+        error: "ebay_precheck_failed",
+        message:
+          "eBay 連携の確認中にエラーが発生しました。世界相場(参考)の取得は一時的に利用できません。",
+      });
+    }
+
     // ここではすぐレスポンスを返し、重い処理はバックグラウンドで実行
     try {
       queueWorldPriceUpdate(pool, orderId, sellerId).catch((err) => {
