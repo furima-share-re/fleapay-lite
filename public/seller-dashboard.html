@@ -454,6 +454,19 @@
       opacity:0.5;
       cursor:default;
     }
+    .btn-secondary{
+      padding:8px 14px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#ffffff;
+      color:var(--sub);
+      font-size:.85rem;
+      cursor:pointer;
+    }
+    .btn-secondary:disabled{
+      opacity:0.5;
+      cursor:default;
+    }
 
     @media (min-width:768px){
       .wrap { padding:16px 16px 72px; }
@@ -750,6 +763,11 @@
       </div>
 
       <div class="modal-footer">
+        <!-- 🆕 世界相場取得ボタン -->
+        <button type="button" id="modal-world-btn" class="btn-secondary" style="margin-right:8px;">
+          世界相場(参考)を取得
+        </button>
+
         <button type="button" id="modal-save-btn" class="btn-primary">
           保存する
         </button>
@@ -1355,6 +1373,54 @@
           } finally {
             saveBtn.disabled = false;
             saveBtn.textContent = "保存する";
+          }
+        };
+      }
+
+      // 🆕 世界相場(参考)を取得ボタン
+      const worldBtn = document.getElementById("modal-world-btn");
+      if (worldBtn) {
+        worldBtn.onclick = async () => {
+          if (!currentDetailOrderId) return;
+
+          const params = new URLSearchParams(location.search);
+          const sellerId = params.get("s") || "";
+
+          try {
+            worldBtn.disabled = true;
+            worldBtn.textContent = "取得中…";
+
+            const res = await fetch("/api/orders/update-world-price", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orderId: currentDetailOrderId,
+                sellerId
+              })
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok || !data.ok) {
+              alert("世界相場の取得に失敗しました。あとでもう一度お試しください。");
+              return;
+            }
+
+            // ここでは「キューに乗せただけ」。重い処理はサーバー側でバックグラウンド実行。
+            alert("世界相場の取得を開始しました。数十秒後に画面を更新すると反映されます。");
+
+            // 数秒後にダッシュボードを再取得(すぐ終わる場合用の軽いリフレッシュ)
+            if (window.loadSummary) {
+              setTimeout(() => {
+                window.loadSummary();
+              }, 3000);
+            }
+          } catch (e) {
+            console.error("world price button error", e);
+            alert("通信エラーが発生しました。ネットワークを確認してください。");
+          } finally {
+            worldBtn.disabled = false;
+            worldBtn.textContent = "世界相場(参考)を取得";
           }
         };
       }
