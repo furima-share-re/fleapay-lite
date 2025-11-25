@@ -524,6 +524,17 @@
       border-color:#2563eb;
       box-shadow:0 0 0 1px rgba(37,99,235,.3);
     }
+
+    /* 🆕 QR（キャッシュレス）を強調、現金は控えめにする */
+    .pay-btn[data-method="cashless"]{
+      font-size:.85rem;
+      padding:10px 10px;
+      box-shadow:0 10px 20px rgba(37,99,235,.25);
+    }
+    .pay-btn[data-method="cash"]{
+      opacity:0.9;
+    }
+
     .small-note{
       font-size:.75rem;
       color:var(--muted);
@@ -799,7 +810,8 @@
         </div>
 
         <p class="small-note">
-          ※ QR・カード決済を使うと、売上管理や集計がより正確になります。
+          ※ QR・カード決済を使うと、売上管理や集計がより正確になります。<br>
+          さらに <strong>世界相場のじどうしゅとく</strong> や <strong>AIによるねだんサポート</strong> が利用できます（現金では利用できません）。
         </p>
 
         <button id="registerBtn" class="btn btn-primary" style="margin-top:10px;">
@@ -1143,6 +1155,14 @@
         payBtns.forEach(b => b.classList.remove("selected"));
         btn.classList.add("selected");
         log("paymentMethod -> " + paymentMethod);
+
+        // 🆕 現金を選んだときだけ、世界相場/AIが付かないことを軽く案内
+        if (paymentMethod === "cash") {
+          alert(
+            "💴 現金での受け取りをえらぶと、世界相場のじどうしゅとく や AIによるねだんサポートは つかえません。\n" +
+            "できるだけ QR・カード決済 をえらぶことをおすすめします。"
+          );
+        }
       };
     });
 

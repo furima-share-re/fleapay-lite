@@ -170,6 +170,34 @@
       cursor:pointer;
     }
 
+    /* QR / カード決済の取引をやや強調 */
+    .tx-item.tx-cashless {
+      background:#f0f9ff;
+      border-radius:8px;
+      padding:10px;
+    }
+
+    /* 現金取引はフラットな見た目 */
+    .tx-item.tx-cash {
+      background:#f9fafb;
+      border-radius:8px;
+      padding:8px;
+    }
+
+    .tx-badge-cashless {
+      margin-left:4px;
+      background:#e0f2fe;
+      color:#0369a1;
+      border-color:#bae6fd;
+    }
+
+    .tx-badge-cash {
+      margin-left:4px;
+      background:#f3f4f6;
+      color:#4b5563;
+      border-color:#d1d5db;
+    }
+
     .tx-item:last-child {
       border-bottom:none;
     }
@@ -891,6 +919,9 @@
         // ★ 必須: orderIdをdata属性に保存
         li.dataset.orderId = tx.orderId || "";
         
+        const isCash = !!(tx.isCash || tx.is_cash);
+        li.classList.add(isCash ? "tx-cash" : "tx-cashless");
+        
         // created(秒) or createdAt(ISO文字列) のどちらでもOKにする
         let created = null;
         if (typeof tx.created === "number") {
@@ -908,10 +939,15 @@
         const summary = (tx.summary || tx.memo || "商品のおかいもの").split("\n")[0];
 
         // 🟦 (B) 未分類フォルダ表示
-        const isUncategorized = tx.is_cash && !tx.raw_category;
+        const isUncategorized = (tx.is_cash || tx.isCash) && !tx.raw_category;
         const uncategorizedBadge = isUncategorized
           ? '<span class="badge badge-cb-pending">未分類</span>'
           : '';
+
+        // 支払い方法バッジ（QR / 現金）
+        const paymentBadge = isCash
+          ? '<span class="badge tx-badge-cash">現金</span>'
+          : '<span class="badge tx-badge-cashless">QR / カード</span>';
 
         // 購入者属性のラベルを生成
         const buyerLabel = formatBuyerLabel(tx);
@@ -921,6 +957,7 @@
             <div class="tx-top">
               <span class="badge badge-ok">${tx.status || "通常"}</span>
               ${uncategorizedBadge}
+              ${paymentBadge}
               <span class="tx-time">${timeStr}${dateStr ? " / " + dateStr : ""}</span>
             </div>
             <div class="tx-title">${summary}</div>
