@@ -407,6 +407,10 @@ export function registerPaymentRoutes(app, deps) {
           o.created_at,
           o.amount,
           o.summary              AS memo,
+          o.world_price_median,
+          o.world_price_high,
+          o.world_price_low,
+          o.world_price_sample_count,
           om.is_cash,
           om.category            AS raw_category,
           CASE 
@@ -443,6 +447,11 @@ export function registerPaymentRoutes(app, deps) {
           createdAt: created,
           amount: amt,
           memo: r.memo || "",
+          // 🌍 世界相場（参考）: eBay US / eBay UK のうち高い方を別処理で world_* に保存する想定
+          worldMedian: r.world_price_median,
+          worldHigh: r.world_price_high,
+          worldLow: r.world_price_low,
+          worldSampleCount: r.world_price_sample_count,
           isCash: !!r.is_cash,
           rawCategory: r.raw_category,
           paymentMethod: r.payment_method,

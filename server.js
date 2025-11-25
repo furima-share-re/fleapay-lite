@@ -237,6 +237,8 @@ async function initDb() {
       display_name text not null,
       shop_name text,
       stripe_account_id text,
+      email text,
+      password_hash text,
       created_at timestamptz default now(),
       updated_at timestamptz default now()
     );
@@ -257,6 +259,11 @@ async function initDb() {
       order_no integer not null,
       amount integer not null,
       cost_amount integer default 0,
+      -- 🌍 世界相場（参考）※ eBay US / UK のうち高い方を事前計算して保存
+      world_price_median integer,
+      world_price_high integer,
+      world_price_low integer,
+      world_price_sample_count integer default 0,
       summary text,
       frame_id text,
       status text not null default 'pending',
@@ -403,9 +410,16 @@ async function initDb() {
 
     create index if not exists kids_achievements_seller_idx
       on kids_achievements(seller_id);
+
+    -- 既存DB向け: 世界相場カラムを追加
+    alter table if exists orders
+      add column if not exists world_price_median integer,
+      add column if not exists world_price_high integer,
+      add column if not exists world_price_low integer,
+      add column if not exists world_price_sample_count integer default 0;
   `);
 
-  console.log("✅ DB init done (PATCHED v3.4 - kids_achievements added)");
+  console.log("✅ DB init done (PATCHED v3.5 - world_price columns added)");
 }
 
 initDb().catch(e => console.error("DB init error", e));
@@ -629,6 +643,38 @@ app.get("/api/seller/order-detail-full", async (req, res) => {
   }
 });
 
+// 👇 出店者ID使用可否チェックAPI (start_onboarding の前に追加)
+app.get("/api/seller/check-id", async (req, res) => {
+  try {
+    const id = (req.query.id || "").trim();
+
+    if (!id) {
+      return res.status(400).json({ ok: false, error: "id_required" });
+    }
+
+    // クライアントと同じルールでチェック（3〜32文字・英数字・ハイフン・アンダーバー）
+    if (!/^[a-zA-Z0-9_-]{3,32}$/.test(id)) {
+      return res.status(400).json({ ok: false, error: "invalid_format" });
+    }
+
+    const result = await pool.query(
+      `select 1 from sellers where id = $1 limit 1`,
+      [id.toLowerCase()]
+    );
+
+    if (result.rowCount > 0) {
+      // 既に存在
+      return res.json({ ok: false, error: "taken" });
+    }
+
+    // 使用可能
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error("/api/seller/check-id error", e);
+    return res.status(500).json({ ok: false, error: "internal_error" });
+  }
+});
+
 app.post("/api/seller/start_onboarding", async (req, res) => {
   try {
     const { publicId, displayName, email, password } = req.body || {};
@@ -639,6 +685,20 @@ app.post("/api/seller/start_onboarding", async (req, res) => {
     }
     if (password.length < 8) {
       return res.status(400).json({ error: "password_too_short" });
+    }
+    if (!/^[a-zA-Z0-9_-]{3,32}$/.test(publicId)) {
+      return res.status(400).json({ error: "invalid_public_id" });
+    }
+
+    const normalizedId = publicId.toLowerCase();
+
+    // ★ 追加：ID重複チェック（念のためサーバ側でも必ず実施）
+    const existing = await pool.query(
+      `select 1 from sellers where id = $1 limit 1`,
+      [normalizedId]
+    );
+    if (existing.rowCount > 0) {
+      return res.status(409).json({ error: "id_taken" });
     }
 
     // 2) パスワードをハッシュ化（安全にする）
@@ -655,22 +715,15 @@ app.post("/api/seller/start_onboarding", async (req, res) => {
       }
     });
 
-    // 4) Fleapayのデータベースに保存
+    // 4) Fleapayのデータベースに保存（新規INSERTのみ）
     await pool.query(
       `insert into sellers (id, display_name, stripe_account_id, email, password_hash)
-       values ($1,$2,$3,$4,$5)
-       on conflict (id) do update set
-         display_name = excluded.display_name,
-         stripe_account_id = excluded.stripe_account_id,
-         email = excluded.email,
-         password_hash = excluded.password_hash,
-         updated_at = now()
-      `,
-      [publicId, displayName, account.id, email, passwordHash]
+       values ($1,$2,$3,$4,$5)`,
+      [normalizedId, displayName, account.id, email, passwordHash]
     );
 
     // 5) 本人確認ページ（Stripe Onboarding）を作る
-    const returnUrl  = `${BASE_URL}/seller-dashboard.html?s=${encodeURIComponent(publicId)}`;
+    const returnUrl  = `${BASE_URL}/seller-dashboard.html?s=${encodeURIComponent(normalizedId)}`;
     const refreshUrl = `${BASE_URL}/seller-register.html?retry=1`;
 
     const link = await stripe.accountLinks.create({
