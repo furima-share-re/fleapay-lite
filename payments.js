@@ -588,7 +588,7 @@ export function registerPaymentRoutes(app, deps) {
         });
       }
 
-      // checkout.html が期待している形に合わせる（通常ケース）
+      // checkout.html が期待している形に合わせる(通常ケース)
       return res.json({
         orderId: row.order_id,
         sellerId: row.seller_id,
@@ -829,6 +829,25 @@ export function registerPaymentRoutes(app, deps) {
     } catch (e) {
       console.error("get latest price error", e);
       return res.status(500).json(sanitizeError(e));
+    }
+  });
+
+  // ====== 🌍 世界相場（参考）をバックグラウンドで更新するエンドポイント ======
+  app.post("/api/orders/update-world-price", async (req, res) => {
+    const { orderId, sellerId } = req.body || {};
+    if (!orderId) {
+      return res.status(400).json({ ok: false, error: "orderId is required" });
+    }
+
+    // ここではすぐレスポンスを返し、重い処理はバックグラウンドで実行
+    try {
+      queueWorldPriceUpdate(pool, orderId, sellerId).catch((err) => {
+        console.error("[world-price] background error", err);
+      });
+      return res.json({ ok: true, status: "queued" });
+    } catch (e) {
+      console.error("[world-price] queue error", e);
+      return res.status(500).json({ ok: false, error: "queue_failed" });
     }
   });
 
@@ -1139,6 +1158,146 @@ export function registerPaymentRoutes(app, deps) {
       res.status(500).json(sanitizeError(e));
     }
   });
+}
+
+// =====================
+// 🌍 世界相場 更新ロジック
+// =====================
+
+async function queueWorldPriceUpdate(pool, orderId, sellerId) {
+  // setImmediate で Express のレスポンス終了後に実行
+  setImmediate(() => {
+    runWorldPriceUpdate(pool, orderId, sellerId).catch((err) => {
+      console.error("[world-price] run error", err);
+    });
+  });
+}
+
+async function runWorldPriceUpdate(pool, orderId, sellerId) {
+  // 1) 対象注文を取得
+  const orderRes = await pool.query(
+    `
+      select id, summary, amount
+      from orders
+      where id = $1
+    `,
+    [orderId]
+  );
+  if (orderRes.rowCount === 0) {
+    console.warn("[world-price] order not found", orderId);
+    return;
+  }
+  const order = orderRes.rows[0];
+  const keywordRaw = (order.summary || "").split("\n")[0].trim();
+  if (!keywordRaw) {
+    console.warn("[world-price] empty summary, skip", orderId);
+    return;
+  }
+
+  // TODO: タイトルクレンジング(型番だけ抜く等)が必要ならここで。
+
+  // 2) eBay US / UK の相場を取得(★ダミー実装。実際は eBay API を叩く)
+  const us = await fetchWorldPriceFromEbayMarketplace(keywordRaw, "EBAY_US");
+  const uk = await fetchWorldPriceFromEbayMarketplace(keywordRaw, "EBAY_GB");
+
+  if (!us && !uk) {
+    console.warn("[world-price] no market data", { orderId, keywordRaw });
+    return;
+  }
+
+  // 3) 「中央値」が高い方を世界相場として採用
+  const cand = [us, uk].filter(Boolean);
+  const best = cand.reduce((acc, cur) => {
+    if (!acc) return cur;
+    if ((cur.medianJpy || 0) > (acc.medianJpy || 0)) return cur;
+    return acc;
+  }, null);
+
+  if (!best || !best.medianJpy) {
+    console.warn("[world-price] best not found", { orderId, keywordRaw });
+    return;
+  }
+
+  // 4) orders テーブルに保存
+  await pool.query(
+    `
+      update orders
+         set world_price_median = $1,
+             world_price_high = $2,
+             world_price_low = $3,
+             world_price_sample_count = $4,
+             updated_at = now()
+       where id = $5
+    `,
+    [
+      best.medianJpy,
+      best.highJpy,
+      best.lowJpy ?? null,
+      best.sampleCount || 0,
+      orderId,
+    ]
+  );
+
+  console.log("[world-price] updated", {
+    orderId,
+    median: best.medianJpy,
+    high: best.highJpy,
+    sample: best.sampleCount,
+  });
+}
+
+// ★ eBay Browse API から1マーケット分の相場を取得するダミー関数
+// 実運用ではここに実際の eBay 呼び出し＋USD/GBP→JPY換算ロジックを実装する。
+async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
+  // ここでは「あとで中身を実装する前提」の空実装にしておく。
+  // ひとまず null を返すので、world_price_* には何も入らない安全な状態。
+  console.log("[world-price] fetch stub", { keyword, marketplaceId });
+  return null;
+
+  /*
+  // 例イメージ(Node18+で global fetch が使える場合)
+  const token = process.env.EBAY_OAUTH_TOKEN;
+  const res = await fetch(
+    `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(
+      keyword
+    )}&limit=50&filter=buyingOptions:{FIXED_PRICE}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-EBAY-C-MARKETPLACE-ID": marketplaceId,
+      },
+    }
+  );
+  if (!res.ok) {
+    console.error("[world-price] ebay error", marketplaceId, await res.text());
+    return null;
+  }
+  const data = await res.json();
+  const prices = (data.itemSummaries || [])
+    .map((s) => Number(s.price?.value))
+    .filter((v) => Number.isFinite(v));
+
+  if (!prices.length) return null;
+
+  prices.sort((a, b) => a - b);
+  const sampleCount = prices.length;
+  const median = prices[Math.floor(sampleCount / 2)];
+  const highSlice = prices.slice(Math.floor(sampleCount * 0.75));
+  const highAvg =
+    highSlice.reduce((a, b) => a + b, 0) / (highSlice.length || 1);
+
+  // 通貨→JPY換算は別途レートを持ってくる
+  const rate = marketplaceId === "EBAY_US"
+    ? Number(process.env.RATE_USD_JPY || 150)
+    : Number(process.env.RATE_GBP_JPY || 190);
+
+  return {
+    medianJpy: Math.round(median * rate),
+    highJpy: Math.round(highAvg * rate),
+    lowJpy: Math.round(prices[0] * rate),
+    sampleCount,
+  };
+  */
 }
 
 // ====== util(payments.js内で使用するヘルパー関数) ======
