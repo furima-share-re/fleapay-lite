@@ -914,6 +914,29 @@
           <div class="tx-amt">${formatYen(tx.net_amount ?? tx.amount)}</div>
         `;
         
+        // 🌍 世界相場（参考）行を追加（worldMedian が入っているときだけ）
+        if (typeof tx.worldMedian === "number" && tx.worldMedian > 0) {
+          const worldRow = document.createElement("div");
+          worldRow.className = "tx-sub";
+
+          const parts = [];
+          parts.push("世界相場（参考）");
+          parts.push(`中央値 ${formatYen(tx.worldMedian)}`);
+
+          // ※「最安」はあえて表示しない。高めと件数だけ見せて価格競争を煽らない設計。
+          if (typeof tx.worldHigh === "number" && tx.worldHigh > 0) {
+            parts.push(`高め ${formatYen(tx.worldHigh)}`);
+          }
+          if (typeof tx.worldSampleCount === "number" && tx.worldSampleCount > 0) {
+            parts.push(`（${tx.worldSampleCount}件の成約ベース）`);
+          }
+
+          worldRow.textContent = parts.join(" / ");
+
+          const main = li.querySelector(".tx-main");
+          if (main) main.appendChild(worldRow);
+        }
+
         // ★ 修正2: クリック時にdata属性からorderIdを取得してモーダルを開く
         li.addEventListener("click", () => {
           const orderId = li.dataset.orderId;
