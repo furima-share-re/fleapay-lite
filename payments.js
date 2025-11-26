@@ -1244,6 +1244,107 @@ function isSetLikeSummary(text = "") {
   return [...jpKeywords, ...enKeywords].some((kw) => t.includes(kw));
 }
 
+// 🆕 eBay向けに summary から英語ベースの検索キーワードを生成する
+function buildEbayKeywordFromSummary(summaryRaw = "") {
+  const original = String(summaryRaw || "").trim();
+  if (!original) return "";
+
+  // 改行・全角スペースなどを整理
+  const normalized = original.replace(/\s+/g, " ").replace(/　+/g, " ");
+
+  const tokens = [];
+
+  // --- ジャンル判定 ---
+  const isPokemon = /ポケモン|ポケカ|pokemon/i.test(normalized);
+  const isYuGiOh = /遊戯王|yu[- ]?gi[- ]?oh/i.test(normalized);
+  const isMTG =
+    /マジック[:： ]?ザ[:： ]?ギャザリング|mtg/i.test(normalized);
+
+  if (isPokemon) tokens.push("Pokemon card");
+  if (isYuGiOh) tokens.push("Yu-Gi-Oh card");
+  if (isMTG) tokens.push("MTG Magic the Gathering");
+
+  // その他ジャンル
+  if (/フィギュア/i.test(normalized)) tokens.push("figure");
+  if (/ねんどろいど/i.test(normalized)) tokens.push("Nendoroid");
+  if (/ぬいぐるみ/i.test(normalized)) tokens.push("plush");
+  if (/こけし/i.test(normalized)) tokens.push("kokeshi doll");
+  if (/バッグ|カバン/i.test(normalized)) tokens.push("bag");
+  if (/リュック/i.test(normalized)) tokens.push("backpack");
+  if (/帽子|キャップ/i.test(normalized)) tokens.push("hat");
+  if (/服|シャツ|パーカー|ジャケット|コート/i.test(normalized)) {
+    tokens.push("clothes");
+  }
+  if (/時計/i.test(normalized)) tokens.push("watch");
+  if (/ゲーム|カセット|ソフト/i.test(normalized)) tokens.push("video game");
+  if (/スーパーファミコン|スーファミ|sfc/i.test(normalized)) {
+    tokens.push("Super Famicom");
+  }
+  if (/ファミコン|fc/i.test(normalized)) tokens.push("Famicom");
+  if (/switch/i.test(normalized)) tokens.push("Nintendo Switch");
+
+  // --- キャラ名などの簡易マップ ---
+  const charMap = [
+    { re: /ピカチュウ/i, en: "Pikachu" },
+    { re: /リザードン/i, en: "Charizard" },
+    { re: /ギャラドス/i, en: "Gyarados" },
+    { re: /イーブイ/i, en: "Eevee" },
+    { re: /ミュウツー/i, en: "Mewtwo" },
+    { re: /ミュウ(?!ツー)/i, en: "Mew" },
+    { re: /ナガバ/i, en: "Yu Nagaba" },
+  ];
+  for (const { re, en } of charMap) {
+    if (re.test(normalized)) tokens.push(en);
+  }
+
+  // PSA グレードなど (psa10 → "PSA 10")
+  const psaMatch = normalized.match(/psa\s*([0-9]{1,2})/i);
+  if (psaMatch) {
+    tokens.push("PSA", psaMatch[1]);
+  }
+
+  // 言語・地域
+  if (/日本語|日本版|jpn/i.test(normalized)) {
+    tokens.push("Japanese");
+  }
+  // eBayでは「Japan」を付けるとヒット精度が上がりやすい
+  tokens.push("Japan");
+
+  // 型番・カード番号っぽい英数字 (例: 208/S-P, DW-5600 等)
+  const codeMatches = normalized.match(/[A-Za-z]{1,4}[-/ ]?\d{2,4}[A-Za-z]?/g);
+  if (codeMatches) {
+    for (const code of codeMatches) {
+      tokens.push(code.replace(/\s+/g, ""));
+    }
+  }
+
+  // ノイズ語を削除した日本語タイトルも少しだけ足す
+  let jpCore = normalized
+    .replace(/[【】\[\]\(\)（）]/g, " ")
+    .replace(
+      /新品|未開封|美品|傷あり|中古|まとめ売り|セット|プロモ|プロモカード/gi,
+      " "
+    );
+  jpCore = jpCore.replace(/\s+/g, " ").trim();
+  if (jpCore.length > 40) {
+    jpCore = jpCore.slice(0, 40);
+  }
+  if (jpCore) {
+    tokens.push(jpCore);
+  }
+
+  // 重複削除
+  const keyword = Array.from(new Set(tokens.filter(Boolean))).join(" ");
+
+  console.log("[world-price] keyword built for ebay", {
+    summary: original,
+    keyword,
+  });
+
+  // 何も作れなかったときは元の文字列でフォールバック
+  return keyword || original;
+}
+
 // 🆕 eBay OAuth トークン取得(client_credentials)
 async function getEbayAccessToken() {
   if (!EBAY_CLIENT_ID || !EBAY_CLIENT_SECRET) {
@@ -1415,14 +1516,25 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
     return;
   }
 
-  // TODO: タイトルクレンジング(型番だけ抜く等)が必要ならここで。
+  // summary から eBay 向け検索語を生成
+  const keywordForEbay = buildEbayKeywordFromSummary(keywordRaw);
 
-  // 2) eBay US / UK の相場を取得
-  const us = await fetchWorldPriceFromEbayMarketplace(keywordRaw, "EBAY_US");
-  const uk = await fetchWorldPriceFromEbayMarketplace(keywordRaw, "EBAY_GB");
+  // 2) eBay US / UK の相場を取得（英語ベースキーワードで検索）
+  const us = await fetchWorldPriceFromEbayMarketplace(
+    keywordForEbay,
+    "EBAY_US"
+  );
+  const uk = await fetchWorldPriceFromEbayMarketplace(
+    keywordForEbay,
+    "EBAY_GB"
+  );
 
   if (!us && !uk) {
-    console.warn("[world-price] no market data", { orderId, keywordRaw });
+    console.warn("[world-price] no market data", {
+      orderId,
+      keywordRaw,
+      keywordForEbay,
+    });
     return;
   }
 
@@ -1435,7 +1547,11 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
   }, null);
 
   if (!best || !best.medianJpy) {
-    console.warn("[world-price] best not found", { orderId, keywordRaw });
+    console.warn("[world-price] best not found", {
+      orderId,
+      keywordRaw,
+      keywordForEbay,
+    });
     return;
   }
 
