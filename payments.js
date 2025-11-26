@@ -1275,18 +1275,29 @@ function buildEbayKeywordFromSummary(summaryRaw = "") {
   if (/時計/i.test(normalized)) tokens.push("watch");
   if (/ゲーム|カセット|ソフト/i.test(normalized)) tokens.push("video game");
 
-  // ▼キャラ名・著名カードのカナ→英語マップ
+  // ▼キャラ名・著名カードのカナ/英語 → 統一英語名
   const charMap = [
-    { re: /ピカチュウ/i, en: "Pikachu" },
-    { re: /リザードン/i, en: "Charizard" },
-    { re: /ギャラドス/i, en: "Gyarados" },
-    { re: /イーブイ/i, en: "Eevee" },
-    { re: /ミュウツー/i, en: "Mewtwo" },
-    { re: /ミュウ(?!ツー)/i, en: "Mew" },
-    { re: /ナガバ/i, en: "Yu Nagaba" },
+    { re: /ピカチュウ|Pikachu/i, en: "Pikachu" },
+    { re: /リザードン|Charizard/i, en: "Charizard" },
+    { re: /ギャラドス|Gyarados/i, en: "Gyarados" },
+    { re: /イーブイ|Eevee/i, en: "Eevee" },
+    { re: /ミュウツー|Mewtwo/i, en: "Mewtwo" },
+    { re: /ミュウ(?!ツー)|\bMew\b/i, en: "Mew" },
+    { re: /ナガバ|Yu\s+Nagaba/i, en: "Yu Nagaba" },
   ];
+  let hasPokemonChar = false;
   for (const { re, en } of charMap) {
-    if (re.test(normalized)) tokens.push(en);
+    if (re.test(normalized)) {
+      tokens.push(en);
+      hasPokemonChar = true;
+    }
+  }
+  // 英語だけのカード名でも「Pokemon card」を付ける
+  if (
+    !tokens.some((t) => t.toLowerCase().includes("pokemon")) &&
+    hasPokemonChar
+  ) {
+    tokens.push("Pokemon card");
   }
 
   // ▼PSAグレード (psa10 → "PSA 10")
@@ -1433,14 +1444,17 @@ function buildPriceStats(pricesJpy) {
 
   const sorted = [...pricesJpy].sort((a, b) => a - b);
   const n = sorted.length;
+  
+  // サンプルが5件未満のときは相場として扱わない(精度不足)
+  if (n < 5) {
+    return null;
+  }
 
   // サンプルが5件以上あるときは 10〜90% だけ使って外れ値カット
   let trimmed = sorted;
-  if (n >= 5) {
-    const start = Math.floor(n * 0.1);
-    const end = Math.ceil(n * 0.9);
-    trimmed = sorted.slice(start, end);
-  }
+  const start = Math.floor(n * 0.1);
+  const end = Math.ceil(n * 0.9);
+  trimmed = sorted.slice(start, end);
 
   const m = trimmed.length;
   if (!m) return null;
@@ -1659,6 +1673,36 @@ async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
     });
     if (jpLike.length) {
       filtered = jpLike;
+    }
+  }
+
+  // カード番号(#091など)がキーワードに含まれている場合はタイトルで絞り込む
+  const numMatch = kw.match(/#?(\d{3})\b/);
+  if (numMatch) {
+    const num = numMatch[1];
+    const numRe = new RegExp(`(\\#${num}(\\D|$)|\\b${num}[A-Z0-9/ ]?)`);
+    const byNumber = filtered.filter((it) =>
+      numRe.test((it.title || "").toUpperCase())
+    );
+    // ある程度件数が残る場合のみ適用する(絞り込みすぎ防止)
+    if (byNumber.length >= Math.min(filtered.length, 3)) {
+      filtered = byNumber;
+    }
+  }
+
+  // 弾/セット名(SV1V, Scarlet, Violetなど)が含まれている場合は、それでさらに絞り込む
+  const setTokens = [];
+  const setCodeMatch = kw.match(/\bSV[0-9A-Z]{1,2}\b/);
+  if (setCodeMatch) {
+    setTokens.push(setCodeMatch[0]);
+  }
+  if (/SCARLET/.test(kw)) setTokens.push("SCARLET");
+  if (/VIOLET/.test(kw)) setTokens.push("VIOLET");
+  if (setTokens.length) {
+    const setRe = new RegExp(setTokens.join("|"), "i");
+    const bySet = filtered.filter((it) => setRe.test(it.title || ""));
+    if (bySet.length >= Math.min(filtered.length, 3)) {
+      filtered = bySet;
     }
   }
 
