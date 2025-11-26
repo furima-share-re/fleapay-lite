@@ -1249,22 +1249,22 @@ function buildEbayKeywordFromSummary(summaryRaw = "") {
   const original = String(summaryRaw || "").trim();
   if (!original) return "";
 
-  // 改行・全角スペースなどを整理
-  const normalized = original.replace(/\s+/g, " ").replace(/　+/g, " ");
+  // 空白を正規化
+  let normalized = original.replace(/\s+/g, " ").replace(/　+/g, " ");
+  const lower = normalized.toLowerCase();
 
   const tokens = [];
 
-  // --- ジャンル判定 ---
-  const isPokemon = /ポケモン|ポケカ|pokemon/i.test(normalized);
-  const isYuGiOh = /遊戯王|yu[- ]?gi[- ]?oh/i.test(normalized);
-  const isMTG =
-    /マジック[:： ]?ザ[:： ]?ギャザリング|mtg/i.test(normalized);
-
-  if (isPokemon) tokens.push("Pokemon card");
-  if (isYuGiOh) tokens.push("Yu-Gi-Oh card");
-  if (isMTG) tokens.push("MTG Magic the Gathering");
-
-  // その他ジャンル
+  // ▼ジャンル（ざっくり）
+  if (/(ポケモン|ポケカ|pokemon)/i.test(normalized)) {
+    tokens.push("Pokemon", "Pokemon card");
+  }
+  if (/(遊戯王|yu-?gi-?oh)/i.test(normalized)) {
+    tokens.push("Yu-Gi-Oh card");
+  }
+  if (/mtg|マジック[:： ]?ザ[:： ]?ギャザリング/i.test(normalized)) {
+    tokens.push("MTG", "Magic the Gathering");
+  }
   if (/フィギュア/i.test(normalized)) tokens.push("figure");
   if (/ねんどろいど/i.test(normalized)) tokens.push("Nendoroid");
   if (/ぬいぐるみ/i.test(normalized)) tokens.push("plush");
@@ -1272,18 +1272,10 @@ function buildEbayKeywordFromSummary(summaryRaw = "") {
   if (/バッグ|カバン/i.test(normalized)) tokens.push("bag");
   if (/リュック/i.test(normalized)) tokens.push("backpack");
   if (/帽子|キャップ/i.test(normalized)) tokens.push("hat");
-  if (/服|シャツ|パーカー|ジャケット|コート/i.test(normalized)) {
-    tokens.push("clothes");
-  }
   if (/時計/i.test(normalized)) tokens.push("watch");
   if (/ゲーム|カセット|ソフト/i.test(normalized)) tokens.push("video game");
-  if (/スーパーファミコン|スーファミ|sfc/i.test(normalized)) {
-    tokens.push("Super Famicom");
-  }
-  if (/ファミコン|fc/i.test(normalized)) tokens.push("Famicom");
-  if (/switch/i.test(normalized)) tokens.push("Nintendo Switch");
 
-  // --- キャラ名などの簡易マップ ---
+  // ▼キャラ名・著名カードのカナ→英語マップ
   const charMap = [
     { re: /ピカチュウ/i, en: "Pikachu" },
     { re: /リザードン/i, en: "Charizard" },
@@ -1297,20 +1289,27 @@ function buildEbayKeywordFromSummary(summaryRaw = "") {
     if (re.test(normalized)) tokens.push(en);
   }
 
-  // PSA グレードなど (psa10 → "PSA 10")
+  // ▼PSAグレード (psa10 → "PSA 10")
   const psaMatch = normalized.match(/psa\s*([0-9]{1,2})/i);
   if (psaMatch) {
-    tokens.push("PSA", psaMatch[1]);
+    tokens.push("PSA", psaMatch[1]); // → "PSA 10"
   }
 
-  // 言語・地域
-  if (/日本語|日本版|jpn/i.test(normalized)) {
-    tokens.push("Japanese");
+  // ▼言語・地域
+  if (/(日本語|日本版|jpn|japanese)/i.test(lower)) {
+    tokens.push("Japanese", "Japan", "JPN");
+  } else if (/jpn/i.test(original)) {
+    tokens.push("Japanese", "JPN");
   }
-  // eBayでは「Japan」を付けるとヒット精度が上がりやすい
-  tokens.push("Japan");
 
-  // 型番・カード番号っぽい英数字 (例: 208/S-P, DW-5600 等)
+  // ▼英数字のまとまり（元タイトルからそのまま拾う）
+  //   例: 2023, SV1V, VIOLET, #092, ARCANINE, EX
+  const enChunks = original.match(/[A-Za-z0-9#\-\/]+/g);
+  if (enChunks) {
+    tokens.push(...enChunks);
+  }
+
+  // ▼型番・カード番号っぽいもの（SV1V-XXX 等）はそのまま追加
   const codeMatches = normalized.match(/[A-Za-z]{1,4}[-/ ]?\d{2,4}[A-Za-z]?/g);
   if (codeMatches) {
     for (const code of codeMatches) {
@@ -1318,22 +1317,7 @@ function buildEbayKeywordFromSummary(summaryRaw = "") {
     }
   }
 
-  // ノイズ語を削除した日本語タイトルも少しだけ足す
-  let jpCore = normalized
-    .replace(/[【】\[\]\(\)（）]/g, " ")
-    .replace(
-      /新品|未開封|美品|傷あり|中古|まとめ売り|セット|プロモ|プロモカード/gi,
-      " "
-    );
-  jpCore = jpCore.replace(/\s+/g, " ").trim();
-  if (jpCore.length > 40) {
-    jpCore = jpCore.slice(0, 40);
-  }
-  if (jpCore) {
-    tokens.push(jpCore);
-  }
-
-  // 重複削除
+  // 重複除去して結合
   const keyword = Array.from(new Set(tokens.filter(Boolean))).join(" ");
 
   console.log("[world-price] keyword built for ebay", {
@@ -1341,7 +1325,7 @@ function buildEbayKeywordFromSummary(summaryRaw = "") {
     keyword,
   });
 
-  // 何も作れなかったときは元の文字列でフォールバック
+  // 何も作れなかった場合は元の summary でフォールバック
   return keyword || original;
 }
 
@@ -1650,12 +1634,45 @@ async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
     return null;
   }
 
+  // 🆕 PSA10 や 日本語カード指定がある場合は、タイトル/所在地で絞り込む
+  let filtered = items;
+  const kw = (keyword || "").toUpperCase();
+
+  // PSA10 がキーワードに含まれているなら、PSA 10/PSA10 をタイトルに含むものに限定
+  if (/PSA\s*10/.test(kw)) {
+    filtered = filtered.filter((it) =>
+      /(PSA\s*10|PSA10)/i.test(it.title || "")
+    );
+  }
+
+  // 日本語/JPN 指定があるなら、日本関連のものを優先
+  if (/(JAPANESE|JPN|JAPAN)/.test(kw)) {
+    const jpLike = filtered.filter((it) => {
+      const title = (it.title || "") + " " + (it.shortDescription || "");
+      const loc =
+        (it.itemLocation && (it.itemLocation.country || it.itemLocation.countryCode)) ||
+        "";
+      return (
+        /(JAPANESE|JPN|JAPAN)/i.test(title) ||
+        String(loc).toUpperCase() === "JP"
+      );
+    });
+    if (jpLike.length) {
+      filtered = jpLike;
+    }
+  }
+
+  // 絞り込みすぎて 0 件になったときは、元の items に戻す（安全側フォールバック）
+  if (!filtered.length) {
+    filtered = items;
+  }
+
   // 為替レート(自動取得)
   const { usd_jpy: rateUsd, gbp_jpy: rateGbp } = await getFxRates();
 
   const pricesJpy = [];
 
-  for (const it of items) {
+  for (const it of filtered) {
     const p = it.price;
     if (!p || !p.value || !p.currency) continue;
 
