@@ -911,6 +911,81 @@
         return "購入者情報：未入力";
       }
 
+      // 🌍 世界相場AIの簡易ロジック（Lite）：推奨価格帯と信頼度テキストを生成
+      function buildWorldPriceAdviceText(tx) {
+        const median = tx.worldMedian;
+        if (!median || median <= 0) return "";
+
+        const sample = tx.worldSampleCount || 0;
+        const amount = tx.net_amount ?? tx.amount ?? null;
+        const rawCategory = (tx.rawCategory || tx.raw_category || "").toLowerCase();
+
+        let rangePct = 0.3;
+        let levelLabel = "ふつう";  // 信頼度ラベル（高い / ふつう / ひくめ…）
+
+        const isCard = ["card", "カード", "ポケカ", "トレカ", "pokemon", "ポケモン"]
+          .some((kw) => rawCategory.includes(kw));
+        const isFigureOrToy = ["figure", "フィギュア", "ぬいぐるみ", "toy", "おもちゃ", "ラブブ", "こけし"]
+          .some((kw) => rawCategory.includes(kw));
+        const isFashion = ["服", "帽子", "bag", "バッグ", "古着", "shoes", "スニーカー"]
+          .some((kw) => rawCategory.includes(kw));
+        const isVintage = ["骨とう", "骨董", "ビンテージ", "アンティーク"]
+          .some((kw) => rawCategory.includes(kw));
+
+        // 🔧 カテゴリ別に「どれくらいブレるか」を変える
+        if (isCard) {
+          if (sample >= 15) {
+            // psa_graded/raw_mintイメージ：かなり当てにしてよい
+            rangePct = 0.2;
+            levelLabel = "高い";
+          } else if (sample >= 8) {
+            rangePct = 0.25;
+            levelLabel = "ふつう";
+          } else {
+            rangePct = 0.35;
+            levelLabel = "ひくめ";
+          }
+        } else if (isFigureOrToy || isFashion) {
+          if (sample >= 10) {
+            rangePct = 0.3;
+            levelLabel = "ふつう";
+          } else {
+            rangePct = 0.45;
+            levelLabel = "ひくめ";
+          }
+        } else if (isVintage) {
+          // 骨とう品・ビンテージはブレが大きい前提
+          rangePct = 0.5;
+          levelLabel = "かなりひくめ";
+        } else {
+          // その他ごちゃまぜカテゴリ
+          rangePct = 0.4;
+          levelLabel = "ひくめ";
+        }
+
+        const min = Math.round(median * (1 - rangePct));
+        const max = Math.round(median * (1 + rangePct));
+
+        // 今の値段が世界相場と比べてどうか
+        let pos = "";
+        if (amount && median) {
+          const diffRatio = (amount - median) / median;
+          if (diffRatio <= -0.3) {
+            pos = "（今の価格：世界相場より かなり安め）";
+          } else if (diffRatio <= -0.1) {
+            pos = "（今の価格：世界相場より やや安め）";
+          } else if (diffRatio < 0.15) {
+            pos = "（今の価格：世界相場と だいたい同じ）";
+          } else if (diffRatio < 0.4) {
+            pos = "（今の価格：世界相場より やや高め）";
+          } else {
+            pos = "（今の価格：世界相場より かなり高め）";
+          }
+        }
+
+        return `おすすめ価格帯 ${formatYen(min)}〜${formatYen(max)} / 信頼度: ${levelLabel}${pos}`;
+      }
+
       // ★ 修正1: 一覧生成時に必ずorderIdをdata属性に保存
       function createTransactionItem(tx){
         const li = document.createElement("li");
@@ -986,7 +1061,13 @@
             parts.push(`（${tx.worldSampleCount}件の成約ベース）`);
           }
 
-          worldRow.textContent = parts.join(" / ");
+          const adviceText = buildWorldPriceAdviceText(tx);
+          if (adviceText) {
+            // 1行目:eBay集計 / 2行目:AIのおすすめ価格帯
+            worldRow.innerHTML = `${parts.join(" / ")}<br>${adviceText}`;
+          } else {
+            worldRow.textContent = parts.join(" / ");
+          }
 
           const main = li.querySelector(".tx-main");
           if (main) main.appendChild(worldRow);
