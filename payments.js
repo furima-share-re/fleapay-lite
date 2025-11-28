@@ -720,6 +720,9 @@ export function registerPaymentRoutes(app, deps) {
 
       const sessionParams = {
         mode: "payment",
+        payment_method_types: ["card", "link"],
+        locale: "en",
+        billing_address_collection: "never",
         success_url: successUrl,
         cancel_url: cancelUrl,
         line_items: [
