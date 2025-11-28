@@ -720,8 +720,13 @@ export function registerPaymentRoutes(app, deps) {
 
       const sessionParams = {
         mode: "payment",
-        payment_method_types: ["card", "link"],
-        locale: "en",
+        payment_method_types: [
+          "card",        // カード / Apple Pay / Google Pay
+          "link",
+          "alipay",
+          "wechat_pay"
+        ],
+        locale: "auto",
         success_url: successUrl,
         cancel_url: cancelUrl,
         line_items: [
