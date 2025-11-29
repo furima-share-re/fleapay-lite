@@ -722,9 +722,11 @@ export function registerPaymentRoutes(app, deps) {
         mode: "payment",
         payment_method_types: [
           "card",        // カード / Apple Pay / Google Pay
-          "link",
-          "alipay",
-          "wechat_pay"
+          "link",        // Stripe Link
+          "alipay"       // Alipay
+          // ✅ "wechat_pay" を削除(応急処置: Stripeアカウントで未有効化のため)
+          // 将来的にWeChat Payを有効化する場合は、以下を追加してください:
+          // "wechat_pay"
         ],
         locale: "auto",
         success_url: successUrl,
