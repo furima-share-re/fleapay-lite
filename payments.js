@@ -430,8 +430,8 @@ export function registerPaymentRoutes(app, deps) {
             om.is_cash = true              -- 現金はステータスに関係なく表示
             OR sp.status = 'succeeded'     -- カード決済はStripe成功のみ表示
           )
+          AND o.created_at >= NOW() - INTERVAL '30 days'  -- ★ 過去30日間に拡張
         ORDER BY o.created_at DESC
-        LIMIT 20
         `,
         [sellerId]
       );
