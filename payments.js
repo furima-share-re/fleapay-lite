@@ -406,6 +406,7 @@ export function registerPaymentRoutes(app, deps) {
           o.id                     AS order_id,
           o.created_at,
           o.amount,
+          o.cost_amount,
           o.summary              AS memo,
           o.world_price_median,
           o.world_price_high,
@@ -446,6 +447,7 @@ export function registerPaymentRoutes(app, deps) {
           orderId: r.order_id,
           createdAt: created,
           amount: amt,
+          costAmount: r.cost_amount === null ? null : Number(r.cost_amount),
           memo: r.memo || "",
           // 🌍 世界相場(参考): eBay US / eBay UK のうち高い方を別処理で world_* に保存する想定
           worldMedian: r.world_price_median,
