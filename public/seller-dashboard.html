@@ -268,6 +268,18 @@
       border-color:#fecaca;
     }
 
+    /* 入力まちバッジ */
+    .badge-need-input {
+      background:#fef3c7;
+      color:#92400e;
+      border-color:#fbbf24;
+    }
+
+    .tx-sub-warn {
+      font-size:.75rem;
+      color:var(--warn);
+    }
+
     .tx-detail {
       margin-top:4px;
       font-size:.78rem;
@@ -1014,7 +1026,9 @@
         const summary = (tx.summary || tx.memo || "商品のおかいもの").split("\n")[0];
 
         // 🟦 (B) 未分類フォルダ表示
-        const isUncategorized = (tx.is_cash || tx.isCash) && !tx.raw_category;
+        const isUncategorized =
+          (tx.is_cash || tx.isCash) &&
+          !(tx.rawCategory || tx.raw_category);
         const uncategorizedBadge = isUncategorized
           ? '<span class="badge badge-cb-pending">未分類</span>'
           : '';
@@ -1027,16 +1041,48 @@
         // 購入者属性のラベルを生成
         const buyerLabel = formatBuyerLabel(tx);
 
+        // 🔶 入力まち判定
+        const customerType =
+          tx.customerType || tx.customer_type || tx.buyer?.customer_type || "";
+        const gender =
+          tx.gender || tx.buyer?.gender || "";
+        const ageBand =
+          tx.ageBand || tx.age_band || tx.buyer?.age_band || "";
+        const hasBuyerAll = !!(customerType && gender && ageBand);
+
+        const hasCategory = !!(tx.rawCategory || tx.raw_category);
+        const costVal =
+          typeof tx.costAmount === "number" ? tx.costAmount : null;
+        // costAmount > 0 を「入力済み」とみなす（0/空/null は未入力扱い）
+        const hasCost = costVal !== null && costVal > 0;
+
+        const missing = [];
+        if (!hasCost)     missing.push("仕入額");
+        if (!hasCategory) missing.push("カテゴリ");
+        if (!hasBuyerAll) missing.push("購入者情報");
+
+        const needInput = missing.length > 0;
+
+        const needInputBadge = needInput
+          ? '<span class="badge badge-need-input">入力まち</span>'
+          : '';
+
+        const needInputSub = needInput
+          ? `<div class="tx-sub tx-sub-warn">入力まち：${missing.join("・")}（タップして入力）</div>`
+          : "";
+
         li.innerHTML = `
           <div class="tx-main">
             <div class="tx-top">
               <span class="badge badge-ok">${tx.status || "通常"}</span>
               ${uncategorizedBadge}
               ${paymentBadge}
+              ${needInputBadge}
               <span class="tx-time">${timeStr}${dateStr ? " / " + dateStr : ""}</span>
             </div>
             <div class="tx-title">${summary}</div>
             <div class="tx-sub">${buyerLabel}</div>
+            ${needInputSub}
             <div class="tx-detail">
               ${tx.summary ? tx.summary.replace(/\n/g,"<br>") : ""}
             </div>
