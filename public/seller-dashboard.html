@@ -115,6 +115,14 @@
       border:1px solid var(--border);
       background:#f9fafb;
       color:var(--sub);
+      cursor:pointer;
+    }
+
+    /* 入力まちフィルタ ON 時の見た目 */
+    .pill-toggle-active {
+      background:var(--brand);
+      color:#fff;
+      border-color:var(--brand);
     }
 
     .kpi-row {
@@ -610,8 +618,13 @@
     <section id="sec-tx" class="section">
       <div class="card">
         <div class="card-header">
-          <div class="card-title">取引履歴</div>
-          <div class="card-sub">きょう ＋ さいきん</div>
+          <div>
+            <div class="card-title">取引履歴</div>
+            <div class="card-sub">きょう ＋ 過去30日分</div>
+          </div>
+          <button type="button" class="pill" id="tx-filter-need-input">
+            入力まちだけ
+          </button>
         </div>
         <ul class="list" id="tx-list">
           <!-- JSで差し込み -->
@@ -854,6 +867,11 @@
       // 🟦 (A) データ精度スコア用の要素
       const dataScoreEl  = $("#data-score");
 
+      // 取引リストのフィルタ状態
+      const txFilterBtn = document.getElementById("tx-filter-need-input");
+      let txFilterNeedInputOnly = false;
+      let latestTxList = [];
+
       // サブスク未加入時にダッシュボードをブロックする共通関数
       function blockForNonSubscriber() {
         if (homeHintEl) {
@@ -921,6 +939,24 @@
           return `${typeLabel} / ${genderLabel} / ${ageLabel}`;
         }
         return "購入者情報：未入力";
+      }
+
+      // 「入力まち」かどうかを判定する関数
+      function isNeedInputTx(tx) {
+        const customerType =
+          tx.customerType || tx.customer_type || tx.buyer?.customer_type || "";
+        const gender =
+          tx.gender || tx.buyer?.gender || "";
+        const ageBand =
+          tx.ageBand || tx.age_band || tx.buyer?.age_band || "";
+        const hasBuyerAll = !!(customerType && gender && ageBand);
+
+        const hasCategory = !!(tx.rawCategory || tx.raw_category);
+        const costVal =
+          typeof tx.costAmount === "number" ? tx.costAmount : null;
+        const hasCost = costVal !== null && costVal > 0;
+
+        return !hasCost || !hasCategory || !hasBuyerAll;
       }
 
       // 🌍 世界相場AIの簡易ロジック（Lite）：推奨価格帯と信頼度テキストを生成
@@ -1133,6 +1169,44 @@
         return li;
       }
 
+      // 取引リスト描画（フィルタ付き）
+      function renderTxList() {
+        if (!txListEl) return;
+        txListEl.innerHTML = "";
+
+        const source = latestTxList || [];
+        let list = source;
+
+        if (txFilterNeedInputOnly) {
+          list = source.filter(isNeedInputTx);
+        }
+
+        if (!list.length) {
+          const li = document.createElement("li");
+          li.className = "tx-item";
+          li.innerHTML = `
+            <div class="tx-main">
+              <div class="tx-title">${
+                txFilterNeedInputOnly
+                  ? "入力まちの 取引は ありません"
+                  : "まだ 取引がありません"
+              }</div>
+              <div class="tx-sub">${
+                txFilterNeedInputOnly
+                  ? "仕入額・カテゴリ・購入者情報が そろっていない取引だけを ひょうじします。"
+                  : "きょうの決済や さいきんの決済がここに表示されます。"
+              }</div>
+            </div>
+          `;
+          txListEl.appendChild(li);
+          return;
+        }
+
+        for (const tx of list) {
+          txListEl.appendChild(createTransactionItem(tx));
+        }
+      }
+
       async function loadSummary(){
         if (!sellerId){
           if (homeHintEl) homeHintEl.textContent = "URLに ?s=出店者ID が ひつようです。";
@@ -1316,26 +1390,9 @@
             recentHintEl.textContent = "Stripe のテスト決済が さいしん3件まで ひょうじされます。";
           }
 
-          // 取引履歴（最大20件）
-          if (txListEl){
-            txListEl.innerHTML = "";
-            const list = data.recent || [];
-            if (!list.length){
-              const li = document.createElement("li");
-              li.className = "tx-item";
-              li.innerHTML = `
-                <div class="tx-main">
-                  <div class="tx-title">まだ 取引がありません</div>
-                  <div class="tx-sub">きょうの決済や さいきんの決済がここに表示されます。</div>
-                </div>
-              `;
-              txListEl.appendChild(li);
-            } else {
-              for (const tx of list){
-                txListEl.appendChild(createTransactionItem(tx));
-              }
-            }
-          }
+          // 取引履歴（過去30日分）を保持＆描画
+          latestTxList = data.recent || [];
+          renderTxList();
 
         } catch (e){
           console.error("loadSummary error", e);
@@ -1349,6 +1406,26 @@
       // グローバルスコープに公開（モーダル保存時の再読み込み用）
       window.loadSummary = loadSummary;
     })();
+
+    // ====== 取引フィルターボタン ======
+    document.addEventListener("DOMContentLoaded", () => {
+      const btn = document.getElementById("tx-filter-need-input");
+      if (btn) {
+        btn.addEventListener("click", () => {
+          txFilterNeedInputOnly = !txFilterNeedInputOnly;
+          if (txFilterNeedInputOnly) {
+            btn.classList.add("pill-toggle-active");
+            btn.textContent = "入力まちのみ表示中";
+          } else {
+            btn.classList.remove("pill-toggle-active");
+            btn.textContent = "入力まちだけ";
+          }
+          if (typeof renderTxList === "function") {
+            renderTxList();
+          }
+        });
+      }
+    });
 
     // ====== 🆕 注文詳細モーダル ======
     let currentDetailOrderId = null;
