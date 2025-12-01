@@ -1,6 +1,9 @@
 // payments.js
 import express from "express";
-import { buildEbayKeywordFromSummary } from "./worldPriceGenreEngine.js";
+import {
+  buildEbayKeywordFromSummary,
+  buildPriceStats,
+} from "./worldPriceGenreEngine.js";
 
 /**
  * 決済・入金・売上関連のルートをまとめて登録する
@@ -1392,35 +1395,6 @@ async function getFxRates() {
       gbp_jpy: fxCache.gbp_jpy || 190,
     };
   }
-}
-
-// 🆕 価格配列から統計値を計算(中央値・高め平均など)
-function buildPriceStats(pricesJpy) {
-  if (!pricesJpy.length) return null;
-
-  const sorted = [...pricesJpy].sort((a, b) => a - b);
-  const n = sorted.length;
-
-  // サンプルが5件未満のときは相場として扱わない(精度不足)
-  if (n < 5) {
-    return null;
-  }
-
-  // ★ 外れ値カットは行わず、全件から統計を計算する
-  const median = sorted[Math.floor(n / 2)];
-  const low = sorted[0]; // 厳密な最安値
-
-  // 高めレンジは上位25%の平均値とする
-  const highSlice = sorted.slice(Math.floor(n * 0.75));
-  const highAvg =
-    highSlice.reduce((sum, v) => sum + v, 0) / (highSlice.length || 1);
-
-  return {
-    medianJpy: Math.round(median),
-    highJpy: Math.round(highAvg),
-    lowJpy: Math.round(low),
-    sampleCount: n, // 元の件数をサンプル数として持つ
-  };
 }
 
 async function queueWorldPriceUpdate(pool, orderId, sellerId) {
