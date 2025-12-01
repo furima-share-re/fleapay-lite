@@ -1129,7 +1129,7 @@ app.post("/api/analyze-item", upload.single("image"), async (req, res) => {
     console.log('[AI分析] 画像をOpenAIに送信中...');
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.1-mini",
       messages: [{
         role: "user",
         content: [
