@@ -1592,8 +1592,14 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
 
   const keywordRaw = (order.summary || "").split("\n")[0].trim();
   if (!keywordRaw) {
-    console.warn("[world-price] empty summary, skip", orderId);
+    console.warn("[world-price] no summary keyword", { orderId });
     return;
+  }
+
+  // 🆕 ログ①：ジャンル判定
+  const genreId = detectGenreIdFromSummary(keywordRaw);
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][genre]", { orderId, summary: keywordRaw, genreId });
   }
 
   // 🆕 パターンA: セット/まとめ売りっぽい取引は世界相場なしで終了
@@ -1605,8 +1611,7 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
     return;
   }
 
-  // ジャンル判定
-  const genreId = detectGenreIdFromSummary(keywordRaw);
+
 
   // summary から eBay 向け検索語を生成
   const keywordForEbay = buildEbayKeywordFromSummary(keywordRaw);
@@ -1873,6 +1878,10 @@ async function fetchWorldPriceFromEbayMarketplace(
   marketplaceId,
   genreId = null
 ) {
+  // 🆕 ログ②：fetch 開始
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][fetch-start]", { marketplaceId, keyword, genreId });
+  }
   console.log("[world-price] fetch", { keyword, marketplaceId });
 
   const token = await getEbayAccessToken();
@@ -1934,7 +1943,13 @@ async function fetchWorldPriceFromEbayMarketplace(
     ? data.itemSummaries
     : [];
 
+  // 🆕 ログ③：eBay API 結果件数
   if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][raw-items]", {
+      marketplaceId,
+      count: items.length,
+      sample: items.slice(0, 5).map((i) => i.title),
+    });
     console.log("[world-price][debug] raw itemSummaries", {
       marketplaceId,
       q,
@@ -2052,13 +2067,15 @@ async function fetchWorldPriceFromEbayMarketplace(
   const priceItems = [];
 
   for (const it of filtered) {
-    // パック / BOX などジャンル別のNG listing を除外
-    if (!passesGenreSpecificFilters(genreId, it)) {
+    // 🆕 ログ④：ジャンル別フィルタ (パック/BOXフィルタ)
+    const beforeFilterTitle = it.title || "";
+    const pass = passesGenreSpecificFilters(genreId, it);
+    if (!pass) {
       if (WORLD_PRICE_DEBUG) {
-        console.log("[world-price][debug] listing excluded by genre-specific filter", {
+        console.log("[world-price][filter-drop]", {
           marketplaceId,
           genreId,
-          title: it.title,
+          title: beforeFilterTitle,
         });
       }
       continue;
@@ -2140,6 +2157,15 @@ async function fetchWorldPriceFromEbayMarketplace(
     }
   }
 
+  // 🆕 ログ⑤：フィルタ残存件数(生き残った listing は何件か)
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][filtered-items-count]", {
+      marketplaceId,
+      genreId,
+      count: priceItems.length,
+    });
+  }
+
   if (!priceItems.length) {
     if (WORLD_PRICE_DEBUG) {
       console.log("[world-price][debug] no price items after filtering", {
@@ -2154,12 +2180,22 @@ async function fetchWorldPriceFromEbayMarketplace(
   const trustedPrices = buildTrustedPriceArray(classified);
 
   const stats = buildPriceStats(trustedPrices, genreId);
+
+  // 🆕 ログ⑥：完成した価格配列(何円の配列が最終的に相場計算に使われたか)
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][final-prices]", {
+      marketplaceId,
+      prices: trustedPrices.slice(0, 20),
+      stats,
+    });
+  }
+
   if (!stats) {
     if (WORLD_PRICE_DEBUG) {
       console.log("[world-price][debug] stats null (sample too small)", {
         marketplaceId,
         q,
-        pricesCount: pricesJpy.length,
+        pricesCount: trustedPrices.length,
       });
     }
     return null;
