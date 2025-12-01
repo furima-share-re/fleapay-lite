@@ -1504,25 +1504,18 @@ function buildPriceStats(pricesJpy) {
 
   const sorted = [...pricesJpy].sort((a, b) => a - b);
   const n = sorted.length;
-  
+
   // サンプルが5件未満のときは相場として扱わない(精度不足)
   if (n < 5) {
     return null;
   }
 
-  // サンプルが5件以上あるときは 10〜90% だけ使って外れ値カット
-  let trimmed = sorted;
-  const start = Math.floor(n * 0.1);
-  const end = Math.ceil(n * 0.9);
-  trimmed = sorted.slice(start, end);
+  // ★ 外れ値カットは行わず、全件から統計を計算する
+  const median = sorted[Math.floor(n / 2)];
+  const low = sorted[0]; // 厳密な最安値
 
-  const m = trimmed.length;
-  if (!m) return null;
-
-  const median = trimmed[Math.floor(m / 2)];
-  const low = trimmed[0];
-
-  const highSlice = trimmed.slice(Math.floor(m * 0.75));
+  // 高めレンジは上位25%の平均値とする
+  const highSlice = sorted.slice(Math.floor(n * 0.75));
   const highAvg =
     highSlice.reduce((sum, v) => sum + v, 0) / (highSlice.length || 1);
 
@@ -1612,13 +1605,30 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
     return;
   }
 
-  // 3) 「中央値」が高い方を世界相場として採用
+  // 3) 「中央値」が高い方を『おすすめ価格』用として採用
   const cand = [us, uk].filter(Boolean);
   const best = cand.reduce((acc, cur) => {
     if (!acc) return cur;
     if ((cur.medianJpy || 0) > (acc.medianJpy || 0)) return cur;
     return acc;
   }, null);
+
+  // 3-1) US / UK の「最安値（送料込み）」を比較し、
+  //      より高い方を世界最安値として採用する
+  let worldLow = null;
+  const usLow =
+    us && typeof us.lowJpy === "number" ? us.lowJpy : null;
+  const ukLow =
+    uk && typeof uk.lowJpy === "number" ? uk.lowJpy : null;
+
+  if (usLow != null && ukLow != null) {
+    // ★ 要望どおり「高い方」を採用
+    worldLow = Math.max(usLow, ukLow);
+  } else if (usLow != null) {
+    worldLow = usLow;
+  } else if (ukLow != null) {
+    worldLow = ukLow;
+  }
 
   if (!best || !best.medianJpy) {
     console.warn("[world-price] best not found", {
@@ -1627,6 +1637,11 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
       keywordForEbay,
     });
     return;
+  }
+
+  // 念のため、best.lowJpy があり worldLow がまだ無い場合は補完
+  if ((worldLow == null || worldLow <= 0) && typeof best.lowJpy === "number") {
+    worldLow = best.lowJpy;
   }
 
   // 4) orders テーブルに保存
@@ -1643,7 +1658,7 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
     [
       best.medianJpy,
       best.highJpy,
-      best.lowJpy ?? null,
+      worldLow ?? null,
       best.sampleCount || 0,
       orderId,
     ]
@@ -1653,6 +1668,7 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
     orderId,
     median: best.medianJpy,
     high: best.highJpy,
+    low: worldLow,
     sample: best.sampleCount,
   });
 }
