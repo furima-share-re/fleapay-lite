@@ -264,6 +264,8 @@ async function initDb() {
       world_price_high integer,
       world_price_low integer,
       world_price_sample_count integer default 0,
+      world_price_revenue_max integer,
+      world_price_profit_max integer,
       summary text,
       frame_id text,
       status text not null default 'pending',
@@ -416,10 +418,12 @@ async function initDb() {
       add column if not exists world_price_median integer,
       add column if not exists world_price_high integer,
       add column if not exists world_price_low integer,
-      add column if not exists world_price_sample_count integer default 0;
+      add column if not exists world_price_sample_count integer default 0,
+      add column if not exists world_price_revenue_max integer,
+      add column if not exists world_price_profit_max integer;
   `);
 
-  console.log("✅ DB init done (PATCHED v3.5 - world_price columns added)");
+  console.log("✅ DB init done (PATCHED v3.6 - world_price_revenue_max/profit_max columns added)");
 }
 
 initDb().catch(e => console.error("DB init error", e));

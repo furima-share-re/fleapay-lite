@@ -1411,11 +1411,96 @@ async function queueWorldPriceUpdate(pool, orderId, sellerId) {
   });
 }
 
+// =====================
+// v3.8: 売上最大化 & 利益最大化 価格計算
+// =====================
+
+/**
+ * ジャンル別 / 価格帯別の「ざっくりコンバージョン率」を返すモデル
+ * 今回は簡易な piecewise モデル：
+ *  - p = base のとき 0.5
+ *  - 安くすると最大 0.9
+ *  - 高くすると急速に 0.1 まで落ちる
+ */
+function estimateConversionRate(p, basePrice) {
+  if (!basePrice || basePrice <= 0) return 0.3;
+  const r = p / basePrice;
+
+  if (r <= 0.6) return 0.9;
+  if (r <= 0.8) {
+    // 0.6→0.8 で 0.9→0.7 に線形
+    return 0.9 - ((0.9 - 0.7) * (r - 0.6)) / 0.2;
+  }
+  if (r <= 1.0) {
+    // 0.8→1.0 で 0.7→0.5
+    return 0.7 - ((0.7 - 0.5) * (r - 0.8)) / 0.2;
+  }
+  if (r <= 1.4) {
+    // 1.0→1.4 で 0.5→0.2
+    return 0.5 - ((0.5 - 0.2) * (r - 1.0)) / 0.4;
+  }
+  if (r <= 1.8) {
+    // 1.4→1.8 で 0.2→0.1
+    return 0.2 - ((0.2 - 0.1) * (r - 1.4)) / 0.4;
+  }
+  return 0.05;
+}
+
+/**
+ * 売上最大化価格 / 利益最大化価格をシミュレーションで求める
+ */
+function computeOptimalPrices({
+  virtualMedian,
+  costAmount,
+  stepCount = 15, // 仮想価格点の数
+}) {
+  if (!virtualMedian || virtualMedian <= 0) {
+    return {
+      revenueMaxPrice: null,
+      profitMaxPrice: null,
+    };
+  }
+
+  const base = virtualMedian;
+  const minP = base * 0.6;
+  const maxP = base * 1.8;
+
+  let bestRevenue = { p: null, val: -Infinity };
+  let bestProfit = { p: null, val: -Infinity };
+
+  for (let i = 0; i <= stepCount; i++) {
+    const t = i / stepCount;
+    const p = minP + (maxP - minP) * t;
+    const conv = estimateConversionRate(p, base);
+    const expectedSales = p * conv;
+
+    if (expectedSales > bestRevenue.val) {
+      bestRevenue = { p, val: expectedSales };
+    }
+
+    const profitPerSale = p - (costAmount || 0);
+    const expectedProfit = profitPerSale * conv;
+
+    if (expectedProfit > bestProfit.val && profitPerSale > 0) {
+      bestProfit = { p, val: expectedProfit };
+    }
+  }
+
+  const round10 = (x) => Math.round(x / 10) * 10;
+
+  return {
+    revenueMaxPrice:
+      bestRevenue.p != null ? round10(bestRevenue.p) : null,
+    profitMaxPrice:
+      bestProfit.p != null ? round10(bestProfit.p) : null,
+  };
+}
+
 async function runWorldPriceUpdate(pool, orderId, sellerId) {
   // 1) 対象注文を取得
   const orderRes = await pool.query(
     `
-      select id, summary, amount
+      select id, summary, amount, cost_amount
       from orders
       where id = $1
     `,
@@ -1546,6 +1631,18 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
     worldLow = best.lowJpy;
   }
 
+  // v3.8: 売上最大化価格 / 利益最大化価格を計算
+  const virtualMedian = best.medianJpy;
+  const costAmount =
+    typeof order.cost_amount === "number"
+      ? order.cost_amount
+      : 0;
+
+  const { revenueMaxPrice, profitMaxPrice } = computeOptimalPrices({
+    virtualMedian,
+    costAmount,
+  });
+
   // 4) orders テーブルに保存
   await pool.query(
     `
@@ -1554,14 +1651,18 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
              world_price_high = $2,
              world_price_low = $3,
              world_price_sample_count = $4,
+             world_price_revenue_max = $5,
+             world_price_profit_max = $6,
              updated_at = now()
-       where id = $5
+       where id = $7
     `,
     [
       best.medianJpy,
       best.highJpy,
       worldLow ?? null,
       best.sampleCount || 0,
+      revenueMaxPrice,
+      profitMaxPrice,
       orderId,
     ]
   );
@@ -1572,6 +1673,10 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
     high: best.highJpy,
     low: worldLow,
     sample: best.sampleCount,
+    revenueMaxPrice,
+    profitMaxPrice,
+    soldAmount: order.amount,
+    errorVsSold: best.medianJpy - order.amount,
   });
 }
 
@@ -1591,6 +1696,98 @@ async function fetchWorldPriceFromEbaySold(keyword, marketplaceId, genreId) {
 
   // 現時点では null を返し、呼び出し側で active listing にフォールバック
   return null;
+}
+
+// =====================
+// v3.7: Post-filter & Trust-score ヘルパー
+// =====================
+
+/**
+ * 価格リストから中央値を計算（簡易版）
+ */
+function calcMedian(arr) {
+  if (!arr || !arr.length) return null;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const n = sorted.length;
+  const mid = Math.floor(n / 2);
+  if (n % 2 === 1) return sorted[mid];
+  return (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Post-filter: SAME / VARIANT / RELATED / ANOMALY を価格ベースで分類
+ * ついでに listingTrustScore も付与する
+ */
+function classifyAndScoreListings(priceItems) {
+  if (!priceItems.length) return [];
+
+  const prices = priceItems.map((p) => p.totalJpy);
+  const median = calcMedian(prices);
+  if (!median || median <= 0) {
+    // 中央値が出せないときは全件 SAME 扱い
+    return priceItems.map((it) => ({
+      ...it,
+      postFilterClass: "SAME",
+      listingTrustScore: 0.8,
+    }));
+  }
+
+  return priceItems.map((it) => {
+    const ratio = it.totalJpy / median;
+    let postFilterClass = "SAME";
+    let listingTrustScore = 0.8;
+
+    if (ratio >= 0.75 && ratio <= 1.25) {
+      postFilterClass = "SAME";
+      listingTrustScore = 0.9;
+    } else if (
+      (ratio >= 0.5 && ratio < 0.75) ||
+      (ratio > 1.25 && ratio <= 1.5)
+    ) {
+      postFilterClass = "VARIANT";
+      listingTrustScore = 0.75;
+    } else if (
+      (ratio >= 0.3 && ratio < 0.5) ||
+      (ratio > 1.5 && ratio <= 2.0)
+    ) {
+      postFilterClass = "RELATED";
+      listingTrustScore = 0.5;
+    } else {
+      postFilterClass = "ANOMALY";
+      listingTrustScore = 0.2;
+    }
+
+    return {
+      ...it,
+      postFilterClass,
+      listingTrustScore,
+    };
+  });
+}
+
+/**
+ * trust-weight を掛けて「重み付き価格配列」を作る
+ * 重みは 1〜3 の整数に丸めて複製する簡易実装
+ */
+function buildTrustedPriceArray(classifiedItems) {
+  const arr = [];
+
+  for (const it of classifiedItems) {
+    // SAME / VARIANT のみ相場に使う
+    if (it.postFilterClass !== "SAME" && it.postFilterClass !== "VARIANT") {
+      continue;
+    }
+
+    const t = it.listingTrustScore ?? 0.8;
+    // 0.5〜1.0 を 1〜3 にマッピング
+    const weight = Math.max(1, Math.min(3, Math.round(1 + 2 * (t - 0.5))));
+
+    for (let i = 0; i < weight; i++) {
+      arr.push(it.totalJpy);
+    }
+  }
+
+  return arr;
 }
 
 async function fetchWorldPriceFromEbayMarketplace(
@@ -1774,7 +1971,7 @@ async function fetchWorldPriceFromEbayMarketplace(
   // 為替レート(自動取得)
   const { usd_jpy: rateUsd, gbp_jpy: rateGbp } = await getFxRates();
 
-  const pricesJpy = [];
+  const priceItems = [];
 
   for (const it of filtered) {
     // v3.6: ジャンル別 NG 条件(ロット/ジャンク/別カテゴリなど)を適用
@@ -1829,8 +2026,14 @@ async function fetchWorldPriceFromEbayMarketplace(
     // 非現実的な値は雑に除外
     if (totalJpy < 1 || totalJpy > 1_000_000_000) continue;
 
-    // ★ 送料込み価格を相場配列に追加
-    pricesJpy.push(totalJpy);
+    // ★ 送料込み価格をpriceItemsに追加
+    priceItems.push({
+      totalJpy,
+      title: it.title || "",
+      shortDescription: it.shortDescription || "",
+      itemLocation: it.itemLocation || null,
+      seller: it.seller || null,
+    });
 
     // デバッグログ: 送料込み価格の内訳
     if (WORLD_PRICE_DEBUG) {
@@ -1847,12 +2050,20 @@ async function fetchWorldPriceFromEbayMarketplace(
     }
   }
 
-  if (!pricesJpy.length) {
-    console.log("[world-price] no valid price", { marketplaceId, q });
+  if (!priceItems.length) {
+    if (WORLD_PRICE_DEBUG) {
+      console.log("[world-price][debug] no price items after filtering", {
+        marketplaceId,
+      });
+    }
     return null;
   }
 
-  const stats = buildPriceStats(pricesJpy, genreId);
+  // v3.7: Post-filter + trust-score
+  const classified = classifyAndScoreListings(priceItems);
+  const trustedPrices = buildTrustedPriceArray(classified);
+
+  const stats = buildPriceStats(trustedPrices, genreId);
   if (!stats) {
     if (WORLD_PRICE_DEBUG) {
       console.log("[world-price][debug] stats null (sample too small)", {
