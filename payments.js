@@ -1363,6 +1363,84 @@ async function getEbayAccessToken() {
   return accessToken;
 }
 
+// =====================
+// ジャンル別 listing フィルタ（パック / BOX 用）
+// =====================
+
+/**
+ * パックっぽいlistingかどうかを判定
+ * パックを含み、シングルカード/ロット/BOXでないもの
+ */
+function isLikelySealedPackListing(it) {
+  const title =
+    ((it.title || "") + " " + (it.shortDescription || "")).toLowerCase();
+
+  const hasPackWord = /(booster pack|booster|pack|パック)/i.test(title);
+
+  // シングルカードっぽい特徴
+  const hasCardNumber = /\b\d{1,3}\/\d{1,3}\b/.test(title); // 091/078 など
+  const hasGrading = /(psa|bgs|cgc)/i.test(title);
+  const hasRarity =
+    /\b(rr|sr|ur|hr|sar|ar|ssr|csr|chr|pr)\b/i.test(title);
+  const hasSingleWord = /(single|1枚|シングル)/i.test(title);
+
+  // ロット / セット / BOX など（パック相場には混ぜない）
+  const hasLotWord =
+    /(lot|セット|まとめ売り|box set|boxset|カートン|box\b)/i.test(title);
+
+  if (!hasPackWord) return false;
+  if (hasCardNumber || hasGrading || hasRarity || hasSingleWord) return false;
+  if (hasLotWord) return false;
+
+  return true;
+}
+
+/**
+ * BOXっぽいlistingかどうかを判定
+ * BOXを含み、シングルカード/ロットでないもの
+ */
+function isLikelySealedBoxListing(it) {
+  const title =
+    ((it.title || "") + " " + (it.shortDescription || "")).toLowerCase();
+
+  const hasBoxWord =
+    /(booster box|box|ボックス|box set|boxset|カートン)/i.test(title);
+
+  const hasCardNumber = /\b\d{1,3}\/\d{1,3}\b/.test(title);
+  const hasGrading = /(psa|bgs|cgc)/i.test(title);
+  const hasSingleWord = /(single|1枚|シングル)/i.test(title);
+  const hasLotWord = /(lot|まとめ売り)/i.test(title);
+
+  if (!hasBoxWord) return false;
+  if (hasCardNumber || hasGrading || hasSingleWord) return false;
+  if (hasLotWord) return false;
+
+  return true;
+}
+
+/**
+ * ジャンル別に「この listing を相場に使ってよいか？」を判定
+ * @param {string|null} genreId - ジャンルID
+ * @param {object} it - eBay listing item
+ * @returns {boolean} - この listing を使ってよければ true
+ */
+function passesGenreSpecificFilters(genreId, it) {
+  if (!genreId) return true; // ジャンル不明なら何もしない
+
+  if (genreId === "tcg_pokemon_sealed_pack" ||
+      genreId === "tcg_other_sealed_pack") {
+    return isLikelySealedPackListing(it);
+  }
+
+  if (genreId === "tcg_pokemon_sealed_box" ||
+      genreId === "tcg_other_sealed_box") {
+    return isLikelySealedBoxListing(it);
+  }
+
+  // それ以外のジャンルは現状そのまま
+  return true;
+}
+
 // 🆕 為替レート取得(外部API + 1時間キャッシュ)
 async function getFxRates() {
   const now = Date.now();
@@ -1974,6 +2052,18 @@ async function fetchWorldPriceFromEbayMarketplace(
   const priceItems = [];
 
   for (const it of filtered) {
+    // パック / BOX などジャンル別のNG listing を除外
+    if (!passesGenreSpecificFilters(genreId, it)) {
+      if (WORLD_PRICE_DEBUG) {
+        console.log("[world-price][debug] listing excluded by genre-specific filter", {
+          marketplaceId,
+          genreId,
+          title: it.title,
+        });
+      }
+      continue;
+    }
+
     // v3.6: ジャンル別 NG 条件(ロット/ジャンク/別カテゴリなど)を適用
     if (
       !isListingAllowedForGenre(
