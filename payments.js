@@ -1,5 +1,6 @@
 // payments.js
 import express from "express";
+import { buildEbayKeywordFromSummary } from "./worldPriceGenreEngine.js";
 
 /**
  * 決済・入金・売上関連のルートをまとめて登録する
@@ -1294,111 +1295,6 @@ function isSetLikeSummary(text = "") {
   return [...jpKeywords, ...enKeywords].some((kw) => t.includes(kw));
 }
 
-// 🆕 eBay向けに summary から英語ベースの検索キーワードを生成する
-function buildEbayKeywordFromSummary(summaryRaw = "") {
-  const original = String(summaryRaw || "").trim();
-  if (!original) return "";
-
-  // 空白を正規化
-  let normalized = original.replace(/\s+/g, " ").replace(/　+/g, " ");
-  const lower = normalized.toLowerCase();
-
-  const tokens = [];
-
-  // ▼ジャンル（ざっくり）
-  if (/(ポケモン|ポケカ|pokemon)/i.test(normalized)) {
-    tokens.push("Pokemon", "Pokemon card");
-  }
-  if (/(遊戯王|yu-?gi-?oh)/i.test(normalized)) {
-    tokens.push("Yu-Gi-Oh card");
-  }
-  if (/mtg|マジック[:： ]?ザ[:： ]?ギャザリング/i.test(normalized)) {
-    tokens.push("MTG", "Magic the Gathering");
-  }
-  if (/フィギュア/i.test(normalized)) tokens.push("figure");
-  if (/ねんどろいど/i.test(normalized)) tokens.push("Nendoroid");
-  if (/ぬいぐるみ/i.test(normalized)) tokens.push("plush");
-  if (/こけし/i.test(normalized)) tokens.push("kokeshi doll");
-  if (/バッグ|カバン/i.test(normalized)) tokens.push("bag");
-  if (/リュック/i.test(normalized)) tokens.push("backpack");
-  if (/帽子|キャップ/i.test(normalized)) tokens.push("hat");
-  if (/時計/i.test(normalized)) tokens.push("watch");
-  if (/ゲーム|カセット|ソフト/i.test(normalized)) tokens.push("video game");
-
-  // ▼キャラ名・著名カードのカナ/英語 → 統一英語名
-  const charMap = [
-    { re: /ピカチュウ|Pikachu/i, en: "Pikachu" },
-    { re: /リザードン|Charizard/i, en: "Charizard" },
-    { re: /ギャラドス|Gyarados/i, en: "Gyarados" },
-    { re: /イーブイ|Eevee/i, en: "Eevee" },
-    { re: /ミュウツー|Mewtwo/i, en: "Mewtwo" },
-    { re: /ミュウ(?!ツー)|\bMew\b/i, en: "Mew" },
-    { re: /ナガバ|Yu\s+Nagaba/i, en: "Yu Nagaba" },
-  ];
-  let hasPokemonChar = false;
-  for (const { re, en } of charMap) {
-    if (re.test(normalized)) {
-      tokens.push(en);
-      hasPokemonChar = true;
-    }
-  }
-  // 英語だけのカード名でも「Pokemon card」を付ける
-  if (
-    !tokens.some((t) => t.toLowerCase().includes("pokemon")) &&
-    hasPokemonChar
-  ) {
-    tokens.push("Pokemon card");
-  }
-
-  // ▼PSAグレード (psa10 → "PSA 10")
-  const psaMatch = normalized.match(/psa\s*([0-9]{1,2})/i);
-  if (psaMatch) {
-    tokens.push("PSA", psaMatch[1]); // → "PSA 10"
-  }
-
-  // ▼言語・地域
-  if (/(日本語|日本版|jpn|japanese)/i.test(lower)) {
-    tokens.push("Japanese", "Japan", "JPN");
-  } else if (/jpn/i.test(original)) {
-    tokens.push("Japanese", "JPN");
-  }
-
-  // ▼英数字のまとまり（元タイトルからそのまま拾う）
-  //   例: 2023, SV1V, VIOLET, #092, ARCANINE, EX
-  const enChunks = original.match(/[A-Za-z0-9#\-\/]+/g);
-  if (enChunks) {
-    tokens.push(...enChunks);
-  }
-
-  // ▼型番・カード番号っぽいもの（SV1V-XXX 等）はそのまま追加
-  const codeMatches = normalized.match(/[A-Za-z]{1,4}[-/ ]?\d{2,4}[A-Za-z]?/g);
-  if (codeMatches) {
-    for (const code of codeMatches) {
-      tokens.push(code.replace(/\s+/g, ""));
-    }
-  }
-
-  // 重複除去して結合
-  const keyword = Array.from(new Set(tokens.filter(Boolean))).join(" ");
-
-  // 通常ログ
-  console.log("[world-price] keyword built for ebay", {
-    summary: original,
-    keyword,
-  });
-
-  // デバッグ時はより詳細を出す
-  if (WORLD_PRICE_DEBUG) {
-    console.log("[world-price][debug] keywordFromSummary", {
-      summary: original,
-      keyword,
-      tokens,
-    });
-  }
-
-  // 何も作れなかった場合は元の summary でフォールバック
-  return keyword || original;
-}
 
 // 🆕 eBay OAuth トークン取得(client_credentials)
 async function getEbayAccessToken() {
