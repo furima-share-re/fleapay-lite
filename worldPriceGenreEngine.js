@@ -728,26 +728,30 @@ export function getGenreMeta(genreId) {
   return WORLD_PRICE_GENRES.find((g) => g.id === genreId) || null;
 }
 
+
 // ================================
 // 価格配列 → 相場統計ユーティリティ
-//  - v3.5: 外れ値カットなし / 件数<5は相場NG
+//  - v3.5: Multi-band & Virtual Sold Model
 //  - lowJpy: 最安値
-//  - medianJpy: 中央値
-//  - highJpy: 上位レンジ平均（やや高め）
+//  - medianJpy: 仮想落札中央値
+//  - highJpy: 上位レンジ平均(やや高め)
 // ================================
 
-function medianOf(sorted) {
+// 🆕 数値配列の中央値ヘルパー
+function medianOf(arr) {
+  if (!arr || !arr.length) return null;
+  const sorted = [...arr].sort((a, b) => a - b);
   const n = sorted.length;
-  if (!n) return null;
   const mid = Math.floor(n / 2);
   if (n % 2 === 1) return sorted[mid];
   return (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-export function buildPriceStats(pricesJpy = []) {
+// 🆕 価格配列から統計値を計算(v3.5 マルチバンド版)
+export function buildPriceStats(pricesJpy) {
   if (!Array.isArray(pricesJpy) || !pricesJpy.length) return null;
 
-  // 数値のみ抽出してソート
+  // 数値だけにして昇順ソート
   const sorted = pricesJpy
     .map((v) => Number(v))
     .filter((v) => Number.isFinite(v) && v > 0)
@@ -755,22 +759,68 @@ export function buildPriceStats(pricesJpy = []) {
 
   const n = sorted.length;
   if (n < 5) {
-    // サンプルが少なすぎるときは「相場なし」とみなす
+    // サンプルが5件未満のときは「相場不足」として扱わない
     return null;
   }
 
-  const low = sorted[0]; // 厳密な最安値
-  const median = medianOf(sorted);
+  // ① 生の全体中央値(参考値)
+  const rawMedian = medianOf(sorted);
 
-  // 高めレンジ：上位25%平均（例：相場より少し高く売りたいときの参考）
-  const highSlice = sorted.slice(Math.floor(n * 0.75));
+  // ② マルチバンド分布(v3.5)
+  //    lower_band : 0〜40%
+  //    middle_band: 40〜70%
+  //    upper_band : 70〜100%(相場には使わない)
+  const lowerEndIndex = Math.max(1, Math.floor(n * 0.4));          // [0, lowerEndIndex)
+  const middleStartIndex = lowerEndIndex;                          // [middleStartIndex, middleEndIndex)
+  const middleEndIndex = Math.max(middleStartIndex + 1, Math.floor(n * 0.7));
+
+  const lowerBand = sorted.slice(0, lowerEndIndex);
+  const middleBand = sorted.slice(middleStartIndex, middleEndIndex);
+
+  const lowerBandMedian = medianOf(lowerBand);
+  const middleBandMedian = medianOf(middleBand);
+
+  // ③ 仮想落札中央値 virtualSoldMedian
+  //    lower を 70%、middle を 30% でミックス
+  let virtualMedian = rawMedian;
+
+  if (lowerBandMedian != null && middleBandMedian != null) {
+    virtualMedian = lowerBandMedian * 0.7 + middleBandMedian * 0.3;
+  } else if (lowerBandMedian != null) {
+    virtualMedian = lowerBandMedian;
+  } else if (middleBandMedian != null) {
+    virtualMedian = middleBandMedian;
+  }
+
+  // ④ ジャンル補正係数(今は 1.0 固定。将来 genreId を渡して動的にする想定)
+  const genreAdjustFactor = 1.0;
+  virtualMedian = virtualMedian * genreAdjustFactor;
+
+  // ⑤ 「高めの相場」:上位25%平均(従来ロジックも維持)
+  const topCount = Math.max(1, Math.floor(n * 0.25));
+  const highSlice = sorted.slice(sorted.length - topCount);
   const highAvg =
     highSlice.reduce((sum, v) => sum + v, 0) / (highSlice.length || 1);
 
+  // ⑥ 最安値(送料込み)
+  const low = sorted[0];
+
   return {
-    lowJpy: Math.round(low),
-    medianJpy: Math.round(median),
+    // v3.5:仮想落札相場としての中央値
+    medianJpy: Math.round(virtualMedian),
+
+    // デバッグ/将来のチューニング用に補助情報も持っておく
+    rawMedianJpy: Math.round(rawMedian),
+    lowerBandMedianJpy:
+      lowerBandMedian != null ? Math.round(lowerBandMedian) : null,
+    middleBandMedianJpy:
+      middleBandMedian != null ? Math.round(middleBandMedian) : null,
+
+    // 「高めの相場」と厳密な最安値
     highJpy: Math.round(highAvg),
+    lowJpy: Math.round(low),
+
+    // サンプル数
     sampleCount: n,
   };
 }
