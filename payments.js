@@ -1858,9 +1858,23 @@ async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
     const p = it.price;
     if (!p || !p.value || !p.currency) continue;
 
-    const v = Number(p.value);
-    if (!Number.isFinite(v) || v <= 0) continue;
+    // ★ 商品価格（USD, GBP, JPYなど）
+    const priceVal = Number(p.value);
+    if (!Number.isFinite(priceVal) || priceVal <= 0) continue;
 
+    // ★ 送料（shippingOptions から取得：存在しなければ 0）
+    let shippingVal = 0;
+    if (it.shippingOptions && it.shippingOptions.length > 0) {
+      const s = it.shippingOptions[0].shippingCost;
+      if (s && s.value) {
+        shippingVal = Number(s.value);
+      }
+    }
+
+    // ★ 合計（商品 + 送料）
+    const totalVal = priceVal + shippingVal;
+
+    // ★ 通貨レート適用
     let rate = 0;
     const curr = String(p.currency).toUpperCase();
 
@@ -1869,11 +1883,28 @@ async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
     else if (curr === "JPY") rate = 1;
     else continue; // それ以外の通貨は今回は無視
 
-    const jpy = v * rate;
-    // 非現実的な値は雑に除外
-    if (jpy < 1 || jpy > 1_000_000_000) continue;
+    // ★ 送料込みの総額JPY
+    const totalJpy = totalVal * rate;
 
-    pricesJpy.push(jpy);
+    // 非現実的な値は雑に除外
+    if (totalJpy < 1 || totalJpy > 1_000_000_000) continue;
+
+    // ★ 送料込み価格を相場配列に追加
+    pricesJpy.push(totalJpy);
+
+    // デバッグログ: 送料込み価格の内訳
+    if (WORLD_PRICE_DEBUG) {
+      console.log("[world-price][debug] price breakdown", {
+        marketplaceId,
+        title: it.title?.substring(0, 50) || "N/A",
+        priceVal,
+        shippingVal,
+        totalVal,
+        currency: curr,
+        rate,
+        totalJpy: Math.round(totalJpy),
+      });
+    }
   }
 
   if (!pricesJpy.length) {
