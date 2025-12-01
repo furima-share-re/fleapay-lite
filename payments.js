@@ -3,6 +3,9 @@ import express from "express";
 import {
   buildEbayKeywordFromSummary,
   buildPriceStats,
+  detectGenreIdFromSummary,
+  isListingAllowedForGenre,
+  getWorldPriceWeights,
 } from "./worldPriceGenreEngine.js";
 
 /**
@@ -907,14 +910,16 @@ export function registerPaymentRoutes(app, deps) {
     }
 
     try {
+      const genreId = detectGenreIdFromSummary(summary);
       const keyword = buildEbayKeywordFromSummary(summary);
 
-      const us = await fetchWorldPriceFromEbayMarketplace(keyword, "EBAY_US");
-      const uk = await fetchWorldPriceFromEbayMarketplace(keyword, "EBAY_GB");
+      const us = await fetchWorldPriceFromEbayMarketplace(keyword, "EBAY_US", genreId);
+      const uk = await fetchWorldPriceFromEbayMarketplace(keyword, "EBAY_GB", genreId);
 
       return res.json({
         ok: true,
         summary,
+        genreId,
         keywordForEbay: keyword,
         mode: EBAY_SOURCE_MODE,
         us,
@@ -1437,6 +1442,9 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
     return;
   }
 
+  // ジャンル判定
+  const genreId = detectGenreIdFromSummary(keywordRaw);
+
   // summary から eBay 向け検索語を生成
   const keywordForEbay = buildEbayKeywordFromSummary(keywordRaw);
 
@@ -1448,8 +1456,8 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
   if (EBAY_SOURCE_MODE === "sold") {
     // 📝 現時点では公式APIに Completed/Sold 検索は無いため、
     //     ここは外部 Completed Items API / 自前スクレイピング用のフックとして用意だけしておく。
-    us = await fetchWorldPriceFromEbaySold(keywordForEbay, "EBAY_US");
-    uk = await fetchWorldPriceFromEbaySold(keywordForEbay, "EBAY_GB");
+    us = await fetchWorldPriceFromEbaySold(keywordForEbay, "EBAY_US", genreId);
+    uk = await fetchWorldPriceFromEbaySold(keywordForEbay, "EBAY_GB", genreId);
 
     // sold で一切取れなければ active にフォールバック
     if (!us && !uk) {
@@ -1457,13 +1465,29 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
         "[world-price] sold-mode returned no data, fallback to active listings",
         { orderId, keywordForEbay }
       );
-      us = await fetchWorldPriceFromEbayMarketplace(keywordForEbay, "EBAY_US");
-      uk = await fetchWorldPriceFromEbayMarketplace(keywordForEbay, "EBAY_GB");
+      us = await fetchWorldPriceFromEbayMarketplace(
+        keywordForEbay,
+        "EBAY_US",
+        genreId
+      );
+      uk = await fetchWorldPriceFromEbayMarketplace(
+        keywordForEbay,
+        "EBAY_GB",
+        genreId
+      );
     }
   } else {
     // 従来どおり active listing から取得
-    us = await fetchWorldPriceFromEbayMarketplace(keywordForEbay, "EBAY_US");
-    uk = await fetchWorldPriceFromEbayMarketplace(keywordForEbay, "EBAY_GB");
+    us = await fetchWorldPriceFromEbayMarketplace(
+      keywordForEbay,
+      "EBAY_US",
+      genreId
+    );
+    uk = await fetchWorldPriceFromEbayMarketplace(
+      keywordForEbay,
+      "EBAY_GB",
+      genreId
+    );
   }
 
   if (!us && !uk) {
@@ -1486,18 +1510,26 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
   // 3-1) US / UK の「最安値（送料込み）」を比較し、
   //      より高い方を世界最安値として採用する
   let worldLow = null;
+  let worldMinLower = null;
+  let worldMinUpper = null;
+
   const usLow =
     us && typeof us.lowJpy === "number" ? us.lowJpy : null;
   const ukLow =
     uk && typeof uk.lowJpy === "number" ? uk.lowJpy : null;
 
-  if (usLow != null && ukLow != null) {
-    // ★ 要望どおり「高い方」を採用
-    worldLow = Math.max(usLow, ukLow);
-  } else if (usLow != null) {
-    worldLow = usLow;
-  } else if (ukLow != null) {
-    worldLow = ukLow;
+  if (usLow != null || ukLow != null) {
+    const { us: weightUS, uk: weightUK } = getWorldPriceWeights(genreId);
+    const usAdj = usLow != null ? usLow * weightUS : null;
+    const ukAdj = ukLow != null ? ukLow * weightUK : null;
+
+    const vals = [usAdj, ukAdj].filter((v) => v != null);
+    if (vals.length) {
+      worldMinLower = Math.min(...vals);
+      worldMinUpper = Math.max(...vals);
+      // v3.6: 実際に販売価格の基準に使うのは upper 側
+      worldLow = worldMinUpper;
+    }
   }
 
   if (!best || !best.medianJpy) {
@@ -1545,7 +1577,7 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
 
 // 🆕 Completed/Sold 用のフック関数（現状は未実装＆active fallback想定）
 //   → 将来、外部の「Completed Items API」をここから呼び出す
-async function fetchWorldPriceFromEbaySold(keyword, marketplaceId) {
+async function fetchWorldPriceFromEbaySold(keyword, marketplaceId, genreId) {
   if (WORLD_PRICE_DEBUG) {
     console.log("[world-price][debug] fetchSold not implemented, keyword=", {
       keyword,
@@ -1561,7 +1593,11 @@ async function fetchWorldPriceFromEbaySold(keyword, marketplaceId) {
   return null;
 }
 
-async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
+async function fetchWorldPriceFromEbayMarketplace(
+  keyword,
+  marketplaceId,
+  genreId = null
+) {
   console.log("[world-price] fetch", { keyword, marketplaceId });
 
   const token = await getEbayAccessToken();
@@ -1741,6 +1777,24 @@ async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
   const pricesJpy = [];
 
   for (const it of filtered) {
+    // v3.6: ジャンル別 NG 条件(ロット/ジャンク/別カテゴリなど)を適用
+    if (
+      !isListingAllowedForGenre(
+        genreId,
+        it.title || "",
+        it.shortDescription || ""
+      )
+    ) {
+      if (WORLD_PRICE_DEBUG) {
+        console.log("[world-price][debug] listing excluded by NG rules", {
+          marketplaceId,
+          genreId,
+          title: it.title,
+        });
+      }
+      continue;
+    }
+
     const p = it.price;
     if (!p || !p.value || !p.currency) continue;
 
@@ -1798,7 +1852,7 @@ async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
     return null;
   }
 
-  const stats = buildPriceStats(pricesJpy);
+  const stats = buildPriceStats(pricesJpy, genreId);
   if (!stats) {
     if (WORLD_PRICE_DEBUG) {
       console.log("[world-price][debug] stats null (sample too small)", {

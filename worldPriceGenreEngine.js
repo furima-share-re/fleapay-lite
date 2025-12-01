@@ -1,13 +1,14 @@
 // worldPriceGenreEngine.js
-// FleaPay 世界相場エンジン用：80ジャンル判定 ＋ eBay検索キーワード生成（v3.5）
+// FleaPay 世界相場エンジン用：80ジャンル判定 ＋ eBay検索キーワード生成（v3.6）
 //
 // 役割：
 //  1. summary（商品タイトル）から FleaPay 内部ジャンル（80分類）を推定する
 //  2. ジャンルに応じた eBay 検索クエリを生成する（Query Builder）
 //
-// 設計の元になっている仕様：World Price Engine v3.5 相場取得設計書
+// 設計の元になっている仕様：World Price Engine v3.6 相場取得設計書
 //  - Genre Engine（80ジャンル分類）
 //  - Query Builder（ジャンル別 eBay検索クエリ生成）
+//  - ジャンル別 minSamples / NG条件 / world price weights
 //
 // このファイルは「ジャンル判定とキーワード生成」に専念し、
 // 価格計算・Post-filter・信頼スコアなどは別モジュールで行う前提。
@@ -728,10 +729,176 @@ export function getGenreMeta(genreId) {
   return WORLD_PRICE_GENRES.find((g) => g.id === genreId) || null;
 }
 
+// ================================
+// v3.6 追加: ジャンル別 minSamples / NG条件 / weight
+// ================================
+
+// ジャンル別 最低サンプル数(minSamples)
+const GENRE_MIN_SAMPLES = {
+  tcg_graded_card: 3,
+  tcg_pokemon_single: 5,
+  tcg_pokemon_sealed_box: 5,
+  tcg_pokemon_sealed_pack: 5,
+  ichiban_kuji_top_prize: 5,
+  figure_domestic: 6,
+  digital_camera: 8,
+  smartphone_iphone: 8,
+  smartphone_android: 8,
+  fashion_vintage_top: 8,
+  fashion_vintage_outer: 8,
+};
+
+export function getGenreMinSamples(genreId) {
+  return GENRE_MIN_SAMPLES[genreId] || 5;
+}
+
+// US/UK の重み(世界最安レンジ計算用) v3.6
+const GENRE_WORLD_WEIGHTS = {
+  tcg_pokemon_single: { us: 0.8, uk: 0.2 },
+  tcg_graded_card: { us: 0.85, uk: 0.15 },
+  ichiban_kuji_top_prize: { us: 0.6, uk: 0.4 },
+  digital_camera: { us: 0.9, uk: 0.1 },
+  smartphone_iphone: { us: 0.9, uk: 0.1 },
+};
+
+export function getWorldPriceWeights(genreId) {
+  const w = GENRE_WORLD_WEIGHTS[genreId];
+  return w || { us: 1.0, uk: 1.0 };
+}
+
+// 共通NGワード
+const COMMON_LOT_KEYWORDS = [
+  "lot",
+  "bulk",
+  "bundle",
+  "セット",
+  "まとめ売り",
+  "大量",
+  "福袋",
+  "オリパ",
+];
+
+const JUNK_KEYWORDS = ["ジャンク", "for parts", "broken", "故障"];
+
+// v3.6: ジャンル別 NG 条件
+export function isListingAllowedForGenre(
+  genreId,
+  titleRaw = "",
+  shortDescriptionRaw = ""
+) {
+  const t = `${titleRaw || ""} ${shortDescriptionRaw || ""}`
+    .toLowerCase()
+    .trim();
+
+  // ジャンルが特定できないときは何も絞らない(安全側)
+  if (!genreId) return true;
+
+  const includesAny = (words) => words.some((w) => t.includes(w.toLowerCase()));
+
+  // --- 共通: lot/bulk 系は基本NG (ただし tcg_bulk_lot は例外でOK) ---
+  if (includesAny(COMMON_LOT_KEYWORDS) && genreId !== "tcg_bulk_lot") {
+    return false;
+  }
+
+  // --- ゲーム機・スマホ系: ジャンクはNG (ジャンク専用ジャンル以外) ---
+  if (
+    (genreId.startsWith("game_console_") ||
+      genreId === "smartphone_iphone" ||
+      genreId === "smartphone_android") &&
+    includesAny(JUNK_KEYWORDS)
+  ) {
+    // ゲーム機ジャンク用 genre は別で扱う前提
+    if (genreId !== "game_console_junk") {
+      return false;
+    }
+  }
+
+  // --- TCGシングル系: lot/set/box/pack/graded を避ける ---
+  const isTcgSingle =
+    [
+      "tcg_pokemon_single",
+      "tcg_yugioh_single",
+      "tcg_onepiece_single",
+      "tcg_mtgsingle",
+      "tcg_weis_single",
+      "tcg_other_single",
+    ].includes(genreId);
+
+  if (isTcgSingle) {
+    if (
+      includesAny([
+        "set",
+        "box",
+        "booster box",
+        "boosterbox",
+        "case",
+        "pack",
+        "パック",
+        "ボックス",
+      ])
+    ) {
+      return false;
+    }
+    if (includesAny(["psa", "bgs", "cgc", "鑑定"])) {
+      // 鑑定カードは tcg_graded_card 側で扱う
+      return false;
+    }
+  }
+
+  // --- 鑑定カード: PSA/BGS/CGC 無しはNG / lot系もNG ---
+  if (genreId === "tcg_graded_card") {
+    const hasGrading =
+      /psa|bgs|cgc|鑑定/i.test(t) || /graded card/i.test(t);
+    if (!hasGrading) return false;
+    if (includesAny(COMMON_LOT_KEYWORDS)) return false;
+  }
+
+  // --- 未開封パック系: box/case はNG ---
+  if (
+    genreId === "tcg_pokemon_sealed_pack" ||
+    genreId === "tcg_other_sealed_pack"
+  ) {
+    if (
+      includesAny([
+        "box",
+        "booster box",
+        "case",
+        "ボックス",
+        "box set",
+      ])
+    ) {
+      return false;
+    }
+    if (includesAny(["opened", "unsealed", "開封済"])) {
+      return false;
+    }
+  }
+
+  // --- 未開封BOX系: pack/bulk/lot はNG ---
+  if (
+    genreId === "tcg_pokemon_sealed_box" ||
+    genreId === "tcg_other_sealed_box"
+  ) {
+    if (includesAny(["bulk", "lot", "bundle", "パック"])) {
+      return false;
+    }
+  }
+
+  // --- 一番くじ 上位賞: A/B賞 or ラストワンが無いものは避ける ---
+  if (genreId === "ichiban_kuji_top_prize") {
+    const isTop =
+      /ラストワン/.test(t) ||
+      /[abａｂ]賞/.test(t);
+    if (!isTop) return false;
+  }
+
+  // ここまで引っかからなければ採用
+  return true;
+}
 
 // ================================
 // 価格配列 → 相場統計ユーティリティ
-//  - v3.5: Multi-band & Virtual Sold Model
+//  - v3.6: ジャンル別 minSamples 対応
 //  - lowJpy: 最安値
 //  - medianJpy: 仮想落札中央値
 //  - highJpy: 上位レンジ平均(やや高め)
@@ -747,8 +914,8 @@ function medianOf(arr) {
   return (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-// 🆕 価格配列から統計値を計算(v3.5 マルチバンド版)
-export function buildPriceStats(pricesJpy) {
+// 🆕 価格配列から統計値を計算(v3.6: ジャンル別 minSamples 対応)
+export function buildPriceStats(pricesJpy, genreId) {
   if (!Array.isArray(pricesJpy) || !pricesJpy.length) return null;
 
   // 数値だけにして昇順ソート
@@ -758,8 +925,9 @@ export function buildPriceStats(pricesJpy) {
     .sort((a, b) => a - b);
 
   const n = sorted.length;
-  if (n < 5) {
-    // サンプルが5件未満のときは「相場不足」として扱わない
+  const minSamples = getGenreMinSamples(genreId);
+  if (n < minSamples) {
+    // ジャンル別 minSamples に満たない場合は「相場不足」として扱わない
     return null;
   }
 
@@ -806,7 +974,7 @@ export function buildPriceStats(pricesJpy) {
   const low = sorted[0];
 
   return {
-    // v3.5:仮想落札相場としての中央値
+    // v3.6:仮想落札相場としての中央値
     medianJpy: Math.round(virtualMedian),
 
     // デバッグ/将来のチューニング用に補助情報も持っておく
