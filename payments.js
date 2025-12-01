@@ -1878,6 +1878,9 @@ async function fetchWorldPriceFromEbayMarketplace(
   marketplaceId,
   genreId = null
 ) {
+  // v3.7 互換用: 古いデバッグコードが pricesJpy を参照しても落ちないようにする
+  let pricesJpy = [];
+
   // 🆕 ログ②：fetch 開始
   if (WORLD_PRICE_DEBUG) {
     console.log("[world-price][fetch-start]", { marketplaceId, keyword, genreId });
@@ -2179,7 +2182,10 @@ async function fetchWorldPriceFromEbayMarketplace(
   const classified = classifyAndScoreListings(priceItems);
   const trustedPrices = buildTrustedPriceArray(classified);
 
-  const stats = buildPriceStats(trustedPrices, genreId);
+  // ★ デバッグ用に pricesJpy にも入れておく（旧コード互換）
+  pricesJpy = trustedPrices;
+
+  const stats = buildPriceStats(pricesJpy, genreId);
 
   // 🆕 ログ⑥：完成した価格配列(何円の配列が最終的に相場計算に使われたか)
   if (WORLD_PRICE_DEBUG) {
