@@ -1031,7 +1031,7 @@
           }
         }
 
-        return `おすすめ価格帯 ${formatYen(min)}〜${formatYen(max)} / 信頼度: ${levelLabel}${pos}`;
+        return `おすすめ価格帯（送料込み） ${formatYen(min)}〜${formatYen(max)} / 信頼度: ${levelLabel}${pos}`;
       }
 
       // ★ 修正1: 一覧生成時に必ずorderIdをdata属性に保存
@@ -1132,15 +1132,25 @@
           worldRow.className = "tx-sub";
 
           const parts = [];
-          parts.push("世界相場（参考）");
+          // 送料込みであることを明示
+          parts.push("世界相場（送料込み・参考）");
+
+          // 🔹 世界最安値（送料込み）を表示（サーバー側で worldLow に入っている想定）
+          if (typeof tx.worldLow === "number" && tx.worldLow > 0) {
+            parts.push(`世界最安値 ${formatYen(tx.worldLow)}`);
+          }
+
+          // 🔹 中央値（送料込み）
           parts.push(`中央値 ${formatYen(tx.worldMedian)}`);
 
-          // ※「最安」はあえて表示しない。高めと件数だけ見せて価格競争を煽らない設計。
+          // 🔹 高めレンジ（任意）
           if (typeof tx.worldHigh === "number" && tx.worldHigh > 0) {
             parts.push(`高め ${formatYen(tx.worldHigh)}`);
           }
+
+          // 🔹 件数ラベルを実態に合わせて修正（出品中◯件から集計）
           if (typeof tx.worldSampleCount === "number" && tx.worldSampleCount > 0) {
-            parts.push(`（${tx.worldSampleCount}件の成約ベース）`);
+            parts.push(`（出品中${tx.worldSampleCount}件から集計）`);
           }
 
           const adviceText = buildWorldPriceAdviceText(tx);
