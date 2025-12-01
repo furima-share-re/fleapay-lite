@@ -1,13 +1,13 @@
 // worldPriceGenreEngine.js
 // FleaPay 世界相場エンジン用：80ジャンル判定 ＋ eBay検索キーワード生成（v3.6）
 //
-// 役割：
-//  1. summary（商品タイトル）から FleaPay 内部ジャンル（80分類）を推定する
-//  2. ジャンルに応じた eBay 検索クエリを生成する（Query Builder）
+// 役割:
+//  1. summary(商品タイトル)から FleaPay 内部ジャンル(80分類)を推定する
+//  2. ジャンルに応じた eBay 検索クエリを生成する(Query Builder)
 //
-// 設計の元になっている仕様：World Price Engine v3.6 相場取得設計書
-//  - Genre Engine（80ジャンル分類）
-//  - Query Builder（ジャンル別 eBay検索クエリ生成）
+// 設計の元になっている仕様:World Price Engine v3.6 相場取得設計書
+//  - Genre Engine(80ジャンル分類)
+//  - Query Builder(ジャンル別 eBay検索クエリ生成)
 //  - ジャンル別 minSamples / NG条件 / world price weights
 //
 // このファイルは「ジャンル判定とキーワード生成」に専念し、
@@ -15,15 +15,15 @@
 
 /**
  * WORLD_PRICE_GENRES
- *  - id: 内部ID（相場エンジンで使用）
+ *  - id: 内部ID(相場エンジンで使用)
  *  - label: UI表示用
  *  - matchKeywords: summary に含まれていたらスコアを加算するキーワード群
  */
 export const WORLD_PRICE_GENRES = [
-  // 2.2.1 ゲーム系（14）
+  // 2.2.1 ゲーム系(14)
   {
     id: "game_console_modern",
-    label: "ゲーム機（現行）",
+    label: "ゲーム機(現行)",
     matchKeywords: [
       "switch",
       "ニンテンドースイッチ",
@@ -35,7 +35,7 @@ export const WORLD_PRICE_GENRES = [
   },
   {
     id: "game_console_retro",
-    label: "ゲーム機（レトロ）",
+    label: "ゲーム機(レトロ)",
     matchKeywords: [
       "ファミコン",
       "スーパーファミコン",
@@ -64,7 +64,7 @@ export const WORLD_PRICE_GENRES = [
   },
   {
     id: "game_console_junk",
-    label: "ゲーム機（ジャンク）",
+    label: "ゲーム機(ジャンク)",
     matchKeywords: ["ジャンク", "電源入らず", "動作未確認", "for parts"],
   },
   {
@@ -79,22 +79,22 @@ export const WORLD_PRICE_GENRES = [
   },
   {
     id: "game_software_switch",
-    label: "ゲームソフト（Switch）",
+    label: "ゲームソフト(Switch)",
     matchKeywords: ["switch", "ニンテンドースイッチ", "nsw"],
   },
   {
     id: "game_software_ps",
-    label: "ゲームソフト（PlayStation）",
+    label: "ゲームソフト(PlayStation)",
     matchKeywords: ["ps4", "ps5", "ps3", "playstation"],
   },
   {
     id: "game_software_xbox_pc",
-    label: "ゲームソフト（Xbox/PC）",
+    label: "ゲームソフト(Xbox/PC)",
     matchKeywords: ["xbox", "steam", "pc game"],
   },
   {
     id: "game_software_retro",
-    label: "ゲームソフト（レトロ）",
+    label: "ゲームソフト(レトロ)",
     matchKeywords: ["ファミコン", "スーパーファミコン", "メガドライブ", "64", "n64", "ゲームボーイ"],
   },
   {
@@ -118,15 +118,15 @@ export const WORLD_PRICE_GENRES = [
     matchKeywords: ["ゲームウォッチ", "game & watch", "lsIゲーム", "lcd game"],
   },
 
-  // 2.2.2 デジタル家電（10）
+  // 2.2.2 デジタル家電(10)
   {
     id: "smartphone_iphone",
-    label: "スマホ（iPhone）",
+    label: "スマホ(iPhone)",
     matchKeywords: ["iphone", "アイフォン"],
   },
   {
     id: "smartphone_android",
-    label: "スマホ（Android）",
+    label: "スマホ(Android)",
     matchKeywords: ["android", "ギャラクシー", "xperia", "pixel"],
   },
   {
@@ -170,10 +170,10 @@ export const WORLD_PRICE_GENRES = [
     matchKeywords: ["スピーカー", "sound bar", "サウンドバー"],
   },
 
-  // 2.2.3 ホビー・おもちゃ（16）
+  // 2.2.3 ホビー・おもちゃ(16)
   {
     id: "figure_domestic",
-    label: "フィギュア（国内メーカー）",
+    label: "フィギュア(国内メーカー)",
     matchKeywords: ["フィギュア", "一番くじ", "プライズ", "banpresto", "バンプレスト"],
   },
   {
@@ -183,7 +183,7 @@ export const WORLD_PRICE_GENRES = [
   },
   {
     id: "figure_overseas",
-    label: "フィギュア（海外・アメトイ）",
+    label: "フィギュア(海外・アメトイ)",
     matchKeywords: ["marvel legends", "hot toys", "マーベルレジェンド", "メズコ"],
   },
   {
@@ -203,27 +203,27 @@ export const WORLD_PRICE_GENRES = [
   },
   {
     id: "plastic_model_robot",
-    label: "プラモデル（ロボ・メカ）",
+    label: "プラモデル(ロボ・メカ)",
     matchKeywords: ["ガンプラ", "hg", "mg", "rg", "ゾイド", "ロボット"],
   },
   {
     id: "plastic_model_vehicle",
-    label: "プラモデル（車/戦車/飛行機）",
+    label: "プラモデル(車/戦車/飛行機)",
     matchKeywords: ["プラモデル", "戦車", "タミヤ", "飛行機", "カーモデル"],
   },
   {
     id: "plastic_model_other",
-    label: "プラモデル（その他）",
+    label: "プラモデル(その他)",
     matchKeywords: ["プラモデル", "プラモ"],
   },
   {
     id: "mini_car_tomica",
-    label: "ミニカー（トミカ）",
+    label: "ミニカー(トミカ)",
     matchKeywords: ["トミカ", "tomica"],
   },
   {
     id: "mini_car_others",
-    label: "ミニカー（その他）",
+    label: "ミニカー(その他)",
     matchKeywords: ["ミニカー", "hot wheels", "ホットウィール"],
   },
   {
@@ -247,40 +247,40 @@ export const WORLD_PRICE_GENRES = [
     matchKeywords: ["おもちゃ", "toy"],
   },
 
-  // 2.2.4 トレカ・TCG（16）
+  // 2.2.4 トレカ・TCG(16)
   {
     id: "tcg_pokemon_single",
-    label: "ポケカ（シングル）",
+    label: "ポケカ(シングル)",
     matchKeywords: ["ポケカ", "ポケモンカード", "pokemon card"],
   },
   {
     id: "tcg_yugioh_single",
-    label: "遊戯王（シングル）",
+    label: "遊戯王(シングル)",
     matchKeywords: ["遊戯王", "yu-gi-oh"],
   },
   {
     id: "tcg_onepiece_single",
-    label: "ワンピースカード（シングル）",
+    label: "ワンピースカード(シングル)",
     matchKeywords: ["ワンピースカード", "one piece card"],
   },
   {
     id: "tcg_mtgsingle",
-    label: "MTG（シングル）",
+    label: "MTG(シングル)",
     matchKeywords: ["mtg", "magic: the gathering", "magic the gathering"],
   },
   {
     id: "tcg_weis_single",
-    label: "ヴァイス等（シングル）",
+    label: "ヴァイス等(シングル)",
     matchKeywords: ["ヴァイスシュヴァルツ", "weiss sch", "ヴァイス"],
   },
   {
     id: "tcg_other_single",
-    label: "その他TCG（シングル）",
+    label: "その他TCG(シングル)",
     matchKeywords: ["デュエマ", "デュエルマスターズ", "バトスピ", "card game"],
   },
   {
     id: "tcg_graded_card",
-    label: "鑑定済みカード（PSA/BGS/CGC）",
+    label: "鑑定済みカード(PSA/BGS/CGC)",
     matchKeywords: ["psa", "bgs", "cgc", "鑑定"],
   },
   {
@@ -329,35 +329,35 @@ export const WORLD_PRICE_GENRES = [
     matchKeywords: ["トレカ", "トレーディングカード", "カードダス", "アイドルカード"],
   },
 
-  // 2.2.5 ファッション（12）
+  // 2.2.5 ファッション(12)
   {
     id: "fashion_vintage_top",
-    label: "古着（トップス）",
+    label: "古着(トップス)",
     matchKeywords: ["古着", "tシャツ", "シャツ"],
   },
   {
     id: "fashion_vintage_bottom",
-    label: "古着（ボトムス）",
+    label: "古着(ボトムス)",
     matchKeywords: ["古着", "ジーンズ", "デニム", "パンツ"],
   },
   {
     id: "fashion_vintage_outer",
-    label: "古着（アウター）",
+    label: "古着(アウター)",
     matchKeywords: ["古着", "ジャケット", "コート"],
   },
   {
     id: "fashion_brand_top",
-    label: "ブランド服（トップス）",
+    label: "ブランド服(トップス)",
     matchKeywords: ["supreme", "シュプリーム", "stussy", "ナイキ", "nike"],
   },
   {
     id: "fashion_brand_bottom",
-    label: "ブランド服（ボトムス）",
+    label: "ブランド服(ボトムス)",
     matchKeywords: ["supreme", "stussy", "ナイキ", "adidas"],
   },
   {
     id: "fashion_brand_outer",
-    label: "ブランド服（アウター）",
+    label: "ブランド服(アウター)",
     matchKeywords: ["supreme", "north face", "ノースフェイス", "canada goose"],
   },
   {
@@ -372,12 +372,12 @@ export const WORLD_PRICE_GENRES = [
   },
   {
     id: "bag_luxury",
-    label: "バッグ（ハイブランド）",
+    label: "バッグ(ハイブランド)",
     matchKeywords: ["ルイヴィトン", "louis vuitton", "gucci", "シャネル", "chanel", "エルメス"],
   },
   {
     id: "bag_casual",
-    label: "バッグ（カジュアル）",
+    label: "バッグ(カジュアル)",
     matchKeywords: ["バッグ", "リュック", "backpack", "トート"],
   },
   {
@@ -396,7 +396,7 @@ export const WORLD_PRICE_GENRES = [
     matchKeywords: ["ネックレス", "リング", "指輪", "ジュエリー", "bracelet"],
   },
 
-  // 2.2.6 雑貨・文房具・生活（10）
+  // 2.2.6 雑貨・文房具・生活(10)
   {
     id: "keyholder",
     label: "キーホルダー",
@@ -448,7 +448,7 @@ export const WORLD_PRICE_GENRES = [
     matchKeywords: ["日用品", "生活用品"],
   },
 
-  // 2.2.7 メディア（2）
+  // 2.2.7 メディア(2)
   {
     id: "media_dvd_bluray",
     label: "DVD / Blu-ray",
@@ -463,9 +463,33 @@ export const WORLD_PRICE_GENRES = [
 
 /**
  * summary から最もスコアの高いジャンルIDを返す
+ *  - 先に「ポケカ BOX / パック」を優先判定してから、従来スコアリングへフォールバック
  */
 export function detectGenreIdFromSummary(summaryRaw = "") {
-  const s = String(summaryRaw || "").toLowerCase();
+  const sRaw = String(summaryRaw || "");
+  const s = sRaw.toLowerCase();
+
+  // 🔸 先行判定: ポケカ BOX / パック
+  const hasPokemonWord = /ポケカ|ポケモンカード|pokemon card/i.test(sRaw);
+  const hasBoxWord =
+    /(booster box|box|ボックス|boxset|box set|カートン|ＢＯＸ)/i.test(sRaw);
+  const hasPackWord =
+    /(booster pack|booster|pack|パック)/i.test(sRaw);
+
+  if (hasPokemonWord) {
+    // 「box 1個 + 収録パック数」の表記が多いので BOX を優先
+    if (hasBoxWord && !hasPackWord) {
+      return "tcg_pokemon_sealed_box";
+    }
+    if (hasPackWord && !hasBoxWord) {
+      return "tcg_pokemon_sealed_pack";
+    }
+    if (hasBoxWord && hasPackWord) {
+      return "tcg_pokemon_sealed_box";
+    }
+  }
+
+  // 従来ロジック: matchKeywords スコア最大のジャンルを採用
   let bestId = "daily_goods_other"; // 汎用ジャンルをデフォルトに
   let bestScore = 0;
 
@@ -486,11 +510,17 @@ export function detectGenreIdFromSummary(summaryRaw = "") {
 }
 
 /**
- * 共通：サマリーの正規化
+ * 共通:サマリーの正規化
  */
 function normalizeSummary(summaryRaw = "") {
   return String(summaryRaw || "")
+    // 全角スペース → 半角
     .replace(/　+/g, " ")
+    // 「シャイニートレジャーbox」などの連結を認識しやすくする
+    .replace(/BOX/g, " box ")
+    .replace(/ＢＯＸ/g, " box ")
+    .replace(/ボックス/g, " box ")
+    .replace(/box/gi, " box ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -509,9 +539,26 @@ const CHARACTER_MAP = [
 ];
 
 /**
+ * ポケカ 弾名 → 英語セット名 + 型番(SV*) マップ
+ *  eBay 側で一般的に使われる表記をキーワードとして追加する
+ */
+const POKEMON_SET_MAP = [
+  { re: /(シャイニートレジャー|シャイニートレジャーex|sv4a)/i, en: "Shiny Treasure ex SV4a" },
+  { re: /(ポケモンカード151|カード151|\b151\b|sv2a)/i, en: "Pokemon Card 151 SV2a" },
+  { re: /(クレイバースト|sv2d)/i, en: "Clay Burst SV2D" },
+  { re: /(スノーハザード|sv2p)/i, en: "Snow Hazard SV2P" },
+  { re: /(古代の咆哮|sv4k)/i, en: "Ancient Roar SV4K" },
+  { re: /(未来の一閃|sv4m)/i, en: "Future Flash SV4M" },
+  { re: /(黒炎の支配者|sv3)/i, en: "Ruler of the Black Flame SV3" },
+  { re: /(トリプレットビート|sv1a)/i, en: "Triplet Beat SV1A" },
+  { re: /(バイオレットex|sv1s)/i, en: "Violet ex SV1S" },
+  { re: /(スカーレットex|sv1v)/i, en: "Scarlet ex SV1V" },
+];
+
+/**
  * buildEbayKeywordFromSummary
  *
- * summary（日本語タイトル）から eBay用検索キーワードを生成する。
+ * summary(日本語タイトル)から eBay用検索キーワードを生成する。
  * - ジャンル別にベースの英単語を変える
  * - カード番号 / 型番 / PSAグレード / 言語などを抽出して足す
  */
@@ -637,7 +684,7 @@ export function buildEbayKeywordFromSummary(summaryRaw = "") {
       break;
   }
 
-  // --- キャラ名・シリーズ名（Pokemon等） ---
+  // --- キャラ名・シリーズ名(Pokemon等) ---
   let hasPokemonChar = false;
   for (const { re, en } of CHARACTER_MAP) {
     if (re.test(original)) {
@@ -650,6 +697,13 @@ export function buildEbayKeywordFromSummary(summaryRaw = "") {
     hasPokemonChar
   ) {
     tokens.push("Pokemon");
+  }
+
+  // --- ポケカ弾・セット名 ---
+  for (const { re, en } of POKEMON_SET_MAP) {
+    if (re.test(original)) {
+      tokens.push(en);
+    }
   }
 
   // --- PSA グレード ---
@@ -695,7 +749,7 @@ export function buildEbayKeywordFromSummary(summaryRaw = "") {
     }
   }
 
-  // --- 一番くじ プライズ名（ざっくり） ---
+  // --- 一番くじ プライズ名(ざっくり) ---
   if (genreId.startsWith("ichiban_kuji")) {
     if (/ラストワン/i.test(original)) tokens.push("Last One prize");
     if (/[abcａｂｃ]賞/i.test(original)) tokens.push("prize");
@@ -723,7 +777,7 @@ export function buildEbayKeywordFromSummary(summaryRaw = "") {
 }
 
 /**
- * （オプション）ジャンル定義を取得するヘルパー
+ * (オプション)ジャンル定義を取得するヘルパー
  */
 export function getGenreMeta(genreId) {
   return WORLD_PRICE_GENRES.find((g) => g.id === genreId) || null;
@@ -737,8 +791,9 @@ export function getGenreMeta(genreId) {
 const GENRE_MIN_SAMPLES = {
   tcg_graded_card: 3,
   tcg_pokemon_single: 5,
-  tcg_pokemon_sealed_box: 5,
-  tcg_pokemon_sealed_pack: 5,
+  // 🔽 BOX / パックは件数が少ないことが多いので 3 件から相場採用
+  tcg_pokemon_sealed_box: 3,
+  tcg_pokemon_sealed_pack: 3,
   ichiban_kuji_top_prize: 5,
   figure_domestic: 6,
   digital_camera: 8,
@@ -756,9 +811,13 @@ export function getGenreMinSamples(genreId) {
 const GENRE_WORLD_WEIGHTS = {
   tcg_pokemon_single: { us: 0.8, uk: 0.2 },
   tcg_graded_card: { us: 0.85, uk: 0.15 },
+  // ポケカ BOX / パックも US をやや重く
+  tcg_pokemon_sealed_box: { us: 0.85, uk: 0.15 },
+  tcg_pokemon_sealed_pack: { us: 0.85, uk: 0.15 },
   ichiban_kuji_top_prize: { us: 0.6, uk: 0.4 },
   digital_camera: { us: 0.9, uk: 0.1 },
   smartphone_iphone: { us: 0.9, uk: 0.1 },
+  smartphone_android: { us: 0.9, uk: 0.1 },
 };
 
 export function getWorldPriceWeights(genreId) {
@@ -874,12 +933,14 @@ export function isListingAllowedForGenre(
     }
   }
 
-  // --- 未開封BOX系: pack/bulk/lot はNG ---
+  // --- 未開封BOX系: bulk/lot/bundle/case系のみNG
   if (
     genreId === "tcg_pokemon_sealed_box" ||
     genreId === "tcg_other_sealed_box"
   ) {
-    if (includesAny(["bulk", "lot", "bundle", "パック"])) {
+    // 🔧 従来は「パック」を含むBOXも除外してしまっていた
+    //    → 1BOX内のパック数表記(例: 10パック入り)まで落ちていたので修正
+    if (includesAny(["bulk", "lot", "bundle", "case", "カートン", "セット", "set"])) {
       return false;
     }
   }
