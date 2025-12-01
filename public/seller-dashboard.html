@@ -961,8 +961,21 @@
 
       // 🌍 世界相場AIの簡易ロジック（Lite）：推奨価格帯と信頼度テキストを生成
       function buildWorldPriceAdviceText(tx) {
-        const median = tx.worldMedian;
-        if (!median || median <= 0) return "";
+        const worldLow = typeof tx.worldLow === "number" ? tx.worldLow : null;
+        const median = tx.worldMedian || null;
+
+        // ① ベースとなる「仮の落札相場（Sold相当）」を worldLow から逆算
+        let soldLike = null;
+        if (worldLow && worldLow > 0) {
+          // 世界最安値（Active）は Sold より 20〜30% 高く出やすいので、
+          // ざっくり 0.8 倍して「落札相場っぽい値」にする
+          soldLike = Math.round(worldLow * 0.8);
+        } else if (median && median > 0) {
+          // 最安値がないときだけ、中央値から逆算（保険）
+          soldLike = Math.round(median * 0.8);
+        }
+
+        if (!soldLike || soldLike <= 0) return "";
 
         const sample = tx.worldSampleCount || 0;
         const amount = tx.net_amount ?? tx.amount ?? null;
@@ -980,10 +993,9 @@
         const isVintage = ["骨とう", "骨董", "ビンテージ", "アンティーク"]
           .some((kw) => rawCategory.includes(kw));
 
-        // 🔧 カテゴリ別に「どれくらいブレるか」を変える
+        // ② カテゴリ別に「どれくらいブレるか」を変える（そのまま流用）
         if (isCard) {
           if (sample >= 15) {
-            // psa_graded/raw_mintイメージ：かなり当てにしてよい
             rangePct = 0.2;
             levelLabel = "高い";
           } else if (sample >= 8) {
@@ -1002,32 +1014,33 @@
             levelLabel = "ひくめ";
           }
         } else if (isVintage) {
-          // 骨とう品・ビンテージはブレが大きい前提
           rangePct = 0.5;
           levelLabel = "かなりひくめ";
         } else {
-          // その他ごちゃまぜカテゴリ
           rangePct = 0.4;
           levelLabel = "ひくめ";
         }
 
-        const min = Math.round(median * (1 - rangePct));
-        const max = Math.round(median * (1 + rangePct));
+        // ③ 「おすすめ価格」の基準 = Sold相当 × 1.3
+        const base = Math.round(soldLike * 1.3);
 
-        // 今の値段が世界相場と比べてどうか
+        const min = Math.round(base * (1 - rangePct));
+        const max = Math.round(base * (1 + rangePct));
+
+        // ④ 今の値段が「おすすめ基準（base）」と比べてどうか
         let pos = "";
-        if (amount && median) {
-          const diffRatio = (amount - median) / median;
+        if (amount && base) {
+          const diffRatio = (amount - base) / base;
           if (diffRatio <= -0.3) {
-            pos = "（今の価格：世界相場より かなり安め）";
-          } else if (diffRatio <= -0.1) {
-            pos = "（今の価格：世界相場より やや安め）";
+            pos = "（今の価格：おすすめより かなり安め）";
+          } else if (diffRatio <= -0.15) {
+            pos = "（今の価格：おすすめより やや安め）";
           } else if (diffRatio < 0.15) {
-            pos = "（今の価格：世界相場と だいたい同じ）";
+            pos = "（今の価格：おすすめと だいたい同じ）";
           } else if (diffRatio < 0.4) {
-            pos = "（今の価格：世界相場より やや高め）";
+            pos = "（今の価格：おすすめより やや高め）";
           } else {
-            pos = "（今の価格：世界相場より かなり高め）";
+            pos = "（今の価格：おすすめより かなり高め）";
           }
         }
 
