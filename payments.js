@@ -894,6 +894,38 @@ export function registerPaymentRoutes(app, deps) {
     }
   });
 
+  // ====== 🌍 eBay世界相場デバッグ用API ======
+  // summary を直指定して、内部でどんなキーワード＆相場が計算されるかを確認する
+  app.get("/api/debug/world-price", async (req, res) => {
+    const summary = (req.query.summary || "").trim();
+    if (!summary) {
+      return res.status(400).json({ ok: false, error: "summary_required" });
+    }
+
+    try {
+      const keyword = buildEbayKeywordFromSummary(summary);
+
+      const us = await fetchWorldPriceFromEbayMarketplace(keyword, "EBAY_US");
+      const uk = await fetchWorldPriceFromEbayMarketplace(keyword, "EBAY_GB");
+
+      return res.json({
+        ok: true,
+        summary,
+        keywordForEbay: keyword,
+        mode: EBAY_SOURCE_MODE,
+        us,
+        uk,
+      });
+    } catch (e) {
+      console.error("[debug/world-price] error", e);
+      return res.status(500).json({
+        ok: false,
+        error: "server_error",
+        detail: e.message,
+      });
+    }
+  });
+
   // ====== 🟢 改善された管理API: Stripeサマリー取得 ======
   app.get("/api/admin/stripe/summary", requireAdmin, async (req, res) => {
     try {
@@ -1212,6 +1244,13 @@ const EBAY_CLIENT_ID = process.env.EBAY_CLIENT_ID || "";
 const EBAY_CLIENT_SECRET = process.env.EBAY_CLIENT_SECRET || "";
 const EBAY_ENV = process.env.EBAY_ENV || "production"; // or "sandbox"
 
+// 🆕 世界相場デバッグログ用フラグ
+const WORLD_PRICE_DEBUG = process.env.WORLD_PRICE_DEBUG === "1";
+
+// 🆕 データソースモード: active or sold
+//   sold にした場合、将来的に Completed/Sold API に差し替える想定
+const EBAY_SOURCE_MODE = process.env.EBAY_SOURCE_MODE || "active";
+
 // 🆕 eBay アクセストークンの簡易キャッシュ
 const ebayTokenCache = {
   token: null,
@@ -1342,10 +1381,20 @@ function buildEbayKeywordFromSummary(summaryRaw = "") {
   // 重複除去して結合
   const keyword = Array.from(new Set(tokens.filter(Boolean))).join(" ");
 
+  // 通常ログ
   console.log("[world-price] keyword built for ebay", {
     summary: original,
     keyword,
   });
+
+  // デバッグ時はより詳細を出す
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][debug] keywordFromSummary", {
+      summary: original,
+      keyword,
+      tokens,
+    });
+  }
 
   // 何も作れなかった場合は元の summary でフォールバック
   return keyword || original;
@@ -1528,15 +1577,31 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
   // summary から eBay 向け検索語を生成
   const keywordForEbay = buildEbayKeywordFromSummary(keywordRaw);
 
-  // 2) eBay US / UK の相場を取得（英語ベースキーワードで検索）
-  const us = await fetchWorldPriceFromEbayMarketplace(
-    keywordForEbay,
-    "EBAY_US"
-  );
-  const uk = await fetchWorldPriceFromEbayMarketplace(
-    keywordForEbay,
-    "EBAY_GB"
-  );
+  // 2) eBay US / UK の相場を取得
+  //   EBAY_SOURCE_MODE === "sold" の場合は、将来的に Completed/Sold API に差し替える想定
+  let us = null;
+  let uk = null;
+
+  if (EBAY_SOURCE_MODE === "sold") {
+    // 📝 現時点では公式APIに Completed/Sold 検索は無いため、
+    //     ここは外部 Completed Items API / 自前スクレイピング用のフックとして用意だけしておく。
+    us = await fetchWorldPriceFromEbaySold(keywordForEbay, "EBAY_US");
+    uk = await fetchWorldPriceFromEbaySold(keywordForEbay, "EBAY_GB");
+
+    // sold で一切取れなければ active にフォールバック
+    if (!us && !uk) {
+      console.warn(
+        "[world-price] sold-mode returned no data, fallback to active listings",
+        { orderId, keywordForEbay }
+      );
+      us = await fetchWorldPriceFromEbayMarketplace(keywordForEbay, "EBAY_US");
+      uk = await fetchWorldPriceFromEbayMarketplace(keywordForEbay, "EBAY_GB");
+    }
+  } else {
+    // 従来どおり active listing から取得
+    us = await fetchWorldPriceFromEbayMarketplace(keywordForEbay, "EBAY_US");
+    uk = await fetchWorldPriceFromEbayMarketplace(keywordForEbay, "EBAY_GB");
+  }
 
   if (!us && !uk) {
     console.warn("[world-price] no market data", {
@@ -1590,6 +1655,24 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
     high: best.highJpy,
     sample: best.sampleCount,
   });
+}
+
+// 🆕 Completed/Sold 用のフック関数（現状は未実装＆active fallback想定）
+//   → 将来、外部の「Completed Items API」をここから呼び出す
+async function fetchWorldPriceFromEbaySold(keyword, marketplaceId) {
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][debug] fetchSold not implemented, keyword=", {
+      keyword,
+      marketplaceId,
+    });
+  }
+  // ここで外部 Completed/Sold API を呼び出す設計にしておく
+  // 例：
+  //   const res = await fetch(`${process.env.EBAY_SOLD_API_BASE}?q=${encodeURIComponent(keyword)}&site=${marketplaceId}`)
+  //   ... => pricesJpy[] を組み立てて buildPriceStats(pricesJpy) を返す
+
+  // 現時点では null を返し、呼び出し側で active listing にフォールバック
+  return null;
 }
 
 async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
@@ -1654,6 +1737,14 @@ async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
     ? data.itemSummaries
     : [];
 
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][debug] raw itemSummaries", {
+      marketplaceId,
+      q,
+      total: items.length,
+    });
+  }
+
   if (!items.length) {
     console.log("[world-price] no items", { marketplaceId, q });
     return null;
@@ -1663,11 +1754,24 @@ async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
   let filtered = items;
   const kw = (keyword || "").toUpperCase();
 
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][debug] filter start", {
+      marketplaceId,
+      count: filtered.length,
+    });
+  }
+
   // PSA10 がキーワードに含まれているなら、PSA 10/PSA10 をタイトルに含むものに限定
   if (/PSA\s*10/.test(kw)) {
     filtered = filtered.filter((it) =>
       /(PSA\s*10|PSA10)/i.test(it.title || "")
     );
+    if (WORLD_PRICE_DEBUG) {
+      console.log("[world-price][debug] after PSA10 filter", {
+        marketplaceId,
+        count: filtered.length,
+      });
+    }
   }
 
   // 日本語/JPN 指定があるなら、日本関連のものを優先
@@ -1684,6 +1788,12 @@ async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
     });
     if (jpLike.length) {
       filtered = jpLike;
+      if (WORLD_PRICE_DEBUG) {
+        console.log("[world-price][debug] after Japanese filter", {
+          marketplaceId,
+          count: filtered.length,
+        });
+      }
     }
   }
 
@@ -1698,6 +1808,12 @@ async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
     // ある程度件数が残る場合のみ適用する(絞り込みすぎ防止)
     if (byNumber.length >= Math.min(filtered.length, 3)) {
       filtered = byNumber;
+      if (WORLD_PRICE_DEBUG) {
+        console.log("[world-price][debug] after cardNumber filter", {
+          marketplaceId,
+          count: filtered.length,
+        });
+      }
     }
   }
 
@@ -1714,11 +1830,22 @@ async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
     const bySet = filtered.filter((it) => setRe.test(it.title || ""));
     if (bySet.length >= Math.min(filtered.length, 3)) {
       filtered = bySet;
+      if (WORLD_PRICE_DEBUG) {
+        console.log("[world-price][debug] after setName filter", {
+          marketplaceId,
+          count: filtered.length,
+        });
+      }
     }
   }
 
   // 絞り込みすぎて 0 件になったときは、元の items に戻す（安全側フォールバック）
   if (!filtered.length) {
+    if (WORLD_PRICE_DEBUG) {
+      console.log("[world-price][debug] filtered empty, fallback to original items", {
+        marketplaceId,
+      });
+    }
     filtered = items;
   }
 
@@ -1755,13 +1882,31 @@ async function fetchWorldPriceFromEbayMarketplace(keyword, marketplaceId) {
   }
 
   const stats = buildPriceStats(pricesJpy);
-  if (!stats) return null;
+  if (!stats) {
+    if (WORLD_PRICE_DEBUG) {
+      console.log("[world-price][debug] stats null (sample too small)", {
+        marketplaceId,
+        q,
+        pricesCount: pricesJpy.length,
+      });
+    }
+    return null;
+  }
 
   console.log("[world-price] stats", {
     marketplaceId,
     q,
     ...stats,
   });
+
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][debug] final stats", {
+      marketplaceId,
+      q,
+      pricesCount: pricesJpy.length,
+      stats,
+    });
+  }
 
   return stats;
 }
