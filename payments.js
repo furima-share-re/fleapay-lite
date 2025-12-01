@@ -1714,6 +1714,11 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
     worldLow = best.lowJpy;
   }
 
+  // 🔧 DB のカラム(world_price_low)が integer のため、小数を丸めてから保存する
+  if (worldLow != null) {
+    worldLow = Math.round(worldLow);
+  }
+
   // v3.8: 売上最大化価格 / 利益最大化価格を計算
   const virtualMedian = best.medianJpy;
   const costAmount =
