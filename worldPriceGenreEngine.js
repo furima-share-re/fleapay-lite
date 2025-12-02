@@ -714,8 +714,15 @@ export function buildEbayKeywordFromSummary(summaryRaw = "") {
   }
 
   // --- 言語 ---
-  if (/(日本語|日本版|japanese|jpn)/i.test(lower)) {
+  // 「日本製」「国内版」なども Japanese 判定に含める
+  if (/(日本語|日本版|日本製|国内版|japanese|jpn)/i.test(original)) {
     tokens.push("Japanese");
+  }
+
+  // --- 共通: TCGのカード番号・セットコード (SC-51, OP01-001, P-028 など) ---
+  const setCodeMatches = original.match(/\b([A-Z]{1,4}-?\d{1,3}(?:-\d{1,3})?)\b/gi);
+  if (setCodeMatches) {
+    setCodeMatches.forEach(code => tokens.push(code));
   }
 
   // --- レアリティ ---
@@ -725,6 +732,21 @@ export function buildEbayKeywordFromSummary(summaryRaw = "") {
   if (/\bsar\b/i.test(original)) tokens.push("SAR");
   if (/\bar\b/i.test(original)) tokens.push("AR");
   if (/illustration rare/i.test(lower)) tokens.push("Full Art");
+
+  // --- レアリティ + 番号 (例: AR 181, SAR 123, SEC 01, P-028) ---
+  const rarityNumMatch = original.match(
+    /\b(SR|UR|HR|AR|SAR|SEC|P)\s*-?\s*([0-9]{1,4})\b/i
+  );
+  if (rarityNumMatch) {
+    const rCode = rarityNumMatch[1].toUpperCase();
+    const rNum = rarityNumMatch[2];
+    tokens.push(`${rCode} ${rNum}`);
+  }
+
+  // --- プロモ / イベントパック (ONE PIECE, 遊戯王など共通) ---
+  if (/promo|プロモ|イベント|event pack|cs\s*\d{4}/i.test(original)) {
+    tokens.push("promo");
+  }
 
   // --- カード番号 例: 091/078 ---
   const numMatches = original.match(/\b(\d{1,3}\/\d{1,3})\b/g);
