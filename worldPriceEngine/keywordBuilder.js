@@ -93,7 +93,27 @@ export function buildEbayKeywordFromSummary(summaryRaw = "") {
       break;
     case "tcg_graded_card": {
       // 🔧 鑑定カードでも作品名をベースキーワードにする
-      if (/ポケカ|ポケモンカード|pokemon card/i.test(original)) {
+      let isPokemon = /ポケカ|ポケモンカード|pokemon card/i.test(original);
+
+      // キャラ名 or ポケカ弾名が含まれていればポケカ扱い
+      if (!isPokemon) {
+        for (const { re } of CHARACTER_MAP) {
+          if (re.test(original)) {
+            isPokemon = true;
+            break;
+          }
+        }
+      }
+      if (!isPokemon) {
+        for (const { re } of POKEMON_SET_MAP) {
+          if (re.test(original)) {
+            isPokemon = true;
+            break;
+          }
+        }
+      }
+
+      if (isPokemon) {
         tokens.push("Pokemon card");
       } else if (/遊戯王|yu-gi-oh/i.test(original)) {
         tokens.push("Yu-Gi-Oh card");
@@ -267,6 +287,24 @@ export function buildEbayKeywordFromSummary(summaryRaw = "") {
   const numMatches = original.match(/\b(\d{1,3}\/\d{1,3})\b/g);
   if (numMatches) {
     for (const num of numMatches) tokens.push(num);
+  }
+
+  // --- 🔧 修正② 単独カード番号 (例: PSA10 091, No.091 など) ---
+  if (genreId && genreId.startsWith("tcg_")) {
+    const soloNums = original.match(/\b([0-9]{3})\b/g);
+    if (soloNums && soloNums.length) {
+      const candidates = soloNums
+        .map((n) => parseInt(n, 10))
+        // 年号っぽい 2023 などは除外したいので 1〜300 だけ残す
+        .filter((v) => v >= 1 && v <= 300)
+        .map((v) => String(v).padStart(3, "0"));
+
+      if (candidates.length) {
+        // 最後に出てきた番号を優先（カード番号である可能性が高い）
+        const last = candidates[candidates.length - 1];
+        tokens.push(last);
+      }
+    }
   }
 
   // --- 型番・モデル番号 (iPhone 12, DMC-GF7 など) ---
