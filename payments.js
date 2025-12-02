@@ -1678,26 +1678,18 @@ async function runWorldPriceUpdate(pool, orderId, sellerId) {
   // 3-1) US / UK の「最安値（送料込み）」を比較し、
   //      より高い方を世界最安値として採用する
   let worldLow = null;
-  let worldMinLower = null;
-  let worldMinUpper = null;
 
   const usLow =
     us && typeof us.lowJpy === "number" ? us.lowJpy : null;
   const ukLow =
     uk && typeof uk.lowJpy === "number" ? uk.lowJpy : null;
 
+  // 🔧 修正:
+  //   「US/UKそれぞれの最安値(送料込み)を取得して、高い方を世界最安値にする」
+  //   → そのままのJPY価格で比較し、max を採用する。
   if (usLow != null || ukLow != null) {
-    const { us: weightUS, uk: weightUK } = getWorldPriceWeights(genreId);
-    const usAdj = usLow != null ? usLow * weightUS : null;
-    const ukAdj = ukLow != null ? ukLow * weightUK : null;
-
-    const vals = [usAdj, ukAdj].filter((v) => v != null);
-    if (vals.length) {
-      worldMinLower = Math.min(...vals);
-      worldMinUpper = Math.max(...vals);
-      // v3.6: 実際に販売価格の基準に使うのは upper 側
-      worldLow = worldMinUpper;
-    }
+    const lows = [usLow, ukLow].filter((v) => v != null);
+    worldLow = Math.max(...lows);
   }
 
   if (!best || !best.medianJpy) {
