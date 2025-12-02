@@ -291,7 +291,7 @@ export async function fetchWorldPriceFromEbayMarketplace(
     });
   }
 
-  // 🔧 PSA グレード / 鑑定カードフィルタ
+  // 🔧 修正②: PSA グレード / 鑑定カードフィルタ（全グレード対応）
   //   - PSA 10 だけでなく、PSA 9 / PSA 8 など全グレードに対応
   const psaGradeMatch = kw.match(/PSA\s*([0-9]{1,2})/i);
   if (psaGradeMatch) {
