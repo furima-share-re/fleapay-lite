@@ -1,5 +1,5 @@
 // worldPriceEngine/ebayClient.js
-// eBay から価格取得（fetchWorldPriceFromEbayMarketplace 他）
+// eBay から価格取得(fetchWorldPriceFromEbayMarketplace 他)
 
 import { isListingAllowedForGenre } from "./genres.js";
 import { buildPriceStats } from "./stats.js";
@@ -291,12 +291,25 @@ export async function fetchWorldPriceFromEbayMarketplace(
     });
   }
 
-  if (/PSA\s*10/.test(kw)) {
-    filtered = filtered.filter((it) =>
-      /(PSA\s*10|PSA10)/i.test(it.title || "")
-    );
+  // 🔧 PSA グレード / 鑑定カードフィルタ
+  //   - PSA 10 だけでなく、PSA 9 / PSA 8 など全グレードに対応
+  const psaGradeMatch = kw.match(/PSA\s*([0-9]{1,2})/i);
+  if (psaGradeMatch) {
+    const grade = psaGradeMatch[1];
+    const psaRe = new RegExp(`PSA\\s*${grade}`, "i");
+    filtered = filtered.filter((it) => psaRe.test(it.title || ""));
     if (WORLD_PRICE_DEBUG) {
-      console.log("[world-price][debug] after PSA10 filter", {
+      console.log("[world-price][debug] after PSA grade filter", {
+        marketplaceId,
+        grade,
+        count: filtered.length,
+      });
+    }
+  } else if (/PSA/i.test(kw)) {
+    // グレード番号が取れない場合でも、少なくとも PSA 表記は必須にする
+    filtered = filtered.filter((it) => /PSA/i.test(it.title || ""));
+    if (WORLD_PRICE_DEBUG) {
+      console.log("[world-price][debug] after generic PSA filter", {
         marketplaceId,
         count: filtered.length,
       });

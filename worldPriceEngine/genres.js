@@ -602,14 +602,19 @@ export function isListingAllowedForGenre(
     }
   }
 
-  // --- 未開封BOX系: bulk/lot/bundle/case系のみNG
+  // --- 未開封BOX系: bulk/lot/bundle/case系NG + 「BOXらしさ」が必須 ---
   if (
     genreId === "tcg_pokemon_sealed_box" ||
     genreId === "tcg_other_sealed_box"
   ) {
-    // 🔧 従来は「パック」を含むBOXも除外してしまっていた
-    //    → 1BOX内のパック数表記(例: 10パック入り)まで落ちていたので修正
     if (includesAny(["bulk", "lot", "bundle", "case", "カートン", "セット", "set"])) {
+      return false;
+    }
+
+    // ✅ 本当に「BOX」であることをタイトルから確認
+    const isBoxLike = /(booster box|box set|box|ボックス|ボックスセット)/i.test(t);
+    if (!isBoxLike) {
+      // 「10pack」「パックのみ」などはここで落ちる
       return false;
     }
   }

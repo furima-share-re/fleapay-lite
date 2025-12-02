@@ -90,9 +90,19 @@ export function buildEbayKeywordFromSummary(summaryRaw = "") {
     case "non_tcg_trading_card":
       tokens.push("trading card");
       break;
-    case "tcg_graded_card":
-      tokens.push("graded card");
+    case "tcg_graded_card": {
+      // 🔧 鑑定カードでも作品名をベースキーワードにする
+      if (/ポケカ|ポケモンカード|pokemon card/i.test(original)) {
+        tokens.push("Pokemon card");
+      } else if (/遊戯王|yu-gi-oh/i.test(original)) {
+        tokens.push("Yu-Gi-Oh card");
+      } else if (/ワンピースカード|one piece card/i.test(original)) {
+        tokens.push("One Piece card");
+      } else {
+        tokens.push("graded card");
+      }
       break;
+    }
     case "tcg_bulk_lot":
       tokens.push("bulk lot", "card lot");
       break;
@@ -208,8 +218,18 @@ export function buildEbayKeywordFromSummary(summaryRaw = "") {
   }
 
   // --- 言語 ---
-  // 「日本製」「国内版」なども Japanese 判定に含める
   if (/(日本語|日本版|日本製|国内版|japanese|jpn)/i.test(original)) {
+    tokens.push("Japanese");
+  }
+
+  // 🔧 日本語トレカっぽい summary にはデフォルトで「Japanese」を付ける
+  if (
+    !tokens.includes("Japanese") &&
+    /[ぁ-んァ-ン一-龠]/.test(original) && // 日本語が含まれる
+    !/english|英語版|eng版/i.test(original) &&
+    (/(ポケカ|ポケモンカード|遊戯王|ワンピースカード|tcg)/i.test(original) || 
+     (genreId && (genreId.startsWith("tcg_") || genreId === "non_tcg_trading_card")))
+  ) {
     tokens.push("Japanese");
   }
 
@@ -266,7 +286,7 @@ export function buildEbayKeywordFromSummary(summaryRaw = "") {
   }
 
   // --- 一番くじ プライズ名(ざっくり) ---
-  if (genreId.startsWith("ichiban_kuji")) {
+  if (genreId && genreId.startsWith("ichiban_kuji")) {
     if (/ラストワン/i.test(original)) tokens.push("Last One prize");
     if (/[abcａｂｃ]賞/i.test(original)) tokens.push("prize");
   }
