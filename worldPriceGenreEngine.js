@@ -1,17 +1,16 @@
 // worldPriceGenreEngine.js
-// FleaPay 世界相場エンジン用：80ジャンル判定 ＋ eBay検索キーワード生成（v3.6）
+// FleaPay 世界相場エンジン用：80ジャンル判定 ＋ eBay検索キーワード生成（v3.8）
 //
 // 役割:
 //  1. summary(商品タイトル)から FleaPay 内部ジャンル(80分類)を推定する
 //  2. ジャンルに応じた eBay 検索クエリを生成する(Query Builder)
+//  3. eBay API連携による世界相場取得 (v3.8追加)
 //
-// 設計の元になっている仕様:World Price Engine v3.6 相場取得設計書
+// 設計の元になっている仕様:World Price Engine v3.8 相場取得設計書
 //  - Genre Engine(80ジャンル分類)
 //  - Query Builder(ジャンル別 eBay検索クエリ生成)
 //  - ジャンル別 minSamples / NG条件 / world price weights
-//
-// このファイルは「ジャンル判定とキーワード生成」に専念し、
-// 価格計算・Post-filter・信頼スコアなどは別モジュールで行う前提。
+//  - 世界相場更新ロジック (v3.8)
 
 /**
  * WORLD_PRICE_GENRES
@@ -115,7 +114,7 @@ export const WORLD_PRICE_GENRES = [
   {
     id: "retro_handheld_lcd",
     label: "レトロ携帯LCDゲーム",
-    matchKeywords: ["ゲームウォッチ", "game & watch", "lsIゲーム", "lcd game"],
+    matchKeywords: ["ゲームウォッチ", "game & watch", "lsiゲーム", "lcd game"],
   },
 
   // 2.2.2 デジタル家電(10)
@@ -245,6 +244,11 @@ export const WORLD_PRICE_GENRES = [
     id: "toy_others",
     label: "おもちゃその他",
     matchKeywords: ["おもちゃ", "toy"],
+  },
+  {
+    id: "accessory_jewelry",
+    label: "アクセサリー・ジュエリー",
+    matchKeywords: ["ネックレス", "リング", "指輪", "ジュエリー", "bracelet"],
   },
 
   // 2.2.4 トレカ・TCG(16)
@@ -389,11 +393,6 @@ export const WORLD_PRICE_GENRES = [
     id: "accessory_watch",
     label: "腕時計",
     matchKeywords: ["腕時計", "watch", "ロレックス", "オメガ"],
-  },
-  {
-    id: "accessory_jewelry",
-    label: "アクセサリー・ジュエリー",
-    matchKeywords: ["ネックレス", "リング", "指輪", "ジュエリー", "bracelet"],
   },
 
   // 2.2.6 雑貨・文房具・生活(10)
@@ -1021,8 +1020,8 @@ export function buildPriceStats(pricesJpy, genreId) {
   //    lower_band : 0〜40%
   //    middle_band: 40〜70%
   //    upper_band : 70〜100%(相場には使わない)
-  const lowerEndIndex = Math.max(1, Math.floor(n * 0.4));          // [0, lowerEndIndex)
-  const middleStartIndex = lowerEndIndex;                          // [middleStartIndex, middleEndIndex)
+  const lowerEndIndex = Math.max(1, Math.floor(n * 0.4));
+  const middleStartIndex = lowerEndIndex;
   const middleEndIndex = Math.max(middleStartIndex + 1, Math.floor(n * 0.7));
 
   const lowerBand = sorted.slice(0, lowerEndIndex);
@@ -1034,7 +1033,6 @@ export function buildPriceStats(pricesJpy, genreId) {
   // ③ 仮想落札中央値 virtualSoldMedian
   //    lower を 70%、middle を 30% でミックス
   let virtualMedian = rawMedian;
-
   if (lowerBandMedian != null && middleBandMedian != null) {
     virtualMedian = lowerBandMedian * 0.7 + middleBandMedian * 0.3;
   } else if (lowerBandMedian != null) {
@@ -1059,19 +1057,801 @@ export function buildPriceStats(pricesJpy, genreId) {
   return {
     // v3.6:仮想落札相場としての中央値
     medianJpy: Math.round(virtualMedian),
-
     // デバッグ/将来のチューニング用に補助情報も持っておく
     rawMedianJpy: Math.round(rawMedian),
     lowerBandMedianJpy:
       lowerBandMedian != null ? Math.round(lowerBandMedian) : null,
     middleBandMedianJpy:
       middleBandMedian != null ? Math.round(middleBandMedian) : null,
-
     // 「高めの相場」と厳密な最安値
     highJpy: Math.round(highAvg),
     lowJpy: Math.round(low),
-
     // サンプル数
     sampleCount: n,
   };
+}
+
+// =====================
+// 🌍 世界相場 更新ロジック (v3.8)
+// =====================
+
+// eBay API 用の環境変数
+const EBAY_CLIENT_ID = process.env.EBAY_CLIENT_ID || "";
+const EBAY_CLIENT_SECRET = process.env.EBAY_CLIENT_SECRET || "";
+const EBAY_ENV = process.env.EBAY_ENV || "production"; // or "sandbox"
+
+// デバッグログ用フラグ
+const WORLD_PRICE_DEBUG = process.env.WORLD_PRICE_DEBUG === "1";
+
+// データソースモード: active or sold
+export const EBAY_SOURCE_MODE =
+  process.env.EBAY_SOURCE_MODE || "active";
+
+// eBay アクセストークンの簡易キャッシュ
+const ebayTokenCache = {
+  token: null,
+  expiresAt: 0, // epoch ms
+};
+
+// 為替レートキャッシュ (USD/JPY, GBP/JPY)
+let fxCache = {
+  usd_jpy: null,
+  gbp_jpy: null,
+  expiresAt: 0,
+};
+
+// セット(lot / まとめ売り)っぽい summary なら世界相場を付けない
+function isSetLikeSummary(text = "") {
+  const t = text.toLowerCase();
+
+  const jpKeywords = [
+    "セット",
+    "まとめ売り",
+    "まとめて",
+    "大量",
+    "山盛り",
+    "福袋",
+    "オリパ",
+    "束",
+    "複数枚",
+  ];
+
+  const enKeywords = ["set", "lot", "bulk", "bundle", "mixed", "random"];
+
+  return [...jpKeywords, ...enKeywords].some((kw) => t.includes(kw));
+}
+
+// eBay OAuth トークン取得(client_credentials)
+async function getEbayAccessToken() {
+  if (!EBAY_CLIENT_ID || !EBAY_CLIENT_SECRET) {
+    console.warn("[world-price] EBAY_CLIENT_ID/SECRET not set, skip eBay call");
+    return null;
+  }
+
+  const now = Date.now();
+  if (ebayTokenCache.token && ebayTokenCache.expiresAt > now + 60_000) {
+    return ebayTokenCache.token;
+  }
+
+  const tokenUrl =
+    EBAY_ENV === "sandbox"
+      ? "https://api.sandbox.ebay.com/identity/v1/oauth2/token"
+      : "https://api.ebay.com/identity/v1/oauth2/token";
+
+  const basic = Buffer.from(
+    `${EBAY_CLIENT_ID}:${EBAY_CLIENT_SECRET}`,
+    "utf8"
+  ).toString("base64");
+
+  const body = new URLSearchParams();
+  body.set("grant_type", "client_credentials");
+  body.set("scope", "https://api.ebay.com/oauth/api_scope");
+
+  const res = await fetch(tokenUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basic}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: body.toString(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("[world-price] ebay token error", res.status, text);
+    return null;
+  }
+
+  const json = await res.json();
+  const accessToken = json.access_token;
+  const expiresIn = Number(json.expires_in || 0); // 秒
+
+  if (!accessToken) {
+    console.error("[world-price] ebay token missing in response");
+    return null;
+  }
+
+  ebayTokenCache.token = accessToken;
+  ebayTokenCache.expiresAt = Date.now() + expiresIn * 1000;
+
+  console.log("[world-price] ebay token refreshed, expiresIn(s)=", expiresIn);
+
+  return accessToken;
+}
+
+// 為替レート取得(外部API + 1時間キャッシュ)
+async function getFxRates() {
+  const now = Date.now();
+
+  if (fxCache.expiresAt > now && fxCache.usd_jpy && fxCache.gbp_jpy) {
+    return {
+      usd_jpy: fxCache.usd_jpy,
+      gbp_jpy: fxCache.gbp_jpy,
+    };
+  }
+
+  try {
+    const res = await fetch("https://open.er-api.com/v6/latest/USD");
+    const data = await res.json();
+
+    const usd_jpy = Number(data.rates?.JPY || 150);
+    const gbp_usd = Number(data.rates?.GBP || 0.79);
+    const gbp_jpy = usd_jpy * (1 / gbp_usd);
+
+    fxCache = {
+      usd_jpy,
+      gbp_jpy,
+      expiresAt: now + 60 * 60 * 1000,
+    };
+
+    console.log("[fx] updated:", fxCache);
+
+    return { usd_jpy, gbp_jpy };
+  } catch (e) {
+    console.error("[fx] fetch error", e);
+    return {
+      usd_jpy: fxCache.usd_jpy || 150,
+      gbp_jpy: fxCache.gbp_jpy || 190,
+    };
+  }
+}
+
+// ---- v3.8: 売上最大化 & 利益最大化 価格計算 ----
+
+function estimateConversionRate(p, basePrice) {
+  if (!basePrice || basePrice <= 0) return 0.3;
+  const r = p / basePrice;
+
+  if (r <= 0.6) return 0.9;
+  if (r <= 0.8) {
+    return 0.9 - ((0.9 - 0.7) * (r - 0.6)) / 0.2;
+  }
+  if (r <= 1.0) {
+    return 0.7 - ((0.7 - 0.5) * (r - 0.8)) / 0.2;
+  }
+  if (r <= 1.4) {
+    return 0.5 - ((0.5 - 0.2) * (r - 1.0)) / 0.4;
+  }
+  if (r <= 1.8) {
+    return 0.2 - ((0.2 - 0.1) * (r - 1.4)) / 0.4;
+  }
+  return 0.05;
+}
+
+function computeOptimalPrices({
+  virtualMedian,
+  costAmount,
+  stepCount = 15,
+}) {
+  if (!virtualMedian || virtualMedian <= 0) {
+    return {
+      revenueMaxPrice: null,
+      profitMaxPrice: null,
+    };
+  }
+
+  const base = virtualMedian;
+  const minP = base * 0.6;
+  const maxP = base * 1.8;
+
+  let bestRevenue = { p: null, val: -Infinity };
+  let bestProfit = { p: null, val: -Infinity };
+
+  for (let i = 0; i <= stepCount; i++) {
+    const t = i / stepCount;
+    const p = minP + (maxP - minP) * t;
+    const conv = estimateConversionRate(p, base);
+    const expectedSales = p * conv;
+
+    if (expectedSales > bestRevenue.val) {
+      bestRevenue = { p, val: expectedSales };
+    }
+
+    const profitPerSale = p - (costAmount || 0);
+    const expectedProfit = profitPerSale * conv;
+
+    if (expectedProfit > bestProfit.val && profitPerSale > 0) {
+      bestProfit = { p, val: expectedProfit };
+    }
+  }
+
+  const round10 = (x) => Math.round(x / 10) * 10;
+
+  return {
+    revenueMaxPrice:
+      bestRevenue.p != null ? round10(bestRevenue.p) : null,
+    profitMaxPrice:
+      bestProfit.p != null ? round10(bestProfit.p) : null,
+  };
+}
+
+// ---- v3.7: Post-filter & Trust-score ----
+
+function calcMedian(arr) {
+  if (!arr || !arr.length) return null;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const n = sorted.length;
+  const mid = Math.floor(n / 2);
+  if (n % 2 === 1) return sorted[mid];
+  return (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function classifyAndScoreListings(priceItems) {
+  if (!priceItems.length) return [];
+
+  const prices = priceItems.map((p) => p.totalJpy);
+  const median = calcMedian(prices);
+  if (!median || median <= 0) {
+    return priceItems.map((it) => ({
+      ...it,
+      postFilterClass: "SAME",
+      listingTrustScore: 0.8,
+    }));
+  }
+
+  return priceItems.map((it) => {
+    const ratio = it.totalJpy / median;
+    let postFilterClass = "SAME";
+    let listingTrustScore = 0.8;
+
+    if (ratio >= 0.75 && ratio <= 1.25) {
+      postFilterClass = "SAME";
+      listingTrustScore = 0.9;
+    } else if (
+      (ratio >= 0.5 && ratio < 0.75) ||
+      (ratio > 1.25 && ratio <= 1.5)
+    ) {
+      postFilterClass = "VARIANT";
+      listingTrustScore = 0.75;
+    } else if (
+      (ratio >= 0.3 && ratio < 0.5) ||
+      (ratio > 1.5 && ratio <= 2.0)
+    ) {
+      postFilterClass = "RELATED";
+      listingTrustScore = 0.5;
+    } else {
+      postFilterClass = "ANOMALY";
+      listingTrustScore = 0.2;
+    }
+
+    return {
+      ...it,
+      postFilterClass,
+      listingTrustScore,
+    };
+  });
+}
+
+function buildTrustedPriceArray(classifiedItems) {
+  const arr = [];
+
+  for (const it of classifiedItems) {
+    if (it.postFilterClass !== "SAME" && it.postFilterClass !== "VARIANT") {
+      continue;
+    }
+
+    const t = it.listingTrustScore ?? 0.8;
+    const weight = Math.max(1, Math.min(3, Math.round(1 + 2 * (t - 0.5))));
+
+    for (let i = 0; i < weight; i++) {
+      arr.push(it.totalJpy);
+    }
+  }
+
+  return arr;
+}
+
+export async function fetchWorldPriceFromEbayMarketplace(
+  keyword,
+  marketplaceId,
+  genreId = null
+) {
+  let pricesJpy = [];
+
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][fetch-start]", { marketplaceId, keyword, genreId });
+  }
+  console.log("[world-price] fetch", { keyword, marketplaceId });
+
+  const token = await getEbayAccessToken();
+  if (!token) {
+    console.warn("[world-price] no ebay token, skip");
+    return null;
+  }
+
+  let q = (keyword || "").trim();
+  if (q.length > 80) {
+    q = q.slice(0, 80);
+  }
+
+  q = q
+    .replace(/セット/g, "")
+    .replace(/まとめ売り/g, "")
+    .replace(/lot/gi, "")
+    .replace(/set/gi, "")
+    .trim();
+
+  if (!q) {
+    console.warn("[world-price] keyword empty after cleanup, skip");
+    return null;
+  }
+
+  const baseUrl =
+    EBAY_ENV === "sandbox"
+      ? "https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search"
+      : "https://api.ebay.com/buy/browse/v1/item_summary/search";
+
+  const url =
+    baseUrl +
+    `?q=${encodeURIComponent(q)}` +
+    "&limit=50&filter=buyingOptions:{FIXED_PRICE}";
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "X-EBAY-C-MARKETPLACE-ID": marketplaceId,
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("[world-price] ebay error", marketplaceId, res.status, text);
+    return null;
+  }
+
+  const data = await res.json();
+  const items = Array.isArray(data.itemSummaries)
+    ? data.itemSummaries
+    : [];
+
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][raw-items]", {
+      marketplaceId,
+      count: items.length,
+      sample: items.slice(0, 5).map((i) => i.title),
+    });
+    console.log("[world-price][debug] raw itemSummaries", {
+      marketplaceId,
+      q,
+      total: items.length,
+    });
+  }
+
+  if (!items.length) {
+    console.log("[world-price] no items", { marketplaceId, q });
+    return null;
+  }
+
+  let filtered = items;
+  const kw = (keyword || "").toUpperCase();
+
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][debug] filter start", {
+      marketplaceId,
+      count: filtered.length,
+    });
+  }
+
+  if (/PSA\s*10/.test(kw)) {
+    filtered = filtered.filter((it) =>
+      /(PSA\s*10|PSA10)/i.test(it.title || "")
+    );
+    if (WORLD_PRICE_DEBUG) {
+      console.log("[world-price][debug] after PSA10 filter", {
+        marketplaceId,
+        count: filtered.length,
+      });
+    }
+  }
+
+  if (/(JAPANESE|JPN|JAPAN)/.test(kw)) {
+    const jpLike = filtered.filter((it) => {
+      const title = (it.title || "") + " " + (it.shortDescription || "");
+      const loc =
+        (it.itemLocation &&
+          (it.itemLocation.country || it.itemLocation.countryCode)) ||
+        "";
+      return (
+        /(JAPANESE|JPN|JAPAN)/i.test(title) ||
+        String(loc).toUpperCase() === "JP"
+      );
+    });
+    if (jpLike.length) {
+      filtered = jpLike;
+      if (WORLD_PRICE_DEBUG) {
+        console.log("[world-price][debug] after Japanese filter", {
+          marketplaceId,
+          count: filtered.length,
+        });
+      }
+    }
+  }
+
+  const numMatch = kw.match(/#?(\d{3})\b/);
+  if (numMatch) {
+    const num = numMatch[1];
+    const numRe = new RegExp(`(\\#${num}(\\D|$)|\\b${num}[A-Z0-9/ ]?)`);
+    const byNumber = filtered.filter((it) =>
+      numRe.test((it.title || "").toUpperCase())
+    );
+    if (byNumber.length >= Math.min(filtered.length, 3)) {
+      filtered = byNumber;
+      if (WORLD_PRICE_DEBUG) {
+        console.log("[world-price][debug] after cardNumber filter", {
+          marketplaceId,
+          count: filtered.length,
+        });
+      }
+    }
+  }
+
+  const setTokens = [];
+  const setCodeMatch = kw.match(/\bSV[0-9A-Z]{1,2}\b/);
+  if (setCodeMatch) {
+    setTokens.push(setCodeMatch[0]);
+  }
+  if (/SCARLET/.test(kw)) setTokens.push("SCARLET");
+  if (/VIOLET/.test(kw)) setTokens.push("VIOLET");
+  if (setTokens.length) {
+    const setRe = new RegExp(setTokens.join("|"), "i");
+    const bySet = filtered.filter((it) => setRe.test(it.title || ""));
+    if (bySet.length >= Math.min(filtered.length, 3)) {
+      filtered = bySet;
+      if (WORLD_PRICE_DEBUG) {
+        console.log("[world-price][debug] after setName filter", {
+          marketplaceId,
+          count: filtered.length,
+        });
+      }
+    }
+  }
+
+  if (!filtered.length) {
+    if (WORLD_PRICE_DEBUG) {
+      console.log(
+        "[world-price][debug] filtered empty, fallback to original items",
+        { marketplaceId }
+      );
+    }
+    filtered = items;
+  }
+
+  const { usd_jpy: rateUsd, gbp_jpy: rateGbp } = await getFxRates();
+
+  const priceItems = [];
+
+  for (const it of filtered) {
+    // パック/BOXフィルタ + ジャンル別NG
+    if (
+      !isListingAllowedForGenre(
+        genreId,
+        it.title || "",
+        it.shortDescription || ""
+      )
+    ) {
+      if (WORLD_PRICE_DEBUG) {
+        console.log("[world-price][debug] listing excluded by NG rules", {
+          marketplaceId,
+          genreId,
+          title: it.title,
+        });
+      }
+      continue;
+    }
+
+    const p = it.price;
+    if (!p || !p.value || !p.currency) continue;
+
+    const priceVal = Number(p.value);
+    if (!Number.isFinite(priceVal) || priceVal <= 0) continue;
+
+    let shippingVal = 0;
+    if (it.shippingOptions && it.shippingOptions.length > 0) {
+      const s = it.shippingOptions[0].shippingCost;
+      if (s && s.value) {
+        shippingVal = Number(s.value);
+      }
+    }
+
+    const totalVal = priceVal + shippingVal;
+
+    let rate = 0;
+    const curr = String(p.currency).toUpperCase();
+
+    if (curr === "USD") rate = rateUsd;
+    else if (curr === "GBP") rate = rateGbp;
+    else if (curr === "JPY") rate = 1;
+    else continue;
+
+    const totalJpy = totalVal * rate;
+
+    if (totalJpy < 1 || totalJpy > 1_000_000_000) continue;
+
+    priceItems.push({
+      totalJpy,
+      title: it.title || "",
+      shortDescription: it.shortDescription || "",
+      itemLocation: it.itemLocation || null,
+      seller: it.seller || null,
+    });
+
+    if (WORLD_PRICE_DEBUG) {
+      console.log("[world-price][debug] price breakdown", {
+        marketplaceId,
+        title: it.title?.substring(0, 50) || "N/A",
+        priceVal,
+        shippingVal,
+        totalVal,
+        currency: curr,
+        rate,
+        totalJpy: Math.round(totalJpy),
+      });
+    }
+  }
+
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][filtered-items-count]", {
+      marketplaceId,
+      genreId,
+      count: priceItems.length,
+    });
+  }
+
+  if (!priceItems.length) {
+    if (WORLD_PRICE_DEBUG) {
+      console.log("[world-price][debug] no price items after filtering", {
+        marketplaceId,
+      });
+    }
+    return null;
+  }
+
+  const classified = classifyAndScoreListings(priceItems);
+  const trustedPrices = buildTrustedPriceArray(classified);
+
+  pricesJpy = trustedPrices;
+
+  const stats = buildPriceStats(pricesJpy, genreId);
+
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][final-prices]", {
+      marketplaceId,
+      prices: trustedPrices.slice(0, 20),
+      stats,
+    });
+  }
+
+  if (!stats) {
+    if (WORLD_PRICE_DEBUG) {
+      console.log("[world-price][debug] stats null (sample too small)", {
+        marketplaceId,
+        q,
+        pricesCount: trustedPrices.length,
+      });
+    }
+    return null;
+  }
+
+  console.log("[world-price] stats", {
+    marketplaceId,
+    q,
+    ...stats,
+  });
+
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][debug] final stats", {
+      marketplaceId,
+      q,
+      pricesCount: pricesJpy.length,
+      stats,
+    });
+  }
+
+  return stats;
+}
+
+// Completed/Sold 用フック(将来用)
+async function fetchWorldPriceFromEbaySold(keyword, marketplaceId, genreId) {
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][debug] fetchSold not implemented, keyword=", {
+      keyword,
+      marketplaceId,
+    });
+  }
+  return null;
+}
+
+// 世界相場更新: orders テーブルへの書き込み
+export async function runWorldPriceUpdate(pool, orderId, sellerId) {
+  const orderRes = await pool.query(
+    `
+      select id, summary, amount, cost_amount
+      from orders
+      where id = $1
+    `,
+    [orderId]
+  );
+  if (orderRes.rowCount === 0) {
+    console.warn("[world-price] order not found", orderId);
+    return;
+  }
+  const order = orderRes.rows[0];
+
+  const keywordRaw = (order.summary || "").split("\n")[0].trim();
+  if (!keywordRaw) {
+    console.warn("[world-price] no summary keyword", { orderId });
+    return;
+  }
+
+  const genreId = detectGenreIdFromSummary(keywordRaw);
+  if (WORLD_PRICE_DEBUG) {
+    console.log("[world-price][genre]", {
+      orderId,
+      summary: keywordRaw,
+      genreId,
+    });
+  }
+
+  if (isSetLikeSummary(keywordRaw)) {
+    console.log("[world-price] detected set/lot item, skip world price", {
+      orderId,
+      summary: keywordRaw,
+    });
+    return;
+  }
+
+  const keywordForEbay = buildEbayKeywordFromSummary(keywordRaw);
+
+  let us = null;
+  let uk = null;
+
+  if (EBAY_SOURCE_MODE === "sold") {
+    us = await fetchWorldPriceFromEbaySold(keywordForEbay, "EBAY_US", genreId);
+    uk = await fetchWorldPriceFromEbaySold(keywordForEbay, "EBAY_GB", genreId);
+
+    if (!us && !uk) {
+      console.warn(
+        "[world-price] sold-mode returned no data, fallback to active listings",
+        { orderId, keywordForEbay }
+      );
+      us = await fetchWorldPriceFromEbayMarketplace(
+        keywordForEbay,
+        "EBAY_US",
+        genreId
+      );
+      uk = await fetchWorldPriceFromEbayMarketplace(
+        keywordForEbay,
+        "EBAY_GB",
+        genreId
+      );
+    }
+  } else {
+    us = await fetchWorldPriceFromEbayMarketplace(
+      keywordForEbay,
+      "EBAY_US",
+      genreId
+    );
+    uk = await fetchWorldPriceFromEbayMarketplace(
+      keywordForEbay,
+      "EBAY_GB",
+      genreId
+    );
+  }
+
+  if (!us && !uk) {
+    console.warn("[world-price] no market data", {
+      orderId,
+      keywordRaw,
+      keywordForEbay,
+    });
+    return;
+  }
+
+  const cand = [us, uk].filter(Boolean);
+  const best = cand.reduce((acc, cur) => {
+    if (!acc) return cur;
+    if ((cur.medianJpy || 0) > (acc.medianJpy || 0)) return cur;
+    return acc;
+  }, null);
+
+  let worldLow = null;
+
+  const usLow =
+    us && typeof us.lowJpy === "number" ? us.lowJpy : null;
+  const ukLow =
+    uk && typeof uk.lowJpy === "number" ? uk.lowJpy : null;
+
+  if (usLow != null || ukLow != null) {
+    const lows = [usLow, ukLow].filter((v) => v != null);
+    worldLow = Math.max(...lows);
+  }
+
+  if (!best || !best.medianJpy) {
+    console.warn("[world-price] best not found", {
+      orderId,
+      keywordRaw,
+      keywordForEbay,
+    });
+    return;
+  }
+
+  if ((worldLow == null || worldLow <= 0) && typeof best.lowJpy === "number") {
+    worldLow = best.lowJpy;
+  }
+
+  if (worldLow != null) {
+    worldLow = Math.round(worldLow);
+  }
+
+  const virtualMedian = best.medianJpy;
+  const costAmount =
+    typeof order.cost_amount === "number" ? order.cost_amount : 0;
+
+  const { revenueMaxPrice, profitMaxPrice } = computeOptimalPrices({
+    virtualMedian,
+    costAmount,
+  });
+
+  await pool.query(
+    `
+      update orders
+         set world_price_median = $1,
+             world_price_high = $2,
+             world_price_low = $3,
+             world_price_sample_count = $4,
+             world_price_revenue_max = $5,
+             world_price_profit_max = $6,
+             updated_at = now()
+       where id = $7
+    `,
+    [
+      best.medianJpy,
+      best.highJpy,
+      worldLow ?? null,
+      best.sampleCount || 0,
+      revenueMaxPrice,
+      profitMaxPrice,
+      orderId,
+    ]
+  );
+
+  console.log("[world-price] updated", {
+    orderId,
+    median: best.medianJpy,
+    high: best.highJpy,
+    low: worldLow,
+    sample: best.sampleCount,
+    revenueMaxPrice,
+    profitMaxPrice,
+    soldAmount: order.amount,
+    errorVsSold: best.medianJpy - order.amount,
+  });
+}
+
+export async function queueWorldPriceUpdate(pool, orderId, sellerId) {
+  setImmediate(() => {
+    runWorldPriceUpdate(pool, orderId, sellerId).catch((err) => {
+      console.error("[world-price] run error", err);
+    });
+  });
 }
