@@ -339,18 +339,36 @@ export async function fetchWorldPriceFromEbayMarketplace(
     }
   }
 
-  const numMatch = kw.match(/#?(\d{3})\b/);
-  if (numMatch) {
-    const num = numMatch[1];
-    const numRe = new RegExp(`(\\#${num}(\\D|$)|\\b${num}[A-Z0-9/ ]?)`);
+  // 🔧 カード番号フィルタ
+  //  - まず「AR 181」「SAR 123」などのレアリティ＋番号パターンを優先
+  //  - それが無ければ、3桁数字の「最後のもの」をカード番号とみなす
+  let cardNum = null;
+
+  // ① レアリティ + 番号 (AR 181 / SAR 123 / SR 091 など)
+  const rarityNum = kw.match(/\b(SR|UR|HR|AR|SAR|SEC|P)\s*([0-9]{2,3})\b/i);
+  if (rarityNum) {
+    cardNum = rarityNum[2];
+  }
+
+  // ② フォールバック: 純粋な3桁数字の「最後のもの」
+  if (!cardNum) {
+    const allNums = kw.match(/\b([0-9]{3})\b/g);
+    if (allNums && allNums.length) {
+      cardNum = allNums[allNums.length - 1]; // 最後の3桁を採用
+    }
+  }
+
+  if (cardNum) {
+    const numRe = new RegExp(`(\\#${cardNum}(\\D|$)|\\b${cardNum}[A-Z0-9/ ]?)`);
     const byNumber = filtered.filter((it) =>
       numRe.test((it.title || "").toUpperCase())
     );
-    if (byNumber.length >= Math.min(filtered.length, 3)) {
+    if (byNumber.length) {
       filtered = byNumber;
       if (WORLD_PRICE_DEBUG) {
         console.log("[world-price][debug] after cardNumber filter", {
           marketplaceId,
+          cardNum,
           count: filtered.length,
         });
       }

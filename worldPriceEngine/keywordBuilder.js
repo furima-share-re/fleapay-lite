@@ -26,6 +26,7 @@ const CHARACTER_MAP = [
   { re: /ピカチュウ|pikachu/i, en: "Pikachu" },
   { re: /リザードン|charizard/i, en: "Charizard" },
   { re: /ギャラドス|gyarados/i, en: "Gyarados" },
+  { re: /カビゴン|snorlax/i, en: "Snorlax" },          // 🔧 追加
   { re: /イーブイ|eevee/i, en: "Eevee" },
   { re: /ミュウツー|mewtwo/i, en: "Mewtwo" },
   { re: /ミュウ(?!ツー)|\bmew\b/i, en: "Mew" },
