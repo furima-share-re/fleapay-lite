@@ -1133,7 +1133,7 @@ app.post("/api/analyze-item", upload.single("image"), async (req, res) => {
     console.log('[AI分析] 画像をOpenAIに送信中...');
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-5.1",
       messages: [{
         role: "user",
         content: [
@@ -1159,7 +1159,7 @@ app.post("/api/analyze-item", upload.single("image"), async (req, res) => {
           { type: "image_url", image_url: { url: dataUrl } }
         ]
       }],
-      max_tokens: 300,
+      max_completion_tokens: 300,
       temperature: 0.3
     });
 
