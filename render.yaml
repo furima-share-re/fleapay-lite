@@ -38,7 +38,7 @@ services:
     buildCommand: npm install
     startCommand: npm start
     envVars:
-      - fromGroup: fleapay-preview
+      - fromGroup: Environment preview
       - key: NODE_ENV
         value: preview
       - key: DATABASE_URL

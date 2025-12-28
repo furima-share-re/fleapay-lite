@@ -33,7 +33,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// OpenAIクライアントの初期化（環境変数が設定されている場合のみ）
+const HAS_OPENAI_CONFIG = !!process.env.OPENAI_API_KEY;
+const openai = HAS_OPENAI_CONFIG
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 // 🆕 S3クライアントの初期化
 // 環境変数をまとめて吸い上げる
@@ -1313,6 +1318,13 @@ app.post("/api/analyze-item", upload.single("image"), async (req, res) => {
 
     console.log(`[AI分析] Processing image: ${f.originalname || 'unknown'} (${f.size} bytes)`);
 
+    if (!openai) {
+      return res.status(503).json({
+        error: "openai_not_configured",
+        message: "OPENAI_API_KEY環境変数が設定されていません"
+      });
+    }
+
     const imageBuffer = await sharp(f.buffer)
       .resize(1024, 1024, { fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 90 })
@@ -1572,6 +1584,13 @@ if (!FileConstructor) {
 }
 const file = new FileConstructor([inputBuffer], "image.png", { type: "image/png" });
     console.log("Sending to OpenAI Images Edit API...");
+
+    if (!openai) {
+      return res.status(503).json({
+        error: "openai_not_configured",
+        message: "OPENAI_API_KEY環境変数が設定されていません"
+      });
+    }
 
     // OpenAI 画像編集
     const result = await openai.images.edit({
