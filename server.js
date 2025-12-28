@@ -700,6 +700,76 @@ app.get("/api/seller/order-detail-full", async (req, res) => {
   }
 });
 
+// ====== 🆕 出店者用: 注文削除（論理削除） ======
+app.delete("/api/seller/orders/:orderId", async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const sellerId = req.query.s;
+    
+    if (!orderId) {
+      return res.status(400).json({ error: "order_id_required" });
+    }
+
+    if (!sellerId) {
+      return res.status(400).json({ error: "seller_id_required" });
+    }
+
+    // 注文の存在確認とseller_idの確認（削除済みも含む）
+    const orderCheck = await pool.query(
+      `select id, seller_id, amount, summary, status, deleted_at from orders where id = $1`,
+      [orderId]
+    );
+
+    if (orderCheck.rowCount === 0) {
+      return res.status(404).json({ error: "order_not_found" });
+    }
+
+    const order = orderCheck.rows[0];
+
+    // 出店者IDが一致するか確認
+    if (order.seller_id !== sellerId) {
+      return res.status(403).json({ 
+        error: "forbidden",
+        message: "この取引を削除する権限がありません。" 
+      });
+    }
+
+    // 既に削除済みの場合
+    if (order.deleted_at) {
+      return res.status(400).json({ 
+        error: "already_deleted",
+        message: "この取引は既に削除されています。" 
+      });
+    }
+
+    // 既に決済済み（paid）の場合は削除を制限（安全のため）
+    if (order.status === "paid") {
+      return res.status(400).json({ 
+        error: "cannot_delete_paid_order",
+        message: "決済済みの注文は削除できません。返金処理を行ってください。" 
+      });
+    }
+
+    // 論理削除（deleted_atを設定）
+    await pool.query(
+      `update orders set deleted_at = now(), updated_at = now() where id = $1`,
+      [orderId]
+    );
+
+    audit("order_deleted_by_seller", { 
+      orderId, 
+      sellerId: order.seller_id, 
+      amount: order.amount,
+      status: order.status
+    });
+
+    res.json({ ok: true, message: "取引を削除しました。" });
+  } catch (e) {
+    console.error("/api/seller/orders/:orderId DELETE error", e);
+    res.status(500).json(sanitizeError(e));
+  }
+});
+
 // 👇 出店者ID使用可否チェックAPI (start_onboarding の前に追加)
 app.get("/api/seller/check-id", async (req, res) => {
   try {
