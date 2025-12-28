@@ -422,7 +422,14 @@ async function deleteOrder() {
   const orderId = currentPayment.order_id || currentPayment.orderId;
   
   // 🆕 orderIdの検証を強化（undefined/null/空文字列/非文字列をチェック）
-  if (!orderId || typeof orderId !== 'string' || orderId.trim() === '') {
+  // 型チェックを先に行い、文字列でない場合は早期リターン（.trim()を呼ぶ前に型を確認）
+  if (!orderId || typeof orderId !== 'string') {
+    adminUI.showMessage('modalMessage', 'error', '注文IDが見つかりません。この決済は注文に紐づいていない可能性があります。');
+    return;
+  }
+  
+  // 文字列であることが確認できたので、安全に.trim()を呼べる
+  if (orderId.trim() === '') {
     adminUI.showMessage('modalMessage', 'error', '注文IDが見つかりません。この決済は注文に紐づいていない可能性があります。');
     return;
   }

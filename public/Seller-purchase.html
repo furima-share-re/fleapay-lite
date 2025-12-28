@@ -4,1089 +4,1741 @@
   <!-- =========================================================
        FleaPay｜出店者UI（こども/おとな） 値札なし写真にも対応
        ★フリマ実態に合わせて簡略化版
-       ・AIは常時ON（/api/analyze-item）
-       ・商品内訳はテキストのみ（summary）
-       ・金額は「ごうけい金額」を1つだけ入力
-       ・ステップ4 / おとな確認も「summary＋合計」のみ
+       
+       【パッチ適用済み v15 - キーパッド追加】
+       ★変更点★
+       1. Step3に画面内キーパッド追加（電卓スタイルのボタン）
+       2. 金額入力欄をreadonly化（ネイティブキーボード非表示）
+       3. inputmode="none"でモバイルキーボードを抑制
+       4. キーパッドボタン：1-9, 0, C（クリア）, ⌫（削除）
+       5. 最大6桁制限（999,999円まで）
+       
+       【v14の変更点】
+       1. QR URL生成ロジック：checkoutUrl最優先、フォールバック時は?order=使用
+       2. パラメータ統一：?o= → ?order=（checkout.html側との互換性）
+       3. skipボタンバグ修正：QRコンテナの表示制御追加
        ========================================================= -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FleaPay｜出店者UI（シンプル価格版）</title>
+  <title>FleaPay｜出店者UI（キッズモード対応版）</title>
 
   <!-- Normalize -->
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/modern-normalize/2.0.0/modern-normalize.min.css"
-        integrity="sha512-LC1aJ7fRkY7O0l6D4J0m0qH2P0Q8rj3bJv9V3nX8v9M3h7Ww4H0r+g8fV2r1uVhWwWqM0B3C1qfKq1QwqQv7xQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer"/>
 
   <style>
     /* ========== 基本トークン ========== */
     :root{
-      --brand:#2563eb;
-      --brand-dk:#1e40af;
-      --danger:#dc2626;
-      --ok:#16a34a;
-      --muted:#6b7280;
-      --text:#1f2937;
-      --bg:#f9fafb;
-      --border:#e5e7eb;
+      --color-bg: #f0f4f8;
+      --color-primary: #3b82f6;
+      --color-secondary: #10b981;
+      --color-text: #1e293b;
+      --color-gold: #f59e0b;
+      --radius: 12px;
+      --shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-
-    /* ========== リセット＋共通 ========== */
-    *,*::before,*::after{box-sizing:border-box}
+    *{box-sizing:border-box;}
     body{
-      font-family:'Hiragino Sans','ヒラギノ角ゴシック',sans-serif;
-      background:var(--bg);
-      color:var(--text);
-      margin:0;
-      padding:0;
+      margin:0;padding:0;
+      font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      background:var(--color-bg);
+      color:var(--color-text);
     }
-    button,input,select,textarea{font:inherit}
-    button{cursor:pointer}
-
-    /* ========== ヘッダー ========== */
-    header{
+    
+    /* ========== コンテナ ========== */
+    #app{
+      max-width:500px;
+      margin:0 auto;
       background:#fff;
-      border-bottom:2px solid var(--border);
-      padding:12px 16px;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+    }
+    
+    /* ========== ステップ共通 ========== */
+    .step{display:none; flex-direction:column; padding:1rem; flex:1;}
+    .step.active{display:flex;}
+    .step h2{
+      font-size:1.5rem;
+      margin:0 0 1rem;
       display:flex;
       align-items:center;
-      justify-content:space-between;
+      gap:0.5rem;
     }
-    header h1{
-      margin:0;
-      font-size:1.1rem;
-      font-weight:700;
-    }
-    .mode-badge{
-      background:var(--brand);
-      color:#fff;
-      padding:4px 10px;
-      border-radius:8px;
-      font-size:.8rem;
-      font-weight:700;
-    }
-
-    /* ========== メインコンテナ ========== */
-    main{
-      max-width:600px;
-      margin:0 auto;
-      padding:16px;
-    }
-
-    /* ========== カード ========== */
-    .card{
-      background:#fff;
-      border-radius:12px;
-      box-shadow:0 1px 3px rgba(0,0,0,0.1);
-      padding:16px;
-      margin-bottom:16px;
-    }
-    .card-title{
-      font-size:1.1rem;
-      font-weight:700;
-      margin-bottom:12px;
-    }
-
+    .step h2 .emoji{font-size:1.8rem;}
+    
     /* ========== ボタン ========== */
     .btn{
-      background:#fff;
-      border:1px solid var(--border);
-      border-radius:8px;
-      padding:10px 16px;
-      transition:all .2s;
+      background:var(--color-primary);
+      color:#fff;
+      border:none;
+      padding:1rem;
+      border-radius:var(--radius);
+      font-size:1rem;
+      font-weight:600;
+      cursor:pointer;
+      box-shadow:var(--shadow);
+      transition:transform 0.1s;
+    }
+    .btn:active{transform:scale(0.98);}
+    .btn:disabled{
+      background:#cbd5e1;
+      cursor:not-allowed;
+      transform:none;
+    }
+    .btn-secondary{
+      background:#64748b;
+    }
+    
+    /* ========== 支払い方法ボタン ========== */
+    .payment-method-group{
+      display:flex;
+      gap:0.5rem;
+      margin:0.5rem 0 1.5rem;
+    }
+    .pay-btn{
+      flex:1;
+      border-radius:999px;
+      border:1px solid #cbd5e1;
+      background:#f8fafc;
+      padding:0.75rem 0.5rem;
+      font-size:0.9rem;
+      cursor:pointer;
+      transition:all 0.15s;
+    }
+    .pay-btn.selected{
+      background:#e0edff;
+      border-color:#3b82f6;
       font-weight:600;
     }
-    .btn:hover:not(:disabled){
-      background:var(--bg);
+    
+    /* ========== Step 0-1: キャラクター登場画面 ========== */
+    #step0-1{
+      background: linear-gradient(180deg, #fef3c7 0%, #fde68a 50%, #fff 100%);
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding:2rem 1rem;
     }
-    .btn:disabled{
-      opacity:.5;
-      cursor:not-allowed;
-    }
-    .btn.primary{
-      background:var(--brand);
-      color:#fff;
-      border-color:var(--brand);
-    }
-    .btn.primary:hover:not(:disabled){
-      background:var(--brand-dk);
-    }
-    .btn.danger{
-      background:var(--danger);
-      color:#fff;
-      border-color:var(--danger);
-    }
-
-    /* ========== フォーム ========== */
-    input[type=text],input[type=number],textarea,select{
-      width:100%;
-      padding:10px 12px;
-      border:1px solid var(--border);
-      border-radius:8px;
-      transition:border .2s;
-    }
-    input:focus,textarea:focus,select:focus{
-      outline:none;
-      border-color:var(--brand);
-    }
-    textarea{
-      min-height:80px;
-      resize:vertical;
-      font-family:inherit;
-    }
-
-    /* ========== ユーティリティ ========== */
-    .hidden{display:none!important}
-    .right{text-align:right}
-    .center{text-align:center}
-    .mt-8{margin-top:8px}
-    .mt-12{margin-top:12px}
-    .mb-8{margin-bottom:8px}
-    .gap-8{gap:8px}
-
-    /* ========== カメラプレビュー ========== */
-    #camera-preview{
-      width:100%;
+    .welcome-container{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:2rem;
       max-width:400px;
-      height:300px;
-      background:#000;
-      border-radius:8px;
-      margin:0 auto;
-      display:block;
-    }
-    #canvas{display:none}
-
-    /* ========== 画像プレビュー ========== */
-    .img-preview{
       width:100%;
-      max-width:320px;
-      max-height:220px;
-      border-radius:16px;
-      margin:0 auto;
-      display:block;
-      object-fit:cover;
     }
-
-    /* ========== ローディングオーバーレイ ========== */
-    #loading-overlay{
-      position:fixed;
-      top:0;
-      left:0;
+    .character-animation{
+      position:relative;
+      width:200px;
+      height:200px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .sakura-particles{
+      position:absolute;
       width:100%;
       height:100%;
-      background:rgba(0,0,0,0.7);
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      z-index:9999;
-      color:#fff;
+      pointer-events:none;
+      overflow:visible;
     }
-    .spinner{
-      border:4px solid rgba(255,255,255,0.3);
-      border-top:4px solid #fff;
-      border-radius:50%;
-      width:48px;
-      height:48px;
-      animation:spin 1s linear infinite;
+    .sakura-particles::before,
+    .sakura-particles::after{
+      content:'🌸';
+      position:absolute;
+      font-size:2rem;
+      animation:sakuraFall 4s ease-in-out infinite;
+      opacity:0;
     }
-    @keyframes spin{
-      0%{transform:rotate(0deg)}
-      100%{transform:rotate(360deg)}
+    .sakura-particles::before{
+      left:10%;
+      animation-delay:0s;
     }
-
-    /* ========== モーダル ========== */
-    .modal-overlay{
-      position:fixed;
-      top:0;
-      left:0;
-      width:100%;
-      height:100%;
-      background:rgba(0,0,0,0.5);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      z-index:1000;
+    .sakura-particles::after{
+      right:10%;
+      animation-delay:2s;
     }
-    .modal{
-      background:#fff;
-      border-radius:12px;
-      padding:24px;
-      max-width:90%;
-      max-height:80%;
-      overflow:auto;
-    }
-    .modal-title{
-      font-size:1.2rem;
-      font-weight:700;
-      margin-bottom:16px;
-    }
-
-    /* ========== QRコード ========== */
-    #qr-code{
-      margin:0 auto;
-      display:block;
-    }
-
-    /* ========== こどもモード専用 ========== */
-    .kid-hint{
-      font-size:1.1rem;
-      line-height:1.6;
-    }
-    .kid-btn{
-      font-size:1.2rem;
-      padding:14px 20px;
-    }
-
-    /* ========== 価格パッド（合計専用） ========== */
-    .pp-grid{
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:8px;
-      margin-top:12px;
-    }
-    .pp-btn{
-      aspect-ratio:1;
-      font-size:1.3rem;
-      font-weight:700;
-      border:2px solid var(--border);
-      border-radius:12px;
-      background:#fff;
-      transition:all .2s;
-    }
-    .pp-btn:active{
-      transform:scale(0.95);
-      background:var(--brand);
-      color:#fff;
-    }
-    .pp-preset{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:12px;
-    }
-    .pp-preset button{
-      flex:1;
-      min-width:80px;
-      padding:12px;
-      font-size:1.1rem;
-      font-weight:700;
-    }
-    .pp-display{
-      background:#f3f4f6;
-      border:2px solid var(--border);
-      border-radius:8px;
-      padding:16px;
-      text-align:right;
-      font-size:1.6rem;
-      font-weight:700;
-      min-height:50px;
-    }
-
-    /* こども向け 丸ボタン金額＋テンキー */
-    .pp-circle-row{
-      display:flex;
-      gap:12px;
-      margin-top:12px;
-      margin-bottom:8px;
-      justify-content:space-between;
-    }
-    .pp-circle{
-      flex:1;
-      height:96px;
-      border-radius:999px;
-      border:3px solid #dbeafe;
-      background:#fff;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      font-size:1.2rem;
-      font-weight:800;
-      color:var(--brand);
-    }
-    .pp-circle:active{
-      background:var(--brand);
-      color:#fff;
-      transform:scale(.97);
-    }
-    .pp-other-btn{
-      margin-top:4px;
-      width:100%;
-      border-radius:999px;
-      border:2px solid var(--border);
-      background:#fff;
-      padding:12px;
-      font-size:1.05rem;
-      font-weight:700;
-    }
-    .pp-other-btn:active{
-      background:#e5e7eb;
-    }
-    .pp-keypad-wrap{
-      margin-top:12px;
-    }
-    .pp-grid .pp-btn{
-      height:80px;
-      border-radius:16px;
-      font-size:1.5rem;
-    }
-
-    /* ========== チェックボックス行 ========== */
-    .ckrow{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      justify-content:center;
-      padding:8px 12px;
-    }
-    .cktext{
-      white-space:nowrap;
-      font-size:1.05rem;
-    }
-    .ckbox{
-      width:28px;
-      height:28px;
-      accent-color:var(--brand);
-    }
-    @supports not (accent-color: red){
-      .ckbox{
-        -webkit-appearance:auto;
-        appearance:auto;
+    @keyframes sakuraFall{
+      0%{
+        top:-20%;
+        transform:rotate(0deg);
+        opacity:0;
+      }
+      10%{
+        opacity:0.7;
+      }
+      90%{
+        opacity:0.3;
+      }
+      100%{
+        top:120%;
+        transform:rotate(360deg);
+        opacity:0;
       }
     }
-
-    /* === 商品概要ボックス（はみ出し防止） === */
-    .summary-box{
-      max-height:140px;
-      overflow:auto;
-      word-break:break-word;
+    .kimonya-character{
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform:translate(-50%, -50%);
+      width:180px;
+      height:auto;
+      z-index:10;
+      animation:bounce 2s ease-in-out infinite;
     }
-    .summary-box pre{
-      white-space:pre-wrap;
-      word-break:break-word;
+    @keyframes bounce{
+      0%, 100%{transform:translate(-50%, -50%) translateY(0);}
+      50%{transform:translate(-50%, -50%) translateY(-20px);}
+    }
+    .welcome-title{
+      font-size:2rem;
+      font-weight:700;
+      margin:0;
+      line-height:1.4;
+    }
+    .welcome-title .subtitle{
+      display:block;
+      font-size:1.2rem;
+      color:#64748b;
+      margin-top:0.5rem;
+    }
+    .welcome-message{
+      font-size:1.1rem;
+      color:#475569;
       margin:0;
     }
-
-    /* === 音声入力UI === */
-    .voice-row{
+    .btn-hero{
+      font-size:1.3rem;
+      padding:1.5rem 3rem;
+      background:linear-gradient(135deg, var(--color-primary) 0%, #2563eb 100%);
+      box-shadow:0 8px 16px rgba(59,130,246,0.3);
+      position:relative;
+      overflow:hidden;
+      border:none;
+      color:#fff;
+      border-radius:var(--radius);
+      font-weight:700;
+      cursor:pointer;
+      transition:transform 0.1s;
+    }
+    .btn-hero::before{
+      content:'';
+      position:absolute;
+      top:50%;
+      left:50%;
+      width:0;
+      height:0;
+      border-radius:50%;
+      background:rgba(255,255,255,0.3);
+      transform:translate(-50%,-50%);
+      transition:width 0.6s, height 0.6s;
+    }
+    .btn-hero:active{
+      transform:scale(0.98);
+    }
+    .btn-hero:active::before{
+      width:300px;
+      height:300px;
+    }
+    
+    /* ========== Step 0-2: ミッション説明画面 ========== */
+    #step0-2{
+      align-items:center;
+      padding:2rem 1rem;
+    }
+    .mission-container{
+      display:flex;
+      flex-direction:column;
+      width:100%;
+      max-width:400px;
+    }
+    .mission-steps{
+      margin:2rem 0;
+      width:100%;
+    }
+    .mission-card{
+      background:linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border-radius:var(--radius);
+      padding:1.5rem;
+      margin-bottom:1rem;
       display:flex;
       align-items:center;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:8px;
+      gap:1rem;
+      box-shadow:var(--shadow);
+      transition:transform 0.2s;
     }
-    .voice-status{
-      font-size:.82rem;
-      color:var(--muted);
+    .mission-card:hover{
+      transform:scale(1.02);
     }
-    .voice-recording{
+    .mission-icon{
+      font-size:3rem;
+      flex-shrink:0;
+    }
+    .mission-text{
+      text-align:left;
+      flex:1;
+    }
+    .mission-number{
+      font-weight:700;
+      font-size:1.1rem;
+      color:var(--color-primary);
+      margin-bottom:0.25rem;
+    }
+    .mission-desc{
+      font-size:0.9rem;
+      color:#64748b;
+      line-height:1.4;
+    }
+    .mission-arrow{
+      font-size:2rem;
+      color:var(--color-primary);
+      margin:0.5rem 0;
+      text-align:center;
+    }
+    
+    /* ========== Step 0-3: 準備OK確認画面 ========== */
+    #step0-3{
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding:2rem 1rem;
+    }
+    .ready-container{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:2rem;
+      max-width:400px;
+      width:100%;
+    }
+    .ready-icon{
+      font-size:6rem;
       animation:pulse 1.5s ease-in-out infinite;
     }
     @keyframes pulse{
-      0%, 100%{opacity:1}
-      50%{opacity:0.5}
+      0%, 100%{
+        transform:scale(1);
+        opacity:1;
+      }
+      50%{
+        transform:scale(1.1);
+        opacity:0.8;
+      }
+    }
+    .ready-title{
+      font-size:2rem;
+      font-weight:700;
+      margin:0;
+    }
+    .ready-message{
+      font-size:1.1rem;
+      line-height:1.8;
+      margin:0;
+      color:#475569;
+    }
+    .ready-hint{
+      display:block;
+      font-size:0.9rem;
+      color:#94a3b8;
+      margin-top:0.5rem;
+    }
+    .btn-camera{
+      background:linear-gradient(135deg, var(--color-secondary) 0%, #059669 100%);
+      box-shadow:0 8px 16px rgba(16,185,129,0.3);
+      font-size:1.2rem;
+      padding:1.5rem 2.5rem;
+      animation:breathe 2s ease-in-out infinite;
+      border:none;
+      color:#fff;
+      border-radius:var(--radius);
+      font-weight:700;
+      cursor:pointer;
+    }
+    @keyframes breathe{
+      0%, 100%{
+        transform:scale(1);
+      }
+      50%{
+        transform:scale(1.05);
+      }
+    }
+    .btn-camera:active{
+      transform:scale(0.98);
+      animation:none;
+    }
+    .btn-small{
+      font-size:0.9rem;
+      padding:0.75rem 1.5rem;
+    }
+    
+    /* ========== Step1: カメラ画面（フルスクリーン） ========== */
+    #step1{
+      padding:0;
+      position:relative;
+    }
+    #videoContainer{
+      position:relative;
+      width:100%;
+      height:100vh;
+      height:100dvh;
+      background:#000;
+      overflow:hidden;
+    }
+    #video{
+      position:absolute;
+      top:0;left:0;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+    #canvas{display:none;}
+    
+    #cameraOverlay{
+      position:absolute;
+      top:0;left:0;
+      width:100%;
+      height:100%;
+      pointer-events:none;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      padding:1rem 1rem 2rem 1rem;
+      padding-bottom:max(2rem, env(safe-area-inset-bottom));
+    }
+    .overlay-top, .overlay-bottom{
+      pointer-events:auto;
+    }
+    .overlay-top{
+      background:rgba(0,0,0,0.5);
+      color:#fff;
+      padding:1rem;
+      border-radius:var(--radius);
+      text-align:center;
+    }
+    .overlay-middle{
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform:translate(-50%, -50%);
+      border:3px dashed rgba(255,255,255,0.6);
+      border-radius:var(--radius);
+      width:80%;
+      height:60%;
+      pointer-events:none;
+    }
+    .overlay-middle::after{
+      content:'📝 しょうひんを ここに あわせてね';
+      position:absolute;
+      bottom:-3rem;
+      left:50%;
+      transform:translateX(-50%);
+      color:#fff;
+      background:rgba(0,0,0,0.7);
+      padding:0.5rem 1rem;
+      border-radius:var(--radius);
+      font-size:0.9rem;
+      white-space:nowrap;
+    }
+    .overlay-bottom{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:1rem;
+      padding-bottom:1rem;
+      min-height:100px;
+    }
+    #captureBtn{
+      width:80px;
+      height:80px;
+      border-radius:50%;
+      background:#fff;
+      border:5px solid var(--color-primary);
+      font-size:2rem;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition:transform 0.1s;
+    }
+    #captureBtn:active{transform:scale(0.95);}
+    #torchBtn{
+      width:50px;
+      height:50px;
+      border-radius:50%;
+      background:rgba(255,255,255,0.3);
+      border:2px solid #fff;
+      color:#fff;
+      font-size:1.5rem;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition:all 0.2s;
+    }
+    #torchBtn.active{
+      background:#fbbf24;
+      border-color:#fbbf24;
+    }
+    
+    /* ========== Step2: AI解析中 ========== */
+    #step2{
+      align-items:center;
+      justify-content:center;
+      gap:2rem;
+    }
+    #step2 .loader{
+      width:60px;
+      height:60px;
+      border:6px solid #e2e8f0;
+      border-top-color:var(--color-primary);
+      border-radius:50%;
+      animation:spin 1s linear infinite;
+    }
+    @keyframes spin{
+      to{transform:rotate(360deg);}
+    }
+    
+    /* ========== Step3: 価格入力 ========== */
+    .preview{
+      margin-bottom:1rem;
+      border-radius:var(--radius);
+      overflow:hidden;
+      box-shadow:var(--shadow);
+    }
+    .preview img{
+      width:100%;
+      display:block;
+    }
+    .info-box{
+      background:#f1f5f9;
+      padding:1rem;
+      border-radius:var(--radius);
+      margin-bottom:1rem;
+      font-size:0.9rem;
+      line-height:1.6;
+    }
+    .price-input-group{
+      margin-bottom:1.5rem;
+    }
+    .price-input-group label{
+      display:block;
+      font-weight:600;
+      margin-bottom:0.5rem;
+    }
+    .price-input-wrapper{
+      display:flex;
+      align-items:center;
+      gap:0.5rem;
+      background:#f8fafc;
+      border:2px solid #cbd5e1;
+      border-radius:var(--radius);
+      padding:0.5rem 1rem;
+    }
+    .price-input-wrapper.focused{
+      border-color:var(--color-primary);
+      background:#fff;
+    }
+    .price-input-wrapper .currency{
+      font-size:1.2rem;
+      font-weight:600;
+      color:#64748b;
+    }
+    .price-input-wrapper input{
+      flex:1;
+      border:none;
+      background:transparent;
+      font-size:1.5rem;
+      font-weight:600;
+      outline:none;
+      padding:0.5rem 0;
+    }
+    
+    /* ========== キーパッド ========== */
+    .keypad{
+      margin-top:0.5rem;
+      user-select:none;
+    }
+    .keypad-row{
+      display:flex;
+      gap:0.5rem;
+      margin-bottom:0.5rem;
+    }
+    .key-btn{
+      flex:1;
+      padding:0.75rem 0;
+      font-size:1.3rem;
+      font-weight:600;
+      border-radius:var(--radius);
+      border:none;
+      background:#e2e8f0;
+      box-shadow:var(--shadow);
+      cursor:pointer;
+      transition:transform 0.05s, background 0.1s;
+    }
+    .key-btn:active{
+      transform:scale(0.97);
+      background:#cbd5e1;
+    }
+    .key-btn.key-wide{
+      flex:1.4;
+    }
+    
+    /* ========== Step4: 最終確認 ========== */
+    .confirm-card{
+      background:#f8fafc;
+      border-radius:var(--radius);
+      padding:1.5rem;
+      margin-bottom:1.5rem;
+      box-shadow:var(--shadow);
+    }
+    .confirm-row{
+      display:flex;
+      justify-content:space-between;
+      margin-bottom:0.5rem;
+      font-size:0.95rem;
+    }
+    .confirm-row.total{
+      margin-top:1rem;
+      padding-top:1rem;
+      border-top:2px solid #cbd5e1;
+      font-size:1.3rem;
+      font-weight:700;
+      color:var(--color-primary);
+    }
+    .checkbox-group{
+      background:#fef3c7;
+      padding:1rem;
+      border-radius:var(--radius);
+      margin-bottom:1rem;
+      display:flex;
+      align-items:center;
+      gap:0.75rem;
+    }
+    .checkbox-group input[type="checkbox"]{
+      width:24px;
+      height:24px;
+      cursor:pointer;
+    }
+    .checkbox-group label{
+      font-weight:600;
+      cursor:pointer;
+      flex:1;
+    }
+    
+    /* ========== Step5: 登録完了 ========== */
+    #step5{
+      align-items:center;
+      text-align:center;
+      padding:2rem 1rem;
+    }
+    .qr-container{
+      margin:2rem 0;
+      padding:2rem;
+      background:#f8fafc;
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    #qrcode{
+      display:inline-block;
+      padding:1rem;
+      background:#fff;
+      border-radius:var(--radius);
+    }
+    
+    /* ========== 購入者属性タグ ========== */
+    .buyer-attrs{
+      width:100%;
+      max-width:420px;
+      margin:2rem auto 1.5rem;
+      text-align:left;
+      background:#f1f5f9;
+      padding:1.5rem;
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    .buyer-hint{
+      font-size:0.8rem;
+      color:#64748b;
+      margin:0.25rem 0 0.75rem;
+    }
+    .attr-group{
+      margin-bottom:0.75rem;
+    }
+    .attr-label{
+      font-size:0.85rem;
+      font-weight:600;
+      margin-bottom:0.35rem;
+      color:#475569;
+    }
+    .attr-buttons{
+      display:flex;
+      flex-wrap:wrap;
+      gap:0.4rem;
+    }
+    .attr-btn{
+      flex:1 1 40%;
+      min-width:40%;
+      border-radius:999px;
+      border:1px solid #cbd5e1;
+      background:#f8fafc;
+      padding:0.4rem 0.6rem;
+      font-size:0.8rem;
+      cursor:pointer;
+      transition:all 0.2s;
+    }
+    .attr-btn:hover{
+      background:#e0edff;
+    }
+    .attr-btn.selected{
+      background:#e0edff;
+      border-color:#3b82f6;
+      color:#1e293b;
+      font-weight:600;
+    }
+    
+    /* ========== デバッグログ ========== */
+    #debugPanel{
+      position:fixed;
+      bottom:0;
+      left:0;
+      right:0;
+      max-height:200px;
+      overflow-y:auto;
+      background:rgba(0,0,0,0.9);
+      color:#0f0;
+      font-family:monospace;
+      font-size:11px;
+      padding:0.5rem;
+      display:none;
+      z-index:9999;
+    }
+    #debugPanel.show{display:block;}
+    #debugToggle{
+      position:fixed;
+      bottom:10px;
+      right:10px;
+      background:#000;
+      color:#0f0;
+      border:1px solid #0f0;
+      padding:0.5rem;
+      cursor:pointer;
+      z-index:10000;
+      border-radius:4px;
     }
   </style>
 </head>
 
 <body>
-  <!-- ========== ヘッダー ========== -->
-  <header>
-    <h1>🛍️ FleaPay 出店者</h1>
-    <div class="mode-badge" id="mode-badge">こども</div>
-  </header>
-
-  <!-- ========== メインコンテンツ ========== -->
-  <main>
-    <!-- ========== こどもモード：ステップ1（撮影） ========== -->
-    <div id="kid-step1" class="card">
-      <div class="card-title kid-hint">📸 しょうひんを とろう</div>
-      <video id="camera-preview" autoplay playsinline></video>
-      <div class="center mt-12">
-        <button class="btn primary kid-btn" id="k1-capture">📷 とる</button>
+<div id="app">
+  
+  <!-- ========== Step 0-1: キャラクター登場画面 ========== -->
+  <div id="step0-1" class="step active">
+    <div class="welcome-container">
+      <div class="character-animation">
+        <div class="sakura-particles"></div>
+        <img 
+          src="/images/kimonya.svg" 
+          alt="キモニャ店長" 
+          class="kimonya-character"
+        />
       </div>
-      <canvas id="canvas"></canvas>
+      
+      <h1 class="welcome-title">
+        こんにちは!<br/>
+        <span class="subtitle">きょうは きみが おみせやさん</span>
+      </h1>
+      
+      <p class="welcome-message">
+        キモニャ店長が<br/>
+        おてつだい するよ
+      </p>
+      
+      <button class="btn btn-hero" id="startBtn">
+        ✨ はじめる
+      </button>
     </div>
-
-    <!-- ========== こどもモード：ステップ2（AI解析→明細確認） ========== -->
-    <div id="kid-step2" class="card hidden">
-      <div class="card-title kid-hint">✨ AIが みています…</div>
-      <img id="k2-photo" class="img-preview" alt="撮影写真"/>
-
-      <div class="mt-12">
-        <label class="kid-hint" style="font-weight:700">📝 しょうひん じょうほう</label>
-        <div id="k2-summary-view"
-             class="kid-hint summary-box"
-             style="background:#fff;border:1px solid #eee;border-radius:10px;padding:10px;min-height:56px">（しょうひん じょうほう なし）</div>
-
-        <div id="k2-summary-edit-wrap" style="margin-top:8px;display:none">
-          <label style="font-weight:700">🎤 こえ でも いれられます（各行「商品名 ×数量」でも ざっくり でOK）</label>
-          <textarea id="k2-summary-edit" placeholder="カード ×1&#10;キーホルダー ×2"></textarea>
-          <div class="voice-row">
-            <button class="btn" id="k2-voice-start">🎤 こえで いれる</button>
-            <div id="k2-voice-status" class="voice-status">
-              マイクがつかえるスマホで つかえます
-            </div>
-            <div style="flex:1"></div>
-            <button class="btn" id="k2-summary-apply">このないようで つかう</button>
+  </div>
+  
+  <!-- ========== Step 0-2: ミッション説明画面 ========== -->
+  <div id="step0-2" class="step">
+    <div class="mission-container">
+      <h2><span class="emoji">📚</span> やることリスト</h2>
+      
+      <div class="mission-steps">
+        <div class="mission-card">
+          <div class="mission-icon">📸</div>
+          <div class="mission-text">
+            <div class="mission-number">① さつえい</div>
+            <div class="mission-desc">しょうひんの しゃしんを とる</div>
           </div>
         </div>
-
-        <div class="right mt-8">
-          <button class="btn" id="k2-edit-toggle">✍️ てで なおす</button>
+        
+        <div class="mission-arrow">↓</div>
+        
+        <div class="mission-card">
+          <div class="mission-icon">💰</div>
+          <div class="mission-text">
+            <div class="mission-number">② ねだん</div>
+            <div class="mission-desc">いくらで うるかを きめる</div>
+          </div>
+        </div>
+        
+        <div class="mission-arrow">↓</div>
+        
+        <div class="mission-card">
+          <div class="mission-icon">✨</div>
+          <div class="mission-text">
+            <div class="mission-number">③ はんばい</div>
+            <div class="mission-desc">QRコードを みせる</div>
+          </div>
         </div>
       </div>
-
-      <div class="mt-12 center">
-        <button class="btn primary kid-btn" id="k2-next">✅ つぎへ（おかね）</button>
+      
+      <button class="btn btn-hero" id="understoodBtn">
+        👍 わかった!
+      </button>
+    </div>
+  </div>
+  
+  <!-- ========== Step 0-3: 準備OK確認画面 ========== -->
+  <div id="step0-3" class="step">
+    <div class="ready-container">
+      <div class="ready-icon">🎯</div>
+      
+      <h2 class="ready-title">じゅんび は いい?</h2>
+      
+      <p class="ready-message">
+        これから カメラが ひらくよ<br/>
+        <span class="ready-hint">しょうひんを きれいに うつそう</span>
+      </p>
+      
+      <button class="btn btn-camera" id="openCameraBtn">
+        📷 カメラを ひらく
+      </button>
+      
+      <button class="btn btn-secondary btn-small" id="skipToQRBtn">
+        🛍️ さきに QR を みせる
+      </button>
+    </div>
+  </div>
+  
+  <!-- ========== Step1: カメラ撮影（フルスクリーン） ========== -->
+  <div id="step1" class="step">
+    <div id="videoContainer">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
+      
+      <div id="cameraOverlay">
+        <div class="overlay-top">
+          <div class="emoji">✨</div>
+          <div>AIが みています…</div>
+          <div style="font-size:0.8rem; margin-top:0.5rem;">しょうひんを はっきり うつしてね</div>
+        </div>
+        <div class="overlay-middle"></div>
+        <div class="overlay-bottom">
+          <button id="torchBtn">💡</button>
+          <button id="captureBtn">📷</button>
+        </div>
       </div>
     </div>
+  </div>
+  
+  <!-- ========== Step2: AI解析中 ========== -->
+  <div id="step2" class="step">
+    <div class="loader"></div>
+    <h2><span class="emoji">🥷</span> ニンシャが かんがえています…</h2>
+    <p style="font-size:0.9rem;color:#64748b;margin-top:0.25rem;">
+      （AI と いっしょに、ものの かち を チェックちゅう）
+    </p>
+  </div>
+  
+  <!-- ========== Step3: 商品情報＆価格入力 ========== -->
+  <div id="step3" class="step">
+    <h2><span class="emoji">📝</span> しょうひん じょうほう</h2>
+    
+    <div class="preview">
+      <img id="previewImg" alt="商品写真"/>
+    </div>
+    
+    <div class="info-box" id="itemSummary">
+      （しょうひん じょうほう なし）
+    </div>
+    
+    <h2><span class="emoji">💰</span> ごうけいの ねだんを いれよう</h2>
+    <p style="color:#64748b; font-size:0.9rem; margin-bottom:1rem;">
+      こまかい たんか や ざいこ は いりません。<br/>
+      「ぜんぶで いくら？」だけ いれてね。
+    </p>
+    
+    <div class="price-input-group">
+      <label for="totalPriceInput">ごうけい 金額</label>
+      <div class="price-input-wrapper" id="priceWrapper">
+        <span class="currency">¥</span>
+        <input type="number" 
+               id="totalPriceInput" 
+               placeholder="0" 
+               min="0" 
+               step="1"
+               inputmode="none"
+               readonly />
+      </div>
+    </div>
+    
+    <!-- ★追加：キーパッド -->
+    <div class="keypad" id="priceKeypad">
+      <div class="keypad-row">
+        <button type="button" class="key-btn" data-key="1">1</button>
+        <button type="button" class="key-btn" data-key="2">2</button>
+        <button type="button" class="key-btn" data-key="3">3</button>
+      </div>
+      <div class="keypad-row">
+        <button type="button" class="key-btn" data-key="4">4</button>
+        <button type="button" class="key-btn" data-key="5">5</button>
+        <button type="button" class="key-btn" data-key="6">6</button>
+      </div>
+      <div class="keypad-row">
+        <button type="button" class="key-btn" data-key="7">7</button>
+        <button type="button" class="key-btn" data-key="8">8</button>
+        <button type="button" class="key-btn" data-key="9">9</button>
+      </div>
+      <div class="keypad-row">
+        <button type="button" class="key-btn key-wide" data-key="clear">C</button>
+        <button type="button" class="key-btn" data-key="0">0</button>
+        <button type="button" class="key-btn" data-key="del">⌫</button>
+      </div>
+    </div>
+    <!-- ★ここまで追加 -->
+    
+    <button class="btn" id="nextToConfirm" disabled>👀 さいしゅう かくにん</button>
+  </div>
+  
+  <!-- ========== Step4: 最終確認（保護者チェック） ========== -->
+  <div id="step4" class="step">
+    <h2><span class="emoji">👀</span> これで だいじょうぶ！</h2>
+    
+    <div class="preview">
+      <img id="confirmImg" alt="商品写真"/>
+    </div>
+    
+    <div class="confirm-card">
+      <div class="confirm-row">
+        <span>しょうひん：</span>
+        <span id="confirmSummary">-</span>
+      </div>
+      <div class="confirm-row total">
+        <span>ごうけい：</span>
+        <span id="confirmTotal">¥0</span>
+      </div>
+    </div>
+    
+    <h2><span class="emoji">🔐</span> 保護者確認</h2>
+    <div class="checkbox-group">
+      <input type="checkbox" id="parentCheck"/>
+      <label for="parentCheck">内容を確認しました</label>
+    </div>
 
-    <!-- ========== こどもモード：ステップ3（ごうけい金額だけ入力） ========== -->
-    <div id="kid-step3" class="card hidden">
-      <div class="card-title kid-hint">💰 ごうけいの ねだんを いれよう</div>
+    <h2><span class="emoji">💳</span> しはらい ほうほう</h2>
+    <div class="payment-method-group">
+      <button type="button" class="pay-btn selected" data-method="cashless">
+        💳 QR / カード（ネコマルおすすめ）
+      </button>
+      <button type="button" class="pay-btn" data-method="cash">
+        💴 現金で もらった
+      </button>
+    </div>
+    <p style="font-size:0.8rem;color:#64748b;margin-top:-0.5rem;margin-bottom:1.5rem;">
+      💡「QR / カード（ネコマルおすすめ）」を えらぶと、<br>
+      若旦那・若女将ダッシュボードの
+      <strong>キャッシュレスバッジ</strong> に ちかづきます。
+    </p>
 
-      <p class="kid-hint" style="font-size:.98rem;margin-bottom:8px">
-        こまかい たんか や ざいこ は いりません。<br>
-        「ぜんぶで いくら？」だけ いれてね。
+    <button class="btn" id="registerBtn" disabled>✅ とうろく する</button>
+  </div>
+  
+  <!-- ========== Step5: 登録完了＆QRコード表示 ========== -->
+  <div id="step5" class="step">
+    <h2><span class="emoji">✅</span> とうろく かんりょう！</h2>
+    <p style="margin-top:0.25rem;">
+      🌸キモニャ・🥷ニンシャ・🐱ネコマルから「ありがとう！」
+    </p>
+    <p></p>
+    
+    <div class="qr-container">
+      <div id="qrcode"></div>
+    </div>
+    
+    <div class="buyer-attrs">
+      <h2><span class="emoji">🙋‍♀️</span> かってくれた ひと</h2>
+      <p class="buyer-hint">
+        おきゃくさんの だいたいの じょうほうを えらんでね。<br>
+        ここを 入れてくれると、
+        若旦那・若女将ダッシュボードの
+        <strong>「データ名人メーター」</strong> が 上がります。<br>
+        うしろでは、影のニンシャ隊が こっそり おてつだいしてくれます。<br>
+        ※なまえ や れんらくさき は ひつよう ありません。
       </p>
 
-      <div style="font-weight:700;margin-top:4px;margin-bottom:2px">ごうけい 金額</div>
-      <div id="k3-total-display"
-           style="background:#f3f4f6;border-radius:10px;border:2px solid #d1d5db;padding:14px 12px;font-size:2rem;font-weight:700;text-align:right;min-height:44px">
-        ¥0
-      </div>
-
-      <!-- ① ボタンをおすと「ほかの きんがく」ゾーンをひらく -->
-      <div class="mt-8">
-        <button class="btn pp-other-btn" id="k3-other">きんがく を えらぶ</button>
-      </div>
-
-      <!-- ② ほかの金額＋テンキー（はじめは かくしておく） -->
-      <div id="k3-keypad" class="pp-keypad-wrap hidden">
-
-        <!-- 商品名 -->
-        <div id="k3-item-title" style="font-size:.9rem;color:#4b5563;margin-bottom:4px"></div>
-
-        <!-- プリセット：500 / 1000 / AIきんがく -->
-        <div class="pp-preset">
-          <button class="btn" data-total-preset="500">¥500</button>
-          <button class="btn" data-total-preset="1000">¥1,000</button>
-          <button class="btn" id="k3-ai-btn" data-total-preset="0" disabled style="opacity:.4">
-            AI きんがく
-          </button>
-        </div>
-
-        <!-- 入力中の数字（テキスト金額は内部用に残しつつ、非表示にする） -->
-        <div id="k3-total-input" class="pp-display hidden">0</div>
-
-        <!-- テンキー -->
-        <div class="pp-grid">
-          <button class="btn pp-btn" data-total-key="1">1</button>
-          <button class="btn pp-btn" data-total-key="2">2</button>
-          <button class="btn pp-btn" data-total-key="3">3</button>
-          <button class="btn pp-btn" data-total-key="4">4</button>
-          <button class="btn pp-btn" data-total-key="5">5</button>
-          <button class="btn pp-btn" data-total-key="6">6</button>
-          <button class="btn pp-btn" data-total-key="7">7</button>
-          <button class="btn pp-btn" data-total-key="8">8</button>
-          <button class="btn pp-btn" data-total-key="9">9</button>
-          <button class="btn pp-btn" data-total-key="C">C</button>
-          <button class="btn pp-btn" data-total-key="0">0</button>
-          <button class="btn pp-btn" data-total-key="OK">✓</button>
+      <div class="attr-group">
+        <div class="attr-label">国籍/区分</div>
+        <div class="attr-buttons" data-attr="customer_type">
+          <button type="button" class="attr-btn" data-value="domestic">日本のひと</button>
+          <button type="button" class="attr-btn" data-value="inbound">外国からきたひと</button>
         </div>
       </div>
 
-      <div class="mt-12 center">
-        <button class="btn primary kid-btn" id="k3-done">✅ かんりょう</button>
+      <div class="attr-group">
+        <div class="attr-label">性別</div>
+        <div class="attr-buttons" data-attr="gender">
+          <button type="button" class="attr-btn" data-value="male">男性</button>
+          <button type="button" class="attr-btn" data-value="female">女性</button>
+          <button type="button" class="attr-btn" data-value="unknown">わからない</button>
+        </div>
       </div>
+
+      <div class="attr-group">
+        <div class="attr-label">年齢帯</div>
+        <div class="attr-buttons" data-attr="age_band">
+          <button type="button" class="attr-btn" data-value="child">こども</button>
+          <button type="button" class="attr-btn" data-value="age_16_29">16〜29</button>
+          <button type="button" class="attr-btn" data-value="age_30_59">30〜59</button>
+          <button type="button" class="attr-btn" data-value="age_60_plus">60+</button>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary" id="saveBuyerAttrBtn" disabled>
+        💾 じょうほうを ほぞんして メーターUP
+      </button>
+      <p class="buyer-hint" id="buyerAttrStatus"></p>
     </div>
-
-    <!-- ========== こどもモード：ステップ4（確認） ========== -->
-    <div id="kid-step4" class="card hidden">
-      <div class="card-title kid-hint">👀 さいしゅう かくにん</div>
-      <div id="k4-summary" style="background:#f9fafb;border-radius:8px;padding:12px;margin-top:8px">
-        <!-- 動的生成 -->
-      </div>
-
-      <div class="ckrow mt-12">
-        <input type="checkbox" id="k4-check-ok" class="ckbox"/>
-        <label for="k4-check-ok" class="cktext">これで だいじょうぶ！</label>
-      </div>
-
-      <div class="mt-12 center">
-        <button class="btn primary kid-btn" id="k4-adult">👨‍👩‍👧 おとなに かくにんしてもらう</button>
-      </div>
-    </div>
-
-    <!-- ========== おとなモード確認モーダル ========== -->
-    <div id="adult-modal" class="modal-overlay hidden">
-      <div class="modal">
-        <div class="modal-title">🔐 保護者確認</div>
-        <div id="adult-summary">
-          <!-- 動的生成 -->
-        </div>
-
-        <div class="ckrow mt-12">
-          <input type="checkbox" id="adult-final-check" class="ckbox"/>
-          <label for="adult-final-check" class="cktext">内容を確認しました</label>
-        </div>
-
-        <div style="display:flex;gap:8px;margin-top:16px">
-          <button class="btn" id="adult-cancel">キャンセル</button>
-          <button class="btn primary" id="adult-register" style="flex:1">🚀 登録する</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ========== 完了画面 ========== -->
-    <div id="complete-screen" class="card hidden">
-      <div class="card-title center">✅ とうろく かんりょう！</div>
-      <div class="center mt-12">
-        <p class="kid-hint">このQRコードを おきゃくさんに みせてね</p>
-        <canvas id="qr-code"></canvas>
-        <p style="margin-top:12px;font-weight:700;font-size:1.1rem" id="qr-url-text"></p>
-      </div>
-      <div class="center mt-12">
-        <button class="btn primary kid-btn" id="reset-btn">🔄 あたらしく はじめる</button>
-      </div>
-    </div>
-
-    <!-- ========== デバッグログ ========== -->
-    <div class="card">
-      <details>
-        <summary style="cursor:pointer;font-weight:700">🐛 デバッグログ</summary>
-        <div id="debug-log" style="background:#f3f4f6;padding:12px;border-radius:8px;margin-top:8px;font-size:.85rem;max-height:300px;overflow:auto;font-family:monospace;white-space:pre-wrap">
-        </div>
-      </details>
-    </div>
-  </main>
-
-  <!-- ========== ローディングオーバーレイ ========== -->
-  <div id="loading-overlay" class="hidden">
-    <div class="spinner"></div>
-    <p style="margin-top:16px;font-size:1.1rem">しょうひん を かいせき ちゅう…</p>
+    
+    <button class="btn btn-secondary" onclick="location.reload()">
+      🔄 つぎの しょうひん を とうろく
+    </button>
   </div>
+  
+</div>
 
-  <!-- ========== QRCode.js ========== -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- デバッグパネル -->
+<button id="debugToggle">🐛 デバッグログ</button>
+<div id="debugPanel"></div>
 
-  <!-- ========== メインスクリプト ========== -->
-  <script>
-    'use strict';
+<!-- QRコード生成ライブラリ -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
-    /* ========== ユーティリティ ========== */
-    const $  = (sel) => document.querySelector(sel);
-    const $$ = (sel) => document.querySelectorAll(sel);
-
-    function log(label, data){
-      const t  = new Date().toLocaleTimeString('ja-JP');
-      const msg = `[${t}] ${label}`;
-      console.log(msg, data);
-      const logEl = $('#debug-log');
-      if(logEl){
-        logEl.textContent += msg + '\n' + (typeof data==='object' ? JSON.stringify(data,null,2) : data) + '\n\n';
-        logEl.scrollTop = logEl.scrollHeight;
-      }
-    }
-
-    function escapeHtml(str){
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
-    }
-
-    function showLoading(){
-      $('#loading-overlay').classList.remove('hidden');
-    }
-    function hideLoading(){
-      $('#loading-overlay').classList.add('hidden');
-    }
-
-    /* ========== バイブレーション ========== */
-    const fx = {
-      ok(){ try{ navigator.vibrate?.(24); }catch{} },
-      ng(){ try{ navigator.vibrate?.([40,40]); }catch{} }
+<script>
+(function(){
+  'use strict';
+  
+  /* ========== デバッグログ ========== */
+  const debugLog = (() => {
+    const panel = document.getElementById('debugPanel');
+    const toggle = document.getElementById('debugToggle');
+    let visible = false;
+    
+    toggle.addEventListener('click', () => {
+      visible = !visible;
+      panel.classList.toggle('show', visible);
+    });
+    
+    return (msg) => {
+      const time = new Date().toLocaleTimeString('ja-JP');
+      const line = document.createElement('div');
+      line.textContent = `[${time}] ${msg}`;
+      panel.appendChild(line);
+      panel.scrollTop = panel.scrollHeight;
+      console.log(msg);
     };
-
-    /* ------------------ 音声入力（こども用） ------------------ */
-    let voiceRec = null;
-    let isVoiceRecording = false;
-
-    function updateVoiceUI(state, msg){
-      const st  = $('#k2-voice-status');
-      const btn = $('#k2-voice-start');
-      if(st && msg) st.textContent = msg;
-      if(btn){
-        const busy = state === 'on';
-        btn.disabled = busy;
-        if(busy){
-          btn.classList.add('primary', 'voice-recording');
-          btn.textContent = '🔴 はなしています...';
-        }else{
-          btn.classList.remove('primary', 'voice-recording');
-          btn.textContent = '🎤 こえで いれる';
-        }
+  })();
+  
+  /* ========== グローバル状態 ========== */
+  let capturedImageDataURL = null;
+  let aiAnalysisResult = null;
+  let sellerId = null;
+  let videoStream = null;
+  let torchEnabled = false;
+  let paymentMethod = "cashless";
+  
+  let currentOrderId = null;
+  const buyerAttrs = {
+    customer_type: null,
+    gender: null,
+    age_band: null
+  };
+  
+  // ========== サブスクリプションチェック ==========
+  async function ensureSubscribedSeller() {
+    debugLog('📡 サブスクチェック開始...');
+    
+    if (!sellerId) {
+      debugLog('❌ sellerId が未設定');
+      const app = document.getElementById('app');
+      if (app) {
+        app.innerHTML = `
+          <div style="padding:16px;">
+            <h1 style="font-size:1.1rem;margin-bottom:8px;">この販売画面はご利用いただけません</h1>
+            <p style="font-size:.9rem;line-height:1.6;">
+              この「出店者用 販売画面」は、プロ / キッズプランご契約中の出店者さま専用です。<br>
+              サブスクのお申し込みやプラン変更については、運営までお問い合わせください。
+            </p>
+          </div>
+        `;
       }
+      return false;
     }
 
-    function parseJapaneseQuantity(text){
-      const kanjiNum = {
-        '一':1, '二':2, '三':3, '四':4, '五':5,
-        '六':6, '七':7, '八':8, '九':9, '十':10
-      };
-      text = text.replace(/(\d+)\s*(まい|枚|こ|個|つ|本|ほん)/gi, ' ×$1');
-      text = text.replace(/([一二三四五六七八九十])\s*(まい|枚|こ|個|つ|本|ほん)/gi, (m, num) => {
-        return ' ×' + (kanjiNum[num] || 1);
+    try {
+      debugLog(`📤 API呼び出し: /api/seller/summary?s=${sellerId}`);
+      const res = await fetch(`/api/seller/summary?s=${encodeURIComponent(sellerId)}`);
+      debugLog(`📥 APIレスポンス: ${res.status}`);
+      
+      const data = await res.json();
+      debugLog(`📦 データ: ${JSON.stringify(data)}`);
+
+      if (!res.ok) {
+        console.error("seller summary error", data);
+        debugLog(`❌ APIエラー: ${res.status}`);
+        const app = document.getElementById('app');
+        if (app) {
+          app.innerHTML = `<p style="padding:16px;">出店者情報の取得に失敗しました。</p>`;
+        }
+        return false;
+      }
+
+      if (
+        data.isSubscribed === false ||
+        data.planType === "standard" ||
+        !data.planType
+      ) {
+        debugLog(`❌ サブスク未加入: isSubscribed=${data.isSubscribed}, planType=${data.planType}`);
+        const app = document.getElementById('app');
+        if (app) {
+          app.innerHTML = `
+            <div style="padding:16px;">
+              <h1 style="font-size:1.1rem;margin-bottom:8px;">この販売画面はご利用いただけません</h1>
+              <p style="font-size:.9rem;line-height:1.6;">
+                この「出店者用 販売画面」は、プロ / キッズプランご契約中の出店者さま専用です。<br>
+                サブスクのお申し込みやプラン変更については、運営までお問い合わせください。
+              </p>
+            </div>
+          `;
+        }
+        return false;
+      }
+
+      debugLog('✅ サブスクチェック成功');
+      return true;
+    } catch (e) {
+      console.error("ensureSubscribedSeller error", e);
+      debugLog(`❌ 例外発生: ${e.message}`);
+      
+      if (window.location.hostname === 'localhost' || 
+          window.location.hostname.includes('127.0.0.1') || 
+          window.location.hostname.includes('render.com') ||
+          window.location.hostname.includes('onrender.com')) {
+        debugLog('⚠️ 開発/テスト環境: サブスクチェックをスキップしてUI表示');
+        return true;
+      }
+      
+      const app = document.getElementById('app');
+      if (app) {
+        app.innerHTML = `<p style="padding:16px;">通信エラーが発生しました。ネットワークをご確認ください。<br><small>${e.message}</small></p>`;
+      }
+      return false;
+    }
+  }
+  
+  /* ========== Step制御 ========== */
+  function showStep(stepId){
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById(stepId).classList.add('active');
+    debugLog(`Step changed: ${stepId}`);
+  }
+  
+  /* ========== URLパラメータからsellerId取得 ========== */
+  function getSellerIdFromURL(){
+    const params = new URLSearchParams(window.location.search);
+    const s = params.get('s');
+    if(!s){
+      debugLog('⚠️ sellerId not found in URL. Using default: seller_demo');
+      return 'seller_demo';
+    }
+    debugLog(`✅ sellerId detected: ${s}`);
+    return s;
+  }
+  
+  /* ========== Step 0 Navigation ========== */
+  function setupEventListeners() {
+    document.getElementById('startBtn')?.addEventListener('click', () => {
+      showStep('step0-2');
+      debugLog('User clicked: はじめる');
+    });
+    
+    document.getElementById('understoodBtn')?.addEventListener('click', () => {
+      showStep('step0-3');
+      debugLog('User clicked: わかった');
+    });
+    
+    document.getElementById('openCameraBtn')?.addEventListener('click', () => {
+      showStep('step1');
+      initCamera();
+      debugLog('User clicked: カメラをひらく');
+    });
+    
+    document.getElementById('skipToQRBtn')?.addEventListener('click', () => {
+      const baseURL = window.location.origin;
+      const qrURL = `${baseURL}/checkout.html?s=${sellerId}`;
+      
+      const qrContainer = document.querySelector('.qr-container');
+      if (qrContainer) qrContainer.style.display = 'block';
+      
+      showStep('step5');
+      displayQR(qrURL);
+      setupBuyerAttrButtons();
+      
+      debugLog('User clicked: QRをさきにみせる');
+    });
+  }
+  
+  /* ========== Step1: カメラ起動＆撮影 ========== */
+  async function initCamera(){
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const captureBtn = document.getElementById('captureBtn');
+    const torchBtn = document.getElementById('torchBtn');
+    
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width:  { ideal: 1600 },
+          height: { ideal: 1200 },
+          aspectRatio: { ideal: 4/3 }
+        },
+        audio: false
       });
-      if(/×\d+/.test(text)){
-        return text.trim();
-      }
-      return text.trim() + ' ×1';
-    }
-
-    function setupVoiceInput(){
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if(!SR){
-        updateVoiceUI('off','このスマホでは おんせいにゅうりょく は つかえません');
-        return;
-      }
-      voiceRec = new SR();
-      voiceRec.lang = 'ja-JP';
-      voiceRec.interimResults = false;
-      voiceRec.continuous = false;
-      voiceRec.maxAlternatives = 1;
-
-      voiceRec.onstart = () =>{
-        isVoiceRecording = true;
-        updateVoiceUI('on','きいています…「カード 2まい」などと はなしてね');
-        fx.ok();
-      };
-      voiceRec.onend = () =>{
-        isVoiceRecording = false;
-        updateVoiceUI('off','もういちど はなすときは、ボタンを おす');
-      };
-      voiceRec.onerror = (e) =>{
-        isVoiceRecording = false;
-        console.warn('voice error', e);
-        let msg = 'マイクのエラー でも てで つづけられます';
-        if(e.error === 'not-allowed'){
-          msg = 'マイクのきょか が ひつようです';
-        }else if(e.error === 'no-speech'){
-          msg = 'こえが きこえませんでした もういちど ためしてね';
-        }else if(e.error === 'audio-capture'){
-          msg = 'マイクが みつかりません';
+      
+      video.srcObject = videoStream;
+      debugLog(`✅ Camera started: ${video.videoWidth}x${video.videoHeight}`);
+      
+      const track = videoStream.getVideoTracks()[0];
+      const caps = track.getCapabilities?.();
+      
+      if(caps){
+        debugLog(`📷 Camera capabilities: ${JSON.stringify(caps)}`);
+        
+        const constraints = { advanced: [] };
+        
+        if(caps.focusMode && caps.focusMode.includes('continuous')){
+          constraints.advanced.push({ focusMode: 'continuous' });
+          debugLog('✅ Continuous autofocus enabled');
         }
-        updateVoiceUI('off', msg);
-        fx.ng();
-      };
-      voiceRec.onresult = (ev)=>{
-        let text = '';
-        for(let i=0; i<ev.results.length; i++){
-          text += ev.results[i][0].transcript;
+        
+        if(constraints.advanced.length > 0){
+          await track.applyConstraints(constraints);
         }
-        text = text.trim();
-        if(!text) return;
-        const ta = $('#k2-summary-edit');
-        if(!ta) return;
-        text = text.replace(/[。、]/g, ' ');
-        const line = parseJapaneseQuantity(text);
-        ta.value = (ta.value ? ta.value + '\n' : '') + line;
-        fx.ok();
-        log('音声認識結果', {original: text, parsed: line});
-      };
-    }
-
-    function cleanupVoice(){
-      if(voiceRec && isVoiceRecording){
-        try{ voiceRec.stop(); }catch(e){ console.warn('voice cleanup error', e); }
       }
-      voiceRec = null;
-      isVoiceRecording = false;
-    }
-    window.addEventListener('beforeunload', cleanupVoice);
-
-    /* ========== データモデル ========== */
-    const model = {
-      photo: null,        // Base64画像
-      summary: '',        // 商品明細テキスト（ざっくり）
-      items: [],          // 互換性維持用（1件だけ詰める）
-      totalAmount: 0,     // 画面で決めた ごうけい金額
-      aiAmount: null      // ★ AIが読んだ ごうけい金額
-    };
-
-    /* ========== カメラ起動 ========== */
-    let stream = null;
-    async function startCamera(){
-      try{
-        if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-          alert('このスマホでは カメラが つかえません');
-          return;
-        }
-        stream = await navigator.mediaDevices.getUserMedia({
-          video:{ facingMode:'environment', width:1280, height:720 },
-          audio:false
-        });
-        const video = $('#camera-preview');
-        video.srcObject = stream;
-        log('カメラ起動', 'OK');
-
-        // 🔦 使える端末ではライトONを試す（失敗しても無視）
-        try{
-          const track = stream.getVideoTracks()[0];
-          const caps  = track.getCapabilities && track.getCapabilities();
-          if(caps && caps.torch){
-            await track.applyConstraints({ advanced:[{ torch:true }] });
-            log('torch', 'ON適用');
+      
+      if(caps && caps.torch){
+        torchBtn.style.display = 'flex';
+        torchBtn.addEventListener('click', async () => {
+          torchEnabled = !torchEnabled;
+          try {
+            await track.applyConstraints({
+              advanced: [{ torch: torchEnabled }]
+            });
+            torchBtn.classList.toggle('active', torchEnabled);
+            debugLog(`💡 Torch: ${torchEnabled ? 'ON' : 'OFF'}`);
+          } catch(e){
+            debugLog(`⚠️ Torch toggle failed: ${e.message}`);
           }
-        }catch(e){
-          log('torch unsupported', e.message || e);
-        }
-      }catch(err){
-        log('カメラエラー', err.message);
-        alert('カメラが使えません: '+err.message);
+        });
+      } else {
+        torchBtn.style.display = 'none';
       }
+      
+    } catch(err) {
+      debugLog(`❌ Camera error: ${err.message}`);
+      alert('カメラが起動できませんでした。ブラウザの設定を確認してください。');
+      return;
     }
-
-    /* ========== 写真撮影 ========== */
-    $('#k1-capture').addEventListener('click', ()=>{
-      const video  = $('#camera-preview');
-      const canvas = $('#canvas');
-      canvas.width  = video.videoWidth  || 640;
-      canvas.height = video.videoHeight || 480;
+    
+    captureBtn.addEventListener('click', () => {
+      captureAndProcessImage(video, canvas);
+    });
+  }
+  
+  /* ========== 画像キャプチャ＆処理 ========== */
+  function captureAndProcessImage(video, canvas){
+    const vw = video.videoWidth  || 640;
+    const vh = video.videoHeight || 480;
+    
+    debugLog(`📸 Capturing: ${vw}x${vh}`);
+    
+    const sx = vw * 0.025;
+    const sy = vh * 0.025;
+    const sw = vw * 0.95;
+    const sh = vh * 0.95;
+    
+    debugLog(`📐 Crop area: ${sx}, ${sy}, ${sw}x${sh} (95% of frame)`);
+    
+    const needRotate = vw > vh && window.innerHeight > window.innerWidth;
+    const SIZE = 1024;
+    
+    if(needRotate){
+      canvas.width  = SIZE;
+      canvas.height = SIZE;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      model.photo = canvas.toDataURL('image/jpeg', 0.8);
-      fx.ok();
-      log('撮影完了', `${canvas.width}x${canvas.height}`);
-      if(stream){
-        stream.getTracks().forEach(t => t.stop());
-        stream = null;
-      }
-      $('#kid-step1').classList.add('hidden');
-      $('#kid-step2').classList.remove('hidden');
-      $('#k2-photo').src = model.photo;
-      analyzePhoto();
-    });
-
-    /* ========== AI解析（/api/analyze-item） ========== */
-    async function analyzePhoto(){
-      showLoading();
-      try{
-        const blob = await (await fetch(model.photo)).blob();
-        const fd = new FormData();
-        fd.append('image', blob, 'capture.jpg');
-        log('AI解析リクエスト送信', 'image/jpeg');
-
-        const res  = await fetch('/api/analyze-item', { method:'POST', body: fd });
-        const json = await res.json();
-        log('AI解析レスポンス', json);
-
-        // ① 商品テキスト
-        if(json.summary){
-          model.summary = json.summary.trim();
-        }else{
-          model.summary = '';
-        }
-
-        // ② 金額（ごうけい）
-        if(typeof json.amount === 'number' && json.amount > 0){
-          model.aiAmount = json.amount;
-        }else{
-          model.aiAmount = null;
-        }
-
-        updateKidPanels();
-        updateTotalItemTitle();
-        updateAiAmountUI();
-      }catch(err){
-        log('AI解析エラー', err.message);
-        alert('AI解析でエラーが発生しました');
-      }finally{
-        hideLoading();
-      }
+      
+      ctx.filter = 'contrast(1.25) brightness(1.05)';
+      
+      ctx.save();
+      ctx.translate(SIZE/2, SIZE/2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.drawImage(video, sx, sy, sw, sh, -SIZE/2, -SIZE/2, SIZE, SIZE);
+      ctx.restore();
+      ctx.filter = 'none';
+      
+      debugLog('🔄 Image rotated 90° for portrait mode');
+    } else {
+      canvas.width  = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext('2d');
+      
+      ctx.filter = 'contrast(1.25) brightness(1.05)';
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
+      ctx.filter = 'none';
     }
-
-    /* ========== こどもパネル更新 ========== */
-    function updateKidPanels(){
-      const summaryHtml = model.summary?.trim()
-        ? `<pre>${escapeHtml(model.summary)}</pre>`
-        : '（しょうひん じょうほう なし）';
-      $('#k2-summary-view').innerHTML = summaryHtml;
-      $('#k2-summary-edit').value = model.summary || '';
-      updateTotalItemTitle();
+    
+    capturedImageDataURL = canvas.toDataURL('image/jpeg', 0.95);
+    debugLog(`✅ Image captured (wide angle): ${capturedImageDataURL.substring(0,50)}...`);
+    debugLog(`📦 Image size: ${Math.round(capturedImageDataURL.length / 1024)}KB`);
+    
+    if(videoStream){
+      videoStream.getTracks().forEach(t => t.stop());
+      debugLog('📷 Camera stopped');
     }
-
-    /* ========== 明細編集トグル ========== */
-    $('#k2-edit-toggle').addEventListener('click', ()=>{
-      const wrap = $('#k2-summary-edit-wrap');
-      if(wrap.style.display==='none'){
-        wrap.style.display='block';
-        $('#k2-edit-toggle').textContent='🔽 とじる';
-      }else{
-        wrap.style.display='none';
-        $('#k2-edit-toggle').textContent='✍️ てで なおす';
-      }
-    });
-
-    /* ========== 明細手動適用 ========== */
-    $('#k2-summary-apply').addEventListener('click', ()=>{
-      model.summary=$('#k2-summary-edit').value.trim();
-      updateKidPanels();
-      fx.ok();
-    });
-
-    /* ========== 明細：音声入力 ========== */
-    setupVoiceInput();
-    const voiceBtn = $('#k2-voice-start');
-    if(voiceBtn){
-      voiceBtn.addEventListener('click', ()=>{
-        if(!voiceRec){
-          alert('このスマホでは おんせいにゅうりょく が つかえません');
-          return;
-        }
-        if(isVoiceRecording){ return; }
-        try{
-          voiceRec.start();
-        }catch(e){
-          console.warn('voice start error', e);
-          updateVoiceUI('off', 'もういちど ためしてください');
-        }
+    
+    showStep('step2');
+    analyzeImage();
+  }
+  
+  /* ========== Step2: AI画像解析 ========== */
+  async function analyzeImage(){
+    if(!capturedImageDataURL){
+      debugLog('❌ No image to analyze');
+      alert('画像がありません');
+      showStep('step1');
+      return;
+    }
+    
+    const blob = dataURLtoBlob(capturedImageDataURL);
+    const formData = new FormData();
+    formData.append('image', blob, 'item.jpg');
+    
+    debugLog('📤 Sending image to /api/analyze-item...');
+    
+    try{
+      const res = await fetch('/api/analyze-item', {
+        method: 'POST',
+        body: formData
       });
-    }
-
-    /* ========== ステップ2→3（ごうけい金額へ） ========== */
-    $('#k2-next').addEventListener('click', ()=>{
-      fx.ok();
-      $('#kid-step2').classList.add('hidden');
-      $('#kid-step3').classList.remove('hidden');
-      // summary はそのまま・金額は AI金額があれば それ を初期値に
-      if(model.aiAmount && model.aiAmount > 0){
-        totalInput = String(model.aiAmount);
-      }else{
-        totalInput = '0';
+      
+      if(!res.ok){
+        throw new Error(`HTTP ${res.status}`);
       }
-      updateTotalDisplay();
-      updateTotalItemTitle();
-      updateAiAmountUI();
-      const kp = $('#k3-keypad');
-      if(kp) kp.classList.add('hidden');   // 開いたままなら閉じる
-    });
-
-    /* ========== ごうけい金額用パッド ========== */
-    let totalInput = '0';
-
-    function updateTotalDisplay(){
-      const n = parseInt(totalInput.replace(/[^\d]/g,''),10) || 0;
-      $('#k3-total-input').textContent = totalInput || '0';
-      $('#k3-total-display').textContent = '¥' + n.toLocaleString('ja-JP');
-      model.totalAmount = n;
-    }
-
-    function handleTotalKey(key){
-      if(key === 'C'){
-        totalInput = '0';
-        fx.ng();
-      }else if(key === 'OK'){
-        fx.ok();
-      }else{
-        if(totalInput === '0') totalInput = '';
-        totalInput += key;
-        fx.ok();
-      }
-      updateTotalDisplay();
-    }
-
-    // ★ 商品名ラベル更新
-    function updateTotalItemTitle(){
-      const el = $('#k3-item-title');
-      if(!el) return;
-      const firstLine = (model.summary || '')
-        .split('\n')
-        .map(s => s.trim())
-        .filter(Boolean)[0];
-      el.textContent = firstLine || '';
-    }
-
-    // ★ AIきんがくボタンの表示を更新
-    function updateAiAmountUI(){
-      const btn  = $('#k3-ai-btn');
-      if(!btn) return;
-      if(model.aiAmount && model.aiAmount > 0){
-        const y = model.aiAmount.toLocaleString('ja-JP');
-        btn.textContent          = `AI：¥${y}`;
-        btn.dataset.totalPreset  = String(model.aiAmount);
-        btn.disabled             = false;
-        btn.style.opacity        = '1';
-      }else{
-        btn.textContent          = 'AI きんがく';
-        btn.dataset.totalPreset  = '0';
-        btn.disabled             = true;
-        btn.style.opacity        = '.4';
-      }
-    }
-
-    function setupTotalPad(){
-      // テンキー
-      $$('#kid-step3 .pp-btn').forEach(btn=>{
-        btn.addEventListener('click', e=>{
-          const key = e.currentTarget.dataset.totalKey;
-          handleTotalKey(key);
-        });
-      });
-      // ほかのきんがくエリア内のプリセット金額(500/1000/AI)
-      $$('#k3-keypad [data-total-preset]').forEach(btn=>{
-        btn.addEventListener('click', e=>{
-          const v = parseInt(e.currentTarget.dataset.totalPreset,10) || 0;
-          totalInput = String(v);
-          updateTotalDisplay();
-          fx.ok();
-        });
-      });
-      // 「ほか の きんがく」でテンキーをひらく
-      const other = $('#k3-other');
-      if(other){
-        other.addEventListener('click', ()=>{
-          const kp = $('#k3-keypad');
-          if(kp) kp.classList.remove('hidden');
-          updateTotalItemTitle();
-          updateAiAmountUI();
-          fx.ok();
-        });
-      }
-    }
-
-    /* ========== 価格入力完了→確認 ========== */
-    $('#k3-done').addEventListener('click', ()=>{
-      if(!model.totalAmount || model.totalAmount <= 0){
-        if(!confirm('金額が 0えん です。このまま すすみますか？')){
-          fx.ng();
-          return;
-        }
-      }
-      fx.ok();
-      $('#kid-step3').classList.add('hidden');
-      $('#kid-step4').classList.remove('hidden');
-      renderKidConfirm();
-    });
-
-    /* ========== こども確認画面（summary＋合計だけ） ========== */
-    function renderKidConfirm(){
-      let html = '';
-      html += '<div style="font-weight:700;margin-bottom:6px">📝 かいものの ないよう</div>';
-      const s = model.summary?.trim()
-        ? escapeHtml(model.summary)
-        : '（とくに きめていません）';
-      html += `<div style="background:#f3f4f6;border-radius:8px;padding:10px;white-space:pre-wrap;font-size:.95rem">${s}</div>`;
-      html += `<div style="text-align:right;margin-top:12px;font-size:1.2rem;font-weight:700">ごうけい：¥${(model.totalAmount||0).toLocaleString('ja-JP')}</div>`;
-      $('#k4-summary').innerHTML = html;
-    }
-
-    /* ========== こども→おとなモーダル ========== */
-    $('#k4-adult').addEventListener('click', ()=>{
-      const ck = $('#k4-check-ok');
-      if(!ck.checked){
-        alert('チェックボックスに ✓ を いれてね');
-        fx.ng();
-        return;
-      }
-      fx.ok();
-      renderAdultModal();
-      $('#adult-modal').classList.remove('hidden');
-    });
-
-    /* ========== おとなモーダル描画 ========== */
-    function renderAdultModal(){
-      let html = '<div style="font-size:.95rem;margin-bottom:8px">以下の内容で登録します。</div>';
-      const s = model.summary?.trim()
-        ? escapeHtml(model.summary)
-        : '商品一覧は入力されていません';
-      html += `<div style="background:#f9fafb;border-radius:8px;padding:10px;white-space:pre-wrap;margin-bottom:12px">${s}</div>`;
-      html += `<div style="text-align:right;font-weight:700;font-size:1.1rem">合計金額：¥${(model.totalAmount||0).toLocaleString('ja-JP')}</div>`;
-      $('#adult-summary').innerHTML = html;
-    }
-
-    $('#adult-cancel').addEventListener('click', ()=>{
-      $('#adult-modal').classList.add('hidden');
-      $('#adult-final-check').checked = false;
-    });
-
-    /* ========== 登録処理（/api/register-sale） ========== */
-    $('#adult-register').addEventListener('click', async ()=>{
-      const ck = $('#adult-final-check');
-      if(!ck.checked){
-        alert('内容を確認してチェックを入れてください');
-        return;
-      }
-      showLoading();
-      try{
-        // items が空なら、summary＋合計から1行だけ作る
-        let items = model.items && model.items.length ? model.items : [];
-        if(items.length === 0){
-          const firstLine = (model.summary || '').split('\n').map(s=>s.trim()).filter(Boolean)[0] || 'まとめて';
-          items = [{
-            name: firstLine,
-            qty: 1,
-            price: model.totalAmount || 0
-          }];
-        }
-        const payload = {
-          // 撮影した写真
-          photo: model.photo,
-          // 商品のテキスト概要（AI＋手入力）
-          summary: model.summary || '',
-          // 将来用・互換用に1行だけでも items を入れておく
-          items,
-          // 画面で決めた合計金額（整数）
-          totalAmount: model.totalAmount || 0,
-          // amount というフィールド名を使っている旧API向け保険
-          amount: model.totalAmount || 0,
-          // AIが読んだ金額（あれば）
-          aiAmount: model.aiAmount || null
-        };
-        log('登録リクエスト送信', payload);
-        const res = await fetch('/api/register-sale', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify(payload)
-        });
-        const json = await res.json();
-        log('登録レスポンス', json);
-        if(!json.ok){
-          throw new Error(json.error || '登録失敗');
-        }
-        $('#adult-modal').classList.add('hidden');
-        $('#kid-step4').classList.add('hidden');
-        $('#complete-screen').classList.remove('hidden');
-        const qrUrl = json.purchaseUrl || 'https://example.com/pay/'+json.saleId;
-        $('#qr-url-text').textContent = qrUrl;
-        new QRCode($('#qr-code'), {
-          text: qrUrl,
-          width: 200,
-          height: 200
-        });
-        fx.ok();
-      }catch(err){
-        log('登録エラー', err.message);
-        alert('登録でエラーが発生しました: '+err.message);
-        fx.ng();
-      }finally{
-        hideLoading();
-      }
-    });
-
-    /* ========== リセット ========== */
-    $('#reset-btn').addEventListener('click', ()=>{
+      
+      const data = await res.json();
+      debugLog(`✅ AI response: ${JSON.stringify(data)}`);
+      
+      aiAnalysisResult = data;
+      showStep('step3');
+      renderStep3();
+      
+    } catch(err) {
+      debugLog(`❌ AI analysis failed: ${err.message}`);
+      alert('AI解析に失敗しました。もう一度試してください。');
+      showStep('step1');
       location.reload();
+    }
+  }
+  
+  /* ========== Step3: 商品情報表示＆価格入力 ========== */
+  function renderStep3(){
+    const previewImg = document.getElementById('previewImg');
+    const itemSummary = document.getElementById('itemSummary');
+    const totalPriceInput = document.getElementById('totalPriceInput');
+    const nextBtn = document.getElementById('nextToConfirm');
+    const priceWrapper = document.getElementById('priceWrapper');
+    
+    previewImg.src = capturedImageDataURL;
+    
+    if(aiAnalysisResult && aiAnalysisResult.summary){
+      itemSummary.textContent = aiAnalysisResult.summary;
+    } else {
+      itemSummary.textContent = '（AI で しょうひん を にんしき できませんでした）';
+    }
+    
+    if (aiAnalysisResult && aiAnalysisResult.total) {
+      const autoAmount = parseInt(aiAnalysisResult.total, 10);
+      if (autoAmount > 0) {
+        totalPriceInput.value = autoAmount;
+        nextBtn.disabled = false;
+        debugLog(`💰 AI total auto-filled: ${autoAmount}`);
+      }
+    }
+    
+    if (!totalPriceInput.value || parseInt(totalPriceInput.value, 10) <= 0) {
+      nextBtn.disabled = true;
+    }
+    
+    totalPriceInput.addEventListener('focus', () => {
+      priceWrapper.classList.add('focused');
+    });
+    totalPriceInput.addEventListener('blur', () => {
+      priceWrapper.classList.remove('focused');
+    });
+    
+    totalPriceInput.addEventListener('input', () => {
+      const val = parseInt(totalPriceInput.value, 10);
+      nextBtn.disabled = !(val > 0);
+    });
+    
+    nextBtn.addEventListener('click', () => {
+      showStep('step4');
+      renderStep4();
     });
 
-    /* ========== 初期化 ========== */
-    startCamera();
-    setupTotalPad();
-    updateAiAmountUI();      // ★ 最初はAIボタンOFF表示
-    log('アプリ起動', 'v1.0-simple-total');
-  </script>
+    // ★追加：キーパッド初期化
+    setupPriceKeypad(totalPriceInput, nextBtn);
+  }
+  
+  /* ========== キーパッドのセットアップ ========== */
+  function setupPriceKeypad(inputEl, nextBtn){
+    const keypad = document.getElementById('priceKeypad');
+    if (!keypad || !inputEl) return;
+
+    keypad.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-key]');
+      if (!btn) return;
+
+      const key = btn.dataset.key;
+      let val = inputEl.value || '';
+
+      if (key === 'clear') {
+        val = '';
+      } else if (key === 'del') {
+        val = val.slice(0, -1);
+      } else {
+        // 0〜9の数字
+        if (val.length >= 6) {
+          // 桁数制限（例: 最大999,999円）
+          return;
+        }
+        if (val === '0') {
+          val = '';
+        }
+        val += key;
+      }
+
+      // 先頭の 0 を抑制
+      if (val.length > 1 && val[0] === '0') {
+        val = val.replace(/^0+/, '');
+        if (val === '') val = '0';
+      }
+
+      inputEl.value = val;
+
+      const num = parseInt(val || '0', 10);
+      nextBtn.disabled = !(num > 0);
+
+      debugLog(`⌨️ keypad input = ${val} (${num})`);
+    });
+  }
+  
+  /* ========== Step4: 最終確認 ========== */
+  function renderStep4(){
+    const confirmImg = document.getElementById('confirmImg');
+    const confirmSummary = document.getElementById('confirmSummary');
+    const confirmTotal = document.getElementById('confirmTotal');
+    const parentCheck = document.getElementById('parentCheck');
+    const registerBtn = document.getElementById('registerBtn');
+    
+    confirmImg.src = capturedImageDataURL;
+    
+    const summary = (aiAnalysisResult && aiAnalysisResult.summary) 
+                    ? aiAnalysisResult.summary 
+                    : '（しょうひん じょうほう なし）';
+    confirmSummary.textContent = summary;
+    
+    const totalVal = parseInt(document.getElementById('totalPriceInput').value, 10) || 0;
+    confirmTotal.textContent = `¥${totalVal.toLocaleString()}`;
+    
+    parentCheck.addEventListener('change', () => {
+      registerBtn.disabled = !parentCheck.checked;
+    });
+
+    paymentMethod = "cashless";
+    const payButtons = document.querySelectorAll('.pay-btn');
+    
+    payButtons.forEach(btn => {
+      if (btn.getAttribute('data-method') === 'cashless') {
+        btn.classList.add('selected');
+      } else {
+        btn.classList.remove('selected');
+      }
+    });
+    debugLog(`💳 Payment method initialized: ${paymentMethod}`);
+    
+    payButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        paymentMethod = btn.getAttribute('data-method');
+        payButtons.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        debugLog(`💳 paymentMethod = ${paymentMethod}`);
+      });
+    });
+    
+    registerBtn.addEventListener('click', async () => {
+      registerBtn.disabled = true;
+      registerBtn.textContent = '📤 とうろく ちゅう…';
+      
+      await registerSale(summary, totalVal);
+    });
+  }
+  
+  /* ========== Step5: サーバへ登録 ========== */
+  async function registerSale(summary, amount){
+    debugLog('=== registerSale START ===');
+    debugLog(`sellerId: ${sellerId}`);
+    debugLog(`amount: ${amount}`);
+    debugLog(`summary: ${summary}`);
+    debugLog(`paymentMethod: ${paymentMethod}`);
+    
+    const payload = {
+      sellerId: sellerId,
+      amount: amount,
+      summary: summary,
+      imageData: capturedImageDataURL,
+      aiAnalysis: aiAnalysisResult || {},
+      paymentMethod: paymentMethod
+    };
+    
+    debugLog(`📤 Sending to /api/pending/start: ${JSON.stringify(payload).substring(0,100)}...`);
+    
+    try{
+      const res = await fetch('/api/pending/start', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      
+      if(!res.ok){
+        throw new Error(`HTTP ${res.status}`);
+      }
+      
+      const data = await res.json();
+      debugLog(`✅ Server response: ${JSON.stringify(data)}`);
+      
+      currentOrderId = data.orderId || null;
+      debugLog(`📝 currentOrderId: ${currentOrderId}`);
+      
+      const baseURL = window.location.origin;
+      let qrURL;
+      
+      if(data.checkoutUrl){
+        qrURL = data.checkoutUrl;
+        debugLog(`🔗 Using server-provided checkoutUrl: ${qrURL}`);
+      } else if(data.qrURL){
+        qrURL = data.qrURL;
+        debugLog(`🔗 Using server-provided qrURL (fallback): ${qrURL}`);
+      } else if(data.orderId){
+        qrURL = `${baseURL}/checkout.html?s=${sellerId}&order=${data.orderId}`;
+        debugLog(`🔗 Using orderId-based qrURL: ${qrURL}`);
+      } else {
+        qrURL = `${baseURL}/checkout.html?s=${sellerId}`;
+        debugLog(`⚠️ Fallback to sellerId-based qrURL: ${qrURL}`);
+      }
+      
+      showStep('step5');
+
+      const qrContainer = document.querySelector('.qr-container');
+      const msgP = document.querySelector('#step5 > p');
+
+      if (paymentMethod === "cash") {
+        if (qrContainer) qrContainer.style.display = 'none';
+        if (msgP) {
+          msgP.textContent =
+            '💴 現金で うけとりました。ありがとうございました！\n' +
+            '※キャッシュレスのバッジを ねらうときは、QR / カード も ためしてみてね。';
+        }
+        debugLog('🪙 現金決済として登録（QRなし）');
+      } else {
+        if (qrContainer) qrContainer.style.display = 'block';
+        if (msgP) msgP.textContent = 'このQRコードを おきゃくさんに みせてね';
+        displayQR(qrURL);
+        debugLog('💳 キャッシュレス決済（QR表示）');
+      }
+      
+      setupBuyerAttrButtons();
+      
+      debugLog('=== registerSale SUCCESS ===');
+      
+    } catch(err) {
+      debugLog(`❌ registerSale failed: ${err.message}`);
+      alert('登録に失敗しました。もう一度お試しください。');
+      location.reload();
+    }
+  }
+  
+  /* ========== QRコード表示 ========== */
+  function displayQR(url){
+    const qrcodeDiv = document.getElementById('qrcode');
+    qrcodeDiv.innerHTML = '';
+    
+    try{
+      new QRCode(qrcodeDiv, {
+        text: url,
+        width: 200,
+        height: 200,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+      debugLog(`✅ QR code generated: ${url}`);
+    } catch(e){
+      debugLog(`❌ QR generation error: ${e.message}`);
+      qrcodeDiv.innerHTML = `<p style="color:red;">QRコード生成失敗</p><p style="font-size:0.8rem;">${url}</p>`;
+    }
+  }
+  
+  /* ========== 購入者属性ボタンの設定 ========== */
+  function setupBuyerAttrButtons(){
+    const allAttrButtons = document.querySelectorAll('.attr-btn');
+    const saveBtn = document.getElementById('saveBuyerAttrBtn');
+    const statusP = document.getElementById('buyerAttrStatus');
+    
+    // 🆕 currentOrderIdがない場合は保存ボタンを無効化し、メッセージを表示
+    if (!currentOrderId) {
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = '💾 じょうほうを ほぞんして メーターUP';
+      }
+      if (statusP) {
+        statusP.textContent = '⚠️ 取引が登録されていません。先に商品を登録してください。';
+        statusP.style.color = '#dc2626';
+      }
+      // 属性ボタンも無効化（視覚的に分かりやすくする）
+      allAttrButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+      });
+      debugLog('⚠️ currentOrderIdがないため、購入者属性の保存機能を無効化しました');
+      return;
+    }
+    
+    // currentOrderIdがある場合は通常通り有効化
+    if (statusP) {
+      statusP.textContent = '';
+      statusP.style.color = '';
+    }
+    allAttrButtons.forEach(btn => {
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+    });
+    
+    allAttrButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const parentDiv = btn.closest('.attr-buttons');
+        const attrName = parentDiv.getAttribute('data-attr');
+        const attrValue = btn.getAttribute('data-value');
+        
+        parentDiv.querySelectorAll('.attr-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        
+        buyerAttrs[attrName] = attrValue;
+        debugLog(`🙋 buyerAttrs.${attrName} = ${attrValue}`);
+        
+        const allFilled = buyerAttrs.customer_type && buyerAttrs.gender && buyerAttrs.age_band;
+        saveBtn.disabled = !allFilled;
+      });
+    });
+    
+    saveBtn.addEventListener('click', async () => {
+      if(!currentOrderId){
+        statusP.textContent = '⚠️ オーダーIDがありません';
+        return;
+      }
+      
+      saveBtn.disabled = true;
+      saveBtn.textContent = '💾 ほぞん ちゅう…';
+      statusP.textContent = '';
+      
+      debugLog(`📤 Sending buyer attributes to /api/orders/buyer-attributes`);
+      debugLog(`orderId: ${currentOrderId}, buyerAttrs: ${JSON.stringify(buyerAttrs)}`);
+      
+      try{
+        const res = await fetch('/api/orders/buyer-attributes', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            orderId: currentOrderId,
+            ...buyerAttrs
+          })
+        });
+        
+        if(!res.ok){
+          throw new Error(`HTTP ${res.status}`);
+        }
+        
+        const data = await res.json();
+        debugLog(`✅ Buyer attributes saved: ${JSON.stringify(data)}`);
+        
+        statusP.textContent = '✅ ほぞん かんりょう！ダッシュボードのメーターが すこし上がりました。';
+        saveBtn.textContent = '💾 メーターUP ずみ';
+        
+      } catch(err) {
+        debugLog(`❌ Buyer attributes save failed: ${err.message}`);
+        statusP.textContent = '⚠️ ほぞん しっぱい しました';
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 じょうほうを ほぞんして メーターUP';
+      }
+    });
+  }
+  
+  /* ========== ヘルパー: DataURL → Blob ========== */
+  function dataURLtoBlob(dataURL){
+    const arr = dataURL.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while(n--){
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], {type:mime});
+  }
+  
+  /* ========== 初期化 ========== */
+  (async () => {
+    sellerId = getSellerIdFromURL();
+    debugLog(`🚀 App initialized with sellerId: ${sellerId}`);
+
+    const ok = await ensureSubscribedSeller();
+    if (!ok) {
+      debugLog('⚠️ Subscription check failed. UI blocked.');
+      return;
+    }
+    debugLog('✅ Subscription check passed.');
+    
+    setupEventListeners();
+  })();
+  
+})();
+</script>
+
 </body>
 </html>
