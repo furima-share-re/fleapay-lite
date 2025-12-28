@@ -973,6 +973,55 @@ app.get("/api/orders/:orderId", async (req, res) => {
   }
 });
 
+// ====== オーダー削除API ======
+app.delete("/api/orders/:orderId", async (req, res) => {
+  try {
+    if (!isSameOrigin(req)) return res.status(403).json({ error: "forbidden_origin" });
+
+    const { orderId } = req.params;
+    const sellerId = String(req.query.s || "");
+
+    if (!orderId) {
+      return res.status(400).json({ error: "orderId required" });
+    }
+
+    // オーダーが存在し、sellerIdが一致することを確認
+    const orderResult = await pool.query(
+      `select * from orders where id=$1`,
+      [orderId]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: "order_not_found" });
+    }
+
+    const order = orderResult.rows[0];
+
+    // sellerIdが指定されている場合は、所有者を確認
+    if (sellerId && order.seller_id !== sellerId) {
+      return res.status(403).json({ error: "forbidden" });
+    }
+
+    // 支払い済みの場合は削除を許可しない（オプション：必要に応じて変更可能）
+    // if (order.status === 'paid') {
+    //   return res.status(400).json({ error: "cannot_delete_paid_order" });
+    // }
+
+    // オーダーを削除（CASCADEにより関連テーブルのデータも削除される）
+    await pool.query(
+      `delete from orders where id=$1`,
+      [orderId]
+    );
+
+    audit("order_deleted", { orderId, sellerId: order.seller_id, orderNo: order.order_no });
+
+    res.json({ ok: true, message: "削除しました" });
+  } catch (e) {
+    console.error("delete order error", e);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // ====== Checkout セッション作成（修正版） ======
 app.post("/api/checkout/session", async (req, res) => {
   try {
