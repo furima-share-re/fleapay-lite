@@ -37,9 +37,8 @@ services:
     region: singapore
     buildCommand: npm install
     startCommand: npm start
-    envVarGroups:
-      - evg-d58mdc0gjchc73a8t3eg
     envVars:
+      - fromGroup: fleapay-preview
       - key: NODE_ENV
         value: preview
       - key: DATABASE_URL
