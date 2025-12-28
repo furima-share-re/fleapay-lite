@@ -12,8 +12,10 @@ jobs:
         with:
           node-version: 20
 
+      # npm ci は package-lock.json 必須で落ちやすいので
+      # 初回導入は npm install に逃がして「まず緑」を作る
       - name: Install
-        run: npm ci
+        run: npm install
 
       - name: Lint
         run: npm run lint --if-present
