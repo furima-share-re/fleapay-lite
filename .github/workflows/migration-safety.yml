@@ -1,0 +1,22 @@
+name: Migration Safety
+on:
+  pull_request:
+    # Migration関連が変更されたときだけ実行する（既存資産で落ち続けるのを防ぐ）
+    paths:
+      - "migrations/**"
+      - "prisma/migrations/**"
+      - "backend/migrations/**"
+      - "supabase/migrations/**"
+
+jobs:
+  migration-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run migration safety gate
+        run: python scripts/check_migration_safety.py

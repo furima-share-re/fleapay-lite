@@ -515,6 +515,19 @@
       opacity:0.5;
       cursor:default;
     }
+    .btn-danger{
+      padding:8px 14px;
+      border-radius:999px;
+      border:none;
+      background:var(--danger);
+      color:#fff;
+      font-size:.85rem;
+      cursor:pointer;
+    }
+    .btn-danger:disabled{
+      opacity:0.5;
+      cursor:default;
+    }
 
     @media (min-width:768px){
       .wrap { padding:16px 16px 72px; }
@@ -816,6 +829,11 @@
       </div>
 
       <div class="modal-footer">
+        <!-- 🆕 削除ボタン -->
+        <button type="button" id="modal-delete-btn" class="btn-danger" style="margin-right:auto;">
+          削除する
+        </button>
+
         <!-- 🆕 世界相場取得ボタン -->
         <button type="button" id="modal-world-btn" class="btn-secondary" style="margin-right:8px;">
           世界相場(参考)を取得
@@ -1619,6 +1637,57 @@
           } finally {
             saveBtn.disabled = false;
             saveBtn.textContent = "保存する";
+          }
+        };
+      }
+
+      // 🆕 削除ボタン
+      const deleteBtn = document.getElementById("modal-delete-btn");
+      if (deleteBtn) {
+        deleteBtn.onclick = async () => {
+          if (!currentDetailOrderId) return;
+
+          // 確認ダイアログ
+          if (!confirm("この取引を削除してもよろしいですか？\nこの操作は取り消せません。")) {
+            return;
+          }
+
+          const params = new URLSearchParams(location.search);
+          const sellerId = params.get("s") || "";
+
+          try {
+            deleteBtn.disabled = true;
+            deleteBtn.textContent = "削除中…";
+
+            const res = await fetch(`/api/seller/orders/${encodeURIComponent(currentDetailOrderId)}?s=${encodeURIComponent(sellerId)}`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" }
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+              // サーバーからの message があれば優先的に表示
+              if (data && data.message) {
+                alert(data.message);
+              } else {
+                alert("削除に失敗しました。もう一度お試しください。");
+              }
+              return;
+            }
+
+            alert("取引を削除しました。");
+            closeOrderDetail();
+            // 最新の一覧を再読み込み
+            if (window.loadSummary) {
+              window.loadSummary();
+            }
+          } catch (e) {
+            console.error("delete order error", e);
+            alert("通信エラーが発生しました。ネットワークを確認してください。");
+          } finally {
+            deleteBtn.disabled = false;
+            deleteBtn.textContent = "削除する";
           }
         };
       }
