@@ -32,7 +32,7 @@ services:
 
 databases:
   - name: fleapay-lite-db
-    plan: starter
+    plan: basic
     region: singapore
     postgresMajorVersion: 16
 
