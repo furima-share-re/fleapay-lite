@@ -291,6 +291,7 @@ function setupEventListeners() {
   document.getElementById('submitEvidenceBtn').addEventListener('click', submitEvidence);
   document.getElementById('refundBtn').addEventListener('click', processRefund);
   document.getElementById('saveMemoBtn').addEventListener('click', saveMemo);
+  document.getElementById('deleteOrderBtn').addEventListener('click', deleteOrder);
 }
 
 // ============================================
@@ -408,6 +409,82 @@ async function saveMemo() {
     adminUI.showMessage('modalMessage', 'error', error.message);
   } finally {
     adminUI.showSpinner('saveMemoBtn', false);
+  }
+}
+
+// ============================================
+// 🆕 取引削除（間違った明細の削除用）
+// ============================================
+async function deleteOrder() {
+  if (!currentPayment) return;
+  
+  // order_id または orderId のどちらでも取得できるように
+  const orderId = currentPayment.order_id || currentPayment.orderId;
+  
+  // 🆕 orderIdの検証を強化（undefined/null/空文字列/非文字列をチェック）
+  if (!orderId || typeof orderId !== 'string' || orderId.trim() === '') {
+    adminUI.showMessage('modalMessage', 'error', '注文IDが見つかりません。この決済は注文に紐づいていない可能性があります。');
+    return;
+  }
+
+  const amount = currentPayment.amountGross || currentPayment.amount || 0;
+  const amountText = adminUI.formatCurrency(amount);
+  const summary = currentPayment.orderSummary || currentPayment.summary || '（商品名不明）';
+
+  // 確認ダイアログ（orderIdは文字列であることが保証されている）
+  const orderIdDisplay = orderId.length > 20 ? `${orderId.substring(0, 20)}...` : orderId;
+  const confirmMessage = `以下の取引を削除しますか？\n\n` +
+    `注文ID: ${orderIdDisplay}\n` +
+    `商品: ${summary}\n` +
+    `金額: ${amountText}\n\n` +
+    `⚠️ この操作は取り消せません。\n` +
+    `決済済みの場合は削除できません。`;
+
+  if (!confirm(confirmMessage)) {
+    return;
+  }
+
+  adminUI.showSpinner('deleteOrderBtn', true);
+
+  try {
+    // adminAPI.requestは既にエラーハンドリング済み（HTTPエラー時はthrow）
+    const response = await adminAPI.request(`/api/admin/orders/${encodeURIComponent(orderId)}`, {
+      method: 'DELETE'
+    });
+
+    // レスポンスのokフィールドをチェック（APIが返すエラーオブジェクトの場合）
+    if (response.ok === false) {
+      throw new Error(response.error || response.message || '削除に失敗しました');
+    }
+
+    adminUI.showMessage('modalMessage', 'success', '取引を削除しました');
+    adminUI.showToast('取引を削除しました', 'success');
+    
+    // 一覧を再読み込み
+    await loadPayments(currentFilters);
+    await loadStripeSummary(document.getElementById('periodFilter').value);
+    
+    // モーダルを閉じる
+    setTimeout(() => {
+      adminUI.hideModal('paymentModal');
+    }, 1500);
+
+  } catch (error) {
+    let errorMsg = error.message;
+    
+    // エラーメッセージの詳細化
+    if (error.message.includes('cannot_delete_paid_order')) {
+      errorMsg = '決済済みの注文は削除できません。返金処理を行ってください。';
+    } else if (error.message.includes('order_not_found')) {
+      errorMsg = '注文が見つかりませんでした';
+    } else if (error.message.includes('network') || error.message.includes('fetch')) {
+      errorMsg = 'ネットワークエラーが発生しました。接続を確認してください。';
+    }
+    
+    adminUI.showMessage('modalMessage', 'error', errorMsg);
+    adminUI.showToast('削除に失敗: ' + errorMsg, 'error');
+  } finally {
+    adminUI.showSpinner('deleteOrderBtn', false);
   }
 }
 

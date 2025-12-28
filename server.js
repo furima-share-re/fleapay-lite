@@ -421,6 +421,10 @@ async function initDb() {
       add column if not exists world_price_sample_count integer default 0,
       add column if not exists world_price_revenue_max integer,
       add column if not exists world_price_profit_max integer;
+
+    -- 🆕 論理削除用カラム追加
+    alter table if exists orders
+      add column if not exists deleted_at timestamptz;
   `);
 
   console.log("✅ DB init done (PATCHED v3.6 - world_price_revenue_max/profit_max columns added)");
@@ -473,6 +477,18 @@ app.post("/api/orders/buyer-attributes", async (req, res) => {
       return res.status(400).json({ error: "invalid_params" });
     }
 
+    // 🆕 削除済み注文のチェック
+    const orderCheck = await pool.query(
+      `select id, deleted_at from orders where id = $1`,
+      [orderId]
+    );
+    if (orderCheck.rowCount === 0) {
+      return res.status(404).json({ error: "order_not_found" });
+    }
+    if (orderCheck.rows[0].deleted_at) {
+      return res.status(400).json({ error: "order_deleted", message: "削除済みの注文は更新できません" });
+    }
+
     // UPSERT（すでにあれば更新）
     await pool.query(
       `insert into buyer_attributes (order_id, customer_type, gender, age_band)
@@ -500,6 +516,18 @@ app.post("/api/orders/metadata", async (req, res) => {
 
     if (!orderId) {
       return res.status(400).json({ error: "order_id_required" });
+    }
+
+    // 🆕 削除済み注文のチェック
+    const orderCheck = await pool.query(
+      `select id, deleted_at from orders where id = $1`,
+      [orderId]
+    );
+    if (orderCheck.rowCount === 0) {
+      return res.status(404).json({ error: "order_not_found" });
+    }
+    if (orderCheck.rows[0].deleted_at) {
+      return res.status(400).json({ error: "order_deleted", message: "削除済みの注文は更新できません" });
     }
 
     // is_cash が送られてこなかった場合は、既存の値を維持する
@@ -536,6 +564,18 @@ app.post("/api/orders/update-summary", async (req, res) => {
       return res.status(400).json({ error: "order_id_required" });
     }
 
+    // 🆕 削除済み注文のチェック
+    const orderCheck = await pool.query(
+      `select id, deleted_at from orders where id = $1`,
+      [orderId]
+    );
+    if (orderCheck.rowCount === 0) {
+      return res.status(404).json({ error: "order_not_found" });
+    }
+    if (orderCheck.rows[0].deleted_at) {
+      return res.status(400).json({ error: "order_deleted", message: "削除済みの注文は更新できません" });
+    }
+
     await pool.query(
       `update orders
          set summary   = $2,
@@ -566,6 +606,18 @@ app.post("/api/orders/update-cost", async (req, res) => {
       return res.status(400).json({ error: "invalid_cost" });
     }
 
+    // 🆕 削除済み注文のチェック
+    const orderCheck = await pool.query(
+      `select id, deleted_at from orders where id = $1`,
+      [orderId]
+    );
+    if (orderCheck.rowCount === 0) {
+      return res.status(404).json({ error: "order_not_found" });
+    }
+    if (orderCheck.rows[0].deleted_at) {
+      return res.status(400).json({ error: "order_deleted", message: "削除済みの注文は更新できません" });
+    }
+
     await pool.query(
       `update orders
          set cost_amount = $2,
@@ -593,8 +645,8 @@ app.get("/api/seller/order-detail-full", async (req, res) => {
   }
 
   try {
-    const result = await pool.query(
-      `
+      const result = await pool.query(
+        `
       SELECT
         o.id,
         o.summary              AS memo,
@@ -614,11 +666,12 @@ app.get("/api/seller/order-detail-full", async (req, res) => {
       LEFT JOIN images           img ON img.order_id = o.id
       WHERE o.id = $1
         AND o.seller_id = $2
+        AND o.deleted_at IS NULL  -- 🆕 削除済みを除外
       ORDER BY img.created_at DESC NULLS LAST
       LIMIT 1
       `,
-      [orderId, sellerId]
-    );
+        [orderId, sellerId]
+      );
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "order_not_found" });
@@ -756,7 +809,7 @@ app.get("/api/seller/kids-summary", async (req, res) => {
   try {
     // 1) 基本集計
     const totalOrdersResult = await pool.query(
-      `select count(*) as cnt from orders where seller_id = $1`,
+      `select count(*) as cnt from orders where seller_id = $1 AND deleted_at IS NULL`,
       [sellerId]
     );
     const totalOrders = Number(totalOrdersResult.rows[0].cnt || 0);
@@ -768,7 +821,7 @@ app.get("/api/seller/kids-summary", async (req, res) => {
          count(*) filter (where age_band = 'child') as child_cnt
        from buyer_attributes ba
        join orders o on o.id = ba.order_id
-       where o.seller_id = $1`,
+       where o.seller_id = $1 AND o.deleted_at IS NULL`,
       [sellerId]
     );
 
@@ -781,7 +834,7 @@ app.get("/api/seller/kids-summary", async (req, res) => {
          count(*) filter (where om.is_cash = true) as cash_cnt
        from orders o
        left join order_metadata om on om.order_id = o.id
-       where o.seller_id = $1`,
+       where o.seller_id = $1 AND o.deleted_at IS NULL`,
       [sellerId]
     );
     const cashOrders = Number(cashResult.rows[0].cash_cnt || 0);
@@ -1064,6 +1117,74 @@ app.get("/api/admin/frames", requireAdmin, async (req, res) => {
     res.json({ frames });
   } catch (e) {
     console.error("get frames", e);
+    res.status(500).json(sanitizeError(e));
+  }
+});
+
+// ====== 🆕 管理API: 取引削除（間違った明細の削除用・論理削除） ======
+app.delete("/api/admin/orders/:orderId", requireAdmin, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    if (!orderId) {
+      return res.status(400).json({ error: "order_id_required" });
+    }
+
+    // 注文の存在確認（削除済みも含む）
+    const orderCheck = await pool.query(
+      `select id, seller_id, amount, summary, status, deleted_at from orders where id = $1`,
+      [orderId]
+    );
+
+    if (orderCheck.rowCount === 0) {
+      return res.status(404).json({ error: "order_not_found" });
+    }
+
+    const order = orderCheck.rows[0];
+
+    // 既に削除済みの場合
+    if (order.deleted_at) {
+      return res.status(400).json({ 
+        error: "already_deleted",
+        message: "この取引は既に削除されています。"
+      });
+    }
+
+    // 既に決済済み（paid）の場合は削除を制限（安全のため）
+    if (order.status === "paid") {
+      return res.status(400).json({ 
+        error: "cannot_delete_paid_order",
+        message: "決済済みの注文は削除できません。返金処理を行ってください。"
+      });
+    }
+
+    // 🆕 論理削除（deleted_atを設定）
+    await pool.query(
+      `update orders set deleted_at = now(), updated_at = now() where id = $1`,
+      [orderId]
+    );
+
+    audit("order_deleted_by_admin", { 
+      orderId, 
+      sellerId: order.seller_id, 
+      amount: order.amount,
+      summary: order.summary,
+      deletedAt: new Date().toISOString(),
+      ip: clientIp(req)
+    });
+
+    res.json({ 
+      ok: true, 
+      message: "取引を削除しました（論理削除）",
+      deletedOrder: {
+        id: order.id,
+        sellerId: order.seller_id,
+        amount: order.amount,
+        deletedAt: new Date().toISOString()
+      }
+    });
+  } catch (e) {
+    console.error("delete order error", e);
     res.status(500).json(sanitizeError(e));
   }
 });

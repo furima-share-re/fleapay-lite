@@ -106,7 +106,7 @@ function computeOptimalPrices({
 export async function runWorldPriceUpdate(pool, orderId, sellerId) {
   const orderRes = await pool.query(
     `
-      select id, summary, amount, cost_amount
+      select id, summary, amount, cost_amount, deleted_at
       from orders
       where id = $1
     `,
@@ -114,6 +114,11 @@ export async function runWorldPriceUpdate(pool, orderId, sellerId) {
   );
   if (orderRes.rowCount === 0) {
     console.warn("[world-price] order not found", orderId);
+    return;
+  }
+  // 🆕 削除済み注文はスキップ
+  if (orderRes.rows[0].deleted_at) {
+    console.warn("[world-price] order deleted, skip", orderId);
     return;
   }
   const order = orderRes.rows[0];

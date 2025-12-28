@@ -1619,6 +1619,37 @@
     const saveBtn = document.getElementById('saveBuyerAttrBtn');
     const statusP = document.getElementById('buyerAttrStatus');
     
+    // 🆕 currentOrderIdがない場合は保存ボタンを無効化し、メッセージを表示
+    if (!currentOrderId) {
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = '💾 じょうほうを ほぞんして メーターUP';
+      }
+      if (statusP) {
+        statusP.textContent = '⚠️ 取引が登録されていません。先に商品を登録してください。';
+        statusP.style.color = '#dc2626';
+      }
+      // 属性ボタンも無効化（視覚的に分かりやすくする）
+      allAttrButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+      });
+      debugLog('⚠️ currentOrderIdがないため、購入者属性の保存機能を無効化しました');
+      return;
+    }
+    
+    // currentOrderIdがある場合は通常通り有効化
+    if (statusP) {
+      statusP.textContent = '';
+      statusP.style.color = '';
+    }
+    allAttrButtons.forEach(btn => {
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+    });
+    
     allAttrButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         const parentDiv = btn.closest('.attr-buttons');

@@ -350,6 +350,7 @@ export function registerPaymentRoutes(app, deps) {
         WHERE o.seller_id = $1
           AND o.created_at >= $2
           AND o.created_at <  $3
+          AND o.deleted_at IS NULL  -- 🆕 削除済みを除外
           AND (
             om.is_cash = true            -- 現金
             OR sp.status = 'succeeded'   -- カード成功
@@ -401,6 +402,7 @@ export function registerPaymentRoutes(app, deps) {
         LEFT JOIN order_metadata  om ON om.order_id = o.id
         LEFT JOIN stripe_payments sp ON sp.order_id = o.id
         WHERE o.seller_id = $1
+          AND o.deleted_at IS NULL  -- 🆕 削除済みを除外
           AND (
             om.is_cash = true
             OR sp.status = 'succeeded'
@@ -437,6 +439,7 @@ export function registerPaymentRoutes(app, deps) {
         LEFT JOIN stripe_payments  sp ON sp.order_id = o.id
         LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
         WHERE o.seller_id = $1
+          AND o.deleted_at IS NULL  -- 🆕 削除済みを除外
           AND (
             om.is_cash = true              -- 現金はステータスに関係なく表示
             OR sp.status = 'succeeded'     -- カード決済はStripe成功のみ表示
@@ -500,6 +503,7 @@ export function registerPaymentRoutes(app, deps) {
         FROM orders o
         LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
         WHERE o.seller_id = $1
+          AND o.deleted_at IS NULL  -- 🆕 削除済みを除外
         `,
         [sellerId]
       );
@@ -569,6 +573,7 @@ export function registerPaymentRoutes(app, deps) {
            on om.order_id = o.id
          where o.id = $1
            and o.seller_id = $2
+           and o.deleted_at IS NULL  -- 🆕 削除済みを除外
          limit 1`,
         [orderId, sellerId]
       );
@@ -640,6 +645,7 @@ export function registerPaymentRoutes(app, deps) {
         LEFT JOIN stripe_payments sp
           ON sp.order_id = o.id
         WHERE o.id = $1
+          AND o.deleted_at IS NULL  -- 🆕 削除済みを除外
         ORDER BY sp.created_at DESC NULLS LAST
         LIMIT 1
         `,
@@ -693,7 +699,7 @@ export function registerPaymentRoutes(app, deps) {
       let order;
       if (orderId) {
         const r = await pool.query(
-          `select * from orders where id=$1 limit 1`,
+          `select * from orders where id=$1 AND deleted_at IS NULL limit 1`,
           [orderId]
         );
         if (r.rowCount === 0) {
@@ -805,6 +811,7 @@ export function registerPaymentRoutes(app, deps) {
            o.seller_id = $1
            and o.status = 'pending'               -- 未決済のみ
            and coalesce(om.is_cash, false) = false -- 現金を除外
+           and o.deleted_at IS NULL  -- 🆕 削除済みを除外（pending注文は削除済みを除外）
          order by o.created_at desc
          limit 1`,
         [sellerId]
@@ -858,6 +865,18 @@ export function registerPaymentRoutes(app, deps) {
     const { orderId, sellerId } = req.body || {};
     if (!orderId) {
       return res.status(400).json({ ok: false, error: "orderId is required" });
+    }
+
+    // 🆕 削除済み注文のチェック
+    const orderCheck = await pool.query(
+      `select id, deleted_at from orders where id = $1`,
+      [orderId]
+    );
+    if (orderCheck.rowCount === 0) {
+      return res.status(404).json({ ok: false, error: "order_not_found" });
+    }
+    if (orderCheck.rows[0].deleted_at) {
+      return res.status(400).json({ ok: false, error: "order_deleted", message: "削除済みの注文は更新できません" });
     }
 
     // ここではすぐレスポンスを返し、重い処理はバックグラウンドで実行
