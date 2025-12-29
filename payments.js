@@ -549,6 +549,185 @@ export function registerPaymentRoutes(app, deps) {
     }
   });
 
+  // ====== 📊 売上・利益分析API（日毎・週毎グラフ用） ======
+  app.get("/api/seller/analytics", async (req, res) => {
+    try {
+      const sellerId = String(req.query.s || "");
+      if (!sellerId) {
+        return res.status(400).json({ ok: false, error: "seller_id_required" });
+      }
+
+      const period = String(req.query.period || "daily");
+      const days = Math.min(parseInt(req.query.days || "30", 10), 90); // 最大90日
+
+      if (period === "daily") {
+        const data = await getDailyAnalytics(sellerId, days);
+        res.json({ ok: true, period: "daily", days, data });
+      } else if (period === "weekly") {
+        const weeks = Math.ceil(days / 7);
+        const data = await getWeeklyAnalytics(sellerId, weeks);
+        res.json({ ok: true, period: "weekly", weeks, data });
+      } else {
+        res.status(400).json({ ok: false, error: "invalid_period" });
+      }
+    } catch (e) {
+      console.error("Analytics error:", e);
+      res.status(500).json({ ok: false, error: "internal_error" });
+    }
+  });
+
+  // 日毎の集計関数
+  async function getDailyAnalytics(sellerId, days = 30) {
+    const { todayStart } = jstDayBounds();
+    
+    // 過去N日分のデータを取得
+    const results = [];
+    
+    for (let i = days - 1; i >= 0; i--) {
+      const dayStart = new Date(todayStart.getTime() - i * 24 * 60 * 60 * 1000);
+      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+      
+      const result = await pool.query(
+        `
+        SELECT
+          COUNT(*) AS transaction_count,
+          -- 売上合計(gross)
+          COALESCE(SUM(
+            CASE 
+              WHEN om.is_cash = true THEN o.amount
+              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+              ELSE 0
+            END
+          ), 0) AS gross_sales,
+          -- 純売上(net)
+          COALESCE(SUM(
+            CASE 
+              WHEN om.is_cash = true THEN o.amount
+              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+              ELSE 0
+            END
+          ), 0) AS net_sales,
+          -- 仕入額
+          COALESCE(SUM(o.cost_amount), 0) AS total_cost
+        FROM orders o
+        LEFT JOIN order_metadata om ON om.order_id = o.id
+        LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+        WHERE o.seller_id = $1
+          AND o.created_at >= $2
+          AND o.created_at < $3
+          AND o.deleted_at IS NULL
+          AND (
+            om.is_cash = true
+            OR sp.status = 'succeeded'
+          )
+        `,
+        [sellerId, dayStart, dayEnd]
+      );
+      
+      const row = result.rows[0] || {};
+      const grossSales = Number(row.gross_sales || 0);
+      const netSales = Number(row.net_sales || 0);
+      const totalCost = Number(row.total_cost || 0);
+      const profit = netSales - totalCost;
+      const transactionCount = parseInt(row.transaction_count || 0, 10);
+      
+      // 日付文字列（YYYY-MM-DD形式）
+      const dateStr = dayStart.toISOString().split('T')[0];
+      
+      results.push({
+        date: dateStr,
+        grossSales,
+        netSales,
+        totalCost,
+        profit,
+        transactionCount
+      });
+    }
+    
+    return results;
+  }
+
+  // 週毎の集計関数
+  async function getWeeklyAnalytics(sellerId, weeks = 4) {
+    const { todayStart } = jstDayBounds();
+    
+    // JST基準で今日の0:00を求める（jstDayBoundsの結果を使用）
+    const nowUtc = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000; // JST = UTC+9
+    const nowJstMs = nowUtc.getTime() + jstOffset;
+    const nowJst = new Date(nowJstMs);
+    
+    // 週の開始日（月曜日）を求める
+    const dayOfWeek = nowJst.getUTCDay(); // 0=日曜, 1=月曜, ...
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 月曜日までの日数
+    const thisMonday = new Date(todayStart.getTime() - mondayOffset * 24 * 60 * 60 * 1000);
+    
+    const results = [];
+    
+    for (let i = weeks - 1; i >= 0; i--) {
+      const weekStart = new Date(thisMonday.getTime() - i * 7 * 24 * 60 * 60 * 1000);
+      const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+      
+      const result = await pool.query(
+        `
+        SELECT
+          COUNT(*) AS transaction_count,
+          -- 売上合計(gross)
+          COALESCE(SUM(
+            CASE 
+              WHEN om.is_cash = true THEN o.amount
+              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+              ELSE 0
+            END
+          ), 0) AS gross_sales,
+          -- 純売上(net)
+          COALESCE(SUM(
+            CASE 
+              WHEN om.is_cash = true THEN o.amount
+              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+              ELSE 0
+            END
+          ), 0) AS net_sales,
+          -- 仕入額
+          COALESCE(SUM(o.cost_amount), 0) AS total_cost
+        FROM orders o
+        LEFT JOIN order_metadata om ON om.order_id = o.id
+        LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+        WHERE o.seller_id = $1
+          AND o.created_at >= $2
+          AND o.created_at < $3
+          AND o.deleted_at IS NULL
+          AND (
+            om.is_cash = true
+            OR sp.status = 'succeeded'
+          )
+        `,
+        [sellerId, weekStart, weekEnd]
+      );
+      
+      const row = result.rows[0] || {};
+      const grossSales = Number(row.gross_sales || 0);
+      const netSales = Number(row.net_sales || 0);
+      const totalCost = Number(row.total_cost || 0);
+      const profit = netSales - totalCost;
+      const transactionCount = parseInt(row.transaction_count || 0, 10);
+      
+      // 週の開始日（YYYY-MM-DD形式）
+      const weekStartStr = weekStart.toISOString().split('T')[0];
+      
+      results.push({
+        weekStart: weekStartStr,
+        grossSales,
+        netSales,
+        totalCost,
+        profit,
+        transactionCount
+      });
+    }
+    
+    return results;
+  }
+
   // ====== 🆕 出店者用API: 注文詳細取得 ======
   app.get("/api/seller/order-detail", async (req, res) => {
     try {

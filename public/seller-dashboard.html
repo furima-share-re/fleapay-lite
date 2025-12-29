@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Fleapay｜出店者用ダッシュボード</title>
 
+  <!-- Chart.js ライブラリ -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
   <style>
     :root {
       --bg:#f7f7fb;
@@ -524,6 +527,98 @@
       font-size:.85rem;
       cursor:pointer;
     }
+
+    /* 📊 グラフカードのスタイル */
+    .chart-card {
+      background:var(--panel);
+      border-radius:16px;
+      border:1px solid var(--border);
+      padding:14px 14px 16px;
+      margin-bottom:12px;
+      box-shadow:0 2px 8px rgba(0,0,0,.04);
+    }
+
+    .chart-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:12px;
+    }
+
+    .chart-title {
+      font-size:.98rem;
+      font-weight:700;
+      color:var(--text);
+    }
+
+    .chart-period-toggle {
+      display:flex;
+      gap:4px;
+      background:#f3f4f6;
+      border-radius:999px;
+      padding:2px;
+    }
+
+    .period-btn {
+      font-size:.75rem;
+      padding:4px 12px;
+      border-radius:999px;
+      border:none;
+      background:transparent;
+      color:var(--sub);
+      cursor:pointer;
+      transition:all 0.2s;
+    }
+
+    .period-btn.active {
+      background:var(--brand);
+      color:#ffffff;
+      font-weight:600;
+    }
+
+    .chart-container {
+      position:relative;
+      height:280px;
+      width:100%;
+    }
+
+    .chart-loading {
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:280px;
+      color:var(--muted);
+      font-size:.9rem;
+    }
+
+    .chart-legend {
+      display:flex;
+      justify-content:center;
+      gap:16px;
+      margin-top:12px;
+      padding-top:12px;
+      border-top:1px solid var(--border);
+      font-size:.8rem;
+    }
+
+    .legend-item {
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+
+    .legend-color {
+      width:12px;
+      height:12px;
+      border-radius:2px;
+    }
+
+    .chart-hint {
+      font-size:.78rem;
+      color:var(--muted);
+      margin-top:8px;
+      text-align:center;
+    }
     .btn-danger:disabled{
       opacity:0.5;
       cursor:default;
@@ -596,6 +691,44 @@
 
         <div class="hint" id="home-hint">
           出店者IDから、きょうの うりあげ を じっさいの データで ひょうじします。
+        </div>
+      </div>
+
+      <!-- 📊 売上・利益グラフカード -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">売上・利益の推移</div>
+          <div class="chart-period-toggle">
+            <button class="period-btn active" data-period="daily">日毎</button>
+            <button class="period-btn" data-period="weekly">週毎</button>
+          </div>
+        </div>
+
+        <div id="chart-loading" class="chart-loading" style="display: none;">
+          データを読み込み中...
+        </div>
+
+        <div class="chart-container">
+          <canvas id="sales-profit-chart"></canvas>
+        </div>
+
+        <div class="chart-legend">
+          <div class="legend-item">
+            <div class="legend-color" style="background: #5a6bff;"></div>
+            <span>売上</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #f59e0b;"></div>
+            <span>仕入額</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #1a9b63;"></div>
+            <span>利益</span>
+          </div>
+        </div>
+
+        <div class="chart-hint">
+          直近30日間のデータを表示しています
         </div>
       </div>
 
@@ -1745,6 +1878,229 @@
         };
       }
     });
+
+    // ====================================
+    // 📊 グラフ表示スクリプト
+    // ====================================
+    (function() {
+      const canvas = document.getElementById('sales-profit-chart');
+      const loadingEl = document.getElementById('chart-loading');
+      const periodBtns = document.querySelectorAll('.period-btn');
+      
+      if (!canvas) return; // グラフ要素がない場合は終了
+      
+      let chartInstance = null;
+      let currentPeriod = 'daily';
+
+      // グラフの初期化
+      function initChart(labels, salesData, costData, profitData) {
+        const ctx = canvas.getContext('2d');
+
+        // 既存のグラフを破棄
+        if (chartInstance) {
+          chartInstance.destroy();
+        }
+
+        // Chart.jsの設定
+        chartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: '売上',
+                data: salesData,
+                backgroundColor: 'rgba(90, 107, 255, 0.7)',
+                borderColor: 'rgba(90, 107, 255, 1)',
+                borderWidth: 1,
+                order: 3
+              },
+              {
+                label: '仕入額',
+                data: costData,
+                backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                borderColor: 'rgba(245, 158, 11, 1)',
+                borderWidth: 1,
+                order: 2
+              },
+              {
+                label: '利益',
+                data: profitData,
+                backgroundColor: 'rgba(26, 155, 99, 0.8)',
+                borderColor: 'rgba(26, 155, 99, 1)',
+                borderWidth: 2,
+                type: 'line',
+                fill: false,
+                tension: 0.3,
+                order: 1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function(value) {
+                    return '¥' + value.toLocaleString('ja-JP');
+                  },
+                  font: {
+                    size: 10
+                  }
+                },
+                grid: {
+                  color: 'rgba(0, 0, 0, 0.05)'
+                }
+              },
+              x: {
+                ticks: {
+                  font: {
+                    size: 9
+                  },
+                  maxRotation: 45,
+                  minRotation: 45
+                },
+                grid: {
+                  display: false
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false // カスタム凡例を使用
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: {
+                  size: 13
+                },
+                bodyFont: {
+                  size: 12
+                },
+                callbacks: {
+                  label: function(context) {
+                    let label = context.dataset.label || '';
+                    if (label) {
+                      label += ': ';
+                    }
+                    label += '¥' + context.parsed.y.toLocaleString('ja-JP');
+                    return label;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // APIからデータを取得してグラフを更新
+      async function loadChartData(period = 'daily') {
+        const params = new URLSearchParams(location.search);
+        const sellerId = params.get('s') || '';
+
+        if (!sellerId) {
+          console.warn('出店者IDが指定されていません');
+          return;
+        }
+
+        try {
+          // ローディング表示
+          if (loadingEl) {
+            loadingEl.style.display = 'flex';
+          }
+          canvas.style.opacity = '0.3';
+
+          const days = period === 'daily' ? 30 : 28; // 週毎の場合は4週間
+          const response = await fetch(
+            `/api/seller/analytics?s=${encodeURIComponent(sellerId)}&period=${period}&days=${days}`
+          );
+
+          if (!response.ok) {
+            throw new Error('データの取得に失敗しました');
+          }
+
+          const result = await response.json();
+          
+          if (!result.ok || !result.data) {
+            throw new Error('データが不正です');
+          }
+
+          // データの整形
+          const labels = [];
+          const salesData = [];
+          const costData = [];
+          const profitData = [];
+
+          result.data.forEach(item => {
+            // 日付ラベルの整形
+            let label;
+            if (period === 'daily') {
+              const date = new Date(item.date);
+              label = `${date.getMonth() + 1}/${date.getDate()}`;
+            } else {
+              const date = new Date(item.weekStart);
+              label = `${date.getMonth() + 1}/${date.getDate()}週`;
+            }
+
+            labels.push(label);
+            salesData.push(item.grossSales);
+            costData.push(item.totalCost);
+            profitData.push(item.profit);
+          });
+
+          // グラフを描画
+          initChart(labels, salesData, costData, profitData);
+
+          // ヒントテキストを更新
+          const hintEl = document.querySelector('.chart-hint');
+          if (hintEl) {
+            hintEl.textContent = period === 'daily' 
+              ? '直近30日間のデータを表示しています'
+              : '直近4週間のデータを表示しています';
+          }
+
+        } catch (error) {
+          console.error('グラフデータの読み込みエラー:', error);
+          alert('グラフデータの読み込みに失敗しました');
+        } finally {
+          // ローディング非表示
+          if (loadingEl) {
+            loadingEl.style.display = 'none';
+          }
+          canvas.style.opacity = '1';
+        }
+      }
+
+      // 期間切り替えボタンのイベント
+      periodBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const period = btn.getAttribute('data-period');
+          
+          // ボタンのアクティブ状態を切り替え
+          periodBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+
+          // グラフを更新
+          currentPeriod = period;
+          loadChartData(period);
+        });
+      });
+
+      // 初回ロード
+      loadChartData(currentPeriod);
+
+      // グローバルスコープに公開（他の部分から再読み込みできるように）
+      window.reloadChart = function() {
+        loadChartData(currentPeriod);
+      };
+    })();
   </script>
 </body>
 </html>

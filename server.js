@@ -1052,7 +1052,6 @@ app.get("/api/seller/kids-summary", async (req, res) => {
   }
 });
 
-
 // ====== 🟢 改善された管理API: Stripeサマリー取得 ======
 app.post("/api/admin/sellers", requireAdmin, async (req, res) => {
   const { id, displayName, shopName, stripeAccountId } = req.body || {};
