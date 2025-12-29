@@ -1,5 +1,8 @@
 // payments.js
 import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+import { existsSync, readFileSync } from "fs";
 import {
   buildEbayKeywordFromSummary,
   buildPriceStats,
@@ -10,6 +13,9 @@ import {
   fetchWorldPriceFromEbayMarketplace,
   EBAY_SOURCE_MODE,
 } from "./worldPriceGenreEngine.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * 決済・入金・売上関連のルートをまとめて登録する
@@ -560,16 +566,77 @@ export function registerPaymentRoutes(app, deps) {
       const period = String(req.query.period || "daily");
       const days = Math.min(parseInt(req.query.days || "30", 10), 90); // 最大90日
 
+      let data;
       if (period === "daily") {
-        const data = await getDailyAnalytics(sellerId, days);
-        res.json({ ok: true, period: "daily", days, data });
+        data = await getDailyAnalytics(sellerId, days);
       } else if (period === "weekly") {
         const weeks = Math.ceil(days / 7);
-        const data = await getWeeklyAnalytics(sellerId, weeks);
-        res.json({ ok: true, period: "weekly", weeks, data });
+        data = await getWeeklyAnalytics(sellerId, weeks);
       } else {
-        res.status(400).json({ ok: false, error: "invalid_period" });
+        return res.status(400).json({ ok: false, error: "invalid_period" });
       }
+
+      // ベンチマークデータの取得（オプショナル）
+      let benchmarkData = [];
+      try {
+        // プロジェクトルートのdataディレクトリを参照
+        const csvPath = path.join(process.cwd(), "data", "benchmark.csv");
+        if (existsSync(csvPath)) {
+          const csvContent = readFileSync(csvPath, "utf-8");
+          const lines = csvContent.trim().split("\n");
+          const headers = lines[0].split(",").map(h => h.trim());
+          
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            const values = [];
+            let current = "";
+            let inQuotes = false;
+            
+            for (let j = 0; j < line.length; j++) {
+              const char = line[j];
+              if (char === '"') {
+                inQuotes = !inQuotes;
+              } else if (char === ',' && !inQuotes) {
+                values.push(current.trim());
+                current = "";
+              } else {
+                current += char;
+              }
+            }
+            values.push(current.trim());
+            
+            const row = {};
+            headers.forEach((header, index) => {
+              let value = values[index] || "";
+              if (header === "week" || header === "base" || header === "improvement") {
+                value = parseInt(value, 10) || 0;
+              }
+              row[header] = value;
+            });
+            
+            benchmarkData.push(row);
+          }
+        }
+      } catch (csvError) {
+        console.error("CSV読み込みエラー:", csvError);
+        // ベンチマークデータの読み込みに失敗しても続行
+      }
+
+      const response = { 
+        ok: true, 
+        period, 
+        days, 
+        data
+      };
+      
+      // ベンチマークデータがある場合のみ追加
+      if (benchmarkData.length > 0) {
+        response.benchmark = benchmarkData;
+      }
+      
+      res.json(response);
     } catch (e) {
       console.error("Analytics error:", e);
       res.status(500).json({ ok: false, error: "internal_error" });
@@ -727,6 +794,84 @@ export function registerPaymentRoutes(app, deps) {
     
     return results;
   }
+
+  // ====== 📊 ベンチマークデータ取得API ======
+  app.get("/api/benchmark/data", async (req, res) => {
+    try {
+      // プロジェクトルートのdataディレクトリを参照
+      const csvPath = path.join(process.cwd(), "data", "benchmark.csv");
+      
+      if (!existsSync(csvPath)) {
+        return res.status(404).json({ 
+          error: "file_not_found", 
+          message: "ベンチマークCSVファイルが見つかりません" 
+        });
+      }
+
+      const csvContent = readFileSync(csvPath, "utf-8");
+      const lines = csvContent.trim().split("\n");
+      
+      if (lines.length < 2) {
+        return res.status(400).json({ 
+          error: "invalid_csv", 
+          message: "CSVファイルの形式が不正です" 
+        });
+      }
+
+      // ヘッダー行を取得
+      const headers = lines[0].split(",").map(h => h.trim());
+      
+      // データ行をパース
+      const data = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // CSVのパース（カンマ区切り、ただし引用符内のカンマは考慮）
+        const values = [];
+        let current = "";
+        let inQuotes = false;
+        
+        for (let j = 0; j < line.length; j++) {
+          const char = line[j];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            values.push(current.trim());
+            current = "";
+          } else {
+            current += char;
+          }
+        }
+        values.push(current.trim());
+        
+        // オブジェクトに変換
+        const row = {};
+        headers.forEach((header, index) => {
+          let value = values[index] || "";
+          // 数値に変換できる場合は数値に
+          if (header === "week" || header === "base" || header === "improvement") {
+            value = parseInt(value, 10) || 0;
+          }
+          row[header] = value;
+        });
+        
+        data.push(row);
+      }
+
+      res.json({
+        ok: true,
+        data: data,
+        count: data.length
+      });
+    } catch (error) {
+      console.error("benchmark/data error:", error);
+      res.status(500).json({ 
+        error: "internal_error", 
+        message: error.message 
+      });
+    }
+  });
 
   // ====== 🆕 出店者用API: 注文詳細取得 ======
   app.get("/api/seller/order-detail", async (req, res) => {
