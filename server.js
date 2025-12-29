@@ -1652,11 +1652,13 @@ app.get("/api/ping", (req, res) => {
   });
 });
 
+// ベンチマーク関連のAPIは payments.js に移動しました
+
 // ====== 静的ファイル配信 ======
 app.use(express.static(path.join(__dirname, "public")));
 
 // ====== 📄 HTMLファイルのルーティング追加 ======
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 
 function serveHtmlWithFallback(filename) {
   return (req, res) => {
