@@ -30,7 +30,7 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          node scripts/impact-analysis.js
+          node scripts/impact-analysis.cjs
 
       - name: Upload impact summary
         if: always()
