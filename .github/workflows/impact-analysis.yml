@@ -23,8 +23,7 @@ jobs:
           node-version: "20"
 
       - name: Install deps (optional)
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else echo "No lockfile. Skipping npm ci."; fi
+        run: npm install || echo "npm install failed, continuing..."
 
       - name: Run impact analysis
         id: impact
@@ -61,8 +60,7 @@ jobs:
           node-version: "20"
 
       - name: Install deps
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+        run: npm install
 
       - name: Run selective tests (if pattern exists)
         run: |

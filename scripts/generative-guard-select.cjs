@@ -93,8 +93,10 @@ function main() {
   }
 }
 
-main().catch((e) => {
+try {
+  main();
+} catch (e) {
   console.error(e);
   process.exit(1);
-});
+}
 
