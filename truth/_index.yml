@@ -1,4 +1,23 @@
 meta:
   description: "truth配下のみがSource of Truth（数値・条件・制約の唯一の正）"
-files: {}
 
+files:
+  infra/timeout.yml:
+    purpose: "タイムアウト設定（API/DB/外部）"
+    used_by:
+      code: []
+      docs: ["docs/api/API仕様_売主用注文詳細取得.md"]
+      tests: []
+    dependencies: []
+    impact_level: "high"
+    adr: null
+
+  infra/retry.yml:
+    purpose: "リトライ戦略"
+    used_by:
+      code: []
+      docs: ["docs/api/API仕様_売主用注文詳細取得.md"]
+      tests: []
+    dependencies: ["infra/timeout.yml"]
+    impact_level: "high"
+    adr: null

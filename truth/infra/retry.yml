@@ -1,0 +1,7 @@
+retry:
+  max_attempts: 3
+  initial_delay_ms: 1000
+  max_delay_ms: 30000
+  backoff_multiplier: 2.0
+  retryable_status_codes: [408, 429, 500, 502, 503, 504]
+

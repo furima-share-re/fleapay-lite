@@ -1,48 +1,10 @@
 # API仕様: `/api/seller/order-detail-full`
 
 ## 概要
+
 出店者（販売者）が自分の注文の詳細情報を取得するためのAPI。注文の基本情報に加えて、画像、購入者属性、商品カテゴリなどの付帯情報をまとめて返す。
 
----
-
-## どのデータを返すAPIか
-
-### 返却データの内容
-
-以下の情報を1件の注文について返す：
-
-1. **注文基本情報**
-   - `orderId`: 注文ID
-   - `sellerId`: 販売者ID（クエリパラメータから受け取った値）
-   - `memo`: 注文メモ（`orders.summary`）
-   - `amount`: 注文金額
-   - `costAmount`: 仕入額（`orders.cost_amount`、存在しない場合は0）
-   - `createdAt`: 注文作成日時
-
-2. **決済情報**
-   - `isCash`: 現金決済かどうか（`order_metadata.is_cash`）
-
-3. **購入者属性**（`buyer_attributes`テーブルから）
-   - `customerType`: 顧客タイプ（例：inbound、unknown等）
-   - `gender`: 性別（unknown等）
-   - `ageBand`: 年齢帯（unknown等）
-
-4. **商品情報**（`order_metadata`テーブルから）
-   - `itemCategory`: 商品カテゴリ
-   - `buyerLanguage`: 購入者の言語
-
-5. **画像情報**（`images`テーブルから）
-   - `imageUrl`: 商品画像URL（最新の画像1件のみ）
-
-### データ取得ロジック
-
-- `orders`テーブルを基準に、以下のテーブルを`LEFT JOIN`で結合：
-  - `order_metadata`
-  - `buyer_attributes`
-  - `images`
-- `images`については、`created_at DESC`でソートし、最新の1件のみ取得（`LIMIT 1`）
-- すべてのJOINは`LEFT JOIN`のため、関連データが存在しない場合でも注文情報は返される
-- 欠損値はデフォルト値で補完される（`|| ""`、`|| "unknown"`、`|| 0`、`|| null`）
+**注意**: このドキュメントは説明用です。**正（Source of Truth）は `spec/openapi.yml` を参照してください。**
 
 ---
 
@@ -59,25 +21,16 @@
 
 ---
 
-## 論理削除（deleted_at）されたデータの扱い
+## データ取得ロジック
 
-### **除外する仕様に見える（ただし明確な実装はない）**
-
-**現状の実装：**
-- SQLクエリの`WHERE`句に`deleted_at IS NULL`の条件が**存在しない**
-- そのため、論理削除された注文も取得される可能性がある
-
-**他のAPIとの比較：**
-- `/api/seller/kids-summary`（763行目、775行目、788行目）では、`deleted_at IS NULL`の条件が明示的に追加されている
-- 同様の出店者向けAPIである`/api/seller/order-detail`（`payments.js`）でも、`deleted_at`のチェックは行われていない
-
-**判断：**
-- 他のAPIで`deleted_at`をチェックしていることから、**本来は除外すべき仕様**と考えられる
-- 現状の実装では、論理削除された注文も取得される可能性があるため、**仕様として曖昧な状態**
-
-**関連テーブルについて：**
-- `order_metadata`、`buyer_attributes`、`images`テーブルについても、`deleted_at`のチェックは行われていない
-- これらのテーブルに論理削除の仕組みがあるかは不明
+- `orders`テーブルを基準に、以下のテーブルを`LEFT JOIN`で結合：
+  - `order_metadata`
+  - `buyer_attributes`
+  - `images`
+- `images`については、`created_at DESC`でソートし、最新の1件のみ取得（`LIMIT 1`）
+- すべてのJOINは`LEFT JOIN`のため、関連データが存在しない場合でも注文情報は返される
+- 欠損値はデフォルト値で補完される（`|| ""`、`|| "unknown"`、`|| 0`、`|| null`）
+- **論理削除された注文は除外される**（`deleted_at IS NULL`）
 
 ---
 
@@ -88,28 +41,23 @@
 - セッションやトークンベースの認証がなく、URLを知っていれば他者の注文IDを推測してアクセスする余地がある可能性
 - ただし、`seller_id`で絞り込むため、他者の注文を取得することはできない
 
-### 2. **論理削除データの扱いが不明確**
-- `deleted_at IS NULL`のチェックがない
-- 他のAPIでは明示的にチェックしているため、実装漏れの可能性
-- 意図的に削除済みデータも取得する仕様なのか、実装漏れなのか判断がつかない
-
-### 3. **エラーハンドリングの不足**
+### 2. **エラーハンドリングの不足**
 - データベースエラー時は`server_error`を返すが、具体的なエラー種別の識別ができない
 - 404エラーは「注文が見つからない」場合に返されるが、以下のケースで同一のエラーになる：
   - 注文IDが存在しない
   - 注文は存在するが、指定された`sellerId`に紐づいていない
-  - 論理削除された注文（`deleted_at`が設定されている）の場合も、現在の実装では見つからない可能性がある
+  - 論理削除された注文（`deleted_at`が設定されている）
 
-### 4. **画像の取得ロジック**
+### 3. **画像の取得ロジック**
 - `ORDER BY img.created_at DESC NULLS LAST LIMIT 1`で最新の画像1件を取得
 - 複数画像がある場合の扱いが不明（最新1件のみが正しい仕様なのか）
 
-### 5. **データの整合性**
+### 4. **データの整合性**
 - `LEFT JOIN`のため、関連データが存在しない場合でも注文情報は返される
 - 例：画像が存在しない注文でも`imageUrl: null`として返される
 - ただし、`buyer_attributes`や`order_metadata`にデータがない場合、`unknown`や空文字が返される
 
-### 6. **パラメータの検証不足**
+### 5. **パラメータの検証不足**
 - `sellerId`と`orderId`の存在チェックはあるが、形式の検証（SQLインジェクション対策以外）は見当たらない
 - 実装ではプレースホルダ（`$1`、`$2`）を使用しているため、SQLインジェクション対策はされている
 
@@ -117,7 +65,14 @@
 
 ## 実装場所
 
-- **定義場所**: `server.js` 591行目
-- **使用場所**: `public/seller-dashboard.html` 1450行目
+- **定義場所**: `server.js` 644行目
+- **使用場所**: `public/seller-dashboard.html` 1747行目
 - **類似API**: `payments.js`の`/api/seller/order-detail`（写真・属性なしの簡易版）
 
+---
+
+## 関連ドキュメント
+
+- **正（Source of Truth）**: `spec/openapi.yml`
+- **タイムアウト設定**: `truth/infra/timeout.yml`
+- **リトライ戦略**: `truth/infra/retry.yml`
