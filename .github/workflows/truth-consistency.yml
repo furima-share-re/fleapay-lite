@@ -18,8 +18,7 @@ jobs:
           node-version: "20"
 
       - name: Install deps
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+        run: npm install
 
       - name: Run tests (truth consistency)
         run: |
