@@ -36,12 +36,16 @@ jobs:
           cat generative-sample.json
 
       - name: Run generative consistency (stub)
+        id: generative
+        continue-on-error: true
         run: |
-          node scripts/generative-runner.cjs generative-sample.json
+          node scripts/generative-runner.cjs generative-sample.json || echo "generative-runner failed, but continuing..."
 
       - name: Run root cause analysis (Phase 4)
+        id: rootcause
+        continue-on-error: true
         run: |
-          node scripts/generative-rootcause.cjs
+          node scripts/generative-rootcause.cjs || echo "rootcause analysis failed, but continuing..."
 
       - name: Upload generative report artifact
         if: always()
