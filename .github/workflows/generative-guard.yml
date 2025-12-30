@@ -57,16 +57,23 @@ jobs:
       - name: Check OPENAI_API_KEY
         id: check_key
         run: |
-          if [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
             echo "❌ OPENAI_API_KEY not set in repository secrets."
-            echo "Critical truth files changed but cannot run generative guard."
             echo ""
-            echo "Please set OPENAI_API_KEY in repository secrets, or"
-            echo "ensure critical truth files are not changed without proper guard."
+            echo "Critical/high impact truth files were changed, but OPENAI_API_KEY is not configured."
+            echo "This PR is blocked to prevent unguarded changes to critical truth files."
+            echo ""
+            echo "To proceed:"
+            echo "1. Set OPENAI_API_KEY in repository secrets (Settings → Secrets and variables → Actions)"
+            echo "2. Or ensure critical truth files (impact_level: critical/high) are not changed without proper guard"
+            echo ""
             echo "has_api_key=false" >> $GITHUB_OUTPUT
             exit 1
           fi
+          echo "✅ OPENAI_API_KEY is configured"
           echo "has_api_key=true" >> $GITHUB_OUTPUT
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Create sample from critical files
         if: steps.select.outputs.critical_truth_changed == 'true' && steps.check_key.outputs.has_api_key == 'true'
