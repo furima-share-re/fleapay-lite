@@ -1,0 +1,143 @@
+meta:
+  description: "truth配下のみがSource of Truth（数値・条件・制約の唯一の正）"
+
+files:
+  infra/timeout.yml:
+    purpose: "タイムアウト設定（API/DB/外部）"
+    used_by:
+      code: []
+      docs: ["docs/02_spec/API仕様_売主用注文詳細取得.md"]
+      tests: []
+    dependencies: []
+    impact_level: "high"
+    adr: null
+
+  infra/retry.yml:
+    purpose: "リトライ戦略"
+    used_by:
+      code: []
+      docs: ["docs/02_spec/API仕様_売主用注文詳細取得.md"]
+      tests: []
+    dependencies: ["infra/timeout.yml"]
+    impact_level: "high"
+    adr: null
+
+  infra/availability.yml:
+    purpose: "稼働率・可用性設定"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/EDO_ICHIBA_F1最小機能セット_広告メディア機能整理.md"]
+      tests: []
+    dependencies: []
+    impact_level: "medium"
+    adr: null
+
+  business/cpm.yml:
+    purpose: "CPM値（広告価値計算用）"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
+    impact_level: "high"
+    adr: null
+
+  business/conversion_rates.yml:
+    purpose: "コンバージョン率・参加率・収集率"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
+    impact_level: "high"
+    adr: null
+
+  business/persona_post_rates.yml:
+    purpose: "ペルソナ別投稿率目標（Phase別）"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
+    impact_level: "medium"
+    adr: null
+
+  business/revenue.yml:
+    purpose: "収益・広告価値設定"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
+    impact_level: "high"
+    adr: null
+
+  business/distribution.yml:
+    purpose: "配信・スケジューリング設定"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/EDO_ICHIBA_F1最小機能セット_広告メディア機能整理.md", "docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
+    impact_level: "medium"
+    adr: null
+
+  business/persona_behavior_metrics.yml:
+    purpose: "ペルソナ別行動指標（投稿頻度・投稿スタイル等）"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
+    impact_level: "medium"
+    adr: null
+
+  business/persona_preferences.yml:
+    purpose: "ペルソナ別嗜好・購買傾向"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
+    impact_level: "low"
+    adr: null
+
+  business/roadmap.yml:
+    purpose: "ロードマップ（Phase別タイムライン）"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
+    impact_level: "medium"
+    adr: null
+
+  core/omikuji.yml:
+    purpose: "おみくじ機能設定"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/EDO_ICHIBA_F1最小機能セット_広告メディア機能整理.md"]
+      tests: []
+    dependencies: []
+    impact_level: "medium"
+    adr: null
+
+  core/content_templates.yml:
+    purpose: "コンテンツテンプレート設定"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/EDO_ICHIBA_F1最小機能セット_広告メディア機能整理.md"]
+      tests: []
+    dependencies: []
+    impact_level: "medium"
+    adr: null
+
+  core/ugc_flow.yml:
+    purpose: "UGC広告OS連携フロー"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
+    impact_level: "high"
+    adr: null

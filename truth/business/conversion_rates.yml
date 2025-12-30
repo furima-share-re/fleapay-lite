@@ -1,0 +1,44 @@
+# コンバージョン率・参加率・収集率
+# UGC広告OS連携フローの各ステップでの変換率
+
+meta:
+  description: "UGC広告OS連携フローの各ステップでの変換率"
+  unit: "パーセント"
+  source: "oi_flea_market_persona_final.html (外部資料)"
+
+flow:
+  step1_visit:
+    description: "来場"
+    target_monthly: 500
+    unit: "人/月"
+
+  step2_payment_trigger:
+    description: "決済完了時におみくじ参加を自動案内"
+    participation_rate: 80
+    unit: "パーセント"
+
+  step3_omikuji:
+    description: "おみくじ診断完了"
+    completion_rate: 90
+    unit: "パーセント"
+
+  step4_post_trigger:
+    description: "投稿導線到達"
+    reach_rate: 50
+    unit: "パーセント"
+
+  step5_ugc_collection:
+    description: "UGC収集"
+    collection_rate: 95
+    unit: "パーセント"
+
+  step6_ad_distribution:
+    description: "広告配信稼働"
+    availability_rate: 99
+    unit: "パーセント"
+
+calculation:
+  monthly_posts:
+    formula: "来場者数 × 参加率 × 到達率 × 収集率"
+    example: "500 × 0.80 × 0.50 × 0.95 = 190投稿/月"
+

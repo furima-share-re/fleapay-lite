@@ -1,0 +1,24 @@
+# 収益・広告価値設定
+
+meta:
+  description: "月間総広告価値・収益目標"
+  unit: "円"
+  source: "oi_flea_market_persona_final.html (外部資料)"
+
+phase4_targets:
+  monthly_visitors: 500
+  omikuji_participation_rate: 80
+  omikuji_participants: 400
+  post_trigger_reach_rate: 50
+  post_trigger_reached: 200
+  weighted_average_post_rate: 65
+  actual_posts: 130
+  ugc_collection_rate: 95
+  collected_ugc: 123
+  monthly_total_ad_value: 2000000
+
+persona_values_per_post:
+  mia: 8000
+  li_wei: 36000
+  sora: 3000
+

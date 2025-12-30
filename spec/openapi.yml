@@ -1,0 +1,128 @@
+openapi: 3.0.3
+info:
+  title: fleapay-lite API
+  version: 1.0.0
+  description: fleapay-lite API仕様（Source of Truth）
+
+paths:
+  /api/seller/order-detail-full:
+    get:
+      summary: "出店者用: 注文詳細取得（写真＋属性含む）"
+      description: 出店者（販売者）が自分の注文の詳細情報を取得する。注文の基本情報に加えて、画像、購入者属性、商品カテゴリなどの付帯情報をまとめて返す。
+      operationId: getSellerOrderDetailFull
+      tags:
+        - seller
+      parameters:
+        - name: s
+          in: query
+          required: true
+          description: 販売者ID
+          schema:
+            type: string
+        - name: orderId
+          in: query
+          required: true
+          description: 注文ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetailFullResponse'
+        '400':
+          description: パラメータ不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "seller_id_and_order_id_required"
+        '404':
+          description: 注文が見つからない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "order_not_found"
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "server_error"
+
+components:
+  schemas:
+    OrderDetailFullResponse:
+      type: object
+      required:
+        - orderId
+        - sellerId
+        - amount
+        - createdAt
+      properties:
+        orderId:
+          type: string
+          description: 注文ID
+        sellerId:
+          type: string
+          description: 販売者ID（クエリパラメータから受け取った値）
+        memo:
+          type: string
+          description: 注文メモ（orders.summary、存在しない場合は空文字）
+          default: ""
+        amount:
+          type: number
+          description: 注文金額
+        costAmount:
+          type: number
+          description: 仕入額（存在しない場合は0）
+          default: 0
+        createdAt:
+          type: string
+          format: date-time
+          description: 注文作成日時
+        isCash:
+          type: boolean
+          description: 現金決済かどうか（order_metadata.is_cash）
+          default: false
+        customerType:
+          type: string
+          description: 顧客タイプ（buyer_attributes.customer_type、存在しない場合は"unknown"）
+          default: "unknown"
+        gender:
+          type: string
+          description: 性別（buyer_attributes.gender、存在しない場合は"unknown"）
+          default: "unknown"
+        ageBand:
+          type: string
+          description: 年齢帯（buyer_attributes.age_band、存在しない場合は"unknown"）
+          default: "unknown"
+        itemCategory:
+          type: string
+          description: 商品カテゴリ（order_metadata.category、存在しない場合は"unknown"）
+          default: "unknown"
+        buyerLanguage:
+          type: string
+          description: 購入者の言語（order_metadata.buyer_language、存在しない場合は"unknown"）
+          default: "unknown"
+        imageUrl:
+          type: string
+          nullable: true
+          description: 商品画像URL（imagesテーブルから最新の画像1件のみ、存在しない場合はnull）
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: エラーコード
+

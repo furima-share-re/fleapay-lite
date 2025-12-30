@@ -1,0 +1,122 @@
+name: Generative Guard (PR)
+
+on:
+  pull_request:
+    branches: ["main", "master"]
+    paths:
+      - "truth/**"
+
+jobs:
+  generative-guard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install deps
+        run: npm install
+
+      - name: Fetch base ref
+        run: |
+          BASE_REF="${{ github.base_ref }}"
+          if [ -z "${BASE_REF}" ]; then
+            echo "Not a PR event. Skipping."
+            exit 0
+          fi
+          git fetch origin "${BASE_REF}:${BASE_REF}" --quiet
+
+      - name: Select critical truth files
+        id: select
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+        run: |
+          CRITICAL=$(node scripts/generative-guard-select.cjs)
+          echo "critical_files<<EOF" >> $GITHUB_OUTPUT
+          echo "${CRITICAL}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Check if any critical files changed
+          CRITICAL_COUNT=$(echo "${CRITICAL}" | jq 'length')
+          if [ "${CRITICAL_COUNT}" -eq 0 ]; then
+            echo "✅ No critical/high impact truth files changed. Skipping generative guard."
+            echo "critical_truth_changed=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "critical_truth_changed=true" >> $GITHUB_OUTPUT
+          echo "Found ${CRITICAL_COUNT} critical truth file(s) changed"
+
+      - name: Check OPENAI_API_KEY
+        id: check_key
+        run: |
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo "❌ OPENAI_API_KEY not set in repository secrets."
+            echo ""
+            echo "Critical/high impact truth files were changed, but OPENAI_API_KEY is not configured."
+            echo "This PR is blocked to prevent unguarded changes to critical truth files."
+            echo ""
+            echo "To proceed:"
+            echo "1. Set OPENAI_API_KEY in repository secrets (Settings → Secrets and variables → Actions)"
+            echo "2. Or ensure critical truth files (impact_level: critical/high) are not changed without proper guard"
+            echo ""
+            echo "has_api_key=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "✅ OPENAI_API_KEY is configured"
+          echo "has_api_key=true" >> $GITHUB_OUTPUT
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Create sample from critical files
+        if: steps.select.outputs.critical_truth_changed == 'true' && steps.check_key.outputs.has_api_key == 'true'
+        run: |
+          CRITICAL_JSON='${{ steps.select.outputs.critical_files }}'
+          CRITICAL_ARRAY=$(echo "${CRITICAL_JSON}" | jq -r '.[]')
+          CRITICAL_PATHS=$(echo "${CRITICAL_ARRAY}" | jq -R -s 'split("\n") | map(select(. != "")) | map("truth/" + .)')
+          SAMPLE=$(echo "{}" | jq --argjson paths "${CRITICAL_PATHS}" --arg seed "pr-guard" '{seedStr: $seed, limit: ($paths | length), total: ($paths | length), selected: $paths}')
+          echo "${SAMPLE}" > generative-sample.json
+          cat generative-sample.json
+
+      - name: Run generative consistency (guard)
+        if: steps.select.outputs.critical_truth_changed == 'true' && steps.check_key.outputs.has_api_key == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          node scripts/generative-runner.cjs generative-sample.json
+
+      - name: Check for mismatches
+        if: steps.select.outputs.critical_truth_changed == 'true' && steps.check_key.outputs.has_api_key == 'true'
+        run: |
+          if [ ! -f "artifacts/generative-report.json" ]; then
+            echo "❌ generative-report.json not found"
+            exit 1
+          fi
+          
+          MISMATCH_COUNT=$(jq '.mismatchCount' artifacts/generative-report.json)
+          if [ "${MISMATCH_COUNT}" -gt 0 ]; then
+            echo "❌ Generative guard failed: ${MISMATCH_COUNT} mismatch(es) detected"
+            echo ""
+            echo "Critical truth files were changed, but generative consistency check found mismatches."
+            echo "Please review the changes and ensure they are correct."
+            echo ""
+            cat artifacts/generative-report.md || true
+            exit 1
+          fi
+          
+          echo "✅ Generative guard passed: no mismatches detected"
+
+      - name: Upload generative report artifact
+        if: always() && steps.select.outputs.critical_truth_changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generative-guard-report
+          path: artifacts/generative-report.*
+

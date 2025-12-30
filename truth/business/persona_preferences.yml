@@ -1,0 +1,31 @@
+# ペルソナ別嗜好・購買傾向
+
+meta:
+  description: "ペルソナ別の嗜好・購買傾向（年代・価格帯等）"
+  source: "oi_flea_market_persona_final.html (外部資料)"
+
+personas:
+  mia:
+    preferred_era:
+      min: 80
+      max: 90
+      description: "好む年代（80-90年代）"
+    purchase_items:
+      - "ヴィンテージデニム"
+      - "日本のバンドTシャツ"
+      - "80-90年代のアニメグッズ"
+
+  li_wei:
+    purchase_items:
+      - "ヴィンテージバッグ"
+      - "日本の伝統工芸品"
+      - "限定コラボ商品"
+      - "デザイナーズ古着"
+
+  sora:
+    purchase_items:
+      - "古着トップス"
+      - "日本の文房具・雑貨"
+      - "キャラクターグッズ"
+      - "プチプラコスメ"
+

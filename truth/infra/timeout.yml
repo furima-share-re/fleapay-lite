@@ -1,0 +1,5 @@
+timeout_ms:
+  api_gateway: 30000
+  database_query: 5000
+  external_http: 15000
+
