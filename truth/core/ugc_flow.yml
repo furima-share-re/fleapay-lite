@@ -1,0 +1,37 @@
+# UGC広告OS連携フロー
+
+meta:
+  description: "UGC広告OS連携フローのステップ定義"
+  source: "oi_flea_market_persona_final.html (外部資料)"
+
+steps:
+  - id: arrive
+    name: "来場"
+    description: "インバウンド観光客が大井競馬場フリマで買い物"
+    order: 1
+
+  - id: pay_trigger
+    name: "決済トリガー"
+    description: "決済完了時におみくじ参加を自動案内"
+    order: 2
+
+  - id: fortune
+    name: "おみくじ診断"
+    description: "ペルソナ別最適化コンテンツ提案"
+    order: 3
+
+  - id: posting
+    name: "投稿導線"
+    description: "QRコード→テンプレート→ワンタップ投稿"
+    order: 4
+
+  - id: collect
+    name: "UGC収集"
+    description: "ハッシュタグ自動監視・権利確認"
+    order: 5
+
+  - id: distribute
+    name: "広告配信"
+    description: "公式UGCとして通年配信"
+    order: 6
+

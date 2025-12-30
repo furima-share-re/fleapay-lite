@@ -1,0 +1,17 @@
+# 配信・スケジューリング設定
+
+meta:
+  description: "広告配信の配信日数・スケジューリング設定"
+  source: "edo_ichiba_feature_document.html (外部資料)"
+
+schedule:
+  days_per_year: 365
+  description: "年間配信日数（通年配信）"
+  include_non_event_days: true
+  description: "非開催日も配信継続"
+
+platforms:
+  sns_auto_post: true
+  optimal_time_distribution: true
+  description: "SNS別自動投稿、最適時間帯配信"
+

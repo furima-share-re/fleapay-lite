@@ -1,0 +1,31 @@
+# ロードマップ（Phase別タイムライン）
+
+meta:
+  description: "Phase別のタイムライン（月数）"
+  source: "oi_flea_market_persona_final.html (外部資料)"
+
+phases:
+  phase1:
+    name: "Phase 1"
+    period: "現在"
+    after_months: 0
+    description: "基本システム構築、多言語案内設置"
+
+  phase2:
+    name: "Phase 2"
+    period: "中期"
+    after_months: 6
+    description: "おみくじA/Bテスト、キラーワード最適化"
+
+  phase3:
+    name: "Phase 3"
+    period: "長期"
+    after_months: 12
+    description: "AI自動生成精度向上、フォトスポット設置"
+
+  phase4:
+    name: "Phase 4"
+    period: "最終段階"
+    after_months: 24
+    description: "完全自動化、インフルエンサー連携"
+

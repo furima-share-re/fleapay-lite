@@ -1,0 +1,41 @@
+# ペルソナ別行動指標
+
+meta:
+  description: "ペルソナ別の投稿頻度・投稿スタイル等の行動指標"
+  source: "oi_flea_market_persona_final.html (外部資料)"
+
+personas:
+  mia:
+    posts_per_day:
+      min: 3
+      max: 4
+      includes_stories: true
+      description: "1日の投稿頻度（ストーリーズ含む）"
+    travel_posting:
+      realtime: true
+      description: "旅行中はほぼリアルタイム投稿"
+
+  li_wei:
+    posts_per_day:
+      min: 2
+      max: 2
+      description: "1日の投稿頻度"
+    post_style:
+      photo_count: 9
+      text_chars: 1500
+      format: "攻略ガイド形式"
+      description: "写真9枚+1500字の詳細テキスト"
+    xiaohongshu_format:
+      photo_count: 9
+      description: "小紅書用9枚写真構成"
+
+  sora:
+    posts_per_day:
+      min: 1
+      max: 2
+      description: "1日の投稿頻度"
+    stories_per_day:
+      min: 5
+      max: 10
+      description: "ストーリーズの投稿頻度"
+

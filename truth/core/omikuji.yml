@@ -1,0 +1,20 @@
+# おみくじ機能設定
+
+meta:
+  description: "おみくじ機能の設定値"
+  source: "edo_ichiba_feature_document.html (外部資料)"
+
+patterns:
+  count_min: 3
+  count_max: 5
+  description: "吉凶パターン数（最小〜最大）"
+
+visual:
+  fixed_per_result: true
+  description: "結果ごとに固定ビジュアルを使用"
+
+message:
+  fixed_per_result: true
+  multilingual: true
+  description: "結果ごとに固定メッセージ（多言語対応）"
+

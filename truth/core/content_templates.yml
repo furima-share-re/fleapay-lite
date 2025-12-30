@@ -1,0 +1,19 @@
+# コンテンツテンプレート設定
+
+meta:
+  description: "編集テンプレート管理の設定値"
+  source: "edo_ichiba_feature_document.html (外部資料)"
+
+winning_templates:
+  min: 5
+  max: 10
+  description: "勝ち型テンプレート登録数（最小〜最大）"
+
+rotation:
+  automatic: true
+  description: "自動ローテーション"
+
+ab_testing:
+  automatic: true
+  description: "ABテスト自動実行"
+
