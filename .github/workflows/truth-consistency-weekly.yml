@@ -17,10 +17,34 @@ jobs:
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
       - run: npm test
 
-  # ---- Optional: Generative step placeholder ----
-  # 将来的にここへ「AI生成 → 抽出 → truthと比較」を追加
-  # weekly-generative:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - run: echo "TODO: add generative consistency test"
+  weekly-generative:
+    runs-on: ubuntu-latest
+    needs: weekly-deterministic
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install deps
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Create weekly sample (10 truth files)
+        run: |
+          node scripts/generative-sample.cjs 10 $(date -u +%F) > generative-sample.json
+          cat generative-sample.json
+
+      - name: Run generative consistency (stub)
+        run: |
+          node scripts/generative-runner.cjs generative-sample.json
+
+      - name: Upload generative report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generative-report
+          path: artifacts/generative-report.*
 

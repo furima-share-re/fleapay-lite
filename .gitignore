@@ -29,3 +29,7 @@ Thumbs.db
 # *.md は含めない（ドキュメントとして管理）
 # *.txt は含めない（ドキュメントとして管理）
 
+# CI artifacts
+artifacts/
+generative-sample.json
+
