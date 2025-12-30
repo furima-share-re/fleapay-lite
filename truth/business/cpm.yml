@@ -4,7 +4,7 @@
 meta:
   description: "ペルソナ別・プラットフォーム別CPM値（広告価値計算用）"
   unit: "円"
-  source: "docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"
+  source: "oi_flea_market_persona_final.html (外部資料)"
 
 personas:
   mia:

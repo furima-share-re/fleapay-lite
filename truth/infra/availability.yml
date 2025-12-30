@@ -3,7 +3,7 @@
 meta:
   description: "システム稼働率・自動化率"
   unit: "パーセント"
-  source: "docs/01_overview/EDO_ICHIBA_F1最小機能セット_広告メディア機能整理.md"
+  source: "edo_ichiba_feature_document.html (外部資料)"
 
 automation:
   operation_automation_rate: 99
