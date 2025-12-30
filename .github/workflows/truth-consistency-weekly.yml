@@ -49,6 +49,7 @@ jobs:
         with:
           name: generative-report
           path: artifacts/generative-report.*
+          if-no-files-found: warn
 
       - name: Upload root cause report artifact
         if: always()
@@ -56,4 +57,5 @@ jobs:
         with:
           name: rootcause-report
           path: artifacts/rootcause-report.*
+          if-no-files-found: warn
 
