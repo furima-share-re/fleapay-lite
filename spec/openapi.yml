@@ -7,7 +7,7 @@ info:
 paths:
   /api/seller/order-detail-full:
     get:
-      summary: 出店者用: 注文詳細取得（写真＋属性含む）
+      summary: "出店者用: 注文詳細取得（写真＋属性含む）"
       description: 出店者（販売者）が自分の注文の詳細情報を取得する。注文の基本情報に加えて、画像、購入者属性、商品カテゴリなどの付帯情報をまとめて返す。
       operationId: getSellerOrderDetailFull
       tags:
