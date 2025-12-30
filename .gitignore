@@ -33,3 +33,6 @@ Thumbs.db
 artifacts/
 generative-sample.json
 
+# Metrics (tracked in git for trend analysis)
+# metrics/ は git で管理するため除外しない
+
