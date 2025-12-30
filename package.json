@@ -22,7 +22,8 @@
   "@aws-sdk/client-s3": "^3.596.0" 
 },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "yaml": "^2.3.4"
   },
   "engines": {
     "node": ">=18.0.0"

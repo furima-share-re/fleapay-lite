@@ -1,0 +1,77 @@
+name: Impact Analysis (truth/_index.yml)
+
+on:
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  impact-analysis:
+    runs-on: ubuntu-latest
+    outputs:
+      has_truth_changes: ${{ steps.impact.outputs.has_truth_changes }}
+      test_pattern: ${{ steps.impact.outputs.test_pattern }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install deps (optional)
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else echo "No lockfile. Skipping npm ci."; fi
+
+      - name: Run impact analysis
+        id: impact
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          node scripts/impact-analysis.js
+
+      - name: Upload impact summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: impact-summary
+          path: impact-summary.md
+
+      - name: Print summary
+        if: always()
+        run: |
+          echo "---- impact-summary.md ----"
+          cat impact-summary.md || true
+
+  selective-tests:
+    needs: impact-analysis
+    runs-on: ubuntu-latest
+    if: needs.impact-analysis.outputs.has_truth_changes == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install deps
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Run selective tests (if pattern exists)
+        run: |
+          PATTERN="${{ needs.impact-analysis.outputs.test_pattern }}"
+          if [ -n "${PATTERN}" ]; then
+            echo "Running selective tests with pattern: ${PATTERN}"
+            npm test -- --testPathPattern="${PATTERN}"
+          else
+            echo "No test_pattern provided. Running full test suite as fallback."
+            npm test
+          fi
+
