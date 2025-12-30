@@ -1,0 +1,36 @@
+# CPM (Cost Per Mille) 設定
+# 広告価値計算の基準となるCPM値
+
+meta:
+  description: "ペルソナ別・プラットフォーム別CPM値（広告価値計算用）"
+  unit: "円"
+  source: "docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"
+
+personas:
+  mia:
+    name: "Mia (ミア) - SNSトレンドハンター"
+    cpm: 800
+    reach_per_post: 10000
+    value_per_post: 8000
+    platforms:
+      - tiktok
+      - instagram
+
+  li_wei:
+    name: "Li Wei (リー・ウェイ) - カルチャー探求者"
+    cpm: 1200
+    reach_per_post: 30000
+    value_per_post: 36000
+    platforms:
+      - xiaohongshu
+      - douyin
+
+  sora:
+    name: "Sora (ソラ) - バジェットトラベラー"
+    cpm: 600
+    reach_per_post: 5000
+    value_per_post: 3000
+    platforms:
+      - instagram
+      - naver_blog
+

@@ -6,7 +6,7 @@ files:
     purpose: "タイムアウト設定（API/DB/外部）"
     used_by:
       code: []
-      docs: ["docs/api/API仕様_売主用注文詳細取得.md"]
+      docs: ["docs/02_spec/API仕様_売主用注文詳細取得.md"]
       tests: []
     dependencies: []
     impact_level: "high"
@@ -16,8 +16,58 @@ files:
     purpose: "リトライ戦略"
     used_by:
       code: []
-      docs: ["docs/api/API仕様_売主用注文詳細取得.md"]
+      docs: ["docs/02_spec/API仕様_売主用注文詳細取得.md"]
       tests: []
     dependencies: ["infra/timeout.yml"]
+    impact_level: "high"
+    adr: null
+
+  infra/availability.yml:
+    purpose: "稼働率・可用性設定"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/EDO_ICHIBA_F1最小機能セット_広告メディア機能整理.md"]
+      tests: []
+    dependencies: []
+    impact_level: "medium"
+    adr: null
+
+  business/cpm.yml:
+    purpose: "CPM値（広告価値計算用）"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
+    impact_level: "high"
+    adr: null
+
+  business/conversion_rates.yml:
+    purpose: "コンバージョン率・参加率・収集率"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
+    impact_level: "high"
+    adr: null
+
+  business/persona_post_rates.yml:
+    purpose: "ペルソナ別投稿率目標（Phase別）"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
+    impact_level: "medium"
+    adr: null
+
+  business/revenue.yml:
+    purpose: "収益・広告価値設定"
+    used_by:
+      code: []
+      docs: ["docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"]
+      tests: []
+    dependencies: []
     impact_level: "high"
     adr: null

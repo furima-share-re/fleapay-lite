@@ -20,8 +20,9 @@
 ## Directory Roles（役割）
 
 - `docs/` : 説明（背景・意図・運用手順）※正ではない
+  - `docs/99_archive/` : 生成物・説明用資料（HTML等）※いかなる正・仕様の根拠にもならない
 - `truth/` : 正（数値・条件・制約）※唯一の正
-- `spec/` : 機械仕様（OpenAPI/Prisma等）
+- `spec/` : 機械仕様（OpenAPI/Prisma等）※機械可読形式のみ
 - `adr/` : 意思決定ログ（なぜそうしたか）
 - `.ai/` : AI向けルール（参照優先順位）
 

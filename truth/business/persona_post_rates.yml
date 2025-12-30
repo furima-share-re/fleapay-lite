@@ -1,0 +1,59 @@
+# ペルソナ別投稿率目標（Phase別）
+
+meta:
+  description: "ペルソナ別・Phase別投稿率目標"
+  unit: "パーセント"
+  source: "docs/01_overview/大井競馬場フリマ_インバウンド来場者ペルソナ詳細資料.md"
+
+personas:
+  mia:
+    phases:
+      phase1:
+        rate: 20
+        period: "現在"
+      phase2:
+        rate: 35
+        period: "6ヶ月後"
+      phase3:
+        rate: 50
+        period: "12ヶ月後"
+      phase4:
+        rate: 65
+        period: "24ヶ月後"
+
+  li_wei:
+    phases:
+      phase1:
+        rate: 25
+        period: "現在"
+      phase2:
+        rate: 45
+        period: "6ヶ月後"
+      phase3:
+        rate: 60
+        period: "12ヶ月後"
+      phase4:
+        rate: 75
+        period: "24ヶ月後"
+
+  sora:
+    phases:
+      phase1:
+        rate: 15
+        period: "現在"
+      phase2:
+        rate: 25
+        period: "6ヶ月後"
+      phase3:
+        rate: 40
+        period: "12ヶ月後"
+      phase4:
+        rate: 55
+        period: "24ヶ月後"
+
+weighted_average:
+  phase1: 20
+  phase2: 35
+  phase3: 50
+  phase4: 65
+

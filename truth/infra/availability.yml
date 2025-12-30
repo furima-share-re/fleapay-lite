@@ -1,0 +1,16 @@
+# 稼働率・可用性設定
+
+meta:
+  description: "システム稼働率・自動化率"
+  unit: "パーセント"
+  source: "docs/01_overview/EDO_ICHIBA_F1最小機能セット_広告メディア機能整理.md"
+
+automation:
+  operation_automation_rate: 99
+  description: "運営自動化率（目標）"
+
+ad_distribution:
+  availability_rate: 99
+  description: "広告配信稼働率"
+  unit: "パーセント"
+
