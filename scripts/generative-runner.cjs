@@ -47,29 +47,52 @@ async function main() {
   const sampleJsonPath = process.argv[2] || "generative-sample.json";
   if (!fs.existsSync(sampleJsonPath)) {
     console.error(`❌ sample file not found: ${sampleJsonPath}`);
+    console.error("This may happen if generative-sample.cjs failed to generate the sample.");
     process.exit(1);
   }
 
-  const sample = JSON.parse(fs.readFileSync(sampleJsonPath, "utf-8"));
+  let sample;
+  try {
+    const content = fs.readFileSync(sampleJsonPath, "utf-8");
+    sample = JSON.parse(content);
+  } catch (e) {
+    console.error(`❌ Failed to parse ${sampleJsonPath}: ${e.message}`);
+    process.exit(1);
+  }
+
   const selected = sample.selected || [];
   const seedStr = sample.seedStr || "unknown";
 
   const results = [];
   let mismatchCount = 0;
 
+  if (selected.length === 0) {
+    console.log("⚠️  No truth files selected. This may happen if truth/ directory is empty or all files are filtered out.");
+  }
+
   for (const truthPath of selected) {
-    const truthObj = readTruth(truthPath);
-    const generated = await generateFromTruthStub(truthObj);
-    const extracted = extractGeneratedObject(generated);
+    try {
+      const truthObj = readTruth(truthPath);
+      const generated = await generateFromTruthStub(truthObj);
+      const extracted = extractGeneratedObject(generated);
 
-    const ok = deepEqual(truthObj, extracted);
-    if (!ok) mismatchCount++;
+      const ok = deepEqual(truthObj, extracted);
+      if (!ok) mismatchCount++;
 
-    results.push({
-      truthPath,
-      ok,
-      // For safety, store only small diffs later. For now we omit.
-    });
+      results.push({
+        truthPath,
+        ok,
+        // For safety, store only small diffs later. For now we omit.
+      });
+    } catch (e) {
+      console.error(`❌ Error processing ${truthPath}: ${e.message}`);
+      results.push({
+        truthPath,
+        ok: false,
+        error: e.message,
+      });
+      mismatchCount++;
+    }
   }
 
   const total = results.length;
