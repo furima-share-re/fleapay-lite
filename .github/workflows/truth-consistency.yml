@@ -1,0 +1,28 @@
+name: Truth Consistency (Deterministic)
+
+on:
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  truth-consistency:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install deps
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Run tests (truth consistency)
+        run: |
+          # vitest/jest どちらでも、npm test に寄せるのが運用が楽
+          npm test
+

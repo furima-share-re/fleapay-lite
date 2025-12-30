@@ -1,0 +1,26 @@
+name: Truth Consistency (Weekly)
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # 毎週月曜 00:00 UTC（日本時間だと月曜9時）
+  workflow_dispatch: {}
+
+jobs:
+  weekly-deterministic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - run: npm test
+
+  # ---- Optional: Generative step placeholder ----
+  # 将来的にここへ「AI生成 → 抽出 → truthと比較」を追加
+  # weekly-generative:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - run: echo "TODO: add generative consistency test"
+
