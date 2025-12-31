@@ -1,0 +1,113 @@
+# インフラ制約・システム限界値
+# タイムアウト・リトライ・レート制限
+# impact_level: high
+
+meta:
+  description: "インフラストラクチャの制約・システムの限界値"
+  last_updated: "2025-12-31"
+  owner: "Infrastructure Team"
+
+# タイムアウト設定
+timeouts:
+  api:
+    default: 5000            # デフォルトタイムアウト（ms）
+    short: 1000              # 短時間処理（ms）
+    long: 30000              # 長時間処理（ms）
+    
+  database:
+    query: 3000              # クエリタイムアウト（ms）
+    transaction: 10000       # トランザクションタイムアウト（ms）
+    connection: 5000         # 接続タイムアウト（ms）
+    
+  external_api:
+    default: 10000           # 外部API デフォルト（ms）
+    payment: 30000           # 決済API（ms）
+    notification: 5000       # 通知API（ms）
+
+# リトライ設定
+retry:
+  api:
+    max_attempts: 3          # 最大リトライ回数
+    initial_delay_ms: 100    # 初回遅延（ms）
+    max_delay_ms: 5000       # 最大遅延（ms）
+    backoff_multiplier: 2.0  # バックオフ係数
+    
+  database:
+    max_attempts: 5          # 最大リトライ回数
+    initial_delay_ms: 50     # 初回遅延（ms）
+    max_delay_ms: 1000       # 最大遅延（ms）
+    backoff_multiplier: 1.5  # バックオフ係数
+    
+  message_queue:
+    max_attempts: 10         # 最大リトライ回数
+    initial_delay_ms: 1000   # 初回遅延（ms）
+    max_delay_ms: 300000     # 最大遅延（ms = 5分）
+    backoff_multiplier: 2.0  # バックオフ係数
+
+# レート制限（システム全体）
+system_rate_limits:
+  api_gateway:
+    requests_per_second: 1000     # 秒間リクエスト数
+    burst: 2000                   # バーストサイズ
+    
+  per_user:
+    requests_per_minute: 60       # ユーザーあたり分間リクエスト
+    requests_per_hour: 1000       # ユーザーあたり時間リクエスト
+    
+  per_ip:
+    requests_per_minute: 300      # IPあたり分間リクエスト
+    requests_per_hour: 10000      # IPあたり時間リクエスト
+
+# リソース制限
+resource_limits:
+  memory:
+    api_server_mb: 512        # APIサーバー（MB）
+    worker_mb: 1024           # ワーカー（MB）
+    
+  cpu:
+    api_server_cores: 2       # APIサーバー（コア数）
+    worker_cores: 4           # ワーカー（コア数）
+    
+  storage:
+    user_quota_gb: 10         # ユーザーあたりストレージ（GB）
+    temp_file_ttl_hours: 24   # 一時ファイル保持時間（時間）
+
+# データベース制限
+database_limits:
+  connection_pool:
+    min_size: 5               # 最小接続数
+    max_size: 50              # 最大接続数
+    idle_timeout_sec: 600     # アイドルタイムアウト（秒）
+    
+  query:
+    max_rows: 1000            # 最大取得行数（デフォルト）
+    max_rows_export: 100000   # エクスポート最大行数
+    slow_query_threshold_ms: 1000  # スロークエリ閾値（ms）
+
+# キャッシュ設定
+cache:
+  default_ttl_sec: 300        # デフォルトTTL（秒）
+  short_ttl_sec: 60           # 短期TTL（秒）
+  long_ttl_sec: 3600          # 長期TTL（秒）
+  
+  max_size:
+    redis_mb: 2048            # Redis最大サイズ（MB）
+    memory_cache_mb: 256      # メモリキャッシュ最大サイズ（MB）
+
+# バッチ処理
+batch:
+  chunk_size: 100             # チャンクサイズ（件）
+  max_parallel_jobs: 10       # 最大並列ジョブ数
+  job_timeout_min: 60         # ジョブタイムアウト（分）
+
+# ヘルスチェック
+health_check:
+  interval_sec: 30            # チェック間隔（秒）
+  timeout_sec: 5              # タイムアウト（秒）
+  unhealthy_threshold: 3      # 異常判定閾値（回）
+  healthy_threshold: 2        # 正常判定閾値（回）
+
+# メモ
+# - これらの値は本番環境の負荷に応じて調整する
+# - 変更時は必ず負荷テストを実施すること
+# - 大幅な変更は段階的にロールアウトすること

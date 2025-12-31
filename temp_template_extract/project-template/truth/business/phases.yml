@@ -1,0 +1,83 @@
+# ユーザーフェーズ定義
+# ビジネスロジックの条件・制約
+# impact_level: high
+
+meta:
+  description: "ユーザーライフサイクルのフェーズ定義とビジネスルール"
+  last_updated: "2025-12-31"
+  owner: "Product Team"
+
+# ユーザーフェーズ定義
+user_phases:
+  new_user:
+    definition: "初回投稿から3日以内"
+    days_threshold: 3
+    post_count_threshold: 0  # 投稿数の下限なし
+    
+  active_user:
+    definition: "3日以内に3回以上投稿"
+    days_threshold: 3
+    post_count_threshold: 3
+    
+  power_user:
+    definition: "7日以内に10回以上投稿"
+    days_threshold: 7
+    post_count_threshold: 10
+    
+  dormant_user:
+    definition: "14日以上未投稿"
+    days_threshold: 14
+    post_count_threshold: 0
+    behavior: "inactive"
+
+# 通知条件
+notification:
+  push_enabled_phases:
+    - "active_user"
+    - "power_user"
+  
+  push_interval:
+    min_hours: 24        # 最小間隔（時間）
+    max_daily: 3         # 1日の最大通知数
+  
+  achievement_threshold:
+    first_post: 1        # 初投稿達成
+    milestone_10: 10     # 10投稿達成
+    milestone_50: 50     # 50投稿達成
+    milestone_100: 100   # 100投稿達成
+
+# リワード条件
+reward:
+  daily_login_bonus:
+    enabled: true
+    amount: 10           # ポイント
+    
+  post_reward:
+    first_post_bonus: 50       # 初投稿ボーナス
+    daily_post_reward: 5       # 投稿ごとの報酬
+    daily_max_reward: 30       # 1日の最大報酬
+    
+  referral_reward:
+    inviter: 100         # 招待者への報酬
+    invitee: 50          # 被招待者への報酬
+    condition: "invitee completes first post"
+
+# オンボーディング
+onboarding:
+  required_steps: 4              # 必須ステップ数
+  completion_reward: 100         # 完了報酬
+  timeout_days: 7                # タイムアウト（日）
+  
+  steps:
+    - name: "profile_setup"
+      order: 1
+    - name: "first_post"
+      order: 2
+    - name: "first_comment"
+      order: 3
+    - name: "first_like"
+      order: 4
+
+# メモ
+# - フェーズ定義の変更は既存ユーザーの分類に影響する
+# - 変更前に影響範囲分析（Impact Analysis）を実行すること

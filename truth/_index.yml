@@ -141,3 +141,13 @@ files:
     dependencies: []
     impact_level: "high"
     adr: null
+
+  ugc/ugc_metrics.yml:
+    purpose: "UGC関連のメトリクス・品質基準・モデレーション閾値"
+    used_by:
+      code: []
+      docs: []
+      tests: []
+    dependencies: []
+    impact_level: "medium"
+    adr: null

@@ -47,11 +47,17 @@ jobs:
         run: |
           node scripts/generative-rootcause.cjs || echo "rootcause analysis failed, but continuing..."
 
-      - name: Generate metrics
+      - name: Generate weekly metrics (json + 1-page md)
         id: metrics
+        if: always()
         continue-on-error: true
         run: |
-          node scripts/generative-metrics.cjs || echo "metrics generation failed, but continuing..."
+          mkdir -p metrics
+          REPORT_DATE=$(date -u +%F)
+          node scripts/metrics-from-rootcause.cjs \
+            artifacts/generative-report.json \
+            artifacts/rootcause-report.json \
+            metrics/${REPORT_DATE} || echo "metrics generation failed, but continuing..."
 
       - name: Upload generative report artifact
         if: always()
@@ -75,8 +81,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: metrics
-          path: metrics/*.json
+          name: weekly-metrics
+          path: |
+            metrics/*.json
+            metrics/*.md
           if-no-files-found: warn
           retention-days: 90
 

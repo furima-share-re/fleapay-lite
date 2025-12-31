@@ -4,6 +4,16 @@
 
 > 本READMEは「読むための文書」ではなく「秩序宣言」である。
 
+## AI Governance（社内標準）
+
+本プロジェクトは社内標準 **ASGS v1.0（AI Structural Governance Standard）** に準拠します。
+
+- 正（Source of Truth）は **`truth/**` と `spec/**` のみ**
+- `docs/**` は説明であり正ではありません（数値・条件・制約を書かない）
+- `adr/**` は意思決定の根拠です
+
+標準（社内限定）: asgs-internal /standard/ASGS_v1.0.md
+
 ## Source of Truth Declaration（正の宣言）
 
 このリポジトリにおける **正（Source of Truth）** は以下のみです。
