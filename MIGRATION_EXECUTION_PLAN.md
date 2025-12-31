@@ -14,7 +14,7 @@
 | Phase | フェーズ名 | 実装日 | 状態 | 備考 |
 |-------|----------|--------|------|------|
 | **Phase 1.1** | TypeScript導入 | 2025-12-31 | ✅ **完了** | 既存コードに影響なし |
-| **Phase 1.2** | Prisma導入（既存DB） | 2025-12-31 | ✅ **完了** | `/api/ping`のみPrisma経由 |
+| **Phase 1.2** | Supabase作成 + Prisma設定 | - | ⏳ **未着手** | 順序変更：コード実装のみ完了、Supabase作成後にPrisma設定を実施 |
 
 ### 実装済み内容
 
@@ -43,9 +43,9 @@
 
 ---
 
-#### Phase 1.2: Prisma導入（既存Render PostgreSQL） ✅
+#### Phase 1.2: Prisma導入（コード実装のみ完了） ✅
 
-**実装完了項目**:
+**実装完了項目（コード実装）**:
 - [x] Prisma依存関係を追加
   - `prisma`: ^5.9.1 (devDependencies)
   - `@prisma/client`: ^5.9.1 (dependencies)
@@ -65,38 +65,23 @@
 - ✅ 他のエンドポイントは既存の `pg` 直接使用を継続（共存状態）
 - ✅ Prisma接続エラー時は従来の動作にフォールバック（後方互換性）
 
-**次のステップ（手動実行が必要）**:
-```bash
-# 1. 依存関係をインストール
-npm install
-
-# 2. Prismaスキーマを既存DBから生成
-npx prisma db pull
-
-# 3. Prisma Clientを生成
-npx prisma generate
-
-# 4. 動作確認
-npm run dev
-# → http://localhost:3000/api/ping が動作することを確認
-```
-
 **注意事項**:
-- `prisma db pull` 実行後、`lib/prisma.ts` を使用するようにコードを変更可能
 - 現在の実装は、Prismaが未初期化でも動作するようにフォールバック処理を含む
-- Migration管理方針: データベースが正（`prisma db pull` でスキーマを生成）
+- **次のPhase 1.2（統合版）でSupabase作成後にPrisma設定を実施します**
 
 ---
 
 ### 未実装フェーズ
 
-| Phase | フェーズ名 | 予定期間 | 状態 |
-|-------|----------|---------|------|
-| **Phase 1.3** | Supabase接続変更 | Week 2 Day 1-2 | ⏳ 未着手 |
-| **Phase 1.4** | データ移行 | Week 2 Day 3-4 | ⏳ 未着手 |
-| **Phase 1.5** | Supabase Auth移行（新規ユーザー） | Week 3 Day 1-3 | ⏳ 未着手 |
-| **Phase 1.6** | 既存ユーザー移行 | Week 3 Day 4-5 | ⏳ 未着手 |
-| **Phase 1.7** | RLS実装 | Week 3 Day 6-7 | ⏳ 未着手 |
+| Phase | フェーズ名 | 予定期間 | 状態 | 備考 |
+|-------|----------|---------|------|------|
+| **Phase 1.2** | Supabase作成 + Prisma設定 | Week 1 Day 3-5 | ⏳ 未着手 | 順序変更：Supabase作成後にPrisma設定 |
+| **Phase 1.3** | データ移行 | Week 2 Day 1-2 | ⏳ 未着手 | 旧Phase 1.4 |
+| **Phase 1.4** | Supabase Auth移行（新規ユーザー） | Week 2 Day 3-5 | ⏳ 未着手 | 旧Phase 1.5 |
+| **Phase 1.5** | 既存ユーザー移行 | Week 3 Day 1-2 | ⏳ 未着手 | 旧Phase 1.6 |
+| **Phase 1.6** | RLS実装 | Week 3 Day 3-4 | ⏳ 未着手 | 旧Phase 1.7 |
+
+**注意**: Phase 1.2と1.3の順序を変更しました。効率化のため、Supabase作成後にPrisma設定を実施します。
 
 **詳細**: 各フェーズの実装手順は以下を参照してください。
 
@@ -167,81 +152,13 @@ npm run dev
 
 ---
 
-#### Phase 1.2: Prisma導入（既存Render PostgreSQL） ✅ **実装完了**
+#### Phase 1.2: Supabase作成 + Prisma設定（統合版） ⏳ **未着手**
 
 **期間**: Week 1 Day 3-5  
-**実装日**: 2025-12-31  
-**変更範囲**: データベースアクセス層（1エンドポイントのみ）
+**変更範囲**: データベース接続とPrisma設定（認証機能は未変更）
 
 **実施内容**:
-1. Prisma依存関係の追加 ✅
-2. 既存Render PostgreSQL接続でPrisma初期化 ✅
-3. `prisma db pull` でスキーマ生成 ⚠️ **手動実行が必要**
-4. **1つのAPIエンドポイントのみPrisma経由に変更** ✅ (`/api/ping`)
-5. 残りは既存の `pg` 直接使用を継続 ✅
-
-**変更されるファイル**:
-- `package.json` (Prisma依存関係追加) ✅
-- `prisma/schema.prisma` (新規作成、テンプレート) ✅
-- `lib/prisma.ts` (新規作成) ✅
-- `server.js` (`/api/ping` エンドポイントをPrisma経由に変更) ✅
-- `.gitignore` (Prisma関連を追加) ✅
-
-**実装完了確認**:
-- ✅ Prisma依存関係が `package.json` に追加されている
-- ✅ `lib/prisma.ts` が作成されている
-- ✅ `prisma/schema.prisma` のテンプレートが作成されている
-- ✅ `/api/ping` エンドポイントがPrisma経由で動作（フォールバック処理付き）
-- ✅ 他のエンドポイントは既存の `pg` 直接使用を継続（共存状態）
-
-**重要なポイント**: 
-- Supabase移行はまだ実施しない ✅
-- 既存のRender PostgreSQLを継続使用 ✅
-- `pg` 直接使用とPrismaが共存する状態 ✅
-
-**次のステップ（手動実行が必要）**:
-```bash
-# 1. 依存関係をインストール
-npm install
-
-# 2. Prismaスキーマを既存DBから生成
-npx prisma db pull
-
-# 3. Prisma Clientを生成
-npx prisma generate
-
-# 4. 動作確認
-npm run dev
-# → http://localhost:3000/api/ping が動作することを確認
-# → レスポンスに "prisma": "connected" が含まれることを確認
-```
-
-**Migration管理方針（確定）**:
-- **初期**: データベースが正（`prisma db pull` でスキーマを生成）
-- **以後**: SQLをGit管理（`supabase/migrations/` ディレクトリ）し、必要に応じてPrismaは追従
-- **運用ルール**:
-  - スキーマ変更は `supabase/migrations/YYYYMMDD_HHMMSS_description.sql` にSQLファイルとして保存
-  - Prismaスキーマは `prisma db pull` でデータベースから再生成（手動）
-  - Prisma Migrateは使用しない（SQLが正）
-  - マイグレーション実行はSupabase Dashboard > SQL Editor または `psql` で実施
-
-**ディレクトリ構造**:
-```
-supabase/
-  migrations/
-    20250115_120000_initial_schema.sql
-    20250120_140000_add_auth_provider_columns.sql
-```
-
----
-
-#### Phase 1.3: Supabase接続変更
-
-**期間**: Week 2 Day 1-2  
-**変更範囲**: データベース接続のみ（認証機能は未変更）
-
-**実施内容**:
-1. Supabaseプロジェクト作成
+1. **Supabaseプロジェクト作成**
    - Supabaseアカウント作成
    - 新規プロジェクト作成（Region: Tokyo または Singapore）
    - 接続情報の取得（Connection string, API URL, Keys）
@@ -304,22 +221,32 @@ supabase/
    # エラーが出た場合は該当箇所を修正して再実行
    ```
 
-3. 接続文字列をSupabaseに変更
+3. **接続文字列をSupabaseに変更**
    - `.env` の `DATABASE_URL` をSupabase接続文字列に変更
    - 環境変数例: `postgresql://postgres:[password]@db.[project].supabase.co:5432/postgres`
 
-4. Prisma接続をSupabaseに変更
+4. **Prisma設定（Supabase接続で）**
    ```bash
-   # Supabase接続でPrismaスキーマを再生成
+   # 1. 依存関係をインストール（既に実行済みの場合はスキップ）
+   npm install
+
+   # 2. PrismaスキーマをSupabaseから生成（1回だけ実行）
    npx prisma db pull
+
+   # 3. Prisma Clientを生成
    npx prisma generate
+
+   # 4. 動作確認
+   npm run dev
+   # → http://localhost:3000/api/ping が動作することを確認
+   # → レスポンスに "prisma": "connected" が含まれることを確認
    ```
 
 5. **既存の認証ロジックはそのまま維持**（bcryptjs継続使用）
 
 **変更されるファイル**:
 - `.env` (DATABASE_URL変更)
-- `prisma/schema.prisma` (Supabase接続で再生成)
+- `prisma/schema.prisma` (Supabase接続で生成)
 - `schema.sql` (新規作成、スキーマダンプ用)
 
 **変更されないファイル**:
@@ -327,14 +254,37 @@ supabase/
 
 **重要なポイント**: 
 - 認証機能（bcryptjs）はまだ変更しない
-- データ移行は別フェーズで実施
+- データ移行は別フェーズ（Phase 1.3）で実施
 - スキーマ移行後、テーブル・インデックス・制約が正しく作成されているか確認
+- **効率化**: `prisma db pull` を1回だけ実行（Supabaseから直接）
+
+**順序変更の理由**:
+- ✅ `prisma db pull` を1回だけ実行すればよい（効率性）
+- ✅ 最終的な接続先（Supabase）で最初からPrismaを設定（一貫性）
+- ✅ 作業時間が短縮される
+
+**Migration管理方針（確定）**:
+- **初期**: データベースが正（`prisma db pull` でスキーマを生成）
+- **以後**: SQLをGit管理（`supabase/migrations/` ディレクトリ）し、必要に応じてPrismaは追従
+- **運用ルール**:
+  - スキーマ変更は `supabase/migrations/YYYYMMDD_HHMMSS_description.sql` にSQLファイルとして保存
+  - Prismaスキーマは `prisma db pull` でデータベースから再生成（手動）
+  - Prisma Migrateは使用しない（SQLが正）
+  - マイグレーション実行はSupabase Dashboard > SQL Editor または `psql` で実施
+
+**ディレクトリ構造**:
+```
+supabase/
+  migrations/
+    20250115_120000_initial_schema.sql
+    20250120_140000_add_auth_provider_columns.sql
+```
 
 ---
 
-#### Phase 1.4: データ移行
+#### Phase 1.3: データ移行
 
-**期間**: Week 2 Day 3-4  
+**期間**: Week 2 Day 1-2  
 **変更範囲**: データのみ（コード変更なし）
 
 **実施内容**:
@@ -464,9 +414,9 @@ supabase/
 
 ---
 
-#### Phase 1.5: Supabase Auth移行（新規ユーザーのみ）
+#### Phase 1.4: Supabase Auth移行（新規ユーザーのみ）
 
-**期間**: Week 3 Day 1-3  
+**期間**: Week 2 Day 3-5  
 **変更範囲**: 認証機能（新規ユーザーのみ）
 
 **実施内容**:
@@ -488,9 +438,9 @@ supabase/
 
 ---
 
-#### Phase 1.6: 既存ユーザーのSupabase Auth移行
+#### Phase 1.5: 既存ユーザーのSupabase Auth移行
 
-**期間**: Week 3 Day 4-5  
+**期間**: Week 3 Day 1-2  
 **変更範囲**: 認証機能（既存ユーザー）
 
 **実施内容**:
@@ -612,9 +562,9 @@ supabase/
 
 ---
 
-#### Phase 1.7: RLS実装
+#### Phase 1.6: RLS実装
 
-**期間**: Week 3 Day 6-7  
+**期間**: Week 3 Day 3-4  
 **変更範囲**: データベースセキュリティのみ
 
 **設計方針（確定）**:
@@ -734,6 +684,7 @@ supabase/
 3. **パフォーマンス**: レスポンスタイムが±10%以内
 4. **エラーなし**: エラーログに異常がない
 5. **セキュリティ**: 認証・認可が正常に動作する
+6. **画面動作**: 主要画面が正常に表示・動作する（JavaScriptエラーなし）
 
 ---
 
@@ -747,6 +698,9 @@ supabase/
 - [ ] 既存機能が全て動作する
   - 全APIエンドポイントが動作
   - 既存のJavaScriptファイルが実行される
+- [ ] 画面での動作確認
+  - 主要画面が正常に表示される
+  - JavaScriptエラーが発生しない（ブラウザコンソール確認）
 - [ ] 本番環境で動作確認済み
 
 #### NG基準（ロールバック対象）
@@ -757,35 +711,7 @@ supabase/
 
 ---
 
-### 3.3 Phase 1.2: Prisma導入（既存DB） ✅ **実装完了（部分）**
-
-#### OK基準
-
-- [x] Prisma環境が構築されている ✅
-  - `prisma/schema.prisma` が存在 ✅（テンプレート）
-  - Prisma Clientが生成されている ⚠️ **`npx prisma generate` の実行が必要**
-  - 型が利用可能 ⚠️ **`npx prisma db pull` の実行が必要**
-- [x] 1つのAPIエンドポイントがPrisma経由で動作 ✅
-  - Prisma経由のエンドポイント（`/api/ping`）が正常にレスポンスを返す ✅
-  - フォールバック処理により、Prisma未初期化時も動作 ✅
-- [x] 既存の `pg` 直接使用エンドポイントも動作 ✅
-  - 既存APIが正常に動作（変更なし） ✅
-- [ ] データ整合性が確認されている ⚠️ **`prisma db pull` 実行後に確認が必要**
-  - Prisma経由と `pg` 直接使用で同じデータが取得できる
-- [ ] 本番環境で動作確認済み ⚠️ **手動確認が必要**
-
-#### NG基準（ロールバック対象）
-
-- ✅ Prisma経由のエンドポイントがエラーを返さない（フォールバック処理により安全）
-- ✅ 既存の `pg` 直接使用エンドポイントが動作する（変更なし）
-- ⚠️ データ整合性の確認は `prisma db pull` 実行後に実施
-- ⚠️ 本番環境での動作確認は未実施
-
-**実装状況**: 2025-12-31に実装完了。`/api/ping` エンドポイントのみPrisma経由に変更。他のエンドポイントは既存の `pg` 直接使用を継続（共存状態）。`prisma db pull` と `prisma generate` の実行が必要。
-
----
-
-### 3.4 Phase 1.3: Supabase接続変更
+### 3.2 Phase 1.2: Supabase作成 + Prisma設定（統合版）
 
 #### OK基準
 
@@ -802,6 +728,10 @@ supabase/
   - 新規ユーザー登録ができる（bcryptjs経由）
 - [ ] 全APIエンドポイントが動作
   - データベース操作が正常に動作
+- [ ] 画面での動作確認
+  - ログイン画面から既存ユーザーがログインできる
+  - 新規ユーザー登録画面から登録ができる
+  - ログイン後、ダッシュボードが正常に表示される
 - [ ] 本番環境で動作確認済み
 
 #### NG基準（ロールバック対象）
@@ -814,7 +744,7 @@ supabase/
 
 ---
 
-### 3.5 Phase 1.4: データ移行
+### 3.3 Phase 1.3: データ移行
 
 #### OK基準
 
@@ -829,6 +759,10 @@ supabase/
   - パスワードハッシュが正しく保存されている
 - [ ] 全APIエンドポイントが動作
   - データ取得・更新が正常に動作
+- [ ] 画面での動作確認
+  - 既存ユーザーがログイン画面から正常にログインできる
+  - ログイン後、過去の注文データが正常に表示される
+  - ダッシュボードに移行前のデータが正しく表示される
 - [ ] 本番環境で動作確認済み
 
 #### NG基準（ロールバック対象）
@@ -841,7 +775,7 @@ supabase/
 
 ---
 
-### 3.6 Phase 1.5: Supabase Auth移行（新規ユーザーのみ）
+### 3.4 Phase 1.4: Supabase Auth移行（新規ユーザーのみ）
 
 #### OK基準
 
@@ -859,6 +793,11 @@ supabase/
   - bcryptjsハッシュで認証できる
 - [ ] 全APIエンドポイントが動作
   - 認証が必要なAPIが動作
+- [ ] 画面での動作確認
+  - 新規ユーザー登録画面から登録ができる（Supabase Auth）
+  - 登録後、正常にログインできる（Supabase Auth）
+  - 既存ユーザーがログイン画面から正常にログインできる（bcryptjs）
+  - ログイン後、ダッシュボードが正常に表示される
 - [ ] 本番環境で動作確認済み
 
 #### NG基準（ロールバック対象）
@@ -871,7 +810,7 @@ supabase/
 
 ---
 
-### 3.7 Phase 1.6: 既存ユーザー移行
+### 3.5 Phase 1.5: 既存ユーザー移行
 
 #### OK基準
 
@@ -896,6 +835,11 @@ supabase/
   - `auth_provider` が `'supabase'` に更新されている
 - [ ] 移行率を確認できる
   - 移行率をSQLで確認可能
+- [ ] 画面での動作確認
+  - パスワードリセット画面からリセットができる
+  - リセット後、新しいパスワードでログインできる（Supabase Auth）
+  - 移行誘導UIが表示される（実装されている場合）
+  - 移行後も既存データが正常に表示される
 - [ ] 本番環境で動作確認済み
 
 **移行率の確認SQL**:
@@ -926,7 +870,7 @@ FROM sellers;
 
 ---
 
-### 3.8 Phase 1.7: RLS実装
+### 3.6 Phase 1.6: RLS実装
 
 #### OK基準
 
@@ -942,6 +886,11 @@ FROM sellers;
   - 管理者APIが全データにアクセスできる
 - [ ] 全APIエンドポイントが動作
   - RLS有効でも正常に動作
+- [ ] 画面での動作確認
+  - ユーザーAでログイン → 自分のデータのみ表示される
+  - ユーザーBでログイン → 自分のデータのみ表示される（ユーザーAのデータは表示されない）
+  - 管理者画面でログイン → 全ユーザーのデータが表示される
+  - ブラウザの開発者ツールで、他人のデータ取得リクエストが403エラーになることを確認
 - [ ] 本番環境で動作確認済み
 
 #### NG基準（ロールバック対象）
@@ -973,6 +922,10 @@ FROM sellers;
 - [ ] エラーハンドリング
   - エラーログに異常がない
   - 適切なエラーレスポンスが返る
+- [ ] 画面（フロントエンド）での動作確認
+  - 主要画面が正常に表示される
+  - JavaScriptエラーが発生しない
+  - 主要ユーザーフローが正常に動作
 
 **確認方法**:
 ```bash
@@ -1104,6 +1057,50 @@ done | awk '{sum+=$1; count++} END {print sum/count}'
 
 ---
 
+#### 4.1.5 画面（フロントエンド）での動作確認
+
+**確認項目**:
+- [ ] 主要画面の表示確認
+  - ページが正常に読み込まれる
+  - JavaScriptエラーが発生しない（ブラウザコンソール確認）
+  - CSSが正しく適用されている
+- [ ] ユーザーフロー確認
+  - ログイン → ダッシュボード表示 → 注文作成 → 決済 などの主要フローが動作
+  - 画面遷移が正常に動作
+- [ ] フォーム送信確認
+  - フォーム入力 → 送信 → 成功/エラー表示が正常
+  - バリデーションエラーが適切に表示される
+- [ ] 認証状態の確認
+  - ログイン状態が正しく保持される
+  - ログアウトが正常に動作
+  - 認証が必要な画面へのアクセス制御が動作
+
+**確認方法**:
+```bash
+# サーバー起動
+npm run dev
+
+# ブラウザで以下を確認
+# 1. http://localhost:3000/ - トップページ
+# 2. http://localhost:3000/seller-dashboard.html - セラーダッシュボード
+# 3. http://localhost:3000/admin/admin-dashboard.html - 管理者ダッシュボード
+# 4. http://localhost:3000/seller-register.html - 新規登録
+# 5. http://localhost:3000/checkout.html - 決済画面
+```
+
+**ブラウザ開発者ツールでの確認**:
+- Console: JavaScriptエラーがないか確認
+- Network: APIリクエストが正常に送信されているか確認
+- Application: セッション・Cookieが正しく保存されているか確認
+
+**合格基準**:
+- 全主要画面が正常に表示される
+- JavaScriptエラーが発生しない
+- 主要ユーザーフローが正常に動作
+- 認証・認可が画面レベルで正常に動作
+
+---
+
 ### 4.2 Phase別の詳細確認ポイント
 
 #### Phase 1.1: TypeScript導入
@@ -1145,7 +1142,7 @@ npx prisma db pull
 
 ---
 
-#### Phase 1.3: Supabase接続変更
+#### Phase 1.2: Supabase作成 + Prisma設定（統合版）
 
 **追加確認項目**:
 - [ ] Supabase接続
@@ -1169,9 +1166,15 @@ npx prisma generate
 # 既存ユーザーのログインテスト
 ```
 
+**画面での確認**:
+- [ ] 既存ユーザーがログイン画面から正常にログインできる
+- [ ] ログイン後、ダッシュボードが正常に表示される
+- [ ] 新規ユーザー登録画面から登録ができる（bcryptjs）
+- [ ] 登録後、正常にログインできる
+
 ---
 
-#### Phase 1.4: データ移行
+#### Phase 1.3: データ移行
 
 **追加確認項目**:
 - [ ] データレコード数
@@ -1196,9 +1199,15 @@ SELECT 'stripe_payments', COUNT(*) FROM stripe_payments;
 SELECT id, display_name, email FROM sellers LIMIT 5;
 ```
 
+**画面での確認**:
+- [ ] 既存ユーザーがログイン画面から正常にログインできる
+- [ ] ログイン後、過去の注文データが正常に表示される
+- [ ] ダッシュボードに移行前のデータが正しく表示される
+- [ ] 管理者画面で全データが正常に表示される
+
 ---
 
-#### Phase 1.5: Supabase Auth移行（新規ユーザー）
+#### Phase 1.4: Supabase Auth移行（新規ユーザー）
 
 **追加確認項目**:
 - [ ] 新規ユーザー登録（Supabase Auth）
@@ -1225,9 +1234,17 @@ curl -X POST http://localhost:3000/api/seller/start_onboarding \
 # 既存ユーザーログインテスト（bcryptjs）
 ```
 
+**画面での確認**:
+- [ ] 新規ユーザー登録画面から登録ができる（Supabase Auth経由）
+- [ ] 登録後、正常にログインできる（Supabase Auth）
+- [ ] ログイン後、ダッシュボードが正常に表示される
+- [ ] 既存ユーザーがログイン画面から正常にログインできる（bcryptjs）
+- [ ] 既存ユーザーもログイン後、ダッシュボードが正常に表示される
+- [ ] ブラウザの開発者ツールでセッションが正しく保存されているか確認
+
 ---
 
-#### Phase 1.6: 既存ユーザー移行
+#### Phase 1.5: 既存ユーザー移行
 
 **追加確認項目**:
 - [ ] パスワードリセット機能
@@ -1250,12 +1267,20 @@ SELECT
   COUNT(*) FILTER (WHERE auth_provider = 'supabase') as supabase_users,
   COUNT(*) FILTER (WHERE auth_provider = 'bcryptjs') as bcryptjs_users,
   COUNT(*) as total_users
-FROM users;
+FROM sellers;
 ```
+
+**画面での確認**:
+- [ ] パスワードリセット画面からリセットリクエストができる
+- [ ] メールでリセットリンクが届く（実装されている場合）
+- [ ] パスワードリセット画面で新しいパスワードを設定できる
+- [ ] リセット後、新しいパスワードでログインできる（Supabase Auth）
+- [ ] 移行誘導UIが表示される（実装されている場合）
+- [ ] 移行後も既存データが正常に表示される
 
 ---
 
-#### Phase 1.7: RLS実装
+#### Phase 1.6: RLS実装
 
 **追加確認項目**:
 - [ ] RLS有効化
@@ -1291,6 +1316,13 @@ WHERE tablename IN ('sellers', 'orders', 'stripe_payments');
 # 管理者アクセステスト（Service role key）
 # 全データ: 200 OK
 ```
+
+**画面での確認**:
+- [ ] ユーザーAでログイン → 自分の注文データのみ表示される
+- [ ] ユーザーBでログイン → 自分の注文データのみ表示される（ユーザーAのデータは表示されない）
+- [ ] 管理者画面でログイン → 全ユーザーのデータが表示される
+- [ ] ブラウザの開発者ツール（Network）で、他人のデータ取得リクエストが403エラーになることを確認
+- [ ] セラーダッシュボードで自分のデータのみが表示される
 
 ---
 
@@ -1436,7 +1468,7 @@ git push
 
 ---
 
-#### Phase 1.3: Supabase接続変更
+#### Phase 1.2: Supabase作成 + Prisma設定（統合版）
 
 **ロールバック手順**:
 ```bash
@@ -1459,7 +1491,7 @@ git push
 
 ---
 
-#### Phase 1.4: データ移行
+#### Phase 1.3: データ移行
 
 **ロールバック手順**:
 ```bash
@@ -1482,7 +1514,7 @@ git push
 
 ---
 
-#### Phase 1.5: Supabase Auth移行
+#### Phase 1.4: Supabase Auth移行
 
 **ロールバック手順**:
 ```bash
@@ -1506,7 +1538,7 @@ git push
 
 ---
 
-#### Phase 1.6: 既存ユーザー移行
+#### Phase 1.5: 既存ユーザー移行
 
 **ロールバック手順**:
 ```bash
@@ -1525,7 +1557,7 @@ git push
 
 ---
 
-#### Phase 1.7: RLS実装
+#### Phase 1.6: RLS実装
 
 **ロールバック手順**:
 ```sql
@@ -1556,6 +1588,7 @@ DROP POLICY IF EXISTS "Users can update own orders" ON orders;
 - [ ] TypeScript依存関係を追加
 - [ ] `tsconfig.json` を作成
 - [ ] 既存機能が全て動作することを確認
+- [ ] 画面での動作確認（主要画面が正常に表示される、JavaScriptエラーなし）
 - [ ] 本番環境で動作確認
 - [ ] ロールバック手順を確認
 
@@ -1568,13 +1601,14 @@ DROP POLICY IF EXISTS "Users can update own orders" ON orders;
 - [ ] 本番環境で動作確認
 - [ ] ロールバック手順を確認
 
-#### Phase 1.3: Supabase接続変更
+#### Phase 1.2: Supabase作成 + Prisma設定（統合版）
 - [ ] Supabaseプロジェクトを作成
 - [ ] スキーマをSupabaseに移行
 - [ ] 接続文字列をSupabaseに変更
-- [ ] Prisma接続をSupabaseに変更
+- [ ] Prisma設定（Supabase接続で `prisma db pull` と `prisma generate`）
 - [ ] 既存の認証機能（bcryptjs）が動作することを確認
 - [ ] 全APIエンドポイントが動作することを確認
+- [ ] 画面での動作確認（ログイン画面、ダッシュボードが正常に動作）
 - [ ] 本番環境で動作確認
 - [ ] ロールバック手順を確認
 
@@ -1584,15 +1618,17 @@ DROP POLICY IF EXISTS "Users can update own orders" ON orders;
 - [ ] データ整合性を確認（レコード数、内容）
 - [ ] 既存の認証機能（bcryptjs）が動作することを確認
 - [ ] 全APIエンドポイントが動作することを確認
+- [ ] 画面での動作確認（ログイン後、過去データが正常に表示される）
 - [ ] 本番環境で動作確認
 - [ ] ロールバック手順を確認
 
-#### Phase 1.5: Supabase Auth移行（新規ユーザー）
+#### Phase 1.4: Supabase Auth移行（新規ユーザー）
 - [ ] Supabase Authクライアントを実装
 - [ ] 新規ユーザー登録をSupabase Authに変更
 - [ ] 新規ユーザーがSupabase Authで登録・認証できることを確認
 - [ ] 既存ユーザーがbcryptjsハッシュで認証できることを確認
 - [ ] 全APIエンドポイントが動作することを確認
+- [ ] 画面での動作確認（新規登録画面、ログイン画面、ダッシュボードが正常に動作）
 - [ ] 本番環境で動作確認
 - [ ] ロールバック手順を確認
 
@@ -1603,6 +1639,7 @@ DROP POLICY IF EXISTS "Users can update own orders" ON orders;
 - [ ] 全ユーザーがSupabase Authに移行（段階的）
 - [ ] bcryptjs認証ロジックを削除
 - [ ] 全APIエンドポイントが動作することを確認
+- [ ] 画面での動作確認（パスワードリセット画面、移行誘導UIが正常に動作）
 - [ ] 本番環境で動作確認
 - [ ] ロールバック手順を確認
 
@@ -1612,6 +1649,7 @@ DROP POLICY IF EXISTS "Users can update own orders" ON orders;
 - [ ] ユーザーが自分のデータのみアクセス可能なことを確認
 - [ ] 管理者が全データにアクセス可能なことを確認
 - [ ] 全APIエンドポイントが動作することを確認
+- [ ] 画面での動作確認（ユーザーは自分のデータのみ表示、管理者は全データ表示）
 - [ ] 本番環境で動作確認
 - [ ] ロールバック手順を確認
 
@@ -1637,6 +1675,7 @@ DROP POLICY IF EXISTS "Users can update own orders" ON orders;
 - [ ] データ整合性確認が完了している
 - [ ] セキュリティ確認が完了している
 - [ ] パフォーマンス確認が完了している
+- [ ] 画面での動作確認が完了している（主要画面が正常に表示・動作）
 - [ ] 本番環境で動作確認が完了している（該当する場合）
 - [ ] モニタリング設定が完了している
 - [ ] 次のフェーズの準備が完了している
@@ -1875,11 +1914,11 @@ SUPABASE_SERVICE_ROLE_KEY=[prod-service-role-key]
 |---------|---------|---------|------------|
 | **Phase 1.1** | TypeScript導入 | 実装者 | 既存機能が動作するか |
 | **Phase 1.2** | Prisma導入 | 実装者 + レビューア | データ整合性、API動作 |
-| **Phase 1.3** | Supabase接続 | 実装者 + DBA（可能なら） | スキーマ整合性、接続確認 |
-| **Phase 1.4** | データ移行 | 実装者 + DBA（必須） | データ整合性、レコード数 |
-| **Phase 1.5** | Supabase Auth（新規） | 実装者 + セキュリティ担当 | 認証動作、セキュリティ |
-| **Phase 1.6** | 既存ユーザー移行 | 実装者 + セキュリティ担当 | 移行率、認証動作 |
-| **Phase 1.7** | RLS実装 | 実装者 + セキュリティ担当 | 権限チェック、セキュリティ |
+| **Phase 1.2** | Supabase作成 + Prisma設定 | 実装者 + DBA（可能なら） | スキーマ整合性、接続確認 |
+| **Phase 1.3** | データ移行 | 実装者 + DBA（必須） | データ整合性、レコード数 |
+| **Phase 1.4** | Supabase Auth（新規） | 実装者 + セキュリティ担当 | 認証動作、セキュリティ |
+| **Phase 1.5** | 既存ユーザー移行 | 実装者 + セキュリティ担当 | 移行率、認証動作 |
+| **Phase 1.6** | RLS実装 | 実装者 + セキュリティ担当 | 権限チェック、セキュリティ |
 
 **判定基準**:
 - 実装者: 機能動作確認、データ整合性確認
@@ -1935,10 +1974,10 @@ export const authConfig = {
 
 | フェーズ | ENABLE_SUPABASE_AUTH_FOR_NEW_USERS | ENABLE_SUPABASE_AUTH | ENABLE_BCRYPTJS_AUTH | 説明 |
 |---------|-----------------------------------|---------------------|---------------------|------|
-| Phase 1.5前 | `false` | `false` | `true` | bcryptjsのみ |
-| Phase 1.5 | `true` | `true` | `true` | 新規: Supabase Auth（登録・認証）、既存: bcryptjs（認証） |
-| Phase 1.6 | `true` | `true` | `true` | 共存期間（移行中） |
-| Phase 1.6完了後 | `true` | `true` | `false` | Supabase Authのみ（bcryptjs削除） |
+| Phase 1.4前 | `false` | `false` | `true` | bcryptjsのみ |
+| Phase 1.4 | `true` | `true` | `true` | 新規: Supabase Auth（登録・認証）、既存: bcryptjs（認証） |
+| Phase 1.5 | `true` | `true` | `true` | 共存期間（移行中） |
+| Phase 1.5完了後 | `true` | `true` | `false` | Supabase Authのみ（bcryptjs削除） |
 
 ---
 
@@ -1961,9 +2000,9 @@ export const authConfig = {
 
 ---
 
-**Document Version**: 1.4  
+**Document Version**: 1.6  
 **Last Updated**: 2025-12-31  
-**Status**: Execution Plan (Production Ready) - Phase 1.1-1.2 実装完了
+**Status**: Execution Plan (Production Ready) - Phase 1.1 実装完了、Phase 1.2 順序変更
 
 **変更履歴**:
 - v1.0 (2025-01-15): 初版作成
@@ -1971,4 +2010,6 @@ export const authConfig = {
 - v1.2 (2025-12-31): schema.sql実行時のエラー対処手順追加、Prismaスキーママッピングの明示、RLSポリシー条件の安全化、データ移行手順の具体化、コミット粒度ルール追加
 - v1.3 (2025-12-31): データ移行の投入順序ベース化（session_replication_role削除）、Prisma UUID型の明示、RLS型一致前提の明記、Feature Flag整理（登録/認証の分離）、データ検証の具体化（サンプル一致チェック追加）
 - v1.4 (2025-12-31): Phase 1.1-1.2の実装完了状況を追記、実装進捗状況セクション追加、実装ファイル一覧と動作確認手順を追加、OK基準に実装状況を反映
+- v1.5 (2025-12-31): 画面（フロントエンド）での動作確認項目を追加、各Phaseの詳細確認ポイントに画面確認を追加、OK基準・チェックリストに画面確認を追加
+- v1.6 (2025-12-31): Phase 1.2と1.3の順序変更を反映、Supabase作成とPrisma設定を統合、Phase番号を再編成（1.3→1.2統合、1.4→1.3、1.5→1.4、1.6→1.5、1.7→1.6）
 
