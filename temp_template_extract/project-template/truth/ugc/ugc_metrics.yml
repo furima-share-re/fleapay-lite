@@ -1,0 +1,84 @@
+# UGC（User Generated Content）メトリクス
+# コンテンツ品質基準・モデレーション閾値
+# impact_level: medium
+
+meta:
+  description: "UGC関連のメトリクス・品質基準・モデレーション閾値"
+  last_updated: "2025-12-31"
+  owner: "Content Team"
+
+# 投稿制約
+post_constraints:
+  text:
+    min_length: 10           # 最小文字数
+    max_length: 5000         # 最大文字数
+    
+  image:
+    max_count: 10            # 最大画像数
+    max_size_mb: 10          # 最大サイズ（MB）
+    allowed_formats:
+      - "jpg"
+      - "jpeg"
+      - "png"
+      - "gif"
+      - "webp"
+    
+  video:
+    max_count: 1             # 最大動画数
+    max_size_mb: 100         # 最大サイズ（MB）
+    max_duration_sec: 180    # 最大長さ（秒）
+    allowed_formats:
+      - "mp4"
+      - "mov"
+      - "avi"
+
+# レート制限
+rate_limits:
+  post:
+    per_hour: 10             # 1時間あたりの投稿上限
+    per_day: 50              # 1日あたりの投稿上限
+    
+  comment:
+    per_hour: 30             # 1時間あたりのコメント上限
+    per_day: 200             # 1日あたりのコメント上限
+    
+  like:
+    per_hour: 100            # 1時間あたりのいいね上限
+    per_day: 1000            # 1日あたりのいいね上限
+
+# モデレーション閾値
+moderation:
+  auto_flag:
+    report_count: 5          # この報告数で自動フラグ
+    spam_score: 0.8          # スパムスコア閾値（0-1）
+    toxic_score: 0.7         # 有害性スコア閾値（0-1）
+    
+  auto_remove:
+    report_count: 10         # この報告数で自動削除
+    spam_score: 0.95         # スパムスコア閾値（0-1）
+    toxic_score: 0.9         # 有害性スコア閾値（0-1）
+    
+  review_queue_priority:
+    high: 0.8                # 高優先度閾値
+    medium: 0.5              # 中優先度閾値
+    # それ以下は低優先度
+
+# 品質スコア
+quality_metrics:
+  engagement_weights:
+    view: 1                  # 閲覧の重み
+    like: 5                  # いいねの重み
+    comment: 10              # コメントの重み
+    share: 20                # シェアの重み
+    
+  trending_threshold:
+    min_engagement_score: 100    # トレンド入り最低スコア
+    time_window_hours: 24        # 集計時間窓（時間）
+    
+  featured_threshold:
+    min_quality_score: 8.0       # おすすめ表示最低スコア（0-10）
+    min_engagement_score: 500    # おすすめ表示最低エンゲージメント
+
+# メモ
+# - モデレーション閾値は定期的に見直す
+# - スコアリングロジックは別途 spec/ に定義

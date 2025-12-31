@@ -1,0 +1,171 @@
+openapi: 3.0.0
+
+info:
+  title: "Project API"
+  version: "1.0.0"
+  description: |
+    API 仕様書
+    
+    数値・条件・制約は truth/** を参照してください。
+    このファイルには構造・型・インターフェースのみを記載します。
+
+servers:
+  - url: "https://api.example.com/v1"
+    description: "Production"
+  - url: "https://api-staging.example.com/v1"
+    description: "Staging"
+
+paths:
+  /posts:
+    post:
+      summary: "投稿作成"
+      description: |
+        新規投稿を作成します。
+        
+        制約については以下を参照：
+        - truth/ugc/ugc_metrics.yml: 投稿制約
+        - truth/business/phases.yml: レート制限
+      
+      tags:
+        - "Posts"
+      
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePostRequest"
+      
+      responses:
+        "201":
+          description: "投稿作成成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "400":
+          description: "バリデーションエラー"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: "レート制限超過"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /posts/{postId}:
+    get:
+      summary: "投稿取得"
+      description: "指定されたIDの投稿を取得します"
+      
+      tags:
+        - "Posts"
+      
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      
+      responses:
+        "200":
+          description: "投稿取得成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "404":
+          description: "投稿が見つかりません"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    CreatePostRequest:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          description: "投稿本文。制約は truth/ugc/ugc_metrics.yml 参照"
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: "画像URL配列。制約は truth/ugc/ugc_metrics.yml 参照"
+        tags:
+          type: array
+          items:
+            type: string
+          description: "タグ配列"
+
+    Post:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: "投稿ID"
+        user_id:
+          type: string
+          format: uuid
+          description: "投稿者ID"
+        text:
+          type: string
+          description: "投稿本文"
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: "画像URL配列"
+        tags:
+          type: array
+          items:
+            type: string
+          description: "タグ配列"
+        like_count:
+          type: integer
+          description: "いいね数"
+        comment_count:
+          type: integer
+          description: "コメント数"
+        created_at:
+          type: string
+          format: date-time
+          description: "作成日時"
+        updated_at:
+          type: string
+          format: date-time
+          description: "更新日時"
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: "エラーコード"
+        message:
+          type: string
+          description: "エラーメッセージ"
+        details:
+          type: object
+          description: "詳細情報"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

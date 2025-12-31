@@ -1,0 +1,43 @@
+meta:
+  version: "1.0"
+  description: >
+    このディレクトリ配下のみが
+    Source of Truth（数値・条件・制約の唯一の正）である。
+  
+  last_updated: "2025-12-31"
+  owner: "Project Owner Name"
+
+# すべての truth ファイルをここに登録する
+# 新しいファイルを追加したら、必ずこのリストを更新すること
+files:
+  core/kgi_kpi.yml:
+    description: "事業中核指標（KGI/KPI）"
+    impact_level: "critical"
+    owner: "Business Team"
+  
+  business/phases.yml:
+    description: "ユーザーフェーズ定義・ビジネスロジック"
+    impact_level: "high"
+    owner: "Product Team"
+  
+  ugc/ugc_metrics.yml:
+    description: "UGC関連メトリクス・品質基準"
+    impact_level: "medium"
+    owner: "Content Team"
+  
+  infra/limits.yml:
+    description: "インフラ制約・システム限界値"
+    impact_level: "high"
+    owner: "Infrastructure Team"
+
+# impact_level の定義
+# - critical: ビジネス中核、変更は経営判断
+# - high: 重要機能、変更は慎重に
+# - medium: 通常機能、通常の変更プロセス
+# - low: 補助的、柔軟に変更可能
+
+# ガバナンス設定
+governance:
+  require_adr_for_critical: true    # critical 変更時は ADR 必須
+  require_impact_analysis: true     # 変更時は影響分析必須
+  generative_check_enabled: true    # 生成的検証を有効化

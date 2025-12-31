@@ -1,0 +1,39 @@
+# KGI / KPI 定義
+# ビジネスの中核指標
+# impact_level: critical
+
+meta:
+  description: "事業中核指標（Key Goal Indicator / Key Performance Indicator）"
+  last_updated: "2025-12-31"
+  owner: "Business Team"
+
+# 継続率目標
+retention:
+  d1_target: 60        # 1日継続率目標（%）
+  d7_target: 40        # 7日継続率目標（%）
+  d30_target: 20       # 30日継続率目標（%）
+  
+  # 閾値（アラート発火）
+  d7_alert_threshold: 35   # これを下回ったらアラート
+
+# 成長率目標
+growth:
+  dau_mom_target: 15   # DAU 月次成長率目標（%）
+  mau_mom_target: 20   # MAU 月次成長率目標（%）
+  new_user_daily_target: 100  # 新規ユーザー獲得目標（人/日）
+
+# エンゲージメント目標
+engagement:
+  session_per_dau: 3.5      # セッション/DAU 目標
+  avg_session_duration: 180  # 平均セッション時間目標（秒）
+  post_per_dau: 1.2          # 投稿/DAU 目標
+
+# 収益目標（将来追加予定）
+revenue:
+  arpu_target: null          # Average Revenue Per User（未定）
+  ltv_target: null           # Life Time Value（未定）
+
+# メモ
+# - これらの値はビジネス戦略に基づき四半期ごとに見直す
+# - 変更時は必ず ADR を作成すること
+# - 背景・理由は docs/strategy/ に記載すること
