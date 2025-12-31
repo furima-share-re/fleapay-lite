@@ -1644,12 +1644,36 @@ const file = new FileConstructor([inputBuffer], "image.png", { type: "image/png"
 });
 
 // ====== 🟢 ヘルスチェックエンドポイント ======
-app.get("/api/ping", (req, res) => {
-  res.json({ 
-    ok: true, 
-    timestamp: new Date().toISOString(),
-    version: '3.2.0-seller-summary-fixed'
-  });
+// Phase 1.2: Prisma導入（このエンドポイントのみPrisma経由で動作確認用）
+app.get("/api/ping", async (req, res) => {
+  try {
+    // Prisma経由でデータベース接続を確認（SELECT 1のみ）
+    // 注意: このエンドポイントはデータベースアクセスが不要なため、
+    // Prisma接続確認のみ（実際のテーブルアクセスはしない）
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? ['error'] : ['error'],
+    });
+    await prisma.$queryRaw`SELECT 1`;
+    await prisma.$disconnect();
+    
+    res.json({ 
+      ok: true, 
+      timestamp: new Date().toISOString(),
+      version: '3.2.0-seller-summary-fixed',
+      prisma: 'connected'
+    });
+  } catch (error) {
+    // Prisma接続エラー時は従来の動作（後方互換性のため）
+    // （Prismaが未初期化の場合など）
+    console.error('Prisma connection error (fallback to basic ping):', error.message);
+    res.json({ 
+      ok: true, 
+      timestamp: new Date().toISOString(),
+      version: '3.2.0-seller-summary-fixed',
+      prisma: 'not_available'
+    });
+  }
 });
 
 // ベンチマーク関連のAPIは payments.js に移動しました
