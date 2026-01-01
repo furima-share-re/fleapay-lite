@@ -2,7 +2,7 @@
 
 **プロジェクト**: fleapay-lite  
 **作成日**: 2025-01-15  
-**最終更新**: 2025-12-31  
+**最終更新**: 2026-01-01  
 **目的**: デグレを最小限に抑えた安全な移行の実行
 
 ---
@@ -14,7 +14,7 @@
 | Phase | フェーズ名 | 実装日 | 状態 | 備考 |
 |-------|----------|--------|------|------|
 | **Phase 1.1** | TypeScript導入 | 2025-12-31 | ✅ **完了** | 既存コードに影響なし |
-| **Phase 1.2** | Supabase作成 + Prisma設定 | - | ⏳ **未着手** | 順序変更：コード実装のみ完了、Supabase作成後にPrisma設定を実施 |
+| **Phase 1.2** | Supabase作成 + Prisma設定 | 2026-01-01 | ✅ **完了** | Supabaseプロジェクト作成、スキーマ移行、Prismaスキーマ手動作成完了 |
 
 ### 実装済み内容
 
@@ -67,7 +67,41 @@
 
 **注意事項**:
 - 現在の実装は、Prismaが未初期化でも動作するようにフォールバック処理を含む
-- **次のPhase 1.2（統合版）でSupabase作成後にPrisma設定を実施します**
+- **Phase 1.2（統合版）でSupabase作成後にPrisma設定を実施しました（2026-01-01完了）**
+
+---
+
+#### Phase 1.2: Supabase作成 + Prisma設定（統合版） ✅ **完了**
+
+**実装日**: 2026-01-01  
+**期間**: Week 1 Day 3-5  
+**変更範囲**: データベース接続とPrisma設定（認証機能は未変更）
+
+**実装完了項目**:
+- [x] Supabaseプロジェクト作成（検証環境: `edo ichiba staging`, Project ID: `mluvjdhqgfpcfsmvjae`）
+- [x] 接続情報取得（Database URL, API URL, API Keys）
+- [x] Render環境変数設定（`fleapay-lite-t1`）
+- [x] スキーマ移行（Supabase SQL Editorで実行、10テーブル作成完了）
+- [x] Prismaスキーマ手動作成（`prisma/schema.prisma`）
+- [x] `package.json`に`postinstall`スクリプト追加（Render環境で自動生成）
+
+**変更されたファイル**:
+- `package.json` (`postinstall`スクリプト追加)
+- `prisma/schema.prisma` (Supabaseテーブル定義を手動作成、10モデル定義)
+- `supabase_schema.sql` (新規作成、スキーマ定義)
+- Render環境変数（`DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`）
+
+**動作確認**:
+- ✅ Supabaseスキーマ移行完了（10テーブルすべて作成済み）
+- ✅ Prismaスキーマ手動作成完了（10モデル定義）
+- ✅ Render環境でビルド時に`prisma generate`が自動実行される設定完了
+
+**重要なポイント**: 
+- 認証機能（bcryptjs）はまだ変更しない
+- データ移行は別フェーズ（Phase 1.3）で実施
+- スキーマ移行完了（10テーブルすべて作成済み）
+- Prismaスキーマは手動作成（ローカル環境がないため）
+- Render環境でビルド時に`prisma generate`が自動実行される
 
 ---
 
@@ -75,7 +109,7 @@
 
 | Phase | フェーズ名 | 予定期間 | 状態 | 備考 |
 |-------|----------|---------|------|------|
-| **Phase 1.2** | Supabase作成 + Prisma設定 | Week 1 Day 3-5 | ⏳ 未着手 | 順序変更：Supabase作成後にPrisma設定 |
+| **Phase 1.2** | Supabase作成 + Prisma設定 | Week 1 Day 3-5 | ✅ **完了** | 2026-01-01実装完了 |
 | **Phase 1.3** | データ移行 | Week 2 Day 1-2 | ⏳ 未着手 | 旧Phase 1.4 |
 | **Phase 1.4** | Supabase Auth移行（新規ユーザー） | Week 2 Day 3-5 | ⏳ 未着手 | 旧Phase 1.5 |
 | **Phase 1.5** | 既存ユーザー移行 | Week 3 Day 1-2 | ⏳ 未着手 | 旧Phase 1.6 |
@@ -244,10 +278,19 @@
 
 5. **既存の認証ロジックはそのまま維持**（bcryptjs継続使用）
 
-**変更されるファイル**:
-- `.env` (DATABASE_URL変更)
-- `prisma/schema.prisma` (Supabase接続で生成)
-- `schema.sql` (新規作成、スキーマダンプ用)
+**実装完了項目**:
+- [x] Supabaseプロジェクト作成（検証環境: `edo ichiba staging`, Project ID: `mluvjdhqgfpcfsmvjae`）
+- [x] 接続情報取得（Database URL, API URL, API Keys）
+- [x] Render環境変数設定（`fleapay-lite-t1`）
+- [x] スキーマ移行（Supabase SQL Editorで実行、10テーブル作成完了）
+- [x] Prismaスキーマ手動作成（`prisma/schema.prisma`）
+- [x] `package.json`に`postinstall`スクリプト追加（Render環境で自動生成）
+
+**変更されたファイル**:
+- `package.json` (`postinstall`スクリプト追加)
+- `prisma/schema.prisma` (Supabaseテーブル定義を手動作成)
+- `supabase_schema.sql` (新規作成、スキーマ定義)
+- Render環境変数（`DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`）
 
 **変更されないファイル**:
 - 認証関連のコード（bcryptjs継続）
@@ -255,8 +298,9 @@
 **重要なポイント**: 
 - 認証機能（bcryptjs）はまだ変更しない
 - データ移行は別フェーズ（Phase 1.3）で実施
-- スキーマ移行後、テーブル・インデックス・制約が正しく作成されているか確認
-- **効率化**: `prisma db pull` を1回だけ実行（Supabaseから直接）
+- スキーマ移行完了（10テーブルすべて作成済み）
+- Prismaスキーマは手動作成（ローカル環境がないため）
+- Render環境でビルド時に`prisma generate`が自動実行される
 
 **順序変更の理由**:
 - ✅ `prisma db pull` を1回だけ実行すればよい（効率性）
