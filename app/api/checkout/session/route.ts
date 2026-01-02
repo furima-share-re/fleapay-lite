@@ -1,46 +1,28 @@
 // app/api/checkout/session/route.ts
 // Phase 2.3: Next.js画面移行（チェックアウトセッション作成API Route Handler）
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
+import { PrismaClient } from '@prisma/client';
 import Stripe from 'stripe';
-import { Pool } from 'pg';
-import { getNextOrderNo, sanitizeError } from '@/lib/utils';
+import { getNextOrderNo, sanitizeError, bumpAndAllow, clientIp, isSameOrigin, audit } from '@/lib/utils';
 
+const prisma = new PrismaClient();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { 
   apiVersion: '2025-10-29.clover'
 });
 
-const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL 
-});
-
 const BASE_URL = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
-const RATE_LIMIT_MAX_CHECKOUT = 20;
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const hits = new Map<string, number[]>();
+const RATE_LIMIT_MAX_CHECKOUT = parseInt(process.env.RATE_LIMIT_MAX_CHECKOUT || "12", 10);
 
-function bumpAndAllow(key: string, limit: number): boolean {
-  const now = Date.now();
-  const arr = (hits.get(key) || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
-  arr.push(now);
-  hits.set(key, arr);
-  return arr.length <= limit;
-}
-
-function clientIp(request: Request): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-  return 'unknown';
-}
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    if (!isSameOrigin(request)) {
+      return NextResponse.json({ error: "forbidden_origin" }, { status: 403 });
+    }
+
     const body = await request.json();
-    const { sellerId, latest, summary, orderId: bodyOrderId } = body;
-    const url = new URL(request.url);
-    const orderId = bodyOrderId || url.searchParams.get('order') || '';
+    const { sellerId, latest, summary, orderId: bodyOrderId } = body || {};
+    const orderId = bodyOrderId || request.nextUrl.searchParams.get('order') || '';
 
     if (!sellerId && !orderId) {
       return NextResponse.json(
@@ -60,29 +42,32 @@ export async function POST(request: Request) {
     // orderの取得または作成
     let order;
     if (orderId) {
-      const r = await pool.query(
-        `SELECT * FROM orders WHERE id = $1 AND deleted_at IS NULL LIMIT 1`,
-        [orderId]
-      );
-      if (!r.rowCount || r.rowCount === 0) {
+      order = await prisma.order.findFirst({
+        where: {
+          id: orderId,
+          deletedAt: null,
+        },
+      });
+      if (!order) {
         return NextResponse.json(
           { error: 'order_not_found' },
           { status: 404 }
         );
       }
-      order = r.rows[0];
     } else {
       // 新規注文作成
       const amount = latest?.amount || 0;
-      const orderNo = await getNextOrderNo(sellerId);
+      const nextOrderNo = await getNextOrderNo(prisma, sellerId);
       
-      const insertRes = await pool.query(
-        `INSERT INTO orders (seller_id, order_no, amount, summary, status)
-         VALUES ($1, $2, $3, $4, 'pending')
-         RETURNING *`,
-        [sellerId, orderNo, amount, summary || '']
-      );
-      order = insertRes.rows[0];
+      order = await prisma.order.create({
+        data: {
+          sellerId: sellerId,
+          orderNo: nextOrderNo,
+          amount: amount,
+          summary: summary || "",
+          status: 'pending',
+        },
+      });
     }
 
     // 金額バリデーション: 0円以下の注文は決済させない
@@ -100,8 +85,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const successUrl = `${BASE_URL}/success.html?order=${order.id}`;
-    const cancelUrl = `${BASE_URL}/checkout.html?s=${order.seller_id}&order=${order.id}`;
+    const successUrl = `${BASE_URL}/success?order=${order.id}`;
+    const cancelUrl = `${BASE_URL}/cancel?s=${order.sellerId}&order=${order.id}`;
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
@@ -127,7 +112,7 @@ export async function POST(request: Request) {
       ],
       payment_intent_data: {
         metadata: {
-          sellerId: order.seller_id,
+          sellerId: order.sellerId,
           orderId: order.id,
         },
       },
@@ -135,23 +120,21 @@ export async function POST(request: Request) {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
+    audit("checkout_session_created", { orderId: order.id, sellerId: order.sellerId, sessionId: session.id });
+
     return NextResponse.json({ url: session.url, sessionId: session.id });
 
-  } catch (error) {
-    console.error('/api/checkout/session エラー発生:', error);
-    if (error instanceof Error && 'type' in error && error.type === 'StripeInvalidRequestError') {
-      return NextResponse.json(
-        {
-          error: 'stripe_error',
-          message: error.message,
-        },
-        { status: 400 }
-      );
+  } catch (error: any) {
+    console.error("/api/checkout/session エラー発生:", error);
+    if (error.type === "StripeInvalidRequestError") {
+      return NextResponse.json({
+        error: "stripe_error",
+        message: error.message,
+      }, { status: 400 });
     }
-    return NextResponse.json(
-      sanitizeError(error),
-      { status: 500 }
-    );
+    return NextResponse.json(sanitizeError(error), { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
