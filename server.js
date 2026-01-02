@@ -1327,6 +1327,214 @@ app.post("/api/admin/bootstrap_sql", requireAdmin, async (req, res) => {
   }
 });
 
+// ====== 🆕 管理API: テストユーザーのプラン設定（Prisma使用） ======
+app.post("/api/admin/setup-test-users", requireAdmin, async (req, res) => {
+  try {
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? ['error'] : ['error'],
+    });
+
+    const { action, sellerId, planType } = req.body || {};
+
+    // すべてのテストユーザーを設定
+    if (action === 'setup-all') {
+      const testUsers = [
+        { sellerId: 'test-seller-standard', planType: 'standard' },
+        { sellerId: 'test-seller-pro', planType: 'pro' },
+        { sellerId: 'test-seller-kids', planType: 'kids' },
+      ];
+
+      const results = [];
+
+      for (const user of testUsers) {
+        try {
+          // 1. セラーが存在するか確認（存在しない場合は作成）
+          const seller = await prisma.seller.upsert({
+            where: { id: user.sellerId },
+            update: {},
+            create: {
+              id: user.sellerId,
+              displayName: `Test Seller (${user.planType})`,
+              shopName: `${user.planType.charAt(0).toUpperCase() + user.planType.slice(1)} Shop`,
+              email: `${user.planType}@test.example.com`,
+            },
+          });
+
+          // 2. 既存のアクティブなサブスクリプションを無効化
+          const now = new Date();
+          const updated = await prisma.sellerSubscription.updateMany({
+            where: {
+              sellerId: user.sellerId,
+              status: 'active',
+              OR: [
+                { endedAt: null },
+                { endedAt: { gt: now } },
+              ],
+            },
+            data: {
+              status: 'inactive',
+              endedAt: new Date(now.getTime() - 1000),
+              updatedAt: now,
+            },
+          });
+
+          // 3. 新しいサブスクリプションを作成
+          const subscription = await prisma.sellerSubscription.create({
+            data: {
+              sellerId: user.sellerId,
+              planType: user.planType,
+              status: 'active',
+              startedAt: now,
+              endedAt: null,
+            },
+          });
+
+          results.push({
+            sellerId: user.sellerId,
+            planType: user.planType,
+            success: true,
+            subscriptionId: subscription.id,
+            deactivatedCount: updated.count,
+          });
+        } catch (error) {
+          results.push({
+            sellerId: user.sellerId,
+            planType: user.planType,
+            success: false,
+            error: error.message,
+          });
+        }
+      }
+
+      await prisma.$disconnect();
+
+      audit("test_users_setup", { action: 'setup-all', results });
+      res.json({ ok: true, results });
+      return;
+    }
+
+    // 特定のユーザーのプランを設定
+    if (action === 'set' && sellerId && planType) {
+      if (!['standard', 'pro', 'kids'].includes(planType)) {
+        await prisma.$disconnect();
+        return res.status(400).json({ error: 'invalid_plan_type' });
+      }
+
+      try {
+        // 1. セラーが存在するか確認（存在しない場合は作成）
+        const seller = await prisma.seller.upsert({
+          where: { id: sellerId },
+          update: {},
+          create: {
+            id: sellerId,
+            displayName: `Test Seller (${planType})`,
+            shopName: `${planType.charAt(0).toUpperCase() + planType.slice(1)} Shop`,
+            email: `${planType}@test.example.com`,
+          },
+        });
+
+        // 2. 既存のアクティブなサブスクリプションを無効化
+        const now = new Date();
+        const updated = await prisma.sellerSubscription.updateMany({
+          where: {
+            sellerId: sellerId,
+            status: 'active',
+            OR: [
+              { endedAt: null },
+              { endedAt: { gt: now } },
+            ],
+          },
+          data: {
+            status: 'inactive',
+            endedAt: new Date(now.getTime() - 1000),
+            updatedAt: now,
+          },
+        });
+
+        // 3. 新しいサブスクリプションを作成
+        const subscription = await prisma.sellerSubscription.create({
+          data: {
+            sellerId: sellerId,
+            planType: planType,
+            status: 'active',
+            startedAt: now,
+            endedAt: null,
+          },
+        });
+
+        await prisma.$disconnect();
+
+        audit("test_user_set", { sellerId, planType });
+        res.json({
+          ok: true,
+          sellerId,
+          planType,
+          subscriptionId: subscription.id,
+          deactivatedCount: updated.count,
+        });
+        return;
+      } catch (error) {
+        await prisma.$disconnect();
+        console.error('setup-test-user error', error);
+        res.status(500).json(sanitizeError(error));
+        return;
+      }
+    }
+
+    // 特定のユーザーのプランを確認
+    if (action === 'check' && sellerId) {
+      try {
+        const now = new Date();
+        const activeSub = await prisma.sellerSubscription.findFirst({
+          where: {
+            sellerId: sellerId,
+            status: 'active',
+            OR: [
+              { endedAt: null },
+              { endedAt: { gt: now } },
+            ],
+          },
+          orderBy: { startedAt: 'desc' },
+          include: { seller: true },
+        });
+
+        await prisma.$disconnect();
+
+        if (activeSub) {
+          res.json({
+            ok: true,
+            sellerId,
+            planType: activeSub.planType,
+            status: activeSub.status,
+            startedAt: activeSub.startedAt,
+            endedAt: activeSub.endedAt,
+            displayName: activeSub.seller.displayName,
+          });
+        } else {
+          res.json({
+            ok: false,
+            sellerId,
+            message: 'アクティブなプランが見つかりません',
+          });
+        }
+        return;
+      } catch (error) {
+        await prisma.$disconnect();
+        console.error('check-test-user error', error);
+        res.status(500).json(sanitizeError(error));
+        return;
+      }
+    }
+
+    await prisma.$disconnect();
+    res.status(400).json({ error: 'invalid_action', message: 'action, sellerId, planType を指定してください' });
+  } catch (error) {
+    console.error('setup-test-users error', error);
+    res.status(500).json(sanitizeError(error));
+  }
+});
+
 // ====== 管理API: 決済一覧取得 ======
 app.post("/api/analyze-item", upload.single("image"), async (req, res) => {
   try {
