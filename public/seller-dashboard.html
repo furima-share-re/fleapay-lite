@@ -1512,7 +1512,10 @@
 
       // QRコード生成の共通関数（APIエラー時も使用）
       function generateQRCode() {
-        if (!sellerId) return;
+        if (!sellerId) {
+          console.warn("generateQRCode: sellerId is missing");
+          return;
+        }
         
         // 販売画面URL（実ファイルに合わせて修正）
         const baseUrl = `${location.origin.replace(/\/$/,"")}/seller-purchase-standard.html`;
@@ -1526,17 +1529,24 @@
         if (purchaseUrlEl){
           purchaseUrlEl.textContent = purchaseUrl;
           purchaseUrlEl.href = purchaseUrl;
+        } else {
+          console.warn("generateQRCode: purchaseUrlEl not found");
         }
 
-        // QR生成
-        if (purchaseQrEl){
+        // QR生成（要素を再取得して確認）
+        const qrEl = document.getElementById("purchase-qr");
+        if (qrEl){
           const qrApi = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=";
-          purchaseQrEl.src = qrApi + encodeURIComponent(purchaseUrl);
+          qrEl.src = qrApi + encodeURIComponent(purchaseUrl);
+          console.log("QR code generated:", qrEl.src);
+        } else {
+          console.error("generateQRCode: purchase-qr element not found in DOM");
         }
 
         // コピー ボタン
-        if (copyBtnEl){
-          copyBtnEl.onclick = () => {
+        const copyBtn = document.getElementById("copy-purchase-url");
+        if (copyBtn){
+          copyBtn.onclick = () => {
             navigator.clipboard?.writeText(purchaseUrl).then(()=>{
               alert("販売画面のURLをコピーしました");
             }).catch(()=>{
