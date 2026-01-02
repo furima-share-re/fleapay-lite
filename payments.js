@@ -290,24 +290,32 @@ export function registerPaymentRoutes(app, deps) {
 
     try {
       // 0) サブスク状態の判定(履歴テーブルから現在プランを取得)
-      const subRes = await pool.query(
-        `
-        SELECT plan_type, started_at, ended_at, status
-          FROM seller_subscriptions
-         WHERE seller_id = $1
-           AND status = 'active'
-           AND (ended_at IS NULL OR ended_at > now())
-         ORDER BY started_at DESC
-         LIMIT 1
-        `,
-        [sellerId]
-      );
-
+      // 🆕 テーブルが存在しない場合のエラーハンドリングを追加
       let planType = "standard";
       let isSubscribed = false;
-      if (subRes.rowCount > 0) {
-        planType = subRes.rows[0].plan_type || "standard";
-        isSubscribed = (planType === "pro" || planType === "kids");
+      
+      try {
+        const subRes = await pool.query(
+          `
+          SELECT plan_type, started_at, ended_at, status
+            FROM seller_subscriptions
+           WHERE seller_id = $1
+             AND status = 'active'
+             AND (ended_at IS NULL OR ended_at > now())
+           ORDER BY started_at DESC
+           LIMIT 1
+          `,
+          [sellerId]
+        );
+
+        if (subRes.rowCount > 0) {
+          planType = subRes.rows[0].plan_type || "standard";
+          isSubscribed = (planType === "pro" || planType === "kids");
+        }
+      } catch (subError) {
+        // テーブルが存在しない場合やその他のエラーは無視してデフォルト値を使用
+        console.warn("seller_subscriptions table not found or error:", subError.message);
+        // planType = "standard", isSubscribed = false のまま（既に設定済み）
       }
 
       // ① 売上KPI(JST基準で正しく集計)
