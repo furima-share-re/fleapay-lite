@@ -187,13 +187,14 @@ model OrderMetadata {
 }
 
 model KidsAchievement {
-  sellerId     String   @id
-  code          String   @id
+  sellerId     String
+  code          String
   kind          String
   firstEarnedAt DateTime @default(now()) @map("first_earned_at") @db.Timestamptz(6)
 
   seller Seller @relation(fields: [sellerId], references: [id])
 
+  @@id([sellerId, code])
   @@index([sellerId], name: "kids_achievements_seller_idx")
   @@map("kids_achievements")
 }
