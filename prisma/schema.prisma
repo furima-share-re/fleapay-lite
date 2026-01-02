@@ -37,6 +37,8 @@ model Seller {
   stripeAccountId String?  @map("stripe_account_id")
   email           String?
   passwordHash    String?  @map("password_hash")
+  authProvider    String   @default("bcryptjs") @map("auth_provider")
+  supabaseUserId  String?  @db.Uuid @map("supabase_user_id")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -46,6 +48,7 @@ model Seller {
   kidsAchievements KidsAchievement[]
   subscriptions SellerSubscription[]
 
+  @@index([supabaseUserId], name: "sellers_supabase_user_id_idx")
   @@map("sellers")
 }
 
