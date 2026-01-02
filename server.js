@@ -12,6 +12,8 @@ import sharp from "sharp";
 import bcrypt from "bcryptjs";
 // 🆕 S3クライアントをインポート
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+// Gitコミット情報を取得（デプロイ状態確認用）
+import { execSync } from 'child_process';
 
 dotenv.config();
 
@@ -1878,6 +1880,17 @@ const file = new FileConstructor([inputBuffer], "image.png", { type: "image/png"
 
 // ====== 🟢 ヘルスチェックエンドポイント ======
 // Phase 1.2: Prisma導入（このエンドポイントのみPrisma経由で動作確認用）
+// Gitコミット情報を取得（デプロイ状態確認用）
+let gitCommitHash = 'unknown';
+let gitCommitDate = 'unknown';
+try {
+  gitCommitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8', cwd: __dirname }).trim();
+  gitCommitDate = execSync('git log -1 --format="%ci" HEAD', { encoding: 'utf-8', cwd: __dirname }).trim();
+} catch (error) {
+  // Git情報が取得できない場合（デプロイ環境など）は無視
+  console.warn('Git情報の取得に失敗しました（デプロイ環境の可能性）:', error.message);
+}
+
 app.get("/api/ping", async (req, res) => {
   try {
     // Prisma経由でデータベース接続を確認（SELECT 1のみ）
@@ -1894,7 +1907,11 @@ app.get("/api/ping", async (req, res) => {
       ok: true, 
       timestamp: new Date().toISOString(),
       version: '3.2.0-seller-summary-fixed',
-      prisma: 'connected'
+      prisma: 'connected',
+      git: {
+        commit: gitCommitHash,
+        date: gitCommitDate
+      }
     });
   } catch (error) {
     // Prisma接続エラー時は従来の動作（後方互換性のため）
@@ -1904,7 +1921,11 @@ app.get("/api/ping", async (req, res) => {
       ok: true, 
       timestamp: new Date().toISOString(),
       version: '3.2.0-seller-summary-fixed',
-      prisma: 'not_available'
+      prisma: 'not_available',
+      git: {
+        commit: gitCommitHash,
+        date: gitCommitDate
+      }
     });
   }
 });
