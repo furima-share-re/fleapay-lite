@@ -1510,11 +1510,35 @@
         }
       }
 
+      // QRコード生成の共通関数（APIエラー時も使用）
+      function generateQRCode() {
+        if (!sellerId) return;
+        
+        // 販売画面URL（実ファイルに合わせて修正）
+        const baseUrl = `${location.origin.replace(/\/$/,"")}/seller-purchase-standard.html`;
+
+        // 末尾の ?s=ID を付ける
+        const purchaseUrl = sellerId
+          ? `${baseUrl}?s=${encodeURIComponent(sellerId)}`
+          : baseUrl;
+
+        // URLリンク
+        if (purchaseUrlEl){
+          purchaseUrlEl.textContent = purchaseUrl;
+          purchaseUrlEl.href = purchaseUrl;
+        }
+
+          // QR生成（generateQRCode関数で既に実行済み）
+      }
+
       async function loadSummary(){
         if (!sellerId){
           if (homeHintEl) homeHintEl.textContent = "URLに ?s=出店者ID が ひつようです。";
           return;
         }
+
+        // 🆕 APIエラー時でもQRコードを生成するため、先にQRコードを生成
+        generateQRCode();
 
         try{
           const res = await fetch(`/api/seller/summary?s=${encodeURIComponent(sellerId)}`);
@@ -1522,7 +1546,8 @@
 
           if (!res.ok){
             console.error("summary error", data);
-            if (homeHintEl) homeHintEl.textContent = "売上データ取得でエラーが発生しました。";
+            if (homeHintEl) homeHintEl.textContent = "売上データ取得でエラーが発生しました。QRコードは表示されています。";
+            // 🆕 APIエラー時でもQRコードは既に生成されているので、ここでreturn
             return;
           }
 
@@ -1541,26 +1566,6 @@
           if (data && data.isSubscribed === false) {
             blockForNonSubscriber();
             return;
-          }
-
-          // 販売画面URL（実ファイルに合わせて修正）
-          const baseUrl = `${location.origin.replace(/\/$/,"")}/seller-purchase-standard.html`;
-
-          // 末尾の ?s=ID を付ける
-          const purchaseUrl = sellerId
-            ? `${baseUrl}?s=${encodeURIComponent(sellerId)}`
-            : baseUrl;
-
-          // URLリンク
-          if (purchaseUrlEl){
-            purchaseUrlEl.textContent = purchaseUrl;
-            purchaseUrlEl.href = purchaseUrl;
-          }
-
-          // QR生成
-          if (purchaseQrEl){
-            const qrApi = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=";
-            purchaseQrEl.src = qrApi + encodeURIComponent(purchaseUrl);
           }
 
           // コピー ボタン
