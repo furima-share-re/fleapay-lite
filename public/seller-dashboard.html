@@ -1528,7 +1528,22 @@
           purchaseUrlEl.href = purchaseUrl;
         }
 
-          // QR生成（generateQRCode関数で既に実行済み）
+        // QR生成
+        if (purchaseQrEl){
+          const qrApi = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=";
+          purchaseQrEl.src = qrApi + encodeURIComponent(purchaseUrl);
+        }
+
+        // コピー ボタン
+        if (copyBtnEl){
+          copyBtnEl.onclick = () => {
+            navigator.clipboard?.writeText(purchaseUrl).then(()=>{
+              alert("販売画面のURLをコピーしました");
+            }).catch(()=>{
+              alert("コピーに失敗しました。手動でコピーしてください。");
+            });
+          };
+        }
       }
 
       async function loadSummary(){
@@ -1566,17 +1581,6 @@
           if (data && data.isSubscribed === false) {
             blockForNonSubscriber();
             return;
-          }
-
-          // コピー ボタン
-          if (copyBtnEl){
-            copyBtnEl.onclick = () => {
-              navigator.clipboard?.writeText(purchaseUrl).then(()=>{
-                alert("販売画面のURLをコピーしました");
-              }).catch(()=>{
-                alert("コピーに失敗しました。手動でコピーしてください。");
-              });
-            };
           }
 
           // 店名
