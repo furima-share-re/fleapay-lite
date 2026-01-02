@@ -1,0 +1,26 @@
+﻿[
+    {
+        "Url":  "https://fleapay-lite-t1.onrender.com/api/ping",
+        "Status":  200,
+        "Ok":  true,
+        "Time":  "00:59:51"
+    },
+    {
+        "Url":  "https://fleapay-lite-t1.onrender.com/",
+        "Status":  200,
+        "Ok":  true,
+        "Time":  "00:59:52"
+    },
+    {
+        "Url":  "https://fleapay-lite-t1.onrender.com/seller-register",
+        "Status":  404,
+        "Ok":  false,
+        "Time":  "00:59:53"
+    },
+    {
+        "Url":  "https://fleapay-lite-t1.onrender.com/admin/dashboard",
+        "Status":  404,
+        "Ok":  false,
+        "Time":  "00:59:54"
+    }
+]
