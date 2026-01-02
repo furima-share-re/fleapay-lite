@@ -1,0 +1,5 @@
+﻿https://fleapay-lite-t1.onrender.com/api/ping : 200
+https://fleapay-lite-t1.onrender.com/ : 200
+https://fleapay-lite-t1.onrender.com/seller-register : 404
+https://fleapay-lite-t1.onrender.com/admin/dashboard : 404
+https://fleapay-lite-t1.onrender.com/api/seller/summary?s=test-seller-pro : 200
