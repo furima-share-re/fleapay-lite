@@ -418,6 +418,31 @@ async function initDb() {
     create index if not exists kids_achievements_seller_idx
       on kids_achievements(seller_id);
 
+    -- seller_subscriptions
+    create table if not exists seller_subscriptions (
+      id uuid primary key default gen_random_uuid(),
+      seller_id text not null,
+      plan_type text not null,
+      started_at timestamptz not null default now(),
+      ended_at timestamptz,
+      status text not null default 'active',
+      created_at timestamptz default now(),
+      updated_at timestamptz default now(),
+      constraint seller_subscriptions_plan_type_check
+        check (plan_type in ('standard', 'pro', 'kids')),
+      constraint seller_subscriptions_status_check
+        check (status in ('active', 'inactive', 'cancelled'))
+    );
+
+    create index if not exists seller_subscriptions_seller_idx
+      on seller_subscriptions(seller_id);
+
+    create index if not exists seller_subscriptions_status_idx
+      on seller_subscriptions(status);
+
+    create index if not exists seller_subscriptions_seller_status_idx
+      on seller_subscriptions(seller_id, status);
+
     -- 既存DB向け: 世界相場カラムを追加
     alter table if exists orders
       add column if not exists world_price_median integer,
@@ -432,7 +457,7 @@ async function initDb() {
       add column if not exists deleted_at timestamptz;
   `);
 
-  console.log("✅ DB init done (PATCHED v3.6 - world_price_revenue_max/profit_max columns added)");
+  console.log("✅ DB init done (PATCHED v3.7 - seller_subscriptions table added)");
 }
 
 initDb().catch(e => console.error("DB init error", e));
