@@ -21,5 +21,6 @@ const nextConfig = {
   // 既存のpublic/ディレクトリをNext.jsでも使用
 };
 
-module.exports = nextConfig;
+// ES module形式でエクスポート（package.jsonに"type": "module"があるため）
+export default nextConfig;
 
