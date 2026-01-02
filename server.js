@@ -16,6 +16,8 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { execSync } from 'child_process';
 // Phase 1.5: Supabase Auth移行（新規ユーザーのみ）
 import { supabase } from './lib/supabase.js';
+// Phase 1.6: 既存ユーザー移行
+import { authenticateUser, resetPasswordAndMigrate, getMigrationStatus } from './lib/auth.js';
 
 dotenv.config();
 
@@ -1356,6 +1358,52 @@ app.post("/api/admin/bootstrap_sql", requireAdmin, async (req, res) => {
   } catch (e) {
     console.error("bootstrap_sql error", e);
     res.status(500).json(sanitizeError(e));
+  }
+});
+
+// ====== Phase 1.6: パスワードリセットAPI（Supabase Auth移行用） ======
+app.post("/api/auth/reset-password", async (req, res) => {
+  try {
+    const { email, newPassword } = req.body || {};
+
+    if (!email || !newPassword) {
+      return res.status(400).json({ error: "missing_params" });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "password_too_short" });
+    }
+
+    const result = await resetPasswordAndMigrate(email, newPassword, pool);
+
+    if (!result.success) {
+      return res.status(400).json({ 
+        error: result.error || "reset_failed",
+        message: result.error 
+      });
+    }
+
+    audit("password_reset_and_migrate", { email, migrated: result.message === 'migrated_to_supabase' });
+
+    res.json({ 
+      ok: true, 
+      message: result.message,
+      migrated: result.message === 'migrated_to_supabase'
+    });
+  } catch (error) {
+    console.error("reset-password error", error);
+    res.status(500).json(sanitizeError(error));
+  }
+});
+
+// ====== Phase 1.6: 移行率確認API（管理者用） ======
+app.get("/api/admin/migration-status", requireAdmin, async (req, res) => {
+  try {
+    const status = await getMigrationStatus(pool);
+    res.json(status);
+  } catch (error) {
+    console.error("migration-status error", error);
+    res.status(500).json(sanitizeError(error));
   }
 });
 
