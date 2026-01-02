@@ -1510,27 +1510,19 @@
         }
       }
 
-      // QRコード生成の共通関数（APIエラー時も使用）
+      // QRコード生成の共通関数（固定URL - sellerIdに依存しない）
       function generateQRCode() {
-        if (!sellerId) {
-          console.warn("generateQRCode: sellerId is missing");
-          return;
-        }
-        
-        // 販売画面URL（実ファイルに合わせて修正）
+        // 固定URL: seller-purchase-standard.html（sellerIdパラメータなし）
         const baseUrl = `${location.origin.replace(/\/$/,"")}/seller-purchase-standard.html`;
-
-        // 末尾の ?s=ID を付ける
-        const purchaseUrl = sellerId
-          ? `${baseUrl}?s=${encodeURIComponent(sellerId)}`
-          : baseUrl;
+        const purchaseUrl = baseUrl;
 
         // URLリンク
-        if (purchaseUrlEl){
-          purchaseUrlEl.textContent = purchaseUrl;
-          purchaseUrlEl.href = purchaseUrl;
+        const urlEl = document.getElementById("purchase-url");
+        if (urlEl){
+          urlEl.textContent = purchaseUrl;
+          urlEl.href = purchaseUrl;
         } else {
-          console.warn("generateQRCode: purchaseUrlEl not found");
+          console.warn("generateQRCode: purchase-url element not found");
         }
 
         // QR生成（要素を再取得して確認）
@@ -1538,7 +1530,8 @@
         if (qrEl){
           const qrApi = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=";
           qrEl.src = qrApi + encodeURIComponent(purchaseUrl);
-          console.log("QR code generated:", qrEl.src);
+          qrEl.alt = "販売画面QRコード";
+          console.log("QR code generated (fixed URL):", qrEl.src);
         } else {
           console.error("generateQRCode: purchase-qr element not found in DOM");
         }
@@ -1557,13 +1550,13 @@
       }
 
       async function loadSummary(){
+        // 🆕 固定URLのQRコードを即座に生成（sellerIdに依存しない）
+        generateQRCode();
+
         if (!sellerId){
           if (homeHintEl) homeHintEl.textContent = "URLに ?s=出店者ID が ひつようです。";
           return;
         }
-
-        // 🆕 APIエラー時でもQRコードを生成するため、先にQRコードを生成
-        generateQRCode();
 
         try{
           const res = await fetch(`/api/seller/summary?s=${encodeURIComponent(sellerId)}`);
@@ -1722,11 +1715,22 @@
         }
       }
 
-      // 初回読み込み
-      loadSummary();
+      // 初回読み込み: 固定URLのQRコードを即座に生成
+      // DOMContentLoadedを待ってから実行（DOM要素が確実に存在するように）
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          generateQRCode();
+          loadSummary();
+        });
+      } else {
+        // DOMが既に読み込まれている場合は即座に実行
+        generateQRCode();
+        loadSummary();
+      }
 
       // グローバルスコープに公開（モーダル保存時の再読み込み用）
       window.loadSummary = loadSummary;
+      window.generateQRCode = generateQRCode;
     })();
 
     // ====== 取引フィルターボタン ======
