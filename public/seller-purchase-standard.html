@@ -915,17 +915,9 @@
       const data = await res.json();
       log("summary: " + JSON.stringify(data));
       
-      // 🆕 APIエラー時もテスト環境では通す（seller_subscriptionsテーブル不存在エラー対応）
+      // データベースのデータに基づいて判定（環境判定を削除）
       if (!res.ok){
         log("API error (status " + res.status + "): " + JSON.stringify(data));
-        // ローカル/テスト環境では通す
-        if (location.hostname === "localhost" ||
-            location.hostname.includes("127.0.0.1") ||
-            location.hostname.includes("render.com") ||
-            location.hostname.includes("onrender.com")) {
-          log("Test environment: allowing access despite API error");
-          return true;
-        }
         showBlocked("売上情報の取得に失敗しました。時間をおいて再度お試しください。");
         return false;
       }
@@ -935,30 +927,14 @@
         nameEl.textContent = data.displayName || data.sellerId || "出店者";
       }
 
-      // 🆕 テスト環境ではplanType: "standard"でもアクセス許可
+      // データベースのデータに基づいて判定（planTypeとisSubscribedで判定）
       if (data.isSubscribed === false || data.planType === "standard" || !data.planType){
-        // ローカル/テスト環境では通す
-        if (location.hostname === "localhost" ||
-            location.hostname.includes("127.0.0.1") ||
-            location.hostname.includes("render.com") ||
-            location.hostname.includes("onrender.com")) {
-          log("Test environment: allowing access for standard plan");
-          return true;
-        }
         showBlocked("このレジ画面は、対象のプランご契約中の出店者さま専用です。運営までお問合せください。");
         return false;
       }
       return true;
     } catch(e){
       log("ensureSubscribedSeller error: " + e.message);
-      // ローカル/テスト環境では通す
-      if (location.hostname === "localhost" ||
-          location.hostname.includes("127.0.0.1") ||
-          location.hostname.includes("render.com") ||
-          location.hostname.includes("onrender.com")) {
-        log("Test environment: allowing access despite exception");
-        return true;
-      }
       showBlocked("通信エラーが発生しました。ネットワークをご確認ください。");
       return false;
     }
