@@ -56,6 +56,12 @@ export async function POST(request: Request) {
     }
 
     // 3) Supabase Authにユーザーを作成
+    if (!supabase) {
+      return NextResponse.json({ 
+        error: "supabase_not_configured", 
+        message: "Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables." 
+      }, { status: 500 });
+    }
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
