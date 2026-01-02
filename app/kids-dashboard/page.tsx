@@ -3,14 +3,11 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-// Force dynamic rendering (this page uses useSearchParams)
-export const dynamic = 'force-dynamic';
-
-export default function KidsDashboardPage() {
+function KidsDashboardContent() {
   const searchParams = useSearchParams();
   const sellerId = searchParams.get('s');
   
@@ -835,6 +832,14 @@ export default function KidsDashboardPage() {
         </p>
       </section>
     </div>
+  );
+}
+
+export default function KidsDashboardPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <KidsDashboardContent />
+    </Suspense>
   );
 }
 

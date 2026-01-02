@@ -3,16 +3,13 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Script from 'next/script';
 
 type Step = 'intro' | 'camera' | 'analyzing' | 'form' | 'confirm' | 'done';
 
-// Force dynamic rendering (this page uses useSearchParams)
-export const dynamic = 'force-dynamic';
-
-export default function SellerPurchaseStandardPage() {
+function SellerPurchaseStandardContent() {
   const searchParams = useSearchParams();
   const sellerIdParam = searchParams.get('s');
   
@@ -829,6 +826,14 @@ export default function SellerPurchaseStandardPage() {
         </footer>
       </div>
     </>
+  );
+}
+
+export default function SellerPurchaseStandardPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SellerPurchaseStandardContent />
+    </Suspense>
   );
 }
 

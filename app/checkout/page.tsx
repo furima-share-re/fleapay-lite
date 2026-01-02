@@ -3,14 +3,11 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Script from 'next/script';
 
-// Force dynamic rendering (this page uses useSearchParams)
-export const dynamic = 'force-dynamic';
-
-export default function CheckoutPage() {
+function CheckoutContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order');
   const sellerId = searchParams.get('s');
@@ -795,6 +792,14 @@ export default function CheckoutPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CheckoutContent />
+    </Suspense>
   );
 }
 

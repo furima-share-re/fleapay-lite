@@ -3,13 +3,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-// Force dynamic rendering (this page uses useSearchParams)
-export const dynamic = 'force-dynamic';
-
-export default function SuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order');
   const [paymentData, setPaymentData] = useState<any>(null);
@@ -329,6 +326,14 @@ export default function SuccessPage() {
         </div>
       </body>
     </html>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SuccessContent />
+    </Suspense>
   );
 }
 
