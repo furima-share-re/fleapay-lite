@@ -3,30 +3,13 @@
 // payments.js の実装を完全に一致させる
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { PrismaClient } from '@prisma/client';
+import { jstDayBounds } from '@/lib/utils';
 
-// データベース接続プール（環境変数から取得）
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+const prisma = new PrismaClient();
 
-// JSTの日付境界(0:00)を求めるヘルパー
-function jstDayBounds() {
-  const nowUtc = new Date();
-  const jstOffset = 9 * 60 * 60 * 1000; // JST = UTC+9
-  const nowJstMs = nowUtc.getTime() + jstOffset;
-  const nowJst = new Date(nowJstMs);
-  
-  const todayStart = new Date(Date.UTC(
-    nowJst.getUTCFullYear(),
-    nowJst.getUTCMonth(),
-    nowJst.getUTCDate(),
-    0, 0, 0, 0
-  ));
-  const tomorrowStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-  
-  return { todayStart, tomorrowStart };
-}
+// Force dynamic rendering (this route uses nextUrl.searchParams)
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {

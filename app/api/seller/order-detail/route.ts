@@ -1,21 +1,20 @@
 // app/api/seller/order-detail/route.ts
 // Phase 2.3: Next.js画面移行（注文詳細取得API Route Handler）
 
-import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { NextResponse, NextRequest } from 'next/server';
+import { PrismaClient } from '@prisma/client';
 import { sanitizeError } from '@/lib/utils';
 
-const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL 
-});
+const prisma = new PrismaClient();
+const PENDING_TTL_MIN = parseInt(process.env.PENDING_TTL_MIN || '10', 10);
 
-const PENDING_TTL_MIN = parseInt(process.env.PENDING_TTL_MIN || '30', 10);
+// Force dynamic rendering (this route uses request.url)
+export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const url = new URL(request.url);
-    const sellerId = url.searchParams.get('s');
-    const orderId = url.searchParams.get('orderId');
+    const sellerId = request.nextUrl.searchParams.get('s');
+    const orderId = request.nextUrl.searchParams.get('orderId');
 
     if (!sellerId || !orderId) {
       return NextResponse.json(
@@ -24,48 +23,35 @@ export async function GET(request: Request) {
       );
     }
 
-    const result = await pool.query(
-      `SELECT
-         o.id AS order_id,
-         o.seller_id,
-         o.amount,
-         o.summary,
-         o.status,
-         o.created_at,
-         COALESCE(om.is_cash, false) AS is_cash
-       FROM orders o
-       LEFT JOIN order_metadata om
-         ON om.order_id = o.id
-       WHERE o.id = $1
-         AND o.seller_id = $2
-         AND o.deleted_at IS NULL
-       LIMIT 1`,
-      [orderId, sellerId]
-    );
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        sellerId: sellerId,
+        deletedAt: null,
+      },
+      include: {
+        orderMetadata: true,
+      },
+    });
 
-    if (!result.rowCount || result.rowCount === 0) {
+    if (!order) {
       return NextResponse.json(
         { error: 'not_found' },
         { status: 404 }
       );
     }
 
-    const row = result.rows[0];
-
     // 有効期限 & ステータス & 現金チェック
-    const createdAt = row.created_at instanceof Date
-      ? row.created_at
-      : new Date(row.created_at);
-
+    const createdAt = order.createdAt;
     const expireMs = PENDING_TTL_MIN * 60 * 1000;
     const isExpiredByTime = Date.now() - createdAt.getTime() > expireMs;
-    const isInactiveStatus = row.status !== 'pending';
-    const isCash = row.is_cash === true;
+    const isInactiveStatus = order.status !== 'pending';
+    const isCash = order.orderMetadata?.isCash === true;
 
     if (isExpiredByTime || isInactiveStatus || isCash) {
       return NextResponse.json({
-        orderId: row.order_id,
-        sellerId: row.seller_id,
+        orderId: order.id,
+        sellerId: order.sellerId,
         amount: null,
         summary: null,
         error: 'expired',
@@ -73,19 +59,21 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      orderId: row.order_id,
-      sellerId: row.seller_id,
-      amount: row.amount,
-      summary: row.summary,
-      status: row.status,
-      createdAt: row.created_at,
+      orderId: order.id,
+      sellerId: order.sellerId,
+      amount: order.amount,
+      summary: order.summary,
+      status: order.status,
+      createdAt: order.createdAt,
     });
   } catch (e) {
     console.error('seller_order_detail_error', e);
     return NextResponse.json(
-      { error: 'server_error' },
+      sanitizeError(e),
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
 

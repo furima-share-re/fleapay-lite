@@ -9,6 +9,9 @@ import Script from 'next/script';
 
 type Step = 'intro' | 'camera' | 'analyzing' | 'form' | 'confirm' | 'done';
 
+// Force dynamic rendering (this page uses useSearchParams)
+export const dynamic = 'force-dynamic';
+
 export default function SellerPurchaseStandardPage() {
   const searchParams = useSearchParams();
   const sellerIdParam = searchParams.get('s');

@@ -6,6 +6,9 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+// Force dynamic rendering (this page uses useSearchParams)
+export const dynamic = 'force-dynamic';
+
 export default function SuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order');

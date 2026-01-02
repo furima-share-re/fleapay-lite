@@ -7,6 +7,9 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
+// Force dynamic rendering (this page uses useSearchParams)
+export const dynamic = 'force-dynamic';
+
 export default function KidsDashboardPage() {
   const searchParams = useSearchParams();
   const sellerId = searchParams.get('s');

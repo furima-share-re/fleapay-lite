@@ -1,18 +1,18 @@
 // app/api/checkout/result/route.ts
 // Phase 2.3: Next.js画面移行（チェックアウト結果取得API Route Handler）
 
-import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { NextResponse, NextRequest } from 'next/server';
+import { PrismaClient } from '@prisma/client';
 import { sanitizeError } from '@/lib/utils';
 
-const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL 
-});
+const prisma = new PrismaClient();
 
-export async function GET(request: Request) {
+// Force dynamic rendering (this route uses request.url)
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
   try {
-    const url = new URL(request.url);
-    const orderId = url.searchParams.get('orderId');
+    const orderId = request.nextUrl.searchParams.get('orderId');
     
     if (!orderId) {
       return NextResponse.json(
@@ -21,8 +21,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const result = await pool.query(
-      `
+    const result = await prisma.$queryRaw`
       SELECT
         o.id            AS order_id,
         o.seller_id,
@@ -37,22 +36,20 @@ export async function GET(request: Request) {
       FROM orders o
       LEFT JOIN stripe_payments sp
         ON sp.order_id = o.id
-      WHERE o.id = $1
+      WHERE o.id = ${orderId}::uuid
         AND o.deleted_at IS NULL
       ORDER BY sp.created_at DESC NULLS LAST
       LIMIT 1
-      `,
-      [orderId]
-    );
+    `;
 
-    if (!result.rowCount || result.rowCount === 0) {
+    const row = (result as any[])[0];
+
+    if (!row) {
       return NextResponse.json(
         { error: 'order_not_found' },
         { status: 404 }
       );
     }
-
-    const row = result.rows[0];
 
     const isPaid =
       row.order_status === 'paid' ||
@@ -71,9 +68,11 @@ export async function GET(request: Request) {
   } catch (e) {
     console.error('/api/checkout/result error', e);
     return NextResponse.json(
-      { error: 'server_error' },
+      sanitizeError(e),
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
 

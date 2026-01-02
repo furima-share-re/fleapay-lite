@@ -7,6 +7,9 @@ import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Script from 'next/script';
 
+// Force dynamic rendering (this page uses useSearchParams)
+export const dynamic = 'force-dynamic';
+
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order');
