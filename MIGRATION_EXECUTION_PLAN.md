@@ -2,7 +2,7 @@
 
 **プロジェクト**: fleapay-lite  
 **作成日**: 2025-01-15  
-**最終更新**: 2026-01-02（Phase 2.2実装完了、/api/seller/summary API Route Handler移行完了、デグレチェック完了）  
+**最終更新**: 2026-01-02（Phase 2.3実装完了、全画面実装完了、API Route Handler 13個、Next.js Pages 14個、TypeScript型エラーなし、Linterエラーなし、ルール準拠確認完了、デグレチェック完了、Phase 2.4-2.6追加、Phase 3追加）  
 **目的**: デグレを最小限に抑えた安全な移行の実行
 
 **⚠️ 重要**: 
@@ -25,21 +25,27 @@
 | **Phase 1.5** | Supabase Auth移行（新規ユーザー） | 2026-01-02 | ✅ **完了** | 新規ユーザー登録をSupabase Authに変更完了、データベースマイグレーション実行済み、デプロイ完了、動作確認完了 |
 | **Phase 1.6** | 既存ユーザー移行 | 2026-01-02 | ✅ **完了** | 認証ロジック基盤実装完了、パスワードリセットAPI実装完了、移行率確認API実装完了、動作確認完了 |
 | **Phase 2.1** | Next.jsプロジェクト初期設定 | 2026-01-02 | ✅ **完了** | Next.js依存関係追加、設定ファイル作成、App Router構造作成、/api/ping移行完了、検証環境動作確認完了 |
-| **Phase 2.2** | Next.js画面移行（画面単位） | 2026-01-02 | ✅ **完了** | /api/seller/summary API Route Handler移行完了、payments.js実装と完全一致、デグレチェック完了 |
+| **Phase 2.2** | Next.js画面移行（画面単位） | 2026-01-02 | ✅ **完了** | /api/seller/summary API Route Handler移行完了、payments.js実装と完全一致、TypeScript型エラー修正完了、動作確認完了（全プラン正常動作確認済み）、ルール準拠確認完了 |
+| **Phase 2.3** | Next.js画面移行（全画面実装） | 2026-01-02 | ✅ **完了** | 全画面実装完了（API Route Handler 13個、Next.js Pages 14個）、TypeScript型エラーなし、Linterエラーなし、ルール準拠確認完了、デグレチェック完了 |
 
 ### 未実装フェーズ（優先順位順）
 
 | Phase | フェーズ名 | 予定期間 | 状態 | 備考 |
 |-------|----------|---------|------|------|
-| **Phase 2.3** | Next.js画面移行（続き） | Month 2-3 | ⏳ 未着手 | **最優先**（他のAPI Routes + ページを画面単位で同時移行） |
+| **Phase 2.4** | Tailwind CSS + shadcn/ui導入 | Week 4-5 | ⏳ **未着手** | **最優先**（AI修正成功率98%達成に必要） |
+| **Phase 2.5** | React Hook Form + Zod導入 | Week 5-6 | ⏳ **未着手** | **高優先度**（型安全性・バリデーション効率向上） |
+| **Phase 2.6** | Express.js廃止 | Week 6-7 | ⏳ **未着手** | **高優先度**（Next.js完全移行） |
+| **Phase 3.1** | 監視ツール導入 | Month 3-4 | ⏳ **未着手** | **中優先度**（Helicone, Sentry, Cloudflare WAF） |
+| **Phase 3.2** | 詳細ヘルスチェック + 自動ロールバック | Month 3-4 | ⏳ **未着手** | **中優先度**（運用自動化） |
 | **Phase 1.7** | RLS実装 | Week 4 Day 1-2 | ⏳ 未着手 | **最終工程**（Phase 2完了後） |
 | **Phase 1.8** | 本番環境DB移行 | Week 4 Day 3-5 | ⏳ 未着手 | **最終工程**（Phase 2完了後） |
 
 **重要なポイント**: 
 - 検証環境のDB移行は完了（Phase 1.3）
 - 検証環境の環境移行は完了（Phase 1.4）
-- **Phase 2（Next.js移行）を最優先で実施**（検証環境で実施可能）
-- **Phase 2.2/2.3を統合**: API Routesとページは画面単位で同時に移行（デグレリスク低減）
+- **Phase 2.1-2.3（Next.js基盤移行）は完了**（API Route Handler 13個、Next.js Pages 14個実装完了）
+- **Phase 2.4-2.6（UIライブラリ導入・Express.js廃止）を最優先で実施**（AI修正成功率98%達成のため）
+- **Phase 3（監視・運用自動化）を次に実施**（運用95%自動化達成のため）
 - **Phase 1.7（RLS実装）とPhase 1.8（本番環境DB移行）は最終工程**（Phase 2完了後に実施）
 
 ---
@@ -53,6 +59,187 @@
 5. [動作確認ポイント](#4-動作確認ポイント)
 6. [ロールバック基準](#5-ロールバック基準)
 7. [チェックリスト](#6-チェックリスト)
+
+---
+
+---
+
+## 2. Phase別移行計画
+
+### Phase 2.4: Tailwind CSS + shadcn/ui導入
+
+**期間**: Week 4-5  
+**優先度**: 🔴 **最優先**  
+**目的**: AI修正成功率98%達成のため
+
+**実施内容**:
+1. **Tailwind CSS導入**
+   - `tailwindcss`, `postcss`, `autoprefixer` インストール
+   - `tailwind.config.js` 作成
+   - `postcss.config.js` 作成
+   - `app/globals.css` にTailwindディレクティブ追加
+
+2. **shadcn/ui導入**
+   - `npx shadcn-ui@latest init` 実行
+   - `components.json` 設定
+   - 必要なコンポーネントを段階的に追加（Button, Input, Form等）
+
+3. **既存ページの移行**
+   - インラインスタイルをTailwindクラスに変換
+   - カスタムコンポーネントをshadcn/uiコンポーネントに置き換え
+   - 段階的に移行（1画面ずつ）
+
+**完了条件**:
+- ✅ Tailwind CSS動作確認
+- ✅ shadcn/uiコンポーネント使用開始
+- ✅ 主要画面（3-5画面）をTailwind化
+- ✅ デザインの一貫性確認
+
+**期待効果**:
+- AI修正成功率: 80% → **98%**
+- 開発効率: 2-3倍向上
+- コンポーネント再利用性向上
+
+---
+
+### Phase 2.5: React Hook Form + Zod導入
+
+**期間**: Week 5-6  
+**優先度**: 🟡 **高**  
+**目的**: 型安全性・バリデーション効率向上
+
+**実施内容**:
+1. **依存関係追加**
+   - `react-hook-form` インストール
+   - `zod` インストール
+   - `@hookform/resolvers` インストール
+
+2. **フォーム移行**
+   - 既存フォーム（`seller-register`, `checkout`等）をReact Hook Formに移行
+   - Zodスキーマ定義
+   - バリデーションロジックをZodに移行
+
+3. **API Route Handlerのバリデーション**
+   - Route HandlerでもZodスキーマを使用
+   - 型安全性の完全実現
+
+**完了条件**:
+- ✅ 主要フォーム（3-5個）をReact Hook Form + Zod化
+- ✅ 型安全性確認（TypeScript型エラーなし）
+- ✅ バリデーション動作確認
+
+**期待効果**:
+- 型安全性: 大幅向上
+- バリデーション効率: 2-3倍向上
+- コード品質: 向上
+
+---
+
+### Phase 2.6: Express.js廃止
+
+**期間**: Week 6-7  
+**優先度**: 🟡 **高**  
+**目的**: Next.js完全移行
+
+**実施内容**:
+1. **残りAPIエンドポイント移行**
+   - Express.jsルートをNext.js Route Handlerに移行
+   - 動作確認
+
+2. **静的ファイル配信**
+   - `public/` ディレクトリの確認
+   - Next.jsの静的ファイル配信に移行
+
+3. **Express.js削除**
+   - `server.js` の不要部分削除
+   - Express.js依存関係削除（`express`, `cors`等）
+   - `package.json` のスクリプト更新
+
+4. **デプロイ設定更新**
+   - `render.yaml` 更新（Next.jsのみ）
+   - 環境変数確認
+
+**完了条件**:
+- ✅ 全APIエンドポイントがNext.js Route Handlerで動作
+- ✅ Express.js依存関係削除
+- ✅ デプロイ動作確認
+- ✅ 既存機能の動作確認
+
+**期待効果**:
+- アーキテクチャ統一
+- デプロイ簡素化
+- 保守性向上
+
+---
+
+### Phase 3.1: 監視ツール導入
+
+**期間**: Month 3-4  
+**優先度**: 🟢 **中**  
+**目的**: 運用95%自動化達成
+
+**実施内容**:
+1. **Helicone導入（LLM API監視）**
+   - Heliconeアカウント作成
+   - OpenAI SDKをHelicone経由に設定
+   - `lib/openai.ts` 作成・更新
+   - 既存のOpenAI呼び出しをHelicone経由に変更
+
+2. **Sentry導入（エラー監視）**
+   - Sentryアカウント作成
+   - `@sentry/nextjs` インストール
+   - `npx @sentry/wizard@latest -i nextjs` 実行
+   - エラー監視開始
+
+3. **Cloudflare WAF設定**
+   - Cloudflare Proアカウント作成
+   - DNS設定
+   - WAFルール設定
+   - Rate Limiting設定
+
+**完了条件**:
+- ✅ HeliconeダッシュボードでLLM API呼び出し可視化
+- ✅ Sentryダッシュボードでエラー監視可能
+- ✅ Cloudflare WAF動作確認
+
+**期待効果**:
+- エラー検知率: 0% → **95%以上**
+- LLM APIコスト可視化: 可能
+- DDoS防御: 自動ブロック
+
+---
+
+### Phase 3.2: 詳細ヘルスチェック + 自動ロールバック
+
+**期間**: Month 3-4  
+**優先度**: 🟢 **中**  
+**目的**: 運用自動化95%達成
+
+**実施内容**:
+1. **詳細ヘルスチェック実装**
+   - `app/api/health/route.ts` 作成
+   - DB接続確認
+   - AI API確認
+   - 総合判定
+
+2. **自動ロールバック実装**
+   - Render Webhook設定
+   - ヘルスチェック失敗時の自動ロールバック
+   - 通知システム統合
+
+3. **監視アラート設定**
+   - PagerDuty設定（オプション）
+   - アラートルール設定
+
+**完了条件**:
+- ✅ 詳細ヘルスチェック動作確認
+- ✅ 自動ロールバック動作確認
+- ✅ 監視アラート動作確認
+
+**期待効果**:
+- SLA: 85% → **99%**
+- 障害検知: 90%高速化
+- 運用コスト: 人的介入90%削減
 
 ---
 

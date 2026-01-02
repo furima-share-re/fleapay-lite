@@ -1,0 +1,140 @@
+// app/api/checkout/session/route.ts
+// Phase 2.3: Next.js画面移行（チェックアウトセッション作成API Route Handler）
+
+import { NextResponse, NextRequest } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+import Stripe from 'stripe';
+import { getNextOrderNo, sanitizeError, bumpAndAllow, clientIp, isSameOrigin, audit } from '@/lib/utils';
+
+const prisma = new PrismaClient();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { 
+  apiVersion: '2025-10-29.clover'
+});
+
+const BASE_URL = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const RATE_LIMIT_MAX_CHECKOUT = parseInt(process.env.RATE_LIMIT_MAX_CHECKOUT || "12", 10);
+
+export async function POST(request: NextRequest) {
+  try {
+    if (!isSameOrigin(request)) {
+      return NextResponse.json({ error: "forbidden_origin" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { sellerId, latest, summary, orderId: bodyOrderId } = body || {};
+    const orderId = bodyOrderId || request.nextUrl.searchParams.get('order') || '';
+
+    if (!sellerId && !orderId) {
+      return NextResponse.json(
+        { error: 'seller_id_or_order_id_required' },
+        { status: 400 }
+      );
+    }
+
+    const ip = clientIp(request);
+    if (!bumpAndAllow(`checkout:${ip}`, RATE_LIMIT_MAX_CHECKOUT)) {
+      return NextResponse.json(
+        { error: 'rate_limited' },
+        { status: 429 }
+      );
+    }
+
+    // orderの取得または作成
+    let order;
+    if (orderId) {
+      order = await prisma.order.findFirst({
+        where: {
+          id: orderId,
+          deletedAt: null,
+        },
+      });
+      if (!order) {
+        return NextResponse.json(
+          { error: 'order_not_found' },
+          { status: 404 }
+        );
+      }
+    } else {
+      // 新規注文作成
+      const amount = latest?.amount || 0;
+      const nextOrderNo = await getNextOrderNo(prisma, sellerId);
+      
+      order = await prisma.order.create({
+        data: {
+          sellerId: sellerId,
+          orderNo: nextOrderNo,
+          amount: amount,
+          summary: summary || "",
+          status: 'pending',
+        },
+      });
+    }
+
+    // 金額バリデーション: 0円以下の注文は決済させない
+    if (!order.amount || Number(order.amount) <= 0) {
+      console.error('[Checkout] invalid order amount', {
+        orderId: order.id,
+        amount: order.amount,
+      });
+      return NextResponse.json(
+        {
+          error: 'invalid_amount',
+          message: '金額が0円のため決済を開始できません。',
+        },
+        { status: 400 }
+      );
+    }
+
+    const successUrl = `${BASE_URL}/success?order=${order.id}`;
+    const cancelUrl = `${BASE_URL}/cancel?s=${order.sellerId}&order=${order.id}`;
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+      mode: 'payment',
+      payment_method_types: [
+        'card',        // カード / Apple Pay / Google Pay
+        'link',        // Stripe Link
+        'alipay'       // Alipay
+      ],
+      locale: 'auto',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      line_items: [
+        {
+          price_data: {
+            currency: 'jpy',
+            product_data: {
+              name: order.summary || '商品',
+            },
+            unit_amount: order.amount,
+          },
+          quantity: 1,
+        },
+      ],
+      payment_intent_data: {
+        metadata: {
+          sellerId: order.sellerId,
+          orderId: order.id,
+        },
+      },
+    };
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+
+    audit("checkout_session_created", { orderId: order.id, sellerId: order.sellerId, sessionId: session.id });
+
+    return NextResponse.json({ url: session.url, sessionId: session.id });
+
+  } catch (error: any) {
+    console.error("/api/checkout/session エラー発生:", error);
+    if (error.type === "StripeInvalidRequestError") {
+      return NextResponse.json({
+        error: "stripe_error",
+        message: error.message,
+      }, { status: 400 });
+    }
+    return NextResponse.json(sanitizeError(error), { status: 500 });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
