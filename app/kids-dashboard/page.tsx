@@ -20,11 +20,13 @@ export default function KidsDashboardPage() {
   useEffect(() => {
     if (!sellerId) return;
     
-    const keyPrefix = `kids-mission-${sellerId}-`;
-    const mission1 = localStorage.getItem(keyPrefix + '1') === 'done';
-    const mission2 = localStorage.getItem(keyPrefix + '2') === 'done';
-    const mission3 = localStorage.getItem(keyPrefix + '3') === 'done';
-    setMissions({ '1': mission1, '2': mission2, '3': mission3 });
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      const keyPrefix = `kids-mission-${sellerId}-`;
+      const mission1 = localStorage.getItem(keyPrefix + '1') === 'done';
+      const mission2 = localStorage.getItem(keyPrefix + '2') === 'done';
+      const mission3 = localStorage.getItem(keyPrefix + '3') === 'done';
+      setMissions({ '1': mission1, '2': mission2, '3': mission3 });
+    }
     
     loadSummary();
     loadKidsSummary();
@@ -71,6 +73,7 @@ export default function KidsDashboardPage() {
 
   const toggleMission = (id: string) => {
     if (!sellerId) return;
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
     
     const key = `kids-mission-${sellerId}-${id}`;
     const newState = !missions[id];

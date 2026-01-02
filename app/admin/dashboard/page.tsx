@@ -19,8 +19,8 @@ export default function AdminDashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      const token = typeof window !== 'undefined' 
-        ? (window as any).ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken'
+      const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
+        ? ((window as any).ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
         : 'admin-devtoken';
       
       const res = await fetch('/api/admin/dashboard', {
