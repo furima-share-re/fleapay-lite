@@ -28,131 +28,115 @@ export async function GET(request: NextRequest) {
     let isSubscribed = false;
     
     try {
-      const subRes = await pool.query(
-        `
-        SELECT plan_type, started_at, ended_at, status
-          FROM seller_subscriptions
-         WHERE seller_id = $1
-           AND status = 'active'
-           AND (ended_at IS NULL OR ended_at > now())
-         ORDER BY started_at DESC
-         LIMIT 1
-        `,
-        [sellerId]
-      );
+      const sub = await prisma.sellerSubscription.findFirst({
+        where: {
+          sellerId: sellerId,
+          status: 'active',
+          OR: [
+            { endedAt: null },
+            { endedAt: { gt: new Date() } },
+          ],
+        },
+        orderBy: { startedAt: 'desc' },
+      });
 
-      if (subRes.rowCount && subRes.rowCount > 0) {
-        planType = subRes.rows[0].plan_type || "standard";
-        isSubscribed = (planType === "pro" || planType === "kids");
+      if (sub) {
+        planType = sub.planType as 'standard' | 'pro' | 'kids';
+        isSubscribed = (planType === 'pro' || planType === 'kids');
       }
     } catch (subError) {
       // テーブルが存在しない場合やその他のエラーは無視してデフォルト値を使用
-      console.warn("seller_subscriptions table not found or error:", (subError as Error).message);
+      console.warn("seller_subscriptions table not found or error (Prisma):", (subError as Error).message);
       // planType = "standard", isSubscribed = false のまま（既に設定済み）
     }
 
     // ① 売上KPI(JST基準で正しく集計)
     const { todayStart, tomorrowStart } = jstDayBounds();
 
-    const kpiToday = await pool.query(
-      `
+    const kpiToday = await prisma.$queryRaw`
       SELECT
-        COUNT(*) AS cnt,
-        -- 売上合計(gross)
+        COUNT(*)::int AS cnt,
         COALESCE(SUM(
-          CASE 
+          CASE
             WHEN om.is_cash = true THEN o.amount
             WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
             ELSE 0
           END
-        ), 0) AS gross,
-        -- 純売上(net)
+        ), 0)::int AS gross,
         COALESCE(SUM(
-          CASE 
+          CASE
             WHEN om.is_cash = true THEN o.amount
             WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
             ELSE 0
           END
-        ), 0) AS net,
-        -- 手数料(fee)
+        ), 0)::int AS net,
         COALESCE(SUM(
-          CASE 
+          CASE
             WHEN om.is_cash = true THEN 0
             WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN COALESCE(sp.amount_fee, 0)
             ELSE 0
           END
-        ), 0) AS fee,
-        -- 仕入額(cost)
-        COALESCE(SUM(o.cost_amount), 0) AS cost
+        ), 0)::int AS fee,
+        COALESCE(SUM(o.cost_amount), 0)::int AS cost
       FROM orders o
       LEFT JOIN order_metadata  om ON om.order_id = o.id
       LEFT JOIN stripe_payments sp ON sp.order_id = o.id
-      WHERE o.seller_id = $1
-        AND o.created_at >= $2
-        AND o.created_at <  $3
+      WHERE o.seller_id = ${sellerId}
+        AND o.created_at >= ${todayStart}
+        AND o.created_at <  ${tomorrowStart}
         AND o.deleted_at IS NULL
         AND (
           om.is_cash = true
           OR sp.status = 'succeeded'
         )
-      `,
-      [sellerId, todayStart, tomorrowStart]
-    );
+    `;
 
-    const todayGross = Number(kpiToday.rows[0]?.gross || 0);
-    const todayNet   = Number(kpiToday.rows[0]?.net   || 0);
-    const todayFee   = Number(kpiToday.rows[0]?.fee   || 0);
-    const todayCost  = Number(kpiToday.rows[0]?.cost  || 0);
+    const todayGross = (kpiToday as any[])[0]?.gross || 0;
+    const todayNet = (kpiToday as any[])[0]?.net || 0;
+    const todayFee = (kpiToday as any[])[0]?.fee || 0;
+    const todayCost = (kpiToday as any[])[0]?.cost || 0;
     const todayProfit = todayNet - todayCost;
-    const countToday = parseInt(String(kpiToday.rows[0]?.cnt || 0), 10) || 0;
-    const avgToday   = countToday > 0 ? Math.round(todayNet / countToday) : 0;
+    const countToday = (kpiToday as any[])[0]?.cnt || 0;
+    const avgToday = countToday > 0 ? Math.round(todayNet / countToday) : 0;
 
     // ② 累計売上KPI(現金+カード統合)
-    const kpiTotal = await pool.query(
-      `
+    const kpiTotal = await prisma.$queryRaw`
       SELECT
-        -- 売上合計(gross)
         COALESCE(SUM(
-          CASE 
+          CASE
             WHEN om.is_cash = true THEN o.amount
             WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
             ELSE 0
           END
-        ), 0) AS gross,
-        -- 純売上(net)
+        ), 0)::int AS gross,
         COALESCE(SUM(
-          CASE 
+          CASE
             WHEN om.is_cash = true THEN o.amount
             WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
             ELSE 0
           END
-        ), 0) AS net,
-        -- 手数料(fee)
+        ), 0)::int AS net,
         COALESCE(SUM(
-          CASE 
+          CASE
             WHEN om.is_cash = true THEN 0
             WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN COALESCE(sp.amount_fee, 0)
             ELSE 0
           END
-        ), 0) AS fee,
-        -- 累計の仕入額も追加
-        COALESCE(SUM(o.cost_amount), 0) AS cost
+        ), 0)::int AS fee,
+        COALESCE(SUM(o.cost_amount), 0)::int AS cost
       FROM orders o
       LEFT JOIN order_metadata  om ON om.order_id = o.id
       LEFT JOIN stripe_payments sp ON sp.order_id = o.id
-      WHERE o.seller_id = $1
+      WHERE o.seller_id = ${sellerId}
         AND o.deleted_at IS NULL
         AND (
           om.is_cash = true
           OR sp.status = 'succeeded'
         )
-      `,
-      [sellerId]
-    );
+    `;
 
     // ② 取引履歴(orders を基準に、カードも現金も一緒に出す)
-    const recentRes = await pool.query(
-      `
+    const recentRes = await prisma.$queryRaw`
       SELECT
         o.id                     AS order_id,
         o.created_at,
@@ -165,7 +149,7 @@ export async function GET(request: NextRequest) {
         o.world_price_sample_count,
         om.is_cash,
         om.category            AS raw_category,
-        CASE 
+        CASE
           WHEN om.is_cash THEN 'cash'
           WHEN sp.id IS NOT NULL THEN 'card'
           ELSE 'other'
@@ -177,7 +161,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN order_metadata   om ON om.order_id = o.id
       LEFT JOIN stripe_payments  sp ON sp.order_id = o.id
       LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
-      WHERE o.seller_id = $1
+      WHERE o.seller_id = ${sellerId}
         AND o.deleted_at IS NULL
         AND (
           om.is_cash = true
@@ -185,11 +169,9 @@ export async function GET(request: NextRequest) {
         )
         AND o.created_at >= NOW() - INTERVAL '30 days'
       ORDER BY o.created_at DESC
-      `,
-      [sellerId]
-    );
+    `;
 
-    const recent = recentRes.rows.map((r: any) => {
+    const recent = (recentRes as any[]).map((r: any) => {
       const amt = Number(r.amount || 0);
       const created = r.created_at;
       const createdSec = created ? Math.floor(new Date(created).getTime() / 1000) : null;
@@ -234,22 +216,19 @@ export async function GET(request: NextRequest) {
     });
 
     // ③ データ精度スコア計算(購入者属性が入力された割合)
-    const scoreRes = await pool.query(
-      `
-      SELECT 
-        COUNT(*) as total,
-        COUNT(ba.customer_type) as with_attrs
+    const scoreRes = await prisma.$queryRaw`
+      SELECT
+        COUNT(*)::int as total,
+        COUNT(ba.customer_type)::int as with_attrs
       FROM orders o
       LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
-      WHERE o.seller_id = $1
+      WHERE o.seller_id = ${sellerId}
         AND o.deleted_at IS NULL
-      `,
-      [sellerId]
-    );
+    `;
     
-    const total = parseInt(String(scoreRes.rows[0]?.total || 0), 10) || 0;
-    const withAttrs = parseInt(String(scoreRes.rows[0]?.with_attrs || 0), 10) || 0;
-    const dataScore = total > 0 ? Math.round((withAttrs / total) * 100) : 0;
+    const totalOrdersForScore = (scoreRes as any[])[0]?.total || 0;
+    const ordersWithAttrs = (scoreRes as any[])[0]?.with_attrs || 0;
+    const dataScore = totalOrdersForScore > 0 ? Math.round((ordersWithAttrs / totalOrdersForScore) * 100) : 0;
 
     return NextResponse.json({
       sellerId,
@@ -267,11 +246,11 @@ export async function GET(request: NextRequest) {
         avgNet: avgToday,
       },
       salesTotal: {
-        gross: Number(kpiTotal.rows[0]?.gross || 0),
-        net:   Number(kpiTotal.rows[0]?.net   || 0),
-        fee:   Number(kpiTotal.rows[0]?.fee   || 0),
-        cost:  Number(kpiTotal.rows[0]?.cost  || 0),
-        profit: Number(kpiTotal.rows[0]?.net || 0) - Number(kpiTotal.rows[0]?.cost || 0)
+        gross: (kpiTotal as any[])[0]?.gross || 0,
+        net:   (kpiTotal as any[])[0]?.net   || 0,
+        fee:   (kpiTotal as any[])[0]?.fee   || 0,
+        cost:  (kpiTotal as any[])[0]?.cost  || 0,
+        profit: ((kpiTotal as any[])[0]?.net || 0) - ((kpiTotal as any[])[0]?.cost || 0)
       },
 
       // 旧フロント用の互換フィールド
@@ -282,12 +261,14 @@ export async function GET(request: NextRequest) {
       dataScore,
       recent
     });
-  } catch (error) {
-    console.error("seller_summary_error", error);
+  } catch (e) {
+    console.error("seller_summary_error (Next.js):", e);
     return NextResponse.json(
-      { error: "server_error" },
+      { error: 'server_error', message: (e as Error).message },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
