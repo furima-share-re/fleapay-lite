@@ -979,7 +979,7 @@
               </button>
             </div>
             <div class="hint">
-              このQRは「販売画面（seller-purchase-standard.html）」への固定リンクです。<br>
+              このQRは「販売画面（seller-purchase-standard.html）」へのリンクです。<br>
               店員さん専用として、レジ用スマホなどで読み取ってください。
             </div>
           </div>
@@ -1510,11 +1510,13 @@
         }
       }
 
-      // QRコード生成の共通関数（固定URL - sellerIdに依存しない）
+      // QRコード生成の共通関数（sellerIdを動的に含める）
       function generateQRCode() {
-        // 固定URL: seller-purchase-standard.html（sellerIdパラメータなし）
+        // sellerIdを含む動的URL: seller-purchase-standard.html?s=sellerId
         const baseUrl = `${location.origin.replace(/\/$/,"")}/seller-purchase-standard.html`;
-        const purchaseUrl = baseUrl;
+        const purchaseUrl = sellerId 
+          ? `${baseUrl}?s=${encodeURIComponent(sellerId)}`
+          : baseUrl;
 
         // URLリンク
         const urlEl = document.getElementById("purchase-url");
@@ -1531,7 +1533,7 @@
           const qrApi = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=";
           qrEl.src = qrApi + encodeURIComponent(purchaseUrl);
           qrEl.alt = "販売画面QRコード";
-          console.log("QR code generated (fixed URL):", qrEl.src);
+          console.log("QR code generated (dynamic URL with sellerId):", qrEl.src);
         } else {
           console.error("generateQRCode: purchase-qr element not found in DOM");
         }
@@ -1550,7 +1552,7 @@
       }
 
       async function loadSummary(){
-        // 🆕 固定URLのQRコードを即座に生成（sellerIdに依存しない）
+        // 🆕 sellerIdを含む動的URLのQRコードを即座に生成
         generateQRCode();
 
         if (!sellerId){
@@ -1715,7 +1717,7 @@
         }
       }
 
-      // 初回読み込み: 固定URLのQRコードを即座に生成
+      // 初回読み込み: sellerIdを含む動的URLのQRコードを即座に生成
       // DOMContentLoadedを待ってから実行（DOM要素が確実に存在するように）
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
