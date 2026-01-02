@@ -935,7 +935,16 @@
         nameEl.textContent = data.displayName || data.sellerId || "出店者";
       }
 
+      // 🆕 テスト環境ではplanType: "standard"でもアクセス許可
       if (data.isSubscribed === false || data.planType === "standard" || !data.planType){
+        // ローカル/テスト環境では通す
+        if (location.hostname === "localhost" ||
+            location.hostname.includes("127.0.0.1") ||
+            location.hostname.includes("render.com") ||
+            location.hostname.includes("onrender.com")) {
+          log("Test environment: allowing access for standard plan");
+          return true;
+        }
         showBlocked("このレジ画面は、対象のプランご契約中の出店者さま専用です。運営までお問合せください。");
         return false;
       }
