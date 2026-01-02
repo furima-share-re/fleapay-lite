@@ -44,6 +44,7 @@ model Seller {
   stripePayments StripePayment[]
   qrSessions     QrSession[]
   kidsAchievements KidsAchievement[]
+  subscriptions SellerSubscription[]
 
   @@map("sellers")
 }
@@ -197,4 +198,22 @@ model KidsAchievement {
   @@id([sellerId, code])
   @@index([sellerId], name: "kids_achievements_seller_idx")
   @@map("kids_achievements")
+}
+
+model SellerSubscription {
+  id        String    @id @default(uuid()) @db.Uuid
+  sellerId  String    @map("seller_id")
+  planType  String    @map("plan_type")
+  startedAt DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz(6)
+  status    String    @default("active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  seller Seller @relation(fields: [sellerId], references: [id])
+
+  @@index([sellerId], name: "seller_subscriptions_seller_idx")
+  @@index([status], name: "seller_subscriptions_status_idx")
+  @@index([sellerId, status], name: "seller_subscriptions_seller_status_idx")
+  @@map("seller_subscriptions")
 }
