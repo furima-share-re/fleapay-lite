@@ -1,14 +1,14 @@
 // app/api/pending/start/route.ts
 // Phase 2.3: Next.js画面移行（注文開始API Route Handler）
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getNextOrderNo, resolveSellerAccountId, buildSellerUrls, sanitizeError, isSameOrigin, bumpAndAllow, clientIp, audit } from '@/lib/utils';
 
 const prisma = new PrismaClient();
 
-const RATE_LIMIT_MAX_WRITES = 12;
+const RATE_LIMIT_MAX_WRITES = parseInt(process.env.RATE_LIMIT_MAX_WRITES || "12", 10);
 
 // S3クライアントの初期化
 const AWS_REGION = process.env.AWS_REGION;
@@ -29,7 +29,7 @@ const s3 = HAS_S3_CONFIG
 
 const S3_BUCKET = AWS_BUCKET;
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     if (!isSameOrigin(request)) {
       return NextResponse.json(
@@ -161,12 +161,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       orderId: order.id,
-      orderNo: order.order_no,
-      sellerId: order.seller_id,
+      orderNo: order.orderNo,
+      sellerId: order.sellerId,
       amount: order.amount,
       summary: order.summary,
       status: order.status,
-      createdAt: order.created_at,
+      createdAt: order.createdAt,
       checkoutUrl: urls.checkoutUrl,
       purchaseUrl: urls.sellerUrl,
       imageUrl: imageUrl
