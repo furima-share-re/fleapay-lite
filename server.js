@@ -14,6 +14,8 @@ import bcrypt from "bcryptjs";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 // Gitコミット情報を取得（デプロイ状態確認用）
 import { execSync } from 'child_process';
+// Phase 1.5: Supabase Auth移行（新規ユーザーのみ）
+import { supabase } from './lib/supabase.js';
 
 dotenv.config();
 
@@ -860,8 +862,35 @@ app.post("/api/seller/start_onboarding", async (req, res) => {
       return res.status(409).json({ error: "id_taken" });
     }
 
-    // 2) パスワードをハッシュ化（安全にする）
-    const passwordHash = await bcrypt.hash(password, 10);
+    // Phase 1.5: 新規ユーザー登録をSupabase Authに変更
+    // 2) Supabase Authにユーザーを作成
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          seller_id: normalizedId,
+          display_name: displayName
+        }
+      }
+    });
+
+    if (authError) {
+      console.error("Supabase Auth signup error", authError);
+      return res.status(400).json({ 
+        error: "auth_error", 
+        message: authError.message 
+      });
+    }
+
+    if (!authData.user) {
+      return res.status(500).json({ 
+        error: "auth_failed", 
+        message: "ユーザー作成に失敗しました" 
+      });
+    }
+
+    const supabaseUserId = authData.user.id;
 
     // 3) Stripeの出店者アカウント（Express）をつくる
     const account = await stripe.accounts.create({
@@ -875,10 +904,11 @@ app.post("/api/seller/start_onboarding", async (req, res) => {
     });
 
     // 4) Fleapayのデータベースに保存（新規INSERTのみ）
+    // Phase 1.5: auth_providerとsupabase_user_idを保存
     await pool.query(
-      `insert into sellers (id, display_name, stripe_account_id, email, password_hash)
-       values ($1,$2,$3,$4,$5)`,
-      [normalizedId, displayName, account.id, email, passwordHash]
+      `insert into sellers (id, display_name, stripe_account_id, email, auth_provider, supabase_user_id)
+       values ($1,$2,$3,$4,$5,$6)`,
+      [normalizedId, displayName, account.id, email, 'supabase', supabaseUserId]
     );
 
     // 5) 本人確認ページ（Stripe Onboarding）を作る
