@@ -1,0 +1,66 @@
+name: Verify Staging Environment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server.js'
+      - 'public/**'
+      - 'scripts/**'
+  workflow_dispatch:
+    inputs:
+      skip_deployment_check:
+        description: 'Skip deployment status check'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  verify-staging:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 全履歴を取得（Git情報取得のため）
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/*.sh
+      
+      - name: Check deployment status
+        id: deployment-check
+        if: ${{ !inputs.skip_deployment_check }}
+        run: |
+          ./scripts/check-deployment-status.sh https://fleapay-lite-t1.onrender.com
+        continue-on-error: true
+      
+      - name: Run verification
+        if: steps.deployment-check.outcome == 'success' || inputs.skip_deployment_check == 'true'
+        run: |
+          export SKIP_DEPLOYMENT_CHECK=${{ inputs.skip_deployment_check && 'true' || 'false' }}
+          ./scripts/auto-verify-staging.sh https://fleapay-lite-t1.onrender.com
+      
+      - name: Report deployment status
+        if: steps.deployment-check.outcome == 'failure' && !inputs.skip_deployment_check
+        run: |
+          echo "::warning::最新のコードがデプロイされていません。動作確認をスキップしました。"
+          echo "::notice::Render Dashboardでデプロイが完了するまで待機してください。"
+      
+      - name: Create verification report
+        if: always()
+        run: |
+          mkdir -p .github/verification-reports
+          echo "# Verification Report" > .github/verification-reports/$(date +%Y%m%d-%H%M%S).md
+          echo "" >> .github/verification-reports/$(date +%Y%m%d-%H%M%S).md
+          echo "Date: $(date)" >> .github/verification-reports/$(date +%Y%m%d-%H%M%S).md
+          echo "Commit: $(git rev-parse --short HEAD)" >> .github/verification-reports/$(date +%Y%m%d-%H%M%S).md
+          echo "Status: ${{ steps.deployment-check.outcome }}" >> .github/verification-reports/$(date +%Y%m%d-%H%M%S).md
+
