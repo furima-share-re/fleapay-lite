@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         [sellerId]
       );
 
-      if (subRes.rowCount > 0) {
+      if (subRes.rowCount && subRes.rowCount > 0) {
         planType = subRes.rows[0].plan_type || "standard";
         isSubscribed = (planType === "pro" || planType === "kids");
       }

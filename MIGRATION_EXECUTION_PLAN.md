@@ -2,7 +2,7 @@
 
 **プロジェクト**: fleapay-lite  
 **作成日**: 2025-01-15  
-**最終更新**: 2026-01-02（Phase 2.2実装完了、/api/seller/summary API Route Handler移行完了）  
+**最終更新**: 2026-01-02（Phase 2.2実装完了、/api/seller/summary API Route Handler移行完了、デグレチェック完了）  
 **目的**: デグレを最小限に抑えた安全な移行の実行
 
 **⚠️ 重要**: 
@@ -25,7 +25,7 @@
 | **Phase 1.5** | Supabase Auth移行（新規ユーザー） | 2026-01-02 | ✅ **完了** | 新規ユーザー登録をSupabase Authに変更完了、データベースマイグレーション実行済み、デプロイ完了、動作確認完了 |
 | **Phase 1.6** | 既存ユーザー移行 | 2026-01-02 | ✅ **完了** | 認証ロジック基盤実装完了、パスワードリセットAPI実装完了、移行率確認API実装完了、動作確認完了 |
 | **Phase 2.1** | Next.jsプロジェクト初期設定 | 2026-01-02 | ✅ **完了** | Next.js依存関係追加、設定ファイル作成、App Router構造作成、/api/ping移行完了、検証環境動作確認完了 |
-| **Phase 2.2** | Next.js画面移行（画面単位） | 2026-01-02 | ✅ **完了** | /api/seller/summary API Route Handler移行完了、payments.js実装と完全一致 |
+| **Phase 2.2** | Next.js画面移行（画面単位） | 2026-01-02 | ✅ **完了** | /api/seller/summary API Route Handler移行完了、payments.js実装と完全一致、デグレチェック完了 |
 
 ### 未実装フェーズ（優先順位順）
 
