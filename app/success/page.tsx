@@ -22,19 +22,46 @@ export default function SuccessPage() {
   }, []);
 
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:24',message:'useEffect entry',data:{orderId:orderId,orderIdType:typeof orderId,isNull:orderId===null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     if (!orderId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:26',message:'orderId is null, returning early',data:{orderId:orderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       setLoading(false);
       return;
     }
 
+    // Store orderId in a const to ensure type narrowing
+    const validOrderId: string = orderId;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:33',message:'orderId validated, storing as const',data:{validOrderId:validOrderId,validOrderIdType:typeof validOrderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+
     async function loadPaymentResult() {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:36',message:'loadPaymentResult entry',data:{validOrderId:validOrderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       try {
-        const res = await fetch(`/api/checkout/result?orderId=${encodeURIComponent(orderId)}`);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:39',message:'Before encodeURIComponent',data:{validOrderId:validOrderId,encoded:encodeURIComponent(validOrderId)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        const res = await fetch(`/api/checkout/result?orderId=${encodeURIComponent(validOrderId)}`);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:41',message:'After fetch',data:{ok:res.ok,status:res.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         if (res.ok) {
           const data = await res.json();
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:45',message:'Payment data received',data:{hasData:!!data,orderId:data?.orderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
           setPaymentData(data);
         }
       } catch (e) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:48',message:'loadPaymentResult error',data:{error:String(e)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         console.error('loadPaymentResult error', e);
       } finally {
         setLoading(false);
