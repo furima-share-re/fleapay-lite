@@ -59,13 +59,55 @@ export async function GET(request: NextRequest) {
     let recentRes: any[] = [];
     let scoreRes: any[] = [];
 
-    try {
-      // まず、テーブルやカラムの存在を確認するために、簡易クエリを実行
-      // 旧DBでは、order_metadataやbuyer_attributesが存在しない可能性がある
-      // また、ordersテーブルにcost_amountやdeleted_atカラムが存在しない可能性がある
+  try {
+    console.log(`[seller/summary] API呼び出し開始: sellerId=${sellerId}`);
+    
+    // テーブルとカラムの存在確認（旧DBと新DBの両方に対応）
+    let hasOrderMetadata = false;
+    let hasBuyerAttributes = false;
+    let hasCostAmount = false;
+    let hasDeletedAt = false;
+    let hasWorldPrice = false;
 
-      // ① 今日の売上KPI（旧DB対応: order_metadataが存在しない場合はstripe_paymentsのみ）
-      try {
+    try {
+      const tableCheck = await prisma.$queryRaw<Array<{
+        order_metadata_exists: boolean;
+        buyer_attributes_exists: boolean;
+        cost_amount_exists: boolean;
+        deleted_at_exists: boolean;
+        world_price_exists: boolean;
+      }>>`
+        SELECT 
+          EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'order_metadata') as order_metadata_exists,
+          EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'buyer_attributes') as buyer_attributes_exists,
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'cost_amount') as cost_amount_exists,
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'deleted_at') as deleted_at_exists,
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'world_price_median') as world_price_exists
+      `;
+      
+      if (tableCheck.length > 0) {
+        hasOrderMetadata = tableCheck[0].order_metadata_exists || false;
+        hasBuyerAttributes = tableCheck[0].buyer_attributes_exists || false;
+        hasCostAmount = tableCheck[0].cost_amount_exists || false;
+        hasDeletedAt = tableCheck[0].deleted_at_exists || false;
+        hasWorldPrice = tableCheck[0].world_price_exists || false;
+      }
+      
+      console.log(`[seller/summary] テーブル存在確認:`, {
+        order_metadata: hasOrderMetadata,
+        buyer_attributes: hasBuyerAttributes,
+        cost_amount: hasCostAmount,
+        deleted_at: hasDeletedAt,
+        world_price: hasWorldPrice,
+      });
+    } catch (checkError: any) {
+      console.warn("[seller/summary] テーブル存在確認エラー（デフォルト値を使用）:", checkError.message);
+      // エラーが発生した場合は、安全のため全てfalseとして扱う（旧DB想定）
+    }
+
+    // ① 今日の売上KPI（旧DB対応: order_metadataが存在しない場合はstripe_paymentsのみ）
+    try {
+      console.log(`[seller/summary] kpiToday query開始`);
         kpiToday = await prisma.$queryRaw`
           SELECT
             COUNT(*)::int AS cnt,
@@ -120,14 +162,16 @@ export async function GET(request: NextRequest) {
               AND o.created_at <  ${tomorrowStart}
               AND sp.status = 'succeeded'
           `;
+          console.log(`[seller/summary] kpiToday simplified query成功:`, kpiToday);
         } catch (e2: any) {
-          console.error("kpiToday simplified query also failed:", e2.message);
+          console.error("[seller/summary] kpiToday simplified query also failed:", e2.message);
           kpiToday = [{ cnt: 0, gross: 0, net: 0, fee: 0, cost: 0 }];
         }
       }
 
       // ② 累計売上KPI
       try {
+        console.log(`[seller/summary] kpiTotal query開始`);
         kpiTotal = await prisma.$queryRaw`
           SELECT
             COALESCE(SUM(
@@ -161,9 +205,10 @@ export async function GET(request: NextRequest) {
               OR sp.status = 'succeeded'
             )
         `;
+        console.log(`[seller/summary] kpiTotal query成功:`, kpiTotal);
       } catch (e: any) {
         // 旧DB対応: order_metadataが存在しない場合は、stripe_paymentsのみで集計
-        console.warn("kpiTotal query failed, trying simplified query:", e.message);
+        console.warn("[seller/summary] kpiTotal query failed (likely old DB), trying simplified query:", e.message);
         try {
           kpiTotal = await prisma.$queryRaw`
             SELECT
@@ -184,6 +229,7 @@ export async function GET(request: NextRequest) {
 
       // ② 取引履歴(orders を基準に、カードも現金も一緒に出す)
       try {
+        console.log(`[seller/summary] recentRes query開始`);
         recentRes = await prisma.$queryRaw`
           SELECT
             o.id                     AS order_id,
@@ -217,9 +263,10 @@ export async function GET(request: NextRequest) {
             AND o.created_at >= NOW() - INTERVAL '30 days'
           ORDER BY o.created_at DESC
         `;
+        console.log(`[seller/summary] recentRes query成功: ${recentRes.length}件`);
       } catch (e: any) {
         // 旧DB対応: order_metadataやbuyer_attributesが存在しない場合は、stripe_paymentsのみで取得
-        console.warn("recentRes query failed, trying simplified query:", e.message);
+        console.warn("[seller/summary] recentRes query failed (likely old DB), trying simplified query:", e.message);
         try {
           recentRes = await prisma.$queryRaw`
             SELECT
@@ -248,8 +295,9 @@ export async function GET(request: NextRequest) {
               AND o.created_at >= NOW() - INTERVAL '30 days'
             ORDER BY o.created_at DESC
           `;
+          console.log(`[seller/summary] recentRes simplified query成功: ${recentRes.length}件`);
         } catch (e2: any) {
-          console.error("recentRes simplified query also failed:", e2.message);
+          console.error("[seller/summary] recentRes simplified query also failed:", e2.message);
           recentRes = [];
         }
       }
@@ -344,6 +392,8 @@ export async function GET(request: NextRequest) {
     const totalOrdersForScore = scoreRes[0]?.total || 0;
     const ordersWithAttrs = scoreRes[0]?.with_attrs || 0;
     const dataScore = totalOrdersForScore > 0 ? Math.round((ordersWithAttrs / totalOrdersForScore) * 100) : 0;
+
+    console.log(`[seller/summary] API呼び出し成功: recent=${recent.length}件, countToday=${countToday}`);
 
     return NextResponse.json({
       sellerId,
