@@ -62,7 +62,7 @@ const openai = process.env.OPENAI_API_KEY
 **検証環境（Staging）**:
 ```bash
 # Render Dashboard > Environment Variables
-HELICONE_API_KEY=<検証環境用のHelicone API Key>
+HELICONE_API_KEY=<Helicone API Key（本番環境と共通でOK）>
 OPENAI_API_KEY=<既存のOpenAI API Key>
 NODE_ENV=staging
 ```
@@ -70,14 +70,15 @@ NODE_ENV=staging
 **本番環境（Production）**:
 ```bash
 # Render Dashboard > Environment Variables
-HELICONE_API_KEY=<本番環境用のHelicone API Key>
+HELICONE_API_KEY=<Helicone API Key（検証環境と共通でOK）>
 OPENAI_API_KEY=<既存のOpenAI API Key>
 NODE_ENV=production
 ```
 
 **注意事項**:
 - Heliconeは検証環境・本番環境の両方で導入
-- 環境ごとに異なるAPI Keyを使用（Heliconeダッシュボードで環境別に管理）
+- **API Keyは共通でOK**（環境の区別は`Helicone-Property-Environment`ヘッダーで自動的に行われる）
+- Heliconeダッシュボードで環境プロパティ（`staging`/`production`）でフィルタリング可能
 
 ---
 

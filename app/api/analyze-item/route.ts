@@ -2,13 +2,9 @@
 // Phase 2.3: Next.js画面移行（AI商品解析API Route Handler）
 
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
 import sharp from 'sharp';
 import { bumpAndAllow, clientIp, sanitizeError } from '@/lib/utils';
-
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
+import { openai, isOpenAIAvailable } from '@/lib/openai';
 
 const RATE_LIMIT_MAX_WRITES = 12;
 
@@ -34,11 +30,11 @@ export async function POST(request: Request) {
 
     console.log(`[AI分析] Processing image: ${file.name || 'unknown'} (${file.size} bytes)`);
 
-    if (!openai) {
+    if (!isOpenAIAvailable()) {
       return NextResponse.json(
         {
           error: 'openai_not_configured',
-          message: 'OPENAI_API_KEY環境変数が設定されていません'
+          message: 'OPENAI_API_KEYまたはHELICONE_API_KEY環境変数が設定されていません'
         },
         { status: 503 }
       );
