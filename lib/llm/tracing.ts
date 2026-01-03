@@ -25,7 +25,7 @@ function getLangfuseClient(): Langfuse | null {
   langfuse = new Langfuse({
     publicKey,
     secretKey,
-    baseURL: host,
+    baseUrl: host,
   });
 
   return langfuse;
