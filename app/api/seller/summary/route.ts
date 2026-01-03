@@ -11,16 +11,17 @@ import { jstDayBounds } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const sellerId = String(searchParams.get('s') || '');
+  
+  if (!sellerId) {
+    return NextResponse.json(
+      { error: 'seller_id_required' },
+      { status: 400 }
+    );
+  }
+
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const sellerId = String(searchParams.get('s') || '');
-    
-    if (!sellerId) {
-      return NextResponse.json(
-        { error: 'seller_id_required' },
-        { status: 400 }
-      );
-    }
 
     // 0) サブスク状態の判定(履歴テーブルから現在プランを取得)
     let planType = "standard";
