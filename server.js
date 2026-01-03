@@ -11,6 +11,8 @@ import OpenAI from "openai";
 import sharp from "sharp";
 import bcrypt from "bcryptjs";
 import fs from "fs";
+// Phase 2.3: Next.js統合
+import next from "next";
 // 🆕 S3クライアントをインポート
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 // Gitコミット情報を取得（デプロイ状態確認用）
@@ -82,6 +84,11 @@ const BASE_URL = (process.env.BASE_URL || "http://localhost:3000").replace(/\/+$
 const PORT = process.env.PORT || 3000;
 // pending 状態の注文を何分まで有効とみなすか(環境変数優先)
 const PENDING_TTL_MIN = parseInt(process.env.PENDING_TTL_MIN || "30", 10);
+
+// ====== Phase 2.3: Next.js統合 ======
+const dev = process.env.NODE_ENV !== "production";
+const nextApp = next({ dev, dir: "./" });
+const nextHandler = nextApp.getRequestHandler();
 
 // ====== multer(10MB、拡張子ゆるめ、メモリ格納) ======
 const upload = multer({
@@ -2242,9 +2249,19 @@ function logNextJsDiagnostics() {
 // サーバー起動時にNext.js診断を実行
 logNextJsDiagnostics();
 
+// ====== Phase 2.3: Next.jsページのフォールバック ======
+// ExpressのAPIルートと静的ファイルの後に、Next.jsページをフォールバック
+app.all("*", (req, res) => {
+  // ExpressのAPIルート（/api/*）は既に処理されているので、Next.jsにフォールバック
+  // 静的ファイル（public/*）も既に処理されているので、Next.jsにフォールバック
+  return nextHandler(req, res);
+});
+
 // ====== サーバー起動 ======
-app.listen(PORT, () => {
-  console.log(`
+// Next.jsの準備を待ってからサーバーを起動
+nextApp.prepare().then(() => {
+  app.listen(PORT, () => {
+    console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║  🪶 Fleapay Server (seller-summary修正版 v3.2.0)        ║
 ║                                                           ║
@@ -2259,8 +2276,25 @@ app.listen(PORT, () => {
 ║  ✅ Stripe: Initialized                                   ║
 ║  ✅ OpenAI: Images API v2 Compatible                     ║
 ║  ✅ Seller Summary API: /api/seller/summary              ║
+║  ✅ Next.js: Integrated                                  ║
 ╚═══════════════════════════════════════════════════════════╝
-  `);
+    `);
+  });
+}).catch((err) => {
+  console.error("❌ Next.jsの準備に失敗しました:", err);
+  console.error("⚠️ Expressサーバーのみで起動します");
+  
+  // Next.jsの準備に失敗した場合でも、Expressサーバーは起動
+  app.listen(PORT, () => {
+    console.log(`
+╔═══════════════════════════════════════════════════════════╗
+║  🪶 Fleapay Server (Express only mode)                   ║
+║                                                           ║
+║  🌐 Server:    http://localhost:${PORT}                   ║
+║  ⚠️ Next.js:   Failed to initialize                      ║
+╚═══════════════════════════════════════════════════════════╝
+    `);
+  });
 });
 
 export default app;
