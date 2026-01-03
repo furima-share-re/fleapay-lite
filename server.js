@@ -10,6 +10,7 @@ import multer from "multer";
 import OpenAI from "openai";
 import sharp from "sharp";
 import bcrypt from "bcryptjs";
+import fs from "fs";
 // 🆕 S3クライアントをインポート
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 // Gitコミット情報を取得（デプロイ状態確認用）
@@ -2125,6 +2126,121 @@ app.use((req, res) => {
     }
   }
 });
+
+// ====== Phase 2.3: Next.js統合状況の診断ログ ======
+function logNextJsDiagnostics() {
+  console.log('\n🔍 Phase 2.3: Next.js統合状況の診断');
+  console.log('═══════════════════════════════════════════════════════════');
+  
+  // 1. Next.js依存関係の確認
+  try {
+    const packageJsonPath = path.join(__dirname, 'package.json');
+    if (fs.existsSync(packageJsonPath)) {
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      const hasNext = packageJson.dependencies?.next || packageJson.devDependencies?.next;
+      const hasReact = packageJson.dependencies?.react || packageJson.devDependencies?.react;
+      
+      if (hasNext) {
+        console.log(`✅ Next.js依存関係: インストール済み (${hasNext})`);
+      } else {
+        console.log('❌ Next.js依存関係: 未インストール');
+      }
+      
+      if (hasReact) {
+        console.log(`✅ React依存関係: インストール済み (${hasReact})`);
+      } else {
+        console.log('❌ React依存関係: 未インストール');
+      }
+    } else {
+      console.log('⚠️ package.jsonが見つかりません');
+    }
+  } catch (error) {
+    console.log(`⚠️ package.jsonの読み込みエラー: ${error.message}`);
+  }
+  
+  // 2. Next.jsビルドの確認
+  try {
+    const nextDir = path.join(__dirname, '.next');
+    if (fs.existsSync(nextDir)) {
+      console.log('✅ .nextディレクトリ: 存在します');
+      
+      // BUILD_IDの確認
+      const buildIdPath = path.join(nextDir, 'BUILD_ID');
+      if (fs.existsSync(buildIdPath)) {
+        const buildId = fs.readFileSync(buildIdPath, 'utf8').trim();
+        console.log(`✅ BUILD_ID: ${buildId}`);
+      } else {
+        console.log('⚠️ BUILD_ID: 見つかりません（ビルドが完了していない可能性）');
+      }
+      
+      // standaloneビルドの確認
+      const standaloneDir = path.join(nextDir, 'standalone');
+      if (fs.existsSync(standaloneDir)) {
+        console.log('✅ standaloneビルド: 存在します');
+      } else {
+        console.log('⚠️ standaloneビルド: 見つかりません（next.config.jsのoutput設定を確認）');
+      }
+    } else {
+      console.log('❌ .nextディレクトリ: 存在しません（`npm run build`を実行してください）');
+    }
+  } catch (error) {
+    console.log(`⚠️ .nextディレクトリの確認エラー: ${error.message}`);
+  }
+  
+  // 3. next.config.jsの確認
+  try {
+    const nextConfigPath = path.join(__dirname, 'next.config.js');
+    if (fs.existsSync(nextConfigPath)) {
+      const nextConfigContent = fs.readFileSync(nextConfigPath, 'utf8');
+      if (nextConfigContent.includes("output: 'standalone'") || nextConfigContent.includes('output: "standalone"')) {
+        console.log('✅ next.config.js: standaloneビルドが有効です');
+      } else {
+        console.log('⚠️ next.config.js: standaloneビルドが設定されていません');
+      }
+    } else {
+      console.log('❌ next.config.js: 存在しません');
+    }
+  } catch (error) {
+    console.log(`⚠️ next.config.jsの確認エラー: ${error.message}`);
+  }
+  
+  // 4. server.jsのNext.js統合確認
+  try {
+    const serverJsPath = path.join(__dirname, 'server.js');
+    const serverJsContent = fs.readFileSync(serverJsPath, 'utf8');
+    
+    if (serverJsContent.includes('next') || serverJsContent.includes('NextServer') || serverJsContent.includes('createServer')) {
+      console.log('✅ server.js: Next.js統合コードが存在します');
+    } else {
+      console.log('❌ server.js: Next.js統合コードが見つかりません（Next.js統合が必要）');
+    }
+  } catch (error) {
+    console.log(`⚠️ server.jsの確認エラー: ${error.message}`);
+  }
+  
+  // 5. app/ディレクトリの確認
+  try {
+    const appDir = path.join(__dirname, 'app');
+    if (fs.existsSync(appDir)) {
+      const appFiles = fs.readdirSync(appDir, { recursive: true });
+      const pageFiles = appFiles.filter(f => f.includes('page.tsx') || f.includes('page.jsx'));
+      const routeFiles = appFiles.filter(f => f.includes('route.ts') || f.includes('route.js'));
+      
+      console.log(`✅ app/ディレクトリ: 存在します`);
+      console.log(`   - ページファイル: ${pageFiles.length}個`);
+      console.log(`   - API Route Handlers: ${routeFiles.length}個`);
+    } else {
+      console.log('❌ app/ディレクトリ: 存在しません');
+    }
+  } catch (error) {
+    console.log(`⚠️ app/ディレクトリの確認エラー: ${error.message}`);
+  }
+  
+  console.log('═══════════════════════════════════════════════════════════\n');
+}
+
+// サーバー起動時にNext.js診断を実行
+logNextJsDiagnostics();
 
 // ====== サーバー起動 ======
 app.listen(PORT, () => {

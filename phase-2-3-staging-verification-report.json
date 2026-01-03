@@ -1,0 +1,203 @@
+﻿{
+    "Summary":  {
+                    "Success":  9,
+                    "Failed":  15,
+                    "Total":  24
+                },
+    "BaseUrl":  "https://fleapay-lite-t1.onrender.com",
+    "Timestamp":  "2026-01-03 13:05:31",
+    "Results":  [
+                    {
+                        "Timestamp":  "2026-01-03 13:05:07",
+                        "Name":  "API: /api/ping (繝倥Ν繧ｹ繝√ぉ繝・け)",
+                        "Message":  "処理がタイムアウトになりました。",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/api/ping",
+                        "Status":  "Error"
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:19",
+                        "Name":  "API: /api/seller/summary (Pro繝励Λ繝ｳ)",
+                        "Message":  "OK",
+                        "Success":  true,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/api/seller/summary?s=test-seller-pro",
+                        "Status":  200
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:20",
+                        "Name":  "API: /api/seller/summary (Standard繝励Λ繝ｳ)",
+                        "Message":  "OK",
+                        "Success":  true,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/api/seller/summary?s=test-seller-standard",
+                        "Status":  200
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:21",
+                        "Name":  "API: /api/seller/kids-summary (Kids繝励Λ繝ｳ)",
+                        "Message":  "OK",
+                        "Success":  true,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/api/seller/summary?s=test-seller-kids",
+                        "Status":  200
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:22",
+                        "Name":  "API: /api/seller/kids-summary",
+                        "Message":  "OK",
+                        "Success":  true,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/api/seller/kids-summary?s=test-seller-kids",
+                        "Status":  200
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:23",
+                        "Name":  "API: /api/admin/dashboard",
+                        "Message":  "OK",
+                        "Success":  true,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/api/admin/dashboard",
+                        "Status":  200
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:23",
+                        "Name":  "API: /api/admin/sellers",
+                        "Message":  "OK",
+                        "Success":  true,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/api/admin/sellers",
+                        "Status":  200
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:24",
+                        "Name":  "API: /api/admin/frames",
+                        "Message":  "OK",
+                        "Success":  true,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/api/admin/frames",
+                        "Status":  200
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:25",
+                        "Name":  "API: /api/admin/stripe/summary",
+                        "Message":  "OK",
+                        "Success":  true,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/api/admin/stripe/summary",
+                        "Status":  200
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:25",
+                        "Name":  "API: /api/checkout/result",
+                        "Message":  "リモート サーバーがエラーを返しました: (400) 要求が不適切です",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/api/checkout/result?order=test-order-id",
+                        "Status":  400
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:26",
+                        "Name":  "Page: / (繝医ャ繝励・繝ｼ繧ｸ)",
+                        "Message":  "OK",
+                        "Success":  true,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/",
+                        "Status":  200
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:26",
+                        "Name":  "Page: /success",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/success",
+                        "Status":  404
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:27",
+                        "Name":  "Page: /thanks",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/thanks",
+                        "Status":  404
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:27",
+                        "Name":  "Page: /cancel",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/cancel",
+                        "Status":  404
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:28",
+                        "Name":  "Page: /onboarding/complete",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/onboarding/complete",
+                        "Status":  404
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:28",
+                        "Name":  "Page: /onboarding/refresh",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/onboarding/refresh",
+                        "Status":  404
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:28",
+                        "Name":  "Page: /checkout",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/checkout?s=test-seller-pro",
+                        "Status":  404
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:28",
+                        "Name":  "Page: /seller-register",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/seller-register",
+                        "Status":  404
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:29",
+                        "Name":  "Page: /seller-purchase-standard",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/seller-purchase-standard?s=test-seller-pro",
+                        "Status":  404
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:29",
+                        "Name":  "Page: /admin/dashboard",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/admin/dashboard",
+                        "Status":  404
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:30",
+                        "Name":  "Page: /admin/sellers",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/admin/sellers",
+                        "Status":  404
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:30",
+                        "Name":  "Page: /admin/frames",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/admin/frames",
+                        "Status":  404
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:30",
+                        "Name":  "Page: /admin/payments",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/admin/payments",
+                        "Status":  404
+                    },
+                    {
+                        "Timestamp":  "2026-01-03 13:05:31",
+                        "Name":  "Page: /kids-dashboard",
+                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Success":  false,
+                        "Url":  "https://fleapay-lite-t1.onrender.com/kids-dashboard?s=test-seller-kids",
+                        "Status":  404
+                    }
+                ]
+}
