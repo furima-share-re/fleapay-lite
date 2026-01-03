@@ -31,3 +31,14 @@ export function isOpenAIAvailable(): boolean {
   return openai !== null;
 }
 
+/**
+ * OpenAI SDKインスタンスを取得（nullチェック付き）
+ * @throws {Error} OpenAI SDKが利用できない場合
+ */
+export function getOpenAI(): OpenAI {
+  if (!openai) {
+    throw new Error('OpenAI SDK is not available. Please set OPENAI_API_KEY and HELICONE_API_KEY environment variables.');
+  }
+  return openai;
+}
+

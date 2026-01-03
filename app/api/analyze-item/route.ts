@@ -53,7 +53,8 @@ export async function POST(request: Request) {
 
     console.log('[AI分析] 画像をOpenAIに送信中...');
 
-    const response = await openai.chat.completions.create({
+    // openaiがnullでないことは既にチェック済み
+    const response = await openai!.chat.completions.create({
       model: 'gpt-4o',
       messages: [{
         role: 'user',

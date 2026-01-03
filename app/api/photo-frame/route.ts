@@ -54,8 +54,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // openaiがnullでないことは既にチェック済み
     // OpenAI画像編集
-    const result = await openai.images.edit({
+    const result = await openai!.images.edit({
       model: 'dall-e-2',
       image: fileObj,
       prompt,
