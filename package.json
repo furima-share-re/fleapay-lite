@@ -10,6 +10,12 @@
     "postbuild": "node scripts/copy-static-files.js",
     "test": "vitest run",
     "type-check": "tsc --noEmit",
+    "check-build-errors": "node scripts/check-build-errors.js",
+    "fix-build-errors": "node scripts/fix-all-build-errors.js",
+    "analyze-build-errors": "node scripts/analyze-build-errors.js",
+    "test-build": "node scripts/test-build.js",
+    "check-errors": "node scripts/check-errors-static.js",
+    "analyze": "node scripts/analyze-codebase-directly.js",
     "postinstall": "prisma generate",
     "setup-test-users": "node scripts/setup-test-users.js setup-all",
     "setup-test-user": "node scripts/setup-test-users.js set",
@@ -44,7 +50,8 @@
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-label": "^2.0.2",
     "@radix-ui/react-select": "^2.0.0",
-    "@radix-ui/react-toast": "^1.1.5"
+    "@radix-ui/react-toast": "^1.1.5",
+    "langfuse": "^2.0.0"
   },
   "devDependencies": {
     "yaml": "^2.3.4",

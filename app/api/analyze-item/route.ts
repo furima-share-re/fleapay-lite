@@ -2,13 +2,11 @@
 // Phase 2.3: Next.js画面移行（AI商品解析API Route Handler）
 
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
 import sharp from 'sharp';
 import { bumpAndAllow, clientIp, sanitizeError } from '@/lib/utils';
-
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
+// 新API（推奨）: import { chatCompletion, getLLMProvider } from '@/lib/llm';
+// 既存API（後方互換性のため残す）:
+import { openai, isOpenAIAvailable } from '@/lib/openai';
 
 const RATE_LIMIT_MAX_WRITES = 12;
 
@@ -34,11 +32,11 @@ export async function POST(request: Request) {
 
     console.log(`[AI分析] Processing image: ${file.name || 'unknown'} (${file.size} bytes)`);
 
-    if (!openai) {
+    if (!isOpenAIAvailable()) {
       return NextResponse.json(
         {
           error: 'openai_not_configured',
-          message: 'OPENAI_API_KEY環境変数が設定されていません'
+          message: 'OPENAI_API_KEYまたはHELICONE_API_KEY環境変数が設定されていません'
         },
         { status: 503 }
       );
@@ -57,7 +55,8 @@ export async function POST(request: Request) {
 
     console.log('[AI分析] 画像をOpenAIに送信中...');
 
-    const response = await openai.chat.completions.create({
+    // openaiがnullでないことは既にチェック済み
+    const response = await openai!.chat.completions.create({
       model: 'gpt-4o',
       messages: [{
         role: 'user',
