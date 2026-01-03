@@ -15,19 +15,6 @@ export interface TaskConfig {
 }
 
 /**
- * タスクタイプ定義
- */
-export type TaskType =
-  | 'image-analysis'      // 画像解析
-  | 'image-generation'    // 画像生成
-  | 'image-edit'          // 画像編集
-  | 'text-generation'     // テキスト生成
-  | 'long-context'        // 長文処理
-  | 'code-generation'     // コード生成
-  | 'json-extraction'     // JSON抽出
-  | 'cost-optimized';     // コスト重視
-
-/**
  * タスク別推奨設定
  * 
  * プロジェクトごとに環境変数で上書き可能:
