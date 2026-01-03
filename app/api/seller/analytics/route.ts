@@ -2,10 +2,8 @@
 // Phase 2.6: Express.js廃止 - 売上分析API移行
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { jstDayBounds, sanitizeError } from '@/lib/utils';
-
-const prisma = new PrismaClient();
 
 export const dynamic = 'force-dynamic';
 
@@ -259,8 +257,6 @@ export async function GET(request: NextRequest) {
       sanitizeError(e),
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 

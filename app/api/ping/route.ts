@@ -2,7 +2,7 @@
 // Express API: /api/ping をNext.js Route Handlerに移行
 
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { execSync } from 'child_process';
 
 // Gitコミット情報を取得（デプロイ状態確認用）
@@ -19,11 +19,7 @@ try {
 export async function GET() {
   try {
     // Prisma経由でデータベース接続を確認（SELECT 1のみ）
-    const prisma = new PrismaClient({
-      log: process.env.NODE_ENV === 'development' ? ['error'] : ['error'],
-    });
     await prisma.$queryRaw`SELECT 1`;
-    await prisma.$disconnect();
     
     return NextResponse.json({ 
       ok: true, 

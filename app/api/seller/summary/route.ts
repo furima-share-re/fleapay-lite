@@ -3,10 +3,8 @@
 // payments.js の実装を完全に一致させる
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { jstDayBounds } from '@/lib/utils';
-
-const prisma = new PrismaClient();
 
 // Force dynamic rendering (this route uses nextUrl.searchParams)
 export const dynamic = 'force-dynamic';
@@ -268,7 +266,6 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   } finally {
-    await prisma.$disconnect();
   }
 }
 

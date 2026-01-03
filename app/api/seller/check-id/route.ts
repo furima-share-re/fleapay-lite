@@ -2,10 +2,8 @@
 // Phase 2.6: Express.js廃止 - 残りAPIエンドポイント移行
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-
-const prisma = new PrismaClient();
 
 const checkIdSchema = z.object({
   id: z.string().min(3, 'IDは3文字以上である必要があります').max(32, 'IDは32文字以下である必要があります').regex(/^[a-zA-Z0-9_-]+$/, 'IDは英数字、ハイフン、アンダーバーのみ使用できます'),
@@ -53,7 +51,5 @@ export async function GET(request: NextRequest) {
       { ok: false, error: 'internal_error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
