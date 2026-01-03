@@ -7,7 +7,7 @@
 export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'cohere' | 'custom';
 
 /**
- * タスクタイプ（config.tsで定義）
+ * タスクタイプ
  */
 export type TaskType =
   | 'image-analysis'
