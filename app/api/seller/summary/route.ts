@@ -70,7 +70,13 @@ export async function GET(request: NextRequest) {
     let hasWorldPrice = false;
 
     try {
-      const tableCheck = await prisma.$queryRaw<Array<{exists: boolean}>>`
+      const tableCheck = await prisma.$queryRaw<Array<{
+        order_metadata_exists: boolean;
+        buyer_attributes_exists: boolean;
+        cost_amount_exists: boolean;
+        deleted_at_exists: boolean;
+        world_price_exists: boolean;
+      }>>`
         SELECT 
           EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'order_metadata') as order_metadata_exists,
           EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'buyer_attributes') as buyer_attributes_exists,
