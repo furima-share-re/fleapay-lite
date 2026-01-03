@@ -2,6 +2,7 @@
 // LLM抽象化レイヤー - エクスポート
 
 export * from './types';
+export * from './types-extended';
 export * from './factory';
 export * from './config';
 export * from './router';
@@ -10,6 +11,12 @@ export * from './tracing';
 export * from './errors';
 export * from './retry';
 export * from './providers/openai';
+
+// 拡張機能
+export * from './features/audio';
+export * from './features/sns-posting';
+export * from './features/information-gathering';
+export * from './features/podcast';
 
 // テストユーティリティ（開発環境のみ）
 if (process.env.NODE_ENV !== 'production') {
@@ -159,5 +166,97 @@ export async function editImage(
     prompt,
     ...options,
   });
+}
+
+/**
+ * 画像生成を実行
+ */
+export async function generateImage(
+  prompt: string,
+  options?: {
+    model?: string;
+    size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792';
+    quality?: 'standard' | 'hd';
+    style?: 'vivid' | 'natural';
+    n?: number;
+  }
+) {
+  const provider = getLLMProvider('openai');
+  if (!provider) {
+    const { classifyError } = await import('./errors');
+    throw classifyError(
+      new Error('OpenAI provider is not available'),
+      { reason: 'not_configured' }
+    );
+  }
+
+  if (!('imageGeneration' in provider) || typeof provider.imageGeneration !== 'function') {
+    const { classifyError } = await import('./errors');
+    throw classifyError(
+      new Error('Image generation is not supported'),
+      { reason: 'unsupported_feature' }
+    );
+  }
+
+  return provider.imageGeneration({
+    prompt,
+    ...options,
+  });
+}
+
+/**
+ * 埋め込みを実行
+ */
+export async function createEmbedding(
+  input: string | string[],
+  options?: { model?: string; dimensions?: number }
+) {
+  const provider = getLLMProvider('openai');
+  if (!provider) {
+    const { classifyError } = await import('./errors');
+    throw classifyError(
+      new Error('OpenAI provider is not available'),
+      { reason: 'not_configured' }
+    );
+  }
+
+  if (!('createEmbedding' in provider) || typeof provider.createEmbedding !== 'function') {
+    const { classifyError } = await import('./errors');
+    throw classifyError(
+      new Error('Embeddings are not supported'),
+      { reason: 'unsupported_feature' }
+    );
+  }
+
+  return provider.createEmbedding({
+    input,
+    ...options,
+  });
+}
+
+/**
+ * ストリーミングチャット完了を実行
+ */
+export async function* chatCompletionStream(
+  options: Omit<ChatCompletionOptions, 'stream'> & { stream: true }
+): AsyncIterable<import('./types-extended').ChatCompletionChunk> {
+  const provider = getLLMProvider('openai');
+  if (!provider) {
+    const { classifyError } = await import('./errors');
+    throw classifyError(
+      new Error('OpenAI provider is not available'),
+      { reason: 'not_configured' }
+    );
+  }
+
+  if (!('chatCompletionStream' in provider) || typeof provider.chatCompletionStream !== 'function') {
+    const { classifyError } = await import('./errors');
+    throw classifyError(
+      new Error('Streaming is not supported'),
+      { reason: 'unsupported_feature' }
+    );
+  }
+
+  yield* provider.chatCompletionStream(options);
 }
 

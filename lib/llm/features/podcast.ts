@@ -4,6 +4,7 @@
 import { executeTask } from '../router';
 import { textToSpeech } from './audio';
 import type { ChatCompletionOptions } from '../types';
+import type { TextToSpeechResponse } from '../types-extended';
 
 /**
  * ポッドキャストエピソードオプション
