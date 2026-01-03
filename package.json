@@ -2,7 +2,6 @@
   "name": "furima-mvp",
   "version": "1.0.0",
   "description": "フリマアプリMVP with Stripe and OpenAI",
-  "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "next start",
