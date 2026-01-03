@@ -221,7 +221,7 @@ export class OpenAIProvider implements LLMProviderInterface, ExtendedLLMProvider
           }
           return null;
         })
-        .filter((img): img is Buffer<ArrayBufferLike> => img !== null) as Buffer[];
+        .filter((img) => img !== null) as Buffer[];
 
       if (images.length === 0) {
         throw classifyError(
