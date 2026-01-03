@@ -5,7 +5,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { sanitizeError } from '@/lib/utils';
-import { queueWorldPriceUpdate } from '../../../worldPriceEngine/worldPriceUpdate.js';
+import { queueWorldPriceUpdate } from '@/worldPriceGenreEngine.js';
 
 const updateWorldPriceSchema = z.object({
   orderId: z.string().uuid('有効なUUIDを入力してください'),
