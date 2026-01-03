@@ -15,7 +15,7 @@
     "check-test-user": "node scripts/setup-test-users.js check",
     "check-screens": "node scripts/check-all-screens.js",
     "check-screens:advanced": "node scripts/check-all-screens-advanced.js",
-    "check-screens:staging": "BASE_URL=https://fleapay-lite-t1.onrender.com node scripts/check-all-screens.js",
+    "check-screens:staging": "node scripts/check-staging-simple.js",
     "check-screens:staging:advanced": "BASE_URL=https://fleapay-lite-t1.onrender.com node scripts/check-all-screens-advanced.js"
   },
   "dependencies": {
