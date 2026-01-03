@@ -2,10 +2,8 @@
 // Phase 2.3: Next.js画面移行（チェックアウト結果取得API Route Handler）
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { sanitizeError } from '@/lib/utils';
-
-const prisma = new PrismaClient();
 
 // Force dynamic rendering (this route uses request.url)
 export const dynamic = 'force-dynamic';

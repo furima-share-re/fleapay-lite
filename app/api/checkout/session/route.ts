@@ -2,11 +2,9 @@
 // Phase 2.3: Next.js画面移行（チェックアウトセッション作成API Route Handler）
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
 import { getNextOrderNo, sanitizeError, bumpAndAllow, clientIp, isSameOrigin, audit } from '@/lib/utils';
-
-const prisma = new PrismaClient();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { 
   apiVersion: '2025-10-29.clover'
 });
@@ -134,7 +132,6 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json(sanitizeError(error), { status: 500 });
   } finally {
-    await prisma.$disconnect();
   }
 }
 

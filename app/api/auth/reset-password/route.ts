@@ -2,12 +2,10 @@
 // Phase 2.6: Express.js廃止 - 残りAPIエンドポイント移行
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { sanitizeError, audit } from '@/lib/utils';
 import { resetPasswordAndMigratePrisma } from '@/lib/auth-prisma';
-
-const prisma = new PrismaClient();
 
 const resetPasswordSchema = z.object({
   email: z.string().email('有効なメールアドレスを入力してください'),
@@ -58,6 +56,5 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   } finally {
-    await prisma.$disconnect();
   }
 }

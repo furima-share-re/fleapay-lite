@@ -2,11 +2,9 @@
 // Phase 2.3: Next.js画面移行（注文開始API Route Handler）
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getNextOrderNo, resolveSellerAccountId, buildSellerUrls, sanitizeError, isSameOrigin, bumpAndAllow, clientIp, audit } from '@/lib/utils';
-
-const prisma = new PrismaClient();
 
 const RATE_LIMIT_MAX_WRITES = parseInt(process.env.RATE_LIMIT_MAX_WRITES || "12", 10);
 
@@ -178,7 +176,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   } finally {
-    await prisma.$disconnect();
   }
 }
 

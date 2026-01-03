@@ -2,10 +2,8 @@
 // Phase 2.3: Next.js画面移行（管理者ダッシュボードAPI Route Handler）
 
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { jstDayBounds, sanitizeError } from '@/lib/utils';
-
-const prisma = new PrismaClient();
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'admin-devtoken';
 
@@ -222,8 +220,6 @@ export async function GET(request: Request) {
       sanitizeError(e),
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 

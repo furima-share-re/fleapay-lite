@@ -2,11 +2,9 @@
 // Phase 2.6: Express.js廃止 - 残りAPIエンドポイント移行
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { sanitizeError, audit, clientIp } from '@/lib/utils';
-
-const prisma = new PrismaClient();
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'admin-devtoken';
 
@@ -87,7 +85,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   } finally {
-    await prisma.$disconnect();
   }
 }
 

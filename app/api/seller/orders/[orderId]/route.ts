@@ -2,10 +2,8 @@
 // Phase 2.6: Express.js廃止 - 残りAPIエンドポイント移行
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { sanitizeError, audit } from '@/lib/utils';
-
-const prisma = new PrismaClient();
 
 export async function DELETE(
   request: NextRequest,
@@ -106,6 +104,5 @@ export async function DELETE(
       { status: 500 }
     );
   } finally {
-    await prisma.$disconnect();
   }
 }

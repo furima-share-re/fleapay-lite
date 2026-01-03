@@ -2,10 +2,8 @@
 // Phase 2.3: Next.js画面移行（注文詳細取得API Route Handler）
 
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { sanitizeError } from '@/lib/utils';
-
-const prisma = new PrismaClient();
 const PENDING_TTL_MIN = parseInt(process.env.PENDING_TTL_MIN || '10', 10);
 
 // Force dynamic rendering (this route uses request.url)
@@ -73,7 +71,6 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   } finally {
-    await prisma.$disconnect();
   }
 }
 
