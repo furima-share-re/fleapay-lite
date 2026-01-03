@@ -10,6 +10,7 @@
     "postbuild": "node scripts/copy-static-files.js",
     "test": "vitest run",
     "type-check": "tsc --noEmit",
+    "check-build-errors": "node scripts/check-build-errors.js",
     "postinstall": "prisma generate",
     "setup-test-users": "node scripts/setup-test-users.js setup-all",
     "setup-test-user": "node scripts/setup-test-users.js set",

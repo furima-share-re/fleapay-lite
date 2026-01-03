@@ -4,7 +4,7 @@
 /**
  * LLMプロバイダー種別
  */
-export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'cohere' | 'custom';
+export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'cohere' | 'custom' | 'mock';
 
 /**
  * タスクタイプ

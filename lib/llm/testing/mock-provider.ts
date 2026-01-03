@@ -3,6 +3,7 @@
 
 import type {
   LLMProviderInterface,
+  LLMProvider,
   ChatCompletionOptions,
   ChatCompletionResponse,
   ImageEditOptions,
@@ -15,7 +16,7 @@ import type {
  * 実際のLLM APIを呼び出さずにテストを実行可能
  */
 export class MockProvider implements LLMProviderInterface {
-  readonly name = 'mock' as const;
+  readonly name: LLMProvider = 'mock';
   
   private shouldFail = false;
   private failError?: Error;
