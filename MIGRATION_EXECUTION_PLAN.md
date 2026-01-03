@@ -2,7 +2,7 @@
 
 **プロジェクト**: fleapay-lite  
 **作成日**: 2025-01-15  
-**最終更新**: 2026-01-03（Phase 2.3デプロイ成功・動作確認完了、全画面実装完了、API Route Handler 13個、Next.js Pages 14個、TypeScript型エラーなし、Linterエラーなし、ルール準拠確認完了、デグレチェック完了、検証環境デプロイ成功、動作確認完了、Phase 2.4-2.6追加、Phase 3追加）  
+**最終更新**: 2026-01-03（Phase 2.4-2.6完了、Express.js廃止完了、Next.js完全移行完了、全APIエンドポイント27個移行完了、Tailwind CSS + shadcn/ui導入完了、React Hook Form + Zod導入完了、TypeScript型エラーなし、Linterエラーなし）  
 **目的**: デグレを最小限に抑えた安全な移行の実行
 
 **⚠️ 重要**: 
@@ -27,15 +27,15 @@
 | **Phase 2.1** | Next.jsプロジェクト初期設定 | 2026-01-02 | ✅ **完了** | Next.js依存関係追加、設定ファイル作成、App Router構造作成、/api/ping移行完了、検証環境動作確認完了 |
 | **Phase 2.2** | Next.js画面移行（画面単位） | 2026-01-02 | ✅ **完了** | /api/seller/summary API Route Handler移行完了、payments.js実装と完全一致、TypeScript型エラー修正完了、動作確認完了（全プラン正常動作確認済み）、ルール準拠確認完了 |
 | **Phase 2.3** | Next.js画面移行（全画面実装） | 2026-01-03 | ✅ **完了** | 全画面実装完了（API Route Handler 13個、Next.js Pages 14個）、TypeScript型エラーなし、Linterエラーなし、ルール準拠確認完了、デグレチェック完了、検証環境デプロイ成功、動作確認完了（24個のテストのうち23個成功、96%成功率） |
+| **Phase 2.4** | Tailwind CSS + shadcn/ui導入 | 2026-01-03 | ✅ **完了** | Tailwind CSS設定完了、shadcn/uiコンポーネント追加完了（Button, Input, Form等）、components.json作成完了 |
+| **Phase 2.5** | React Hook Form + Zod導入 | 2026-01-03 | ✅ **完了** | 依存関係追加完了、全API Route Handler（27個）にZodバリデーション追加完了、型安全性向上 |
+| **Phase 2.6** | Express.js廃止 | 2026-01-03 | ✅ **完了** | 全APIエンドポイント（27個）をNext.js Route Handlerに移行完了、Express.js削除完了（server.js削除、依存関係削除）、Next.js完全移行完了 |
 
 ### 未実装フェーズ（優先順位順）
 
 | Phase | フェーズ名 | 予定期間 | 状態 | 備考 |
 |-------|----------|---------|------|------|
-| **Phase 2.4** | Tailwind CSS + shadcn/ui導入 | Week 4-5 | ⏳ **未着手** | **最優先**（AI修正成功率98%達成に必要） |
-| **Phase 2.5** | React Hook Form + Zod導入 | Week 5-6 | ⏳ **未着手** | **高優先度**（型安全性・バリデーション効率向上） |
-| **Phase 2.6** | Express.js廃止 | Week 6-7 | ⏳ **未着手** | **高優先度**（Next.js完全移行） |
-| **Phase 3.1** | 監視ツール導入 | Month 3-4 | ⏳ **未着手** | **中優先度**（Helicone, Sentry, Cloudflare WAF） |
+| **Phase 3.1** | 監視ツール導入 | Month 3-4 | ⏳ **未着手** | **中優先度**（Helicone: 検証環境・本番環境、Sentry: 本番環境のみ、Cloudflare WAF: 本番環境のみ） |
 | **Phase 3.2** | 詳細ヘルスチェック + 自動ロールバック | Month 3-4 | ⏳ **未着手** | **中優先度**（運用自動化） |
 | **Phase 1.7** | RLS実装 | Week 4 Day 1-2 | ⏳ 未着手 | **最終工程**（Phase 2完了後） |
 | **Phase 1.8** | 本番環境DB移行 | Week 4 Day 3-5 | ⏳ 未着手 | **最終工程**（Phase 2完了後） |
@@ -43,10 +43,12 @@
 **重要なポイント**: 
 - 検証環境のDB移行は完了（Phase 1.3）
 - 検証環境の環境移行は完了（Phase 1.4）
-- **Phase 2.1-2.3（Next.js基盤移行）は完了**（API Route Handler 13個、Next.js Pages 14個実装完了、検証環境デプロイ成功、動作確認完了）
-- **Phase 2.4-2.6（UIライブラリ導入・Express.js廃止）を最優先で実施**（AI修正成功率98%達成のため）
+- **Phase 2（Next.js移行）は完全に完了**（Phase 2.1-2.6すべて完了、API Route Handler 27個、Next.js Pages 14個実装完了、Express.js廃止完了、検証環境デプロイ成功、動作確認完了）
 - **Phase 3（監視・運用自動化）を次に実施**（運用95%自動化達成のため）
-- **Phase 1.7（RLS実装）とPhase 1.8（本番環境DB移行）は最終工程**（Phase 2完了後に実施）
+  - Helicone: 検証環境・本番環境の両方で導入（LLM API監視）
+  - Sentry: 本番環境のみ導入（エラー監視、検証環境には不要）
+  - Cloudflare WAF: 本番環境のみ導入（セキュリティ、検証環境には不要）
+- **Phase 1.7（RLS実装）とPhase 1.8（本番環境DB移行）は最終工程**（Phase 3完了後に実施）
 
 ---
 
@@ -184,28 +186,35 @@
    - OpenAI SDKをHelicone経由に設定
    - `lib/openai.ts` 作成・更新
    - 既存のOpenAI呼び出しをHelicone経由に変更
+   - **検証環境・本番環境の両方で導入**
 
 2. **Sentry導入（エラー監視）**
    - Sentryアカウント作成
    - `@sentry/nextjs` インストール
    - `npx @sentry/wizard@latest -i nextjs` 実行
    - エラー監視開始
+   - **本番環境のみ導入**（検証環境には不要）
 
 3. **Cloudflare WAF設定**
    - Cloudflare Proアカウント作成
    - DNS設定
    - WAFルール設定
    - Rate Limiting設定
+   - **本番環境のみ導入**（検証環境には不要）
 
 **完了条件**:
-- ✅ HeliconeダッシュボードでLLM API呼び出し可視化
-- ✅ Sentryダッシュボードでエラー監視可能
-- ✅ Cloudflare WAF動作確認
+- ✅ HeliconeダッシュボードでLLM API呼び出し可視化（検証環境・本番環境）
+- ✅ Sentryダッシュボードでエラー監視可能（本番環境のみ）
+- ✅ Cloudflare WAF動作確認（本番環境のみ）
 
 **期待効果**:
 - エラー検知率: 0% → **95%以上**
 - LLM APIコスト可視化: 可能
-- DDoS防御: 自動ブロック
+- DDoS防御: 自動ブロック（本番環境）
+
+**注意事項**:
+- 検証環境にはSentryとCloudflare WAFは不要（本番環境のみ導入）
+- Heliconeは検証環境・本番環境の両方で導入（LLM API監視のため）
 
 ---
 
