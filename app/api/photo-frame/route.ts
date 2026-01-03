@@ -42,8 +42,9 @@ export async function POST(request: NextRequest) {
       .png()
       .toBuffer();
 
-    // Fileオブジェクト作成
-    const fileObj = new File([inputBuffer], 'image.png', { type: 'image/png' });
+    // Fileオブジェクト作成（BufferをUint8Arrayに変換）
+    const uint8Array = new Uint8Array(inputBuffer);
+    const fileObj = new File([uint8Array], 'image.png', { type: 'image/png' });
 
     console.log('Sending to OpenAI Images Edit API...');
 
