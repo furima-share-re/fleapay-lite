@@ -1,10 +1,7 @@
 // lib/llm/config.ts
 // タスク別推奨設定
 
-import type { TaskType as TaskTypeFromTypes, LLMProvider, ChatCompletionOptions } from './types';
-
-// 型エイリアスを使用してインポート（再エクスポート）
-export type TaskType = TaskTypeFromTypes;
+import type { TaskType, LLMProvider, ChatCompletionOptions } from './types';
 
 /**
  * タスク設定

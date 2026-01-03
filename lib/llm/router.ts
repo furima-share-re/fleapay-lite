@@ -2,8 +2,8 @@
 // タスクルーター（最適プロバイダー自動選択 + Langfuse統合 + リトライ）
 
 import { getLLMProvider } from './factory';
-import type { LLMProvider, ChatCompletionOptions, ChatCompletionResponse } from './types';
-import type { TaskType, TaskConfig } from './config';
+import type { LLMProvider, ChatCompletionOptions, ChatCompletionResponse, TaskType } from './types';
+import type { TaskConfig } from './config';
 import { getTaskConfig, customizeTaskConfig } from './config';
 import { getPrompt } from './prompts';
 import { createTrace, recordLLMCall, recordError } from './tracing';
