@@ -207,6 +207,13 @@ export class OpenAIProvider implements LLMProviderInterface, ExtendedLLMProvider
         response_format: 'b64_json',
       });
 
+      if (!response.data || response.data.length === 0) {
+        throw classifyError(
+          new Error('No images returned from OpenAI API'),
+          { provider: 'openai', model: options.model }
+        );
+      }
+
       const images = response.data
         .map(item => {
           if ('b64_json' in item && item.b64_json) {
@@ -337,6 +344,13 @@ export class OpenAIProvider implements LLMProviderInterface, ExtendedLLMProvider
         input: options.input,
         dimensions: options.dimensions,
       });
+
+      if (!response.data || response.data.length === 0) {
+        throw classifyError(
+          new Error('No embeddings returned from OpenAI API'),
+          { provider: 'openai', model: options.model || 'text-embedding-3-small' }
+        );
+      }
 
       return {
         embeddings: response.data.map(item => item.embedding),
