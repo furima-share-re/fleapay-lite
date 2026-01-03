@@ -37,6 +37,57 @@ function adaptOpenAIOptions(
 }
 
 /**
+ * UploadableをFileまたはBufferに変換
+ * 
+ * OpenAI SDKのUploadable型をFileまたはBufferに変換
+ */
+function adaptImageInput(
+  image: OpenAI.FileInput | OpenAI.FileInput[]
+): File | Buffer {
+  // 配列の場合は最初の要素を使用
+  const imageInput = Array.isArray(image) ? image[0] : image;
+  
+  // 型をanyにキャストしてから処理（Uploadable型の複雑さを回避）
+  const input = imageInput as any;
+
+  // Fileの場合はそのまま返す
+  if (input instanceof File) {
+    return input;
+  }
+
+  // Bufferの場合はそのまま返す
+  if (Buffer.isBuffer(input)) {
+    return input;
+  }
+
+  // Blobの場合はFileに変換
+  if (input instanceof Blob) {
+    return new File([input], 'image.png', { type: input.type || 'image/png' });
+  }
+
+  // ArrayBufferまたはArrayBufferViewの場合はBufferに変換
+  if (input instanceof ArrayBuffer) {
+    return Buffer.from(input);
+  }
+  if (ArrayBuffer.isView(input)) {
+    return Buffer.from(input.buffer, input.byteOffset, input.byteLength);
+  }
+
+  // Uint8Arrayの場合はBufferに変換
+  if (input instanceof Uint8Array) {
+    return Buffer.from(input);
+  }
+
+  // 文字列（base64またはURL）の場合はエラー
+  if (typeof input === 'string') {
+    throw new Error('String image input is not supported. Please use File or Buffer.');
+  }
+
+  // その他の型の場合はエラー
+  throw new Error(`Unsupported image input type: ${typeof input}`);
+}
+
+/**
  * 共通インターフェースのレスポンスをOpenAI形式に変換
  */
 function adaptToOpenAIFormat(
@@ -141,9 +192,12 @@ export const openai = {
       }
 
       try {
+        // UploadableをFileまたはBufferに変換
+        const adaptedImage = adaptImageInput(options.image);
+        
         const response = await provider.imageEdit({
           model: options.model || 'dall-e-2',
-          image: options.image,
+          image: adaptedImage,
           prompt: options.prompt,
           size: options.size,
         });
