@@ -143,10 +143,4 @@ export function recordError(
   });
 }
 
-/**
- * Langfuseが利用可能かどうか
- */
-export function isLangfuseAvailable(): boolean {
-  return getLangfuseClient() !== null;
-}
 
