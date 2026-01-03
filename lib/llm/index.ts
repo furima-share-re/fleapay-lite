@@ -24,10 +24,8 @@ export * from './features/sns-posting';
 export * from './features/information-gathering';
 export * from './features/podcast';
 
-// テストユーティリティ（開発環境のみ）
-if (process.env.NODE_ENV !== 'production') {
-  export * from './testing';
-}
+// テストユーティリティ
+export * from './testing';
 
 // 便利関数
 import { getLLMProvider } from './factory';
