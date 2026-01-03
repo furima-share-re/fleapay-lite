@@ -422,8 +422,8 @@ export class OpenAIProvider implements LLMProviderInterface, ExtendedLLMProvider
   /**
    * ネイティブのOpenAIクライアントにアクセス（プロバイダー固有機能を使用する場合）
    */
-  getNativeClient(): OpenAI | null {
-    return this.client;
+  getNativeClient<T>(): T | null {
+    return (this.client as T) || null;
   }
 }
 
