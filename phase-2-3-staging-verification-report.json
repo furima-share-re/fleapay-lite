@@ -5,10 +5,10 @@
                     "Total":  24
                 },
     "BaseUrl":  "https://fleapay-lite-t1.onrender.com",
-    "Timestamp":  "2026-01-03 13:21:21",
+    "Timestamp":  "2026-01-03 13:38:19",
     "Results":  [
                     {
-                        "Timestamp":  "2026-01-03 13:21:09",
+                        "Timestamp":  "2026-01-03 13:38:06",
                         "Name":  "API: /api/ping (繝倥Ν繧ｹ繝√ぉ繝・け)",
                         "Message":  "OK",
                         "Success":  true,
@@ -16,7 +16,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:10",
+                        "Timestamp":  "2026-01-03 13:38:08",
                         "Name":  "API: /api/seller/summary (Pro繝励Λ繝ｳ)",
                         "Message":  "OK",
                         "Success":  true,
@@ -24,7 +24,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:11",
+                        "Timestamp":  "2026-01-03 13:38:09",
                         "Name":  "API: /api/seller/summary (Standard繝励Λ繝ｳ)",
                         "Message":  "OK",
                         "Success":  true,
@@ -32,7 +32,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:12",
+                        "Timestamp":  "2026-01-03 13:38:10",
                         "Name":  "API: /api/seller/kids-summary (Kids繝励Λ繝ｳ)",
                         "Message":  "OK",
                         "Success":  true,
@@ -40,7 +40,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:13",
+                        "Timestamp":  "2026-01-03 13:38:11",
                         "Name":  "API: /api/seller/kids-summary",
                         "Message":  "OK",
                         "Success":  true,
@@ -48,7 +48,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:14",
+                        "Timestamp":  "2026-01-03 13:38:12",
                         "Name":  "API: /api/admin/dashboard",
                         "Message":  "OK",
                         "Success":  true,
@@ -56,7 +56,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:14",
+                        "Timestamp":  "2026-01-03 13:38:12",
                         "Name":  "API: /api/admin/sellers",
                         "Message":  "OK",
                         "Success":  true,
@@ -64,7 +64,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:15",
+                        "Timestamp":  "2026-01-03 13:38:13",
                         "Name":  "API: /api/admin/frames",
                         "Message":  "OK",
                         "Success":  true,
@@ -72,7 +72,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:16",
+                        "Timestamp":  "2026-01-03 13:38:14",
                         "Name":  "API: /api/admin/stripe/summary",
                         "Message":  "OK",
                         "Success":  true,
@@ -80,7 +80,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:16",
+                        "Timestamp":  "2026-01-03 13:38:14",
                         "Name":  "API: /api/checkout/result",
                         "Message":  "リモート サーバーがエラーを返しました: (400) 要求が不適切です",
                         "Success":  false,
@@ -88,7 +88,7 @@
                         "Status":  400
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:17",
+                        "Timestamp":  "2026-01-03 13:38:14",
                         "Name":  "Page: / (繝医ャ繝励・繝ｼ繧ｸ)",
                         "Message":  "OK",
                         "Success":  true,
@@ -96,7 +96,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:17",
+                        "Timestamp":  "2026-01-03 13:38:15",
                         "Name":  "Page: /success",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
@@ -104,7 +104,7 @@
                         "Status":  404
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:17",
+                        "Timestamp":  "2026-01-03 13:38:15",
                         "Name":  "Page: /thanks",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
@@ -112,7 +112,7 @@
                         "Status":  404
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:18",
+                        "Timestamp":  "2026-01-03 13:38:15",
                         "Name":  "Page: /cancel",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
@@ -120,7 +120,7 @@
                         "Status":  404
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:18",
+                        "Timestamp":  "2026-01-03 13:38:15",
                         "Name":  "Page: /onboarding/complete",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
@@ -128,7 +128,7 @@
                         "Status":  404
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:18",
+                        "Timestamp":  "2026-01-03 13:38:16",
                         "Name":  "Page: /onboarding/refresh",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
@@ -136,7 +136,7 @@
                         "Status":  404
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:18",
+                        "Timestamp":  "2026-01-03 13:38:16",
                         "Name":  "Page: /checkout",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
@@ -144,7 +144,7 @@
                         "Status":  404
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:19",
+                        "Timestamp":  "2026-01-03 13:38:17",
                         "Name":  "Page: /seller-register",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
@@ -152,7 +152,7 @@
                         "Status":  404
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:19",
+                        "Timestamp":  "2026-01-03 13:38:17",
                         "Name":  "Page: /seller-purchase-standard",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
@@ -160,7 +160,7 @@
                         "Status":  404
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:19",
+                        "Timestamp":  "2026-01-03 13:38:17",
                         "Name":  "Page: /admin/dashboard",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
@@ -168,7 +168,7 @@
                         "Status":  404
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:20",
+                        "Timestamp":  "2026-01-03 13:38:17",
                         "Name":  "Page: /admin/sellers",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
@@ -176,7 +176,7 @@
                         "Status":  404
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:20",
+                        "Timestamp":  "2026-01-03 13:38:17",
                         "Name":  "Page: /admin/frames",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
@@ -184,7 +184,7 @@
                         "Status":  404
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:20",
+                        "Timestamp":  "2026-01-03 13:38:18",
                         "Name":  "Page: /admin/payments",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
@@ -192,7 +192,7 @@
                         "Status":  404
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:21:21",
+                        "Timestamp":  "2026-01-03 13:38:18",
                         "Name":  "Page: /kids-dashboard",
                         "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
                         "Success":  false,
