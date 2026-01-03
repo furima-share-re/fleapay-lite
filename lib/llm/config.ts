@@ -3,8 +3,8 @@
 
 import type { TaskType as TaskTypeFromTypes, LLMProvider, ChatCompletionOptions } from './types';
 
-// 型エイリアスを使用してインポート
-type TaskType = TaskTypeFromTypes;
+// 型エイリアスを使用してインポート（再エクスポート）
+export type TaskType = TaskTypeFromTypes;
 
 /**
  * タスク設定
