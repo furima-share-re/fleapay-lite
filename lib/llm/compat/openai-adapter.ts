@@ -42,7 +42,7 @@ function adaptOpenAIOptions(
  * OpenAI SDKのUploadable型をFileまたはBufferに変換
  */
 function adaptImageInput(
-  image: OpenAI.FileInput | OpenAI.FileInput[]
+  image: File | Blob | Buffer | Uint8Array | ArrayBuffer | ArrayBufferView | string | (File | Blob | Buffer | Uint8Array | ArrayBuffer | ArrayBufferView | string)[]
 ): File | Buffer {
   // 配列の場合は最初の要素を使用
   const imageInput = Array.isArray(image) ? image[0] : image;
