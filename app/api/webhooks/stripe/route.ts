@@ -8,7 +8,7 @@ import { audit } from '@/lib/utils';
 
 const prisma = new PrismaClient();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-06-20',
+  apiVersion: '2025-10-29.clover',
 });
 
 // Next.jsではraw bodyを取得するために特別な処理が必要
