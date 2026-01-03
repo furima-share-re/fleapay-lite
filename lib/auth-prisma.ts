@@ -14,8 +14,8 @@ export async function resetPasswordAndMigratePrisma(
   prisma: PrismaClient
 ) {
   try {
-    // 1. ユーザー情報を取得
-    const user = await prisma.seller.findUnique({
+    // 1. ユーザー情報を取得（emailはunique制約がないためfindFirstを使用）
+    const user = await prisma.seller.findFirst({
       where: { email },
       select: {
         id: true,
