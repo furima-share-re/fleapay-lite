@@ -1,5 +1,13 @@
 // lib/openai.ts
 // Phase 3.1: Helicone導入 - OpenAI SDK共通設定
+// 
+// ⚠️ 注意: このファイルは後方互換性のために残しています。
+// 新規コードでは `lib/llm` を使用してください。
+// 
+// 移行方法:
+// - 旧: `import { openai } from '@/lib/openai'`
+// - 新: `import { openai } from '@/lib/llm/compat/openai-adapter'`
+// または: `import { chatCompletion } from '@/lib/llm'`
 
 import OpenAI from 'openai';
 

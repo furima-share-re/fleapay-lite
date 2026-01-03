@@ -4,6 +4,8 @@
 import { NextResponse } from 'next/server';
 import sharp from 'sharp';
 import { bumpAndAllow, clientIp, sanitizeError } from '@/lib/utils';
+// 新API（推奨）: import { chatCompletion, getLLMProvider } from '@/lib/llm';
+// 既存API（後方互換性のため残す）:
 import { openai, isOpenAIAvailable } from '@/lib/openai';
 
 const RATE_LIMIT_MAX_WRITES = 12;

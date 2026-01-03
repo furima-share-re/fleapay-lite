@@ -1,0 +1,163 @@
+// lib/llm/index.ts
+// LLM抽象化レイヤー - エクスポート
+
+export * from './types';
+export * from './factory';
+export * from './config';
+export * from './router';
+export * from './prompts';
+export * from './tracing';
+export * from './errors';
+export * from './retry';
+export * from './providers/openai';
+
+// テストユーティリティ（開発環境のみ）
+if (process.env.NODE_ENV !== 'production') {
+  export * from './testing';
+}
+
+// 便利関数
+import { getLLMProvider } from './factory';
+import { executeTask, executeImageEditTask } from './router';
+import type { ChatCompletionOptions, ImageEditOptions, TaskType } from './types';
+
+/**
+ * チャット完了を実行（簡易API）
+ * 
+ * @param options チャット完了オプション
+ * @returns チャット完了レスポンス
+ * @throws {LLMError} LLMプロバイダーが利用不可、またはAPI呼び出しに失敗した場合
+ * 
+ * @example
+ * ```typescript
+ * try {
+ *   const response = await chatCompletion({
+ *     model: 'gpt-4o',
+ *     messages: [{ role: 'user', content: 'Hello' }],
+ *   });
+ *   console.log(response.content);
+ * } catch (error) {
+ *   if (error instanceof LLMError) {
+ *     console.error('LLM Error:', error.code, error.message);
+ *   }
+ * }
+ * ```
+ */
+export async function chatCompletion(options: ChatCompletionOptions) {
+  const provider = getLLMProvider();
+  if (!provider) {
+    const { classifyError } = await import('./errors');
+    throw classifyError(
+      new Error('No LLM provider is available'),
+      {
+        reason: 'no_provider_configured',
+        suggestion: 'Please set LLM_PROVIDER environment variable or configure at least one provider',
+      }
+    );
+  }
+  return provider.chatCompletion(options);
+}
+
+/**
+ * 画像編集を実行（簡易API）
+ * 
+ * @param options 画像編集オプション
+ * @returns 画像編集レスポンス
+ * @throws {LLMError} LLMプロバイダーが利用不可、またはAPI呼び出しに失敗した場合
+ * 
+ * @example
+ * ```typescript
+ * try {
+ *   const response = await imageEdit({
+ *     model: 'dall-e-2',
+ *     image: imageFile,
+ *     prompt: 'Add a frame',
+ *   });
+ *   // response.image を使用
+ * } catch (error) {
+ *   if (error instanceof LLMError) {
+ *     console.error('LLM Error:', error.code, error.message);
+ *   }
+ * }
+ * ```
+ */
+export async function imageEdit(options: ImageEditOptions) {
+  const provider = getLLMProvider();
+  if (!provider) {
+    const { classifyError } = await import('./errors');
+    throw classifyError(
+      new Error('No LLM provider is available'),
+      {
+        reason: 'no_provider_configured',
+        suggestion: 'Please set LLM_PROVIDER environment variable or configure at least one provider',
+      }
+    );
+  }
+  if (!provider.imageEdit) {
+    const { classifyError } = await import('./errors');
+    throw classifyError(
+      new Error(`Provider ${provider.name} does not support image editing`),
+      {
+        provider: provider.name,
+        reason: 'unsupported_operation',
+        suggestion: 'Please use a provider that supports image editing (e.g., OpenAI)',
+      }
+    );
+  }
+  return provider.imageEdit(options);
+}
+
+/**
+ * タスク指向の簡易API
+ */
+
+/**
+ * 画像解析を実行
+ */
+export async function analyzeImage(
+  imageUrl: string,
+  prompt: string,
+  options?: Partial<ChatCompletionOptions>
+) {
+  return executeTask('image-analysis', {
+    model: 'gpt-4o',
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: prompt },
+        { type: 'image_url', image_url: { url: imageUrl } }
+      ]
+    }],
+    ...options,
+  });
+}
+
+/**
+ * テキスト生成を実行
+ */
+export async function generateText(
+  prompt: string,
+  options?: Partial<ChatCompletionOptions>
+) {
+  return executeTask('text-generation', {
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: prompt }],
+    ...options,
+  });
+}
+
+/**
+ * 画像編集を実行（タスク指向）
+ */
+export async function editImage(
+  image: File | Buffer,
+  prompt: string,
+  options?: { model?: string; size?: string }
+) {
+  return executeImageEditTask({
+    image,
+    prompt,
+    ...options,
+  });
+}
+
