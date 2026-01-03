@@ -68,54 +68,9 @@ export default function AdminDashboardPage() {
           --success-green: #2D5B3F;
           --error-maroon: #8B2635;
           --warning-amber: #B8860B;
-          --admin-sidebar-width: 220px;
-          --admin-header-height: 64px;
-          --admin-content-padding: 24px;
         }
         * { box-sizing: border-box; }
-        body {
-          margin: 0;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
-          background: var(--fleapay-cream);
-          color: #1A1A1A;
-        }
-        .admin-container {
-          display: flex;
-          min-height: 100vh;
-        }
-        .admin-header {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: var(--admin-header-height);
-          background: #fff;
-          border-bottom: 1px solid rgba(0,0,0,0.08);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0 var(--admin-content-padding);
-          z-index: 100;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        }
-        .admin-sidebar {
-          position: fixed;
-          top: var(--admin-header-height);
-          left: 0;
-          width: var(--admin-sidebar-width);
-          height: calc(100vh - var(--admin-header-height));
-          background: #fff;
-          border-right: 1px solid rgba(0,0,0,0.08);
-          padding: 16px 0;
-          overflow-y: auto;
-        }
-        .admin-content {
-          margin-left: var(--admin-sidebar-width);
-          margin-top: var(--admin-header-height);
-          padding: var(--admin-content-padding);
-          flex: 1;
-          min-height: calc(100vh - var(--admin-header-height));
-        }
+        /* Admin container styles are now in globals.css */
         .nav-menu {
           list-style: none;
           margin: 0;

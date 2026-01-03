@@ -4,7 +4,7 @@
   "description": "フリマアプリMVP with Stripe and OpenAI",
   "type": "module",
   "scripts": {
-    "start": "next start",
+    "start": "node .next/standalone/server.js",
     "dev": "next dev",
     "build": "next build",
     "test": "vitest run",

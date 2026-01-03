@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>検証環境 プラン別動作確認URLリスト</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 24px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    .base-url {
+      background: #f0f0f0;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 30px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .plan-section {
+      margin-bottom: 40px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .plan-header {
+      padding: 15px 20px;
+      font-weight: bold;
+      font-size: 18px;
+      color: white;
+    }
+    .plan-standard {
+      background: #6b7280;
+    }
+    .plan-pro {
+      background: #3b82f6;
+    }
+    .plan-kids {
+      background: #10b981;
+    }
+    .plan-content {
+      padding: 20px;
+    }
+    .user-info {
+      background: #f9fafb;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    .user-info table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .user-info td {
+      padding: 8px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .user-info td:first-child {
+      font-weight: bold;
+      width: 150px;
+    }
+    .url-group {
+      margin-bottom: 25px;
+    }
+    .url-group h3 {
+      font-size: 16px;
+      margin-bottom: 15px;
+      color: #333;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+    .url-item {
+      margin-bottom: 15px;
+      padding: 12px;
+      background: #f9fafb;
+      border-radius: 4px;
+      border-left: 4px solid #3b82f6;
+    }
+    .url-item.expected-deny {
+      border-left-color: #ef4444;
+    }
+    .url-item.expected-allow {
+      border-left-color: #10b981;
+    }
+    .url-label {
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #333;
+    }
+    .url-link {
+      display: block;
+      margin: 8px 0;
+      font-family: monospace;
+      font-size: 13px;
+      color: #3b82f6;
+      text-decoration: none;
+      word-break: break-all;
+      padding: 8px;
+      background: white;
+      border-radius: 4px;
+      border: 1px solid #e5e7eb;
+    }
+    .url-link:hover {
+      background: #f0f9ff;
+      border-color: #3b82f6;
+    }
+    .url-link:visited {
+      color: #8b5cf6;
+    }
+    .expected-behavior {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #666;
+    }
+    .expected-behavior.deny {
+      color: #dc2626;
+    }
+    .expected-behavior.allow {
+      color: #059669;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    .badge-standard {
+      background: #6b7280;
+      color: white;
+    }
+    .badge-pro {
+      background: #3b82f6;
+      color: white;
+    }
+    .badge-kids {
+      background: #10b981;
+      color: white;
+    }
+    .checklist {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f9fafb;
+      border-radius: 4px;
+    }
+    .checklist h3 {
+      margin-bottom: 15px;
+      color: #333;
+    }
+    .checklist-item {
+      margin-bottom: 10px;
+      padding: 8px;
+      background: white;
+      border-radius: 4px;
+    }
+    .checklist-item input[type="checkbox"] {
+      margin-right: 8px;
+    }
+    .sql-section {
+      margin-top: 30px;
+      padding: 20px;
+      background: #1e1e1e;
+      border-radius: 4px;
+      color: #d4d4d4;
+    }
+    .sql-section h3 {
+      color: #fff;
+      margin-bottom: 15px;
+    }
+    .sql-section pre {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-x: auto;
+    }
+    .copy-btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+    .copy-btn:hover {
+      background: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 検証環境 プラン別動作確認URLリスト</h1>
+    <div class="subtitle">
+      更新日: 2026-01-02 | 環境: 検証環境（Staging）
+    </div>
+
+    <div class="base-url">
+      <strong>ベースURL:</strong> https://fleapay-lite-t1.onrender.com
+    </div>
+
+    <!-- Standardプラン -->
+    <div class="plan-section">
+      <div class="plan-header plan-standard">
+        📋 Standardプラン (test-seller-standard)
+      </div>
+      <div class="plan-content">
+        <div class="user-info">
+          <table>
+            <tr>
+              <td>ユーザーID</td>
+              <td><code>test-seller-standard</code></td>
+            </tr>
+            <tr>
+              <td>プラン</td>
+              <td><span class="badge badge-standard">standard</span></td>
+            </tr>
+            <tr>
+              <td>アクセス許可</td>
+              <td>❌ レジ画面へのアクセス拒否</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="url-group">
+          <h3>📡 APIエンドポイント</h3>
+          
+          <div class="url-item">
+            <div class="url-label">売上サマリー</div>
+            <a href="https://fleapay-lite-t1.onrender.com/api/seller/summary?s=test-seller-standard" 
+               target="_blank" 
+               class="url-link">
+              https://fleapay-lite-t1.onrender.com/api/seller/summary?s=test-seller-standard
+            </a>
+            <div class="expected-behavior">
+              <strong>期待される応答:</strong> <code>planType: "standard"</code>, <code>isSubscribed: false</code>
+            </div>
+          </div>
+
+          <div class="url-item">
+            <div class="url-label">売上分析</div>
+            <a href="https://fleapay-lite-t1.onrender.com/api/seller/analytics?s=test-seller-standard&period=daily&days=30" 
+               target="_blank" 
+               class="url-link">
+              https://fleapay-lite-t1.onrender.com/api/seller/analytics?s=test-seller-standard&period=daily&days=30
+            </a>
+            <div class="expected-behavior">
+              <strong>期待される動作:</strong> 正常に動作
+            </div>
+          </div>
+        </div>
+
+        <div class="url-group">
+          <h3>🖥️ フロントエンド</h3>
+          
+          <div class="url-item expected-allow">
+            <div class="url-label">セラーダッシュボード</div>
+            <a href="https://fleapay-lite-t1.onrender.com/seller-dashboard.html?s=test-seller-standard" 
+               target="_blank" 
+               class="url-link">
+              https://fleapay-lite-t1.onrender.com/seller-dashboard.html?s=test-seller-standard
+            </a>
+            <div class="expected-behavior allow">
+              ✅ ダッシュボードが表示される<br>
+              ✅ QRコードが表示される
+            </div>
+          </div>
+
+          <div class="url-item expected-deny">
+            <div class="url-label">レジ画面（標準プラン）</div>
+            <a href="https://fleapay-lite-t1.onrender.com/seller-purchase-standard.html?s=test-seller-standard" 
+               target="_blank" 
+               class="url-link">
+              https://fleapay-lite-t1.onrender.com/seller-purchase-standard.html?s=test-seller-standard
+            </a>
+            <div class="expected-behavior deny">
+              ❌ 「このレジ画面はご利用いただけません」と表示される<br>
+              ❌ アクセス拒否
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Proプラン -->
+    <div class="plan-section">
+      <div class="plan-header plan-pro">
+        💼 Proプラン (test-seller-pro)
+      </div>
+      <div class="plan-content">
+        <div class="user-info">
+          <table>
+            <tr>
+              <td>ユーザーID</td>
+              <td><code>test-seller-pro</code></td>
+            </tr>
+            <tr>
+              <td>プラン</td>
+              <td><span class="badge badge-pro">pro</span></td>
+            </tr>
+            <tr>
+              <td>アクセス許可</td>
+              <td>✅ レジ画面へのアクセス許可</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="url-group">
+          <h3>📡 APIエンドポイント</h3>
+          
+          <div class="url-item">
+            <div class="url-label">売上サマリー</div>
+            <a href="https://fleapay-lite-t1.onrender.com/api/seller/summary?s=test-seller-pro" 
+               target="_blank" 
+               class="url-link">
+              https://fleapay-lite-t1.onrender.com/api/seller/summary?s=test-seller-pro
+            </a>
+            <div class="expected-behavior">
+              <strong>期待される応答:</strong> <code>planType: "pro"</code>, <code>isSubscribed: true</code>
+            </div>
+          </div>
+
+          <div class="url-item">
+            <div class="url-label">売上分析</div>
+            <a href="https://fleapay-lite-t1.onrender.com/api/seller/analytics?s=test-seller-pro&period=daily&days=30" 
+               target="_blank" 
+               class="url-link">
+              https://fleapay-lite-t1.onrender.com/api/seller/analytics?s=test-seller-pro&period=daily&days=30
+            </a>
+            <div class="expected-behavior">
+              <strong>期待される動作:</strong> 正常に動作
+            </div>
+          </div>
+        </div>
+
+        <div class="url-group">
+          <h3>🖥️ フロントエンド</h3>
+          
+          <div class="url-item expected-allow">
+            <div class="url-label">セラーダッシュボード</div>
+            <a href="https://fleapay-lite-t1.onrender.com/seller-dashboard.html?s=test-seller-pro" 
+               target="_blank" 
+               class="url-link">
+              https://fleapay-lite-t1.onrender.com/seller-dashboard.html?s=test-seller-pro
+            </a>
+            <div class="expected-behavior allow">
+              ✅ ダッシュボードが表示される<br>
+              ✅ QRコードが表示される
+            </div>
+          </div>
+
+          <div class="url-item expected-allow">
+            <div class="url-label">レジ画面（標準プラン）</div>
+            <a href="https://fleapay-lite-t1.onrender.com/seller-purchase-standard.html?s=test-seller-pro" 
+               target="_blank" 
+               class="url-link">
+              https://fleapay-lite-t1.onrender.com/seller-purchase-standard.html?s=test-seller-pro
+            </a>
+            <div class="expected-behavior allow">
+              ✅ レジ画面が表示される<br>
+              ✅ カメラ機能が使用できる
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kidsプラン -->
+    <div class="plan-section">
+      <div class="plan-header plan-kids">
+        🎮 Kidsプラン (test-seller-kids)
+      </div>
+      <div class="plan-content">
+        <div class="user-info">
+          <table>
+            <tr>
+              <td>ユーザーID</td>
+              <td><code>test-seller-kids</code></td>
+            </tr>
+            <tr>
+              <td>プラン</td>
+              <td><span class="badge badge-kids">kids</span></td>
+            </tr>
+            <tr>
+              <td>アクセス許可</td>
+              <td>✅ レジ画面へのアクセス許可</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="url-group">
+          <h3>📡 APIエンドポイント</h3>
+          
+          <div class="url-item">
+            <div class="url-label">売上サマリー</div>
+            <a href="https://fleapay-lite-t1.onrender.com/api/seller/summary?s=test-seller-kids" 
+               target="_blank" 
+               class="url-link">
+              https://fleapay-lite-t1.onrender.com/api/seller/summary?s=test-seller-kids
+            </a>
+            <div class="expected-behavior">
+              <strong>期待される応答:</strong> <code>planType: "kids"</code>, <code>isSubscribed: true</code>
+            </div>
+          </div>
+
+          <div class="url-item">
+            <div class="url-label">売上分析</div>
+            <a href="https://fleapay-lite-t1.onrender.com/api/seller/analytics?s=test-seller-kids&period=daily&days=30" 
+               target="_blank" 
+               class="url-link">
+              https://fleapay-lite-t1.onrender.com/api/seller/analytics?s=test-seller-kids&period=daily&days=30
+            </a>
+            <div class="expected-behavior">
+              <strong>期待される動作:</strong> 正常に動作
+            </div>
+          </div>
+        </div>
+
+        <div class="url-group">
+          <h3>🖥️ フロントエンド</h3>
+          
+          <div class="url-item expected-allow">
+            <div class="url-label">セラーダッシュボード</div>
+            <a href="https://fleapay-lite-t1.onrender.com/seller-dashboard.html?s=test-seller-kids" 
+               target="_blank" 
+               class="url-link">
+              https://fleapay-lite-t1.onrender.com/seller-dashboard.html?s=test-seller-kids
+            </a>
+            <div class="expected-behavior allow">
+              ✅ ダッシュボードが表示される<br>
+              ✅ QRコードが表示される
+            </div>
+          </div>
+
+          <div class="url-item expected-allow">
+            <div class="url-label">レジ画面（標準プラン）</div>
+            <a href="https://fleapay-lite-t1.onrender.com/seller-purchase-standard.html?s=test-seller-kids" 
+               target="_blank" 
+               class="url-link">
+              https://fleapay-lite-t1.onrender.com/seller-purchase-standard.html?s=test-seller-kids
+            </a>
+            <div class="expected-behavior allow">
+              ✅ レジ画面が表示される<br>
+              ✅ カメラ機能が使用できる
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 動作確認チェックリスト -->
+    <div class="checklist">
+      <h3>✅ 動作確認チェックリスト</h3>
+      
+      <div class="checklist-item">
+        <input type="checkbox" id="check-standard-api">
+        <label for="check-standard-api">
+          <strong>Standardプラン</strong>: <code>/api/seller/summary?s=test-seller-standard</code> → 
+          <code>planType: "standard"</code>, <code>isSubscribed: false</code>
+        </label>
+      </div>
+      
+      <div class="checklist-item">
+        <input type="checkbox" id="check-standard-dashboard">
+        <label for="check-standard-dashboard">
+          <strong>Standardプラン</strong>: <code>/seller-dashboard.html?s=test-seller-standard</code> → 
+          ダッシュボードが表示される
+        </label>
+      </div>
+      
+      <div class="checklist-item">
+        <input type="checkbox" id="check-standard-purchase">
+        <label for="check-standard-purchase">
+          <strong>Standardプラン</strong>: <code>/seller-purchase-standard.html?s=test-seller-standard</code> → 
+          アクセス拒否メッセージが表示される
+        </label>
+      </div>
+      
+      <div class="checklist-item">
+        <input type="checkbox" id="check-pro-api">
+        <label for="check-pro-api">
+          <strong>Proプラン</strong>: <code>/api/seller/summary?s=test-seller-pro</code> → 
+          <code>planType: "pro"</code>, <code>isSubscribed: true</code>
+        </label>
+      </div>
+      
+      <div class="checklist-item">
+        <input type="checkbox" id="check-pro-dashboard">
+        <label for="check-pro-dashboard">
+          <strong>Proプラン</strong>: <code>/seller-dashboard.html?s=test-seller-pro</code> → 
+          ダッシュボードが表示される
+        </label>
+      </div>
+      
+      <div class="checklist-item">
+        <input type="checkbox" id="check-pro-purchase">
+        <label for="check-pro-purchase">
+          <strong>Proプラン</strong>: <code>/seller-purchase-standard.html?s=test-seller-pro</code> → 
+          レジ画面が表示される
+        </label>
+      </div>
+      
+      <div class="checklist-item">
+        <input type="checkbox" id="check-kids-api">
+        <label for="check-kids-api">
+          <strong>Kidsプラン</strong>: <code>/api/seller/summary?s=test-seller-kids</code> → 
+          <code>planType: "kids"</code>, <code>isSubscribed: true</code>
+        </label>
+      </div>
+      
+      <div class="checklist-item">
+        <input type="checkbox" id="check-kids-dashboard">
+        <label for="check-kids-dashboard">
+          <strong>Kidsプラン</strong>: <code>/seller-dashboard.html?s=test-seller-kids</code> → 
+          ダッシュボードが表示される
+        </label>
+      </div>
+      
+      <div class="checklist-item">
+        <input type="checkbox" id="check-kids-purchase">
+        <label for="check-kids-purchase">
+          <strong>Kidsプラン</strong>: <code>/seller-purchase-standard.html?s=test-seller-kids</code> → 
+          レジ画面が表示される
+        </label>
+      </div>
+    </div>
+
+    <!-- SQLセクション -->
+    <div class="sql-section">
+      <h3>🔧 テストユーザー作成SQL</h3>
+      <pre id="sql-code">-- 1. sellersテーブルにテストユーザーを作成
+INSERT INTO sellers (id, display_name, shop_name, email, created_at, updated_at)
+VALUES 
+  ('test-seller-standard', 'Test Seller (Standard)', 'Standard Shop', 'standard@test.example.com', now(), now()),
+  ('test-seller-pro', 'Test Seller (Pro)', 'Pro Shop', 'pro@test.example.com', now(), now()),
+  ('test-seller-kids', 'Test Seller (Kids)', 'Kids Shop', 'kids@test.example.com', now(), now())
+ON CONFLICT (id) DO NOTHING;
+
+-- 2. seller_subscriptionsテーブルにプランを設定
+INSERT INTO seller_subscriptions (seller_id, plan_type, status, started_at)
+VALUES 
+  ('test-seller-standard', 'standard', 'active', now()),
+  ('test-seller-pro', 'pro', 'active', now()),
+  ('test-seller-kids', 'kids', 'active', now());</pre>
+      <button class="copy-btn" onclick="copySQL()">SQLをコピー</button>
+    </div>
+
+    <!-- Supabase Dashboardリンク -->
+    <div style="margin-top: 30px; padding: 20px; background: #f9fafb; border-radius: 4px;">
+      <h3 style="margin-bottom: 15px; color: #333;">🔗 Supabase Dashboard</h3>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <a href="https://app.supabase.com/project/mluvjdhqgfpcfsmvjae" target="_blank" class="url-link">
+          📊 プロジェクト: https://app.supabase.com/project/mluvjdhqgfpcfsmvjae
+        </a>
+        <a href="https://app.supabase.com/project/mluvjdhqgfpcfsmvjae/sql/new" target="_blank" class="url-link">
+          💻 SQL Editor: https://app.supabase.com/project/mluvjdhqgfpcfsmvjae/sql/new
+        </a>
+        <a href="https://app.supabase.com/project/mluvjdhqgfpcfsmvjae/editor" target="_blank" class="url-link">
+          📋 Table Editor: https://app.supabase.com/project/mluvjdhqgfpcfsmvjae/editor
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function copySQL() {
+      const sqlCode = document.getElementById('sql-code').textContent;
+      navigator.clipboard.writeText(sqlCode).then(() => {
+        alert('SQLをクリップボードにコピーしました');
+      }).catch(() => {
+        alert('コピーに失敗しました');
+      });
+    }
+  </script>
+</body>
+</html>
+
