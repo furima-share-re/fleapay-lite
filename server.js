@@ -2080,60 +2080,6 @@ app.use((error, req, res, next) => {
   return res.status(500).json(sanitizeError(error));
 });
 
-// ====== 404ハンドラー ======
-app.use((req, res) => {
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'endpoint_not_found', path: req.path });
-  } else {
-    const notFoundPath = path.join(__dirname, "public", "404.html");
-    if (existsSync(notFoundPath)) {
-      return res.status(404).sendFile(notFoundPath);
-    } else {
-      return res.status(404).send(`<!DOCTYPE html>
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>404 - ページが見つかりません</title>
-  <style>
-    body {
-      font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-    }
-    .container { text-align: center; padding: 2rem; }
-    h1 { font-size: 6rem; margin: 0; }
-    p { font-size: 1.5rem; margin: 1rem 0; }
-    a {
-      display: inline-block;
-      margin-top: 2rem;
-      padding: 1rem 2rem;
-      background: white;
-      color: #667eea;
-      text-decoration: none;
-      border-radius: 8px;
-      font-weight: bold;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>404</h1>
-    <p>お探しのページが見つかりませんでした</p>
-    <a href="/">ホームに戻る</a>
-  </div>
-</body>
-</html>`);
-    }
-  }
-});
-
 // ====== Phase 2.3: Next.js統合状況の診断ログ ======
 function logNextJsDiagnostics() {
   console.log('\n🔍 Phase 2.3: Next.js統合状況の診断');
@@ -2251,10 +2197,67 @@ logNextJsDiagnostics();
 
 // ====== Phase 2.3: Next.jsページのフォールバック ======
 // ExpressのAPIルートと静的ファイルの後に、Next.jsページをフォールバック
-app.all("*", (req, res) => {
+// 重要: 404ハンドラーの前に配置する必要がある
+// Express 5では app.all("*", ...) が使えないため、app.use() を使用
+app.use((req, res) => {
   // ExpressのAPIルート（/api/*）は既に処理されているので、Next.jsにフォールバック
   // 静的ファイル（public/*）も既に処理されているので、Next.jsにフォールバック
   return nextHandler(req, res);
+});
+
+// ====== 404ハンドラー ======
+// Next.jsでも処理できない場合のフォールバック（通常は到達しない）
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'endpoint_not_found', path: req.path });
+  } else {
+    const notFoundPath = path.join(__dirname, "public", "404.html");
+    if (existsSync(notFoundPath)) {
+      return res.status(404).sendFile(notFoundPath);
+    } else {
+      return res.status(404).send(`<!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 - ページが見つかりません</title>
+  <style>
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container { text-align: center; padding: 2rem; }
+    h1 { font-size: 6rem; margin: 0; }
+    p { font-size: 1.5rem; margin: 1rem 0; }
+    a {
+      display: inline-block;
+      margin-top: 2rem;
+      padding: 1rem 2rem;
+      background: white;
+      color: #667eea;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>404</h1>
+    <p>お探しのページが見つかりませんでした</p>
+    <a href="/">ホームに戻る</a>
+  </div>
+</body>
+</html>`);
+    }
+  }
 });
 
 // ====== サーバー起動 ======
