@@ -1,18 +1,78 @@
-// lib/utils.ts
-// Phase 2.3: 共通ユーティリティ関数
-
-import { Pool } from 'pg';
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+import { NextRequest } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
-const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL 
-});
+// Tailwind CSS用のユーティリティ
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 
-const BASE_URL = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+// ====== 既存のユーティリティ関数（Next.js用に書き直し） ======
 
-/**
- * JSTの日付境界を取得
- */
+// レート制限（メモリベース）
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const hits = new Map<string, number[]>();
+
+export function bumpAndAllow(key: string, limit: number): boolean {
+  const now = Date.now();
+  const arr = (hits.get(key) || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+  arr.push(now);
+  hits.set(key, arr);
+  return arr.length <= limit;
+}
+
+// クライアントIP取得（Next.js Request用）
+export function clientIp(request: NextRequest | Request): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  return 'unknown';
+}
+
+// 同一オリジンチェック（Next.js Request用）
+export function isSameOrigin(request: NextRequest | Request): boolean {
+  const BASE_URL = process.env.BASE_URL || '';
+  if (!BASE_URL) return true;
+  
+  const referer = request.headers.get('referer') || request.headers.get('origin') || '';
+  return referer.startsWith(BASE_URL);
+}
+
+// 監査ログ
+export function audit(event: string, payload: Record<string, unknown>): void {
+  console.log(`[AUDIT] ${event}`, JSON.stringify(payload, null, 2));
+}
+
+// StripeアカウントID解決（Prisma用）
+export async function resolveSellerAccountId(prisma: PrismaClient, sellerId: string): Promise<string | null> {
+  if (!sellerId) return null;
+  const seller = await prisma.seller.findUnique({
+    where: { id: sellerId },
+    select: { stripeAccountId: true }
+  });
+  return seller?.stripeAccountId || null;
+}
+
+// 出店者用URL生成
+export function buildSellerUrls(sellerId: string, stripeAccountId: string | null, orderId: string | null = null) {
+  const base = process.env.BASE_URL || 'http://localhost:3000';
+  const sellerUrl = `${base}/seller-purchase-standard?s=${encodeURIComponent(sellerId)}`;
+  
+  let checkoutUrl = `${base}/checkout?s=${encodeURIComponent(sellerId)}`;
+  if (orderId) {
+    checkoutUrl += `&order=${encodeURIComponent(orderId)}`;
+  }
+  if (stripeAccountId) {
+    checkoutUrl += `&acct=${encodeURIComponent(stripeAccountId)}`;
+  }
+  
+  const dashboardUrl = `${base}/seller-dashboard?s=${encodeURIComponent(sellerId)}`;
+  return { sellerUrl, checkoutUrl, dashboardUrl };
+}
+
+// JST日付境界計算
 export function jstDayBounds() {
   const nowUtc = new Date();
   const jstOffset = 9 * 60 * 60 * 1000; // JST = UTC+9
@@ -31,117 +91,32 @@ export function jstDayBounds() {
   return { todayStart, tomorrowStart, yesterdayStart };
 }
 
-/**
- * 次のorder_noを取得（PrismaClient版）
- */
+// 次のorder_no取得（Prisma用）
 export async function getNextOrderNo(prisma: PrismaClient, sellerId: string): Promise<number> {
-  const result = await prisma.$queryRaw<Array<{ next_no: bigint }>>`
-    SELECT COALESCE(MAX(order_no), 0) + 1 AS next_no 
-    FROM orders 
-    WHERE seller_id = ${sellerId}
-  `;
-  return Number(result[0]?.next_no || 1);
-}
-
-/**
- * セラーのStripeアカウントIDを解決（PrismaClient版）
- */
-export async function resolveSellerAccountId(prisma: PrismaClient, sellerId: string): Promise<string | null> {
-  if (!sellerId) return null;
-  const seller = await prisma.seller.findUnique({
-    where: { id: sellerId },
-    select: { stripeAccountId: true }
+  const result = await prisma.order.findFirst({
+    where: { sellerId },
+    orderBy: { orderNo: 'desc' },
+    select: { orderNo: true }
   });
-  return seller?.stripeAccountId || null;
+  return (result?.orderNo || 0) + 1;
 }
 
-/**
- * 出店者用URL生成
- */
-export function buildSellerUrls(sellerId: string, stripeAccountId: string | null, orderId: string | null = null) {
-  const base = BASE_URL;
-  const sellerUrl = `${base}/seller-purchase.html?s=${encodeURIComponent(sellerId)}`;
-  
-  let checkoutUrl = `${base}/checkout.html?s=${encodeURIComponent(sellerId)}`;
-  if (orderId) {
-    checkoutUrl += `&order=${encodeURIComponent(orderId)}`;
+// エラーサニタイズ
+export function sanitizeError(error: unknown, isDevelopment: boolean = process.env.NODE_ENV === 'development') {
+  if (isDevelopment) {
+    const err = error as Error;
+    return { error: "internal_error", detail: err.message, stack: err.stack };
   }
-  if (stripeAccountId) {
-    checkoutUrl += `&acct=${encodeURIComponent(stripeAccountId)}`;
-  }
-  
-  const dashboardUrl = `${base}/seller-dashboard.html?s=${encodeURIComponent(sellerId)}`;
-  return { sellerUrl, checkoutUrl, dashboardUrl };
+  return { error: "internal_error", message: "サーバー内部エラーが発生しました" };
 }
 
-/**
- * エラーをサニタイズ
- */
-export function sanitizeError(error: unknown): { error: string; message?: string } {
-  if (error instanceof Error) {
-    return { error: 'internal_error', message: error.message };
-  }
-  return { error: 'internal_error' };
-}
-
-/**
- * レート制限用のメモリマップ
- */
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const hits = new Map<string, number[]>();
-
-/**
- * レート制限チェック
- */
-export function bumpAndAllow(key: string, limit: number): boolean {
-  const now = Date.now();
-  const arr = (hits.get(key) || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
-  arr.push(now);
-  hits.set(key, arr);
-  return arr.length <= limit;
-}
-
-/**
- * クライアントIPアドレスを取得（Next.js Request版）
- */
-export function clientIp(request: Request): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp) {
-    return realIp;
-  }
-  return 'unknown';
-}
-
-/**
- * 同一オリジンチェック（Next.js Request版）
- */
-export function isSameOrigin(request: Request): boolean {
-  if (!BASE_URL) return true;
-  const referer = request.headers.get('referer') || request.headers.get('origin') || '';
-  return referer.startsWith(BASE_URL);
-}
-
-/**
- * 監査ログ出力
- */
-export function audit(event: string, payload: Record<string, unknown>) {
-  console.log(`[AUDIT] ${event}`, JSON.stringify(payload, null, 2));
-}
-
-/**
- * 文字列をURLフレンドリーなスラッグ形式に変換
- */
+// スラッグ化
 export function slugify(str: string): string {
-  return (str || "")
+  return (str || '')
     .toLowerCase()
     .trim()
-    .replace(/[ぁ-ん]/g, "")    // ざっくりひらがな削除
-    .replace(/[^\w\-]+/g, "-")  // 英数と - _ 以外を -
-    .replace(/\-+/g, "-")
-    .replace(/^\-+|\-+$/g, "");
+    .replace(/[ぁ-ん]/g, '')    // ざっくりひらがな削除
+    .replace(/[^\w\-]+/g, '-')  // 英数と - _ 以外を -
+    .replace(/\-+/g, '-')
+    .replace(/^\-+|\-+$/g, '');
 }
-
