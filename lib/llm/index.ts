@@ -26,6 +26,7 @@ if (process.env.NODE_ENV !== 'production') {
 // 便利関数
 import { getLLMProvider } from './factory';
 import { executeTask, executeImageEditTask } from './router';
+import { getTaskConfig } from './config';
 import type { ChatCompletionOptions, ImageEditOptions, TaskType } from './types';
 
 /**
@@ -129,8 +130,9 @@ export async function analyzeImage(
   prompt: string,
   options?: Partial<ChatCompletionOptions>
 ) {
+  const config = getTaskConfig('image-analysis');
   return executeTask('image-analysis', {
-    // model は config.ts から自動取得されるため指定不要
+    model: options?.model || config.preferredModel,
     messages: [{
       role: 'user',
       content: [
@@ -152,8 +154,9 @@ export async function generateText(
   prompt: string,
   options?: Partial<ChatCompletionOptions>
 ) {
+  const config = getTaskConfig('text-generation');
   return executeTask('text-generation', {
-    // model は config.ts から自動取得されるため指定不要
+    model: options?.model || config.preferredModel,
     messages: [{ role: 'user', content: prompt }],
     ...options,
   });

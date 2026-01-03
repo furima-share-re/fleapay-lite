@@ -2,6 +2,7 @@
 // 情報収集機能（Web検索 + LLM要約）
 
 import { executeTask } from '../router';
+import { getTaskConfig } from '../config';
 import type { ChatCompletionOptions } from '../types';
 
 /**
@@ -127,8 +128,9 @@ async function summarizeResults(
 
   // モデルは config.ts の環境変数から自動取得されます。
   // 環境変数: LLM_TASK_TEXT_GENERATION_MODEL (デフォルト: 'gpt-4o')
+  const config = getTaskConfig('text-generation');
   const response = await executeTask('text-generation', {
-    // model は config.ts から自動取得されるため指定不要
+    model: config.preferredModel,
     messages: [
       {
         role: 'system',
