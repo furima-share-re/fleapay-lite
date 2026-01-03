@@ -2,7 +2,7 @@
 
 **プロジェクト**: fleapay-lite  
 **作成日**: 2025-01-15  
-**最終更新**: 2026-01-03（Phase 2.4-2.6完了、Express.js廃止完了、Next.js完全移行完了、全APIエンドポイント27個移行完了、Tailwind CSS + shadcn/ui導入完了、React Hook Form + Zod導入完了、TypeScript型エラーなし、Linterエラーなし）  
+**最終更新**: 2026-01-03（Phase 3.1完了、監視ツール導入完了、Helicone・Sentry・Cloudflare WAF動作確認完了）  
 **目的**: デグレを最小限に抑えた安全な移行の実行
 
 **⚠️ 重要**: 
@@ -30,12 +30,12 @@
 | **Phase 2.4** | Tailwind CSS + shadcn/ui導入 | 2026-01-03 | ✅ **完了** | Tailwind CSS設定完了、shadcn/uiコンポーネント追加完了（Button, Input, Form等）、components.json作成完了 |
 | **Phase 2.5** | React Hook Form + Zod導入 | 2026-01-03 | ✅ **完了** | 依存関係追加完了、全API Route Handler（27個）にZodバリデーション追加完了、型安全性向上 |
 | **Phase 2.6** | Express.js廃止 | 2026-01-03 | ✅ **完了** | 全APIエンドポイント（27個）をNext.js Route Handlerに移行完了、Express.js削除完了（server.js削除、依存関係削除）、Next.js完全移行完了 |
+| **Phase 3.1** | 監視ツール導入 | 2026-01-03 | ✅ **完了** | Helicone導入完了（検証環境・本番環境）、Sentry導入完了（本番環境のみ）、Cloudflare WAF設定完了（本番環境のみ）、動作確認完了 |
 
 ### 未実装フェーズ（優先順位順）
 
 | Phase | フェーズ名 | 予定期間 | 状態 | 備考 |
 |-------|----------|---------|------|------|
-| **Phase 3.1** | 監視ツール導入 | Month 3-4 | ⏳ **未着手** | **中優先度**（Helicone: 検証環境・本番環境、Sentry: 本番環境のみ、Cloudflare WAF: 本番環境のみ） |
 | **Phase 3.2** | 詳細ヘルスチェック + 自動ロールバック | Month 3-4 | ⏳ **未着手** | **中優先度**（運用自動化） |
 | **Phase 1.7** | RLS実装 | Week 4 Day 1-2 | ⏳ 未着手 | **最終工程**（Phase 2完了後） |
 | **Phase 1.8** | 本番環境DB移行 | Week 4 Day 3-5 | ⏳ 未着手 | **最終工程**（Phase 2完了後） |
@@ -45,10 +45,8 @@
 - 検証環境のDB移行は完了（Phase 1.3）
 - 検証環境の環境移行は完了（Phase 1.4）
 - **Phase 2（Next.js移行）は完全に完了**（Phase 2.1-2.6すべて完了、API Route Handler 27個、Next.js Pages 14個実装完了、Express.js廃止完了、検証環境デプロイ成功、動作確認完了）
-- **Phase 3（監視・運用自動化）を次に実施**（運用95%自動化達成のため）
-  - Helicone: 検証環境・本番環境の両方で導入（LLM API監視）
-  - Sentry: 本番環境のみ導入（エラー監視、検証環境には不要）
-  - Cloudflare WAF: 本番環境のみ導入（セキュリティ、検証環境には不要）
+- **Phase 3.1（監視ツール導入）は完了**（Helicone: 検証環境・本番環境導入完了、Sentry: 本番環境導入完了、Cloudflare WAF: 本番環境設定完了、動作確認完了）
+- **Phase 3.2（詳細ヘルスチェック + 自動ロールバック）を次に実施**（運用95%自動化達成のため）
 - **Phase 1.7（RLS実装）とPhase 1.8（本番環境DB移行）は最終工程**（Phase 3完了後に実施）
 - **Phase 3.3（Langfuse + Promptfoo導入）は本番環境DB移行後に実施**（LLM観測・評価ツール導入）
 
