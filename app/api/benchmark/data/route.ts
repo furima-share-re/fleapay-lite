@@ -66,10 +66,10 @@ export async function GET(request: NextRequest) {
       // オブジェクトに変換
       const row: any = {};
       headers.forEach((header, index) => {
-        let value = values[index] || '';
+        let value: string | number = values[index] || '';
         // 数値に変換できる場合は数値に
         if (header === 'week' || header === 'base' || header === 'improvement') {
-          value = parseInt(value, 10) || 0;
+          value = parseInt(value as string, 10) || 0;
         }
         row[header] = value;
       });
