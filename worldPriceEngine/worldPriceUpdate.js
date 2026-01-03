@@ -258,9 +258,6 @@ export async function runWorldPriceUpdate(pool, orderId, sellerId) {
     costAmount,
   });
 
-  // PrismaClient かどうかを判定
-  const isPrisma = pool && typeof pool.$queryRaw === 'function';
-  
   if (isPrisma) {
     // PrismaClient の場合 - Prisma.sql を使用して安全にSQLを実行
     const { Prisma } = await import('@prisma/client');

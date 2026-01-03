@@ -249,13 +249,20 @@ CREATE POLICY "Users can create own payments"
 SELECT 
   COUNT(*) as total_sellers,
   COUNT(supabase_user_id) as sellers_with_supabase_id,
-  COUNT(*) FILTER (WHERE auth_provider = 'supabase') as supabase_auth_users
+  COUNT(*) FILTER (WHERE auth_provider = 'supabase') as supabase_auth_users,
+  COUNT(*) FILTER (WHERE supabase_user_id IS NULL) as sellers_without_supabase_id
 FROM sellers;
 ```
 
 **期待値**:
 - `sellers_with_supabase_id > 0`: Supabase Auth移行済みユーザーが存在
 - `supabase_auth_users > 0`: Supabase Authを使用しているユーザーが存在
+
+**重要**: 
+- `supabase_user_id`がNULLのユーザーが存在しても問題ありません
+- RLSポリシーは`supabase_user_id = auth.uid()`で判定するため、NULLのユーザーはRLSでブロックされます
+- これは意図的な動作です（APIサーバ経由でService role keyを使用するため）
+- 既存ユーザーは段階的に移行中（パスワードリセット時に移行）
 
 ---
 
@@ -484,17 +491,77 @@ DROP POLICY IF EXISTS "Users can update own seller data" ON sellers;
 
 ---
 
+## 📋 RLS実装前のデータ移行について
+
+### 検証環境（Staging）
+
+**結論**: **追加のデータ移行は不要**
+
+**理由**:
+- ✅ Phase 1.3で検証環境のデータ移行は完了済み
+- ✅ Phase 1.5-1.6でSupabase Auth移行は完了済み
+- ✅ `supabase_user_id`カラムは既に存在
+- ✅ 新規ユーザーはSupabase Authで作成され、`supabase_user_id`が設定される
+- ✅ 既存ユーザーは段階的に移行中（パスワードリセット時に移行）
+
+**注意事項**:
+- `supabase_user_id`がNULLのユーザーが存在しても問題ありません
+- RLSポリシーは`supabase_user_id = auth.uid()`で判定するため、NULLのユーザーはRLSでブロックされます
+- これは意図的な動作です（APIサーバ経由でService role keyを使用するため）
+- 既存ユーザーは段階的に移行中で、移行完了を待つ必要はありません
+
+**確認が必要なこと**:
+- [ ] `supabase_user_id`カラムが存在することを確認（Phase 1.5で追加済み）
+- [ ] 新規ユーザーがSupabase Authで作成されていることを確認（Phase 1.5で実装済み）
+- [ ] 既存ユーザーの移行状況を確認（Phase 1.6で実装済み）
+
+---
+
+### 本番環境（Production）
+
+**結論**: **Phase 1.8（本番環境DB移行）を先に実施する必要がある**
+
+**理由**:
+- ⏳ Phase 1.8で本番環境DB移行が未完了
+- ⏳ 本番環境はまだSupabaseに移行していない
+- ⏳ RLS実装にはSupabase環境が必要
+
+**実施順序**:
+1. **Phase 1.8: 本番環境DB移行**（先に実施）
+   - 本番環境Supabaseプロジェクト作成
+   - 本番環境データ移行
+   - `supabase_user_id`カラム追加（Phase 1.5のMigration実行）
+   - Supabase Auth移行（Phase 1.5-1.6の実装適用）
+
+2. **Phase 1.7: RLS実装**（その後実施）
+   - RLS有効化・ポリシー作成
+   - 動作確認・テスト
+
+**注意事項**:
+- 本番環境では、データ移行完了後にRLS実装を実施
+- 検証環境でRLS実装を先に実施し、動作確認後に本番環境に適用することを推奨
+
+---
+
 ## 🎯 次のステップ
 
-1. **Phase 3.1: Helicone導入**
-   - Heliconeアカウント作成
-   - `lib/openai.ts`作成
-   - 既存のOpenAI呼び出しをHelicone経由に変更
+### 検証環境でのRLS実装
 
-2. **Phase 1.7: RLS実装**
+1. **Phase 1.7: RLS実装**（検証環境）
    - SQL Migrationファイル作成
    - RLS有効化・ポリシー作成
    - 動作確認・テスト
+   - **追加のデータ移行は不要**
+
+### 本番環境でのRLS実装
+
+1. **Phase 1.8: 本番環境DB移行**（先に実施）
+   - 本番環境Supabaseプロジェクト作成
+   - 本番環境データ移行
+   - Supabase Auth移行
+
+2. **Phase 1.7: RLS実装**（その後実施）
+   - 検証環境で動作確認済みのRLSポリシーを本番環境に適用
 
 ---
 
