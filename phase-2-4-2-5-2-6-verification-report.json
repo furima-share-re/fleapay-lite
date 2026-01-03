@@ -1,0 +1,190 @@
+﻿{
+    "summary":  {
+                    "success":  5,
+                    "failed":  3,
+                    "total":  8
+                },
+    "baseUrl":  "https://fleapay-lite-t1.onrender.com",
+    "timestamp":  "2026-01-03 15:04:32",
+    "results":  [
+                    {
+                        "url":  "https://fleapay-lite-t1.onrender.com/api/seller/check-id?id=test-id -Description 蜃ｺ蠎苓・D縺ｮ蛻ｩ逕ｨ蜿ｯ閭ｽ諤ｧ遒ｺ隱搾ｼ亥虚逧・Ν繝ｼ繝郁ｨｭ螳壽ｸ医∩・・",
+                        "responseBody":  null,
+                        "description":  "",
+                        "method":  "GET",
+                        "error":  "リモート サーバーがエラーを返しました: (400) 要求が不適切です",
+                        "expectedStatus":  200,
+                        "name":  "蜃ｺ蠎苓・D遒ｺ隱・ -Url ",
+                        "actualStatus":  400,
+                        "status":  "failed",
+                        "responseTime":  null
+                    },
+                    {
+                        "url":  "https://fleapay-lite-t1.onrender.com/api/admin/migration-status -Headers @{x-admin-token = admin-devtoken} -Description 繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ迥ｶ諷句叙蠕暦ｼ亥虚逧・Ν繝ｼ繝郁ｨｭ螳壽ｸ医∩縲∫ｮ｡逅・・ｪ崎ｨｼ蠢・ｦ・ｼ・",
+                        "responseBody":  null,
+                        "description":  "",
+                        "method":  "GET",
+                        "error":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "expectedStatus":  200,
+                        "name":  "繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ迥ｶ諷句叙蠕・ -Url ",
+                        "actualStatus":  404,
+                        "status":  "failed",
+                        "responseTime":  null
+                    },
+                    {
+                        "url":  "https://fleapay-lite-t1.onrender.com/",
+                        "responseBody":  "\u003c!DOCTYPE html\u003e\u003chtml lang=\"ja\"\u003e\u003chead\u003e\u003cmeta charSet=\"utf-8\"/\u003e\u003cmeta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/\u003e\u003clink rel=\"stylesheet\" href=\"/_next/static/css/3ddea4a3edaaaec0.css\" da",
+                        "description":  "Next.js繝医ャ繝励・繝ｼ繧ｸ",
+                        "method":  "GET",
+                        "error":  null,
+                        "expectedStatus":  200,
+                        "name":  "繝医ャ繝励・繝ｼ繧ｸ",
+                        "actualStatus":  200,
+                        "status":  "success",
+                        "responseTime":  550
+                    },
+                    {
+                        "url":  "https://fleapay-lite-t1.onrender.com/seller-register",
+                        "responseBody":  "\u003c!DOCTYPE html\u003e\u003chtml lang=\"ja\"\u003e\u003chead\u003e\u003cmeta charSet=\"utf-8\"/\u003e\u003cmeta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/\u003e\u003clink rel=\"stylesheet\" href=\"/_next/static/css/3ddea4a3edaaaec0.css\" da",
+                        "description":  "React Hook Form + Zod縲ゝailwind CSS蟆主・貂医∩",
+                        "method":  "GET",
+                        "error":  null,
+                        "expectedStatus":  200,
+                        "name":  "蜃ｺ蠎苓・匳骭ｲ繝壹・繧ｸ",
+                        "actualStatus":  200,
+                        "status":  "success",
+                        "responseTime":  651
+                    },
+                    {
+                        "url":  "https://fleapay-lite-t1.onrender.com/checkout?s=test-seller-pro",
+                        "responseBody":  "\u003c!DOCTYPE html\u003e\u003chtml lang=\"ja\"\u003e\u003chead\u003e\u003cmeta charSet=\"utf-8\"/\u003e\u003cmeta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/\u003e\u003clink rel=\"stylesheet\" href=\"/_next/static/css/3ddea4a3edaaaec0.css\" da",
+                        "description":  "繝√ぉ繝・け繧｢繧ｦ繝医・繝ｼ繧ｸ",
+                        "method":  "GET",
+                        "error":  null,
+                        "expectedStatus":  200,
+                        "name":  "繝√ぉ繝・け繧｢繧ｦ繝医・繝ｼ繧ｸ",
+                        "actualStatus":  200,
+                        "status":  "success",
+                        "responseTime":  494
+                    },
+                    {
+                        "url":  "https://fleapay-lite-t1.onrender.com/admin/dashboard -Description 邂｡逅・・ム繝・す繝･繝懊・繝・",
+                        "responseBody":  null,
+                        "description":  "",
+                        "method":  "GET",
+                        "error":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "expectedStatus":  200,
+                        "name":  "邂｡逅・・ム繝・す繝･繝懊・繝・ -Url ",
+                        "actualStatus":  404,
+                        "status":  "failed",
+                        "responseTime":  null
+                    },
+                    {
+                        "url":  "https://fleapay-lite-t1.onrender.com/api/seller/kids-summary?s=test-seller-kids",
+                        "responseBody":  {
+                                             "stats":  {
+                                                           "totalOrders":  0,
+                                                           "ordersWithAttrs":  0,
+                                                           "cashOrders":  0,
+                                                           "cashlessOrders":  0,
+                                                           "inboundCount":  0,
+                                                           "childCustomerCount":  0,
+                                                           "dataScore":  0
+                                                       },
+                                             "badges":  [
+
+                                                        ],
+                                             "titles":  [
+
+                                                        ]
+                                         },
+                        "description":  "Kids繝励Λ繝ｳ蟆ら畑繧ｵ繝槭Μ繝ｼ",
+                        "method":  "GET",
+                        "error":  null,
+                        "expectedStatus":  200,
+                        "name":  "Kids繧ｵ繝槭Μ繝ｼ",
+                        "actualStatus":  200,
+                        "status":  "success",
+                        "responseTime":  1280
+                    },
+                    {
+                        "url":  "https://fleapay-lite-t1.onrender.com/api/admin/dashboard",
+                        "responseBody":  {
+                                             "today":  {
+                                                           "orderCount":  0,
+                                                           "gross":  0,
+                                                           "net":  0,
+                                                           "fee":  0
+                                                       },
+                                             "yesterday":  {
+                                                               "orderCount":  2,
+                                                               "gross":  600,
+                                                               "net":  600
+                                                           },
+                                             "total":  {
+                                                           "orderCount":  2,
+                                                           "gross":  600,
+                                                           "net":  600,
+                                                           "fee":  0
+                                                       },
+                                             "sellerCount":  2,
+                                             "recentActivity":  [
+                                                                    {
+                                                                        "id":  "1e05adf3-fc4c-4589-9913-97679948a3f0",
+                                                                        "sellerId":  "test-seller-pro",
+                                                                        "paymentIntentId":  "pi_3Sl1SXFxJXkefVMu09D1aKgR",
+                                                                        "amountGross":  100,
+                                                                        "status":  "succeeded",
+                                                                        "createdAt":  "2026-01-02T06:02:53.797Z",
+                                                                        "sellerName":  "Test Seller (Pro)",
+                                                                        "orderNo":  3
+                                                                    },
+                                                                    {
+                                                                        "id":  "415fefa0-ff0d-4d91-a4d8-aba22b9793ed",
+                                                                        "sellerId":  "test-seller-pro",
+                                                                        "paymentIntentId":  null,
+                                                                        "amountGross":  null,
+                                                                        "status":  null,
+                                                                        "createdAt":  "2026-01-02T06:01:17.719Z",
+                                                                        "sellerName":  "Test Seller (Pro)",
+                                                                        "orderNo":  2
+                                                                    },
+                                                                    {
+                                                                        "id":  "fac1fc0e-bca6-4f7c-bf0f-65fe1ebc9331",
+                                                                        "sellerId":  "test-seller-pro",
+                                                                        "paymentIntentId":  null,
+                                                                        "amountGross":  null,
+                                                                        "status":  null,
+                                                                        "createdAt":  "2026-01-02T06:00:21.698Z",
+                                                                        "sellerName":  "Test Seller (Pro)",
+                                                                        "orderNo":  1
+                                                                    },
+                                                                    {
+                                                                        "id":  "0bfe66c6-0003-4343-9735-a2ee187fe13a",
+                                                                        "sellerId":  "seller-test-1",
+                                                                        "paymentIntentId":  null,
+                                                                        "amountGross":  null,
+                                                                        "status":  null,
+                                                                        "createdAt":  "2026-01-02T01:58:01.817Z",
+                                                                        "sellerName":  "Test Seller 1",
+                                                                        "orderNo":  1
+                                                                    }
+                                                                ],
+                                             "paymentCount":  0,
+                                             "totalRevenue":  0,
+                                             "netRevenue":  0,
+                                             "disputeCount":  0,
+                                             "refundCount":  0,
+                                             "urgentCount":  0
+                                         },
+                        "description":  "邂｡逅・・ム繝・す繝･繝懊・繝陰PI",
+                        "method":  "GET",
+                        "error":  null,
+                        "expectedStatus":  200,
+                        "name":  "邂｡逅・・ム繝・す繝･繝懊・繝陰PI",
+                        "actualStatus":  200,
+                        "status":  "success",
+                        "responseTime":  2187
+                    }
+                ]
+}
