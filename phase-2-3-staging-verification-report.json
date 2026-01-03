@@ -5,10 +5,10 @@
                     "Total":  24
                 },
     "BaseUrl":  "https://fleapay-lite-t1.onrender.com",
-    "Timestamp":  "2026-01-03 13:38:19",
+    "Timestamp":  "2026-01-03 13:57:38",
     "Results":  [
                     {
-                        "Timestamp":  "2026-01-03 13:38:06",
+                        "Timestamp":  "2026-01-03 13:57:26",
                         "Name":  "API: /api/ping (繝倥Ν繧ｹ繝√ぉ繝・け)",
                         "Message":  "OK",
                         "Success":  true,
@@ -16,7 +16,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:08",
+                        "Timestamp":  "2026-01-03 13:57:28",
                         "Name":  "API: /api/seller/summary (Pro繝励Λ繝ｳ)",
                         "Message":  "OK",
                         "Success":  true,
@@ -24,7 +24,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:09",
+                        "Timestamp":  "2026-01-03 13:57:29",
                         "Name":  "API: /api/seller/summary (Standard繝励Λ繝ｳ)",
                         "Message":  "OK",
                         "Success":  true,
@@ -32,7 +32,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:10",
+                        "Timestamp":  "2026-01-03 13:57:30",
                         "Name":  "API: /api/seller/kids-summary (Kids繝励Λ繝ｳ)",
                         "Message":  "OK",
                         "Success":  true,
@@ -40,7 +40,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:11",
+                        "Timestamp":  "2026-01-03 13:57:30",
                         "Name":  "API: /api/seller/kids-summary",
                         "Message":  "OK",
                         "Success":  true,
@@ -48,7 +48,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:12",
+                        "Timestamp":  "2026-01-03 13:57:31",
                         "Name":  "API: /api/admin/dashboard",
                         "Message":  "OK",
                         "Success":  true,
@@ -56,7 +56,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:12",
+                        "Timestamp":  "2026-01-03 13:57:32",
                         "Name":  "API: /api/admin/sellers",
                         "Message":  "OK",
                         "Success":  true,
@@ -64,7 +64,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:13",
+                        "Timestamp":  "2026-01-03 13:57:32",
                         "Name":  "API: /api/admin/frames",
                         "Message":  "OK",
                         "Success":  true,
@@ -72,7 +72,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:14",
+                        "Timestamp":  "2026-01-03 13:57:34",
                         "Name":  "API: /api/admin/stripe/summary",
                         "Message":  "OK",
                         "Success":  true,
@@ -80,7 +80,7 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:14",
+                        "Timestamp":  "2026-01-03 13:57:34",
                         "Name":  "API: /api/checkout/result",
                         "Message":  "リモート サーバーがエラーを返しました: (400) 要求が不適切です",
                         "Success":  false,
@@ -88,7 +88,7 @@
                         "Status":  400
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:14",
+                        "Timestamp":  "2026-01-03 13:57:34",
                         "Name":  "Page: / (繝医ャ繝励・繝ｼ繧ｸ)",
                         "Message":  "OK",
                         "Success":  true,
@@ -96,108 +96,108 @@
                         "Status":  200
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:15",
+                        "Timestamp":  "2026-01-03 13:57:34",
                         "Name":  "Page: /success",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/success",
-                        "Status":  404
+                        "Status":  500
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:15",
+                        "Timestamp":  "2026-01-03 13:57:35",
                         "Name":  "Page: /thanks",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/thanks",
-                        "Status":  404
+                        "Status":  500
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:15",
+                        "Timestamp":  "2026-01-03 13:57:35",
                         "Name":  "Page: /cancel",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/cancel",
-                        "Status":  404
+                        "Status":  500
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:15",
+                        "Timestamp":  "2026-01-03 13:57:35",
                         "Name":  "Page: /onboarding/complete",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/onboarding/complete",
-                        "Status":  404
+                        "Status":  500
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:16",
+                        "Timestamp":  "2026-01-03 13:57:35",
                         "Name":  "Page: /onboarding/refresh",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/onboarding/refresh",
-                        "Status":  404
+                        "Status":  500
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:16",
+                        "Timestamp":  "2026-01-03 13:57:36",
                         "Name":  "Page: /checkout",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/checkout?s=test-seller-pro",
-                        "Status":  404
+                        "Status":  500
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:17",
+                        "Timestamp":  "2026-01-03 13:57:36",
                         "Name":  "Page: /seller-register",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/seller-register",
-                        "Status":  404
+                        "Status":  500
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:17",
+                        "Timestamp":  "2026-01-03 13:57:36",
                         "Name":  "Page: /seller-purchase-standard",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/seller-purchase-standard?s=test-seller-pro",
-                        "Status":  404
+                        "Status":  500
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:17",
+                        "Timestamp":  "2026-01-03 13:57:36",
                         "Name":  "Page: /admin/dashboard",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/admin/dashboard",
-                        "Status":  404
+                        "Status":  500
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:17",
+                        "Timestamp":  "2026-01-03 13:57:37",
                         "Name":  "Page: /admin/sellers",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/admin/sellers",
-                        "Status":  404
+                        "Status":  500
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:17",
+                        "Timestamp":  "2026-01-03 13:57:37",
                         "Name":  "Page: /admin/frames",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/admin/frames",
-                        "Status":  404
+                        "Status":  500
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:18",
+                        "Timestamp":  "2026-01-03 13:57:37",
                         "Name":  "Page: /admin/payments",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/admin/payments",
-                        "Status":  404
+                        "Status":  500
                     },
                     {
-                        "Timestamp":  "2026-01-03 13:38:18",
+                        "Timestamp":  "2026-01-03 13:57:38",
                         "Name":  "Page: /kids-dashboard",
-                        "Message":  "リモート サーバーがエラーを返しました: (404) 見つかりません",
+                        "Message":  "リモート サーバーがエラーを返しました: (500) 内部サーバー エラーです",
                         "Success":  false,
                         "Url":  "https://fleapay-lite-t1.onrender.com/kids-dashboard?s=test-seller-kids",
-                        "Status":  404
+                        "Status":  500
                     }
                 ]
 }

@@ -90,6 +90,9 @@ const dev = process.env.NODE_ENV !== "production";
 const nextApp = next({ dev, dir: "./" });
 const nextHandler = nextApp.getRequestHandler();
 
+// Next.jsの準備状態を追跡
+let nextJsReady = false;
+
 // ====== multer(10MB、拡張子ゆるめ、メモリ格納) ======
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -2200,6 +2203,14 @@ logNextJsDiagnostics();
 // 重要: 404ハンドラーの前に配置する必要がある
 // Express 5では app.all("*", ...) が使えないため、app.use() を使用
 app.use((req, res) => {
+  // Next.jsの準備が完了していない場合は、404ハンドラーにフォールバック
+  if (!nextJsReady) {
+    return res.status(503).json({ 
+      error: 'nextjs_not_ready', 
+      message: 'Next.js is not ready yet. Please wait a moment and try again.' 
+    });
+  }
+  
   // ExpressのAPIルート（/api/*）は既に処理されているので、Next.jsにフォールバック
   // 静的ファイル（public/*）も既に処理されているので、Next.jsにフォールバック
   return nextHandler(req, res);
@@ -2263,6 +2274,9 @@ app.use((req, res) => {
 // ====== サーバー起動 ======
 // Next.jsの準備を待ってからサーバーを起動
 nextApp.prepare().then(() => {
+  nextJsReady = true; // Next.jsの準備が完了したことをマーク
+  console.log("✅ Next.jsの準備が完了しました");
+  
   app.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗
@@ -2286,6 +2300,7 @@ nextApp.prepare().then(() => {
 }).catch((err) => {
   console.error("❌ Next.jsの準備に失敗しました:", err);
   console.error("⚠️ Expressサーバーのみで起動します");
+  nextJsReady = false; // Next.jsの準備が失敗したことをマーク
   
   // Next.jsの準備に失敗した場合でも、Expressサーバーは起動
   app.listen(PORT, () => {
