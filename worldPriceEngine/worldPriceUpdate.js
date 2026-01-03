@@ -103,15 +103,35 @@ function computeOptimalPrices({
 }
 
 // 世界相場更新: orders テーブルへの書き込み
+// pool は PrismaClient または PostgreSQL pool のいずれかを受け入れる
 export async function runWorldPriceUpdate(pool, orderId, sellerId) {
-  const orderRes = await pool.query(
-    `
-      select id, summary, amount, cost_amount, deleted_at
-      from orders
-      where id = $1
-    `,
-    [orderId]
-  );
+  // PrismaClient かどうかを判定（$queryRaw メソッドの有無で判定）
+  const isPrisma = pool && typeof pool.$queryRaw === 'function';
+  
+  let orderRes;
+  if (isPrisma) {
+    // PrismaClient の場合 - Prisma.sql を使用して安全にSQLを実行
+    const { Prisma } = await import('@prisma/client');
+    const result = await pool.$queryRaw(
+      Prisma.sql`
+        select id, summary, amount, cost_amount, deleted_at
+        from orders
+        where id = ${orderId}::uuid
+      `
+    );
+    orderRes = { rowCount: result.length, rows: result };
+  } else {
+    // PostgreSQL pool の場合（後方互換性）
+    orderRes = await pool.query(
+      `
+        select id, summary, amount, cost_amount, deleted_at
+        from orders
+        where id = $1
+      `,
+      [orderId]
+    );
+  }
+  
   if (orderRes.rowCount === 0) {
     console.warn("[world-price] order not found", orderId);
     return;
@@ -238,28 +258,47 @@ export async function runWorldPriceUpdate(pool, orderId, sellerId) {
     costAmount,
   });
 
-  await pool.query(
-    `
-      update orders
-         set world_price_median = $1,
-             world_price_high = $2,
-             world_price_low = $3,
-             world_price_sample_count = $4,
-             world_price_revenue_max = $5,
-             world_price_profit_max = $6,
-             updated_at = now()
-       where id = $7
-    `,
-    [
-      best.medianJpy,
-      best.highJpy,
-      worldLow ?? null,
-      best.sampleCount || 0,
-      revenueMaxPrice,
-      profitMaxPrice,
-      orderId,
-    ]
-  );
+  if (isPrisma) {
+    // PrismaClient の場合 - Prisma.sql を使用して安全にSQLを実行
+    const { Prisma } = await import('@prisma/client');
+    await pool.$queryRaw(
+      Prisma.sql`
+        update orders
+           set world_price_median = ${best.medianJpy},
+               world_price_high = ${best.highJpy},
+               world_price_low = ${worldLow ?? null},
+               world_price_sample_count = ${best.sampleCount || 0},
+               world_price_revenue_max = ${revenueMaxPrice},
+               world_price_profit_max = ${profitMaxPrice},
+               updated_at = now()
+         where id = ${orderId}::uuid
+      `
+    );
+  } else {
+    // PostgreSQL pool の場合（後方互換性）
+    await pool.query(
+      `
+        update orders
+           set world_price_median = $1,
+               world_price_high = $2,
+               world_price_low = $3,
+               world_price_sample_count = $4,
+               world_price_revenue_max = $5,
+               world_price_profit_max = $6,
+               updated_at = now()
+         where id = $7
+      `,
+      [
+        best.medianJpy,
+        best.highJpy,
+        worldLow ?? null,
+        best.sampleCount || 0,
+        revenueMaxPrice,
+        profitMaxPrice,
+        orderId,
+      ]
+    );
+  }
 
   console.log("[world-price] updated", {
     orderId,
