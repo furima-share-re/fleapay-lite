@@ -20,13 +20,29 @@ import OpenAI from 'openai';
  * - HELICONE_API_KEY: Helicone API Key（必須）
  * - NODE_ENV: 環境名（development, staging, production）
  */
-export const openai = process.env.OPENAI_API_KEY && process.env.HELICONE_API_KEY
+const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+const hasHeliconeKey = !!process.env.HELICONE_API_KEY;
+const nodeEnv = process.env.NODE_ENV || 'development';
+
+// 初期化時のログ
+if (hasOpenAIKey && hasHeliconeKey) {
+  console.log('[Helicone] ✅ OpenAI SDK initialized with Helicone proxy');
+  console.log('[Helicone] Base URL:', 'https://oai.helicone.ai/v1');
+  console.log('[Helicone] Environment:', nodeEnv);
+  console.log('[Helicone] Project: fleapay-lite');
+} else {
+  console.warn('[Helicone] ⚠️ OpenAI SDK NOT initialized');
+  console.warn('[Helicone] OPENAI_API_KEY:', hasOpenAIKey ? '✅ set' : '❌ not set');
+  console.warn('[Helicone] HELICONE_API_KEY:', hasHeliconeKey ? '✅ set' : '❌ not set');
+}
+
+export const openai = hasOpenAIKey && hasHeliconeKey
   ? new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
       baseURL: 'https://oai.helicone.ai/v1',
       defaultHeaders: {
         'Helicone-Auth': `Bearer ${process.env.HELICONE_API_KEY}`,
-        'Helicone-Property-Environment': process.env.NODE_ENV || 'development',
+        'Helicone-Property-Environment': nodeEnv,
         'Helicone-Property-Project': 'fleapay-lite',
       },
     })

@@ -7,11 +7,15 @@ import { sanitizeError } from '@/lib/utils';
 import { openai, isOpenAIAvailable } from '@/lib/openai';
 
 export async function POST(request: NextRequest) {
+  const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  console.log(`[写真フレーム][${requestId}] ===== API呼び出し開始 =====`);
+  
   try {
     const formData = await request.formData();
     const file = formData.get('image') as File;
 
     if (!file) {
+      console.log(`[写真フレーム][${requestId}] ❌ 画像ファイルなし`);
       return NextResponse.json(
         {
           error: 'file_required',
@@ -27,7 +31,7 @@ export async function POST(request: NextRequest) {
       'Cute up this photo with a soft pink sakura frame. Keep the original person as they are.';
     const prompt = rawPrompt.slice(0, 950);
 
-    console.log(`Processing image: ${file.name || 'unknown'} (${file.size} bytes)`);
+    console.log(`[写真フレーム][${requestId}] 📸 画像処理開始: ${file.name || 'unknown'} (${file.size} bytes)`);
 
     // 画像をRGBA PNGに変換
     const arrayBuffer = await file.arrayBuffer();
@@ -42,9 +46,15 @@ export async function POST(request: NextRequest) {
     const uint8Array = new Uint8Array(inputBuffer);
     const fileObj = new File([uint8Array], 'image.png', { type: 'image/png' });
 
-    console.log('Sending to OpenAI Images Edit API...');
+    // Helicone設定確認
+    const heliconeConfigured = isOpenAIAvailable();
+    console.log(`[写真フレーム][${requestId}] 🔧 Helicone設定:`, heliconeConfigured ? '✅ 有効' : '❌ 無効');
+    console.log(`[写真フレーム][${requestId}] 🔧 OPENAI_API_KEY:`, process.env.OPENAI_API_KEY ? '✅ 設定済み' : '❌ 未設定');
+    console.log(`[写真フレーム][${requestId}] 🔧 HELICONE_API_KEY:`, process.env.HELICONE_API_KEY ? '✅ 設定済み' : '❌ 未設定');
+    console.log(`[写真フレーム][${requestId}] 🔧 NODE_ENV:`, process.env.NODE_ENV || 'development');
 
-    if (!isOpenAIAvailable()) {
+    if (!heliconeConfigured) {
+      console.error(`[写真フレーム][${requestId}] ❌ OpenAI SDKが利用できません`);
       return NextResponse.json(
         {
           error: 'openai_not_configured',
@@ -54,6 +64,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log(`[写真フレーム][${requestId}] 🚀 Helicone経由でOpenAI Images Edit API呼び出し開始`);
+    console.log(`[写真フレーム][${requestId}] 📤 Base URL: https://oai.helicone.ai/v1`);
+    console.log(`[写真フレーム][${requestId}] 📤 Model: dall-e-2`);
+
+    const startTime = Date.now();
+
     // openaiがnullでないことは既にチェック済み
     // OpenAI画像編集
     const result = await openai!.images.edit({
@@ -62,6 +78,13 @@ export async function POST(request: NextRequest) {
       prompt,
       size: '1024x1024',
     });
+
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    console.log(`[写真フレーム][${requestId}] ✅ OpenAI API呼び出し成功 (${duration}ms)`);
+    console.log(`[写真フレーム][${requestId}] 📝 Response ID:`, result.created);
+    console.log(`[写真フレーム][${requestId}] 🔍 Heliconeでこのリクエストを確認してください`);
 
     // レスポンス処理の安全性向上
     const b64 = result.data?.[0]?.b64_json;
@@ -77,7 +100,8 @@ export async function POST(request: NextRequest) {
 
     const buf = Buffer.from(b64, 'base64');
 
-    console.log('Image processing completed successfully');
+    console.log(`[写真フレーム][${requestId}] ✅ 画像処理完了`);
+    console.log(`[写真フレーム][${requestId}] ===== API呼び出し終了 =====`);
 
     return new NextResponse(buf, {
       headers: {
@@ -85,15 +109,25 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Photo frame processing error:', error);
+    console.error(`[写真フレーム][${requestId}] ❌ エラー発生:`, error);
+    console.error(`[写真フレーム][${requestId}] ❌ エラータイプ:`, error?.constructor?.name);
+    console.error(`[写真フレーム][${requestId}] ❌ エラーメッセージ:`, error?.message);
 
     // OpenAI APIエラーの詳細ログ
-    if (error.response) {
-      console.error('OpenAI API Error Details:', {
+    if (error?.response) {
+      console.error(`[写真フレーム][${requestId}] ❌ OpenAI API Error:`, {
         status: error.response.status,
+        statusText: error.response.statusText,
         data: error.response.data,
       });
     }
+    
+    // Helicone関連のエラーかどうか確認
+    if (error?.message?.includes('helicone') || error?.message?.includes('Helicone')) {
+      console.error(`[写真フレーム][${requestId}] ⚠️ Helicone関連のエラーの可能性があります`);
+    }
+    
+    console.error(`[写真フレーム][${requestId}] ===== API呼び出し失敗 =====`);
 
     // クライアントへの適切なエラーレスポンス
     const statusFromOpenAI = error?.response?.status || error?.status;
