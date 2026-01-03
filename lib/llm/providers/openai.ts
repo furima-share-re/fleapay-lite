@@ -4,6 +4,7 @@
 import OpenAI from 'openai';
 import type {
   LLMProviderInterface,
+  LLMProvider,
   ChatCompletionOptions,
   ChatCompletionResponse,
   ImageEditOptions,
@@ -39,7 +40,7 @@ import { classifyError } from '../errors';
  * - ストリーミング
  */
 export class OpenAIProvider implements LLMProviderInterface, ExtendedLLMProviderInterface {
-  readonly name = 'openai' as const;
+  readonly name: LLMProvider = 'openai';
   private client: OpenAI | null;
 
   constructor() {

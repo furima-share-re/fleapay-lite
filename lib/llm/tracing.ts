@@ -115,10 +115,20 @@ export function recordLLMCall(
     latency?: number;
   }
 ): void {
+  // Langfuseのusage形式に変換
+  const usage = output.usage
+    ? {
+        input: output.usage.prompt_tokens ?? null,
+        output: output.usage.completion_tokens ?? null,
+        total: output.usage.total_tokens ?? null,
+        unit: 'TOKENS' as const,
+      }
+    : undefined;
+
   traceInfo.generation.end({
     output: output.content,
     model: output.model,
-    usage: output.usage,
+    usage,
     metadata: {
       ...metadata,
       // Helicone識別子を追加（Heliconeと連携）
