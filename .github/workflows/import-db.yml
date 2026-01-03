@@ -1,0 +1,23 @@
+name: Import Database
+
+on:
+  workflow_dispatch:
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup PostgreSQL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      
+      - name: Import database
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+        run: |
+          cd tmp/2026-01-03T15_42Z/fleapay_prod_db
+          pg_restore --dbname=$DATABASE_URL --verbose --clean --no-owner --no-privileges .
+

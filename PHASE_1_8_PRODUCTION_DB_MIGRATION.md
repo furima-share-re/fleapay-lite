@@ -151,23 +151,11 @@
 
 ---
 
-### Step 6: Prisma Clientの再生成
-
-1. **ローカルでPrisma Clientを再生成**
-   ```bash
-   npx prisma generate
-   ```
-
-2. **Gitにコミット・プッシュ**
-   ```bash
-   git add prisma/schema.prisma
-   git commit -m "chore: Prisma Client再生成（本番環境DB移行後）"
-   git push origin main
-   ```
+**注意**: Prisma Clientの再生成は不要です。`package.json`の`postinstall`スクリプトにより、デプロイ時に自動的に`prisma generate`が実行されます。
 
 ---
 
-### Step 7: 本番環境動作確認
+### Step 6: 本番環境動作確認
 
 #### 動作確認項目
 
