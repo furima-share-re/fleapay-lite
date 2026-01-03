@@ -7,7 +7,13 @@ export * from './factory';
 export * from './config';
 export * from './router';
 export * from './prompts';
-export * from './tracing';
+// tracing.tsからはisLangfuseAvailableをエクスポートしない（prompts.tsからエクスポート）
+export {
+  createTrace,
+  recordLLMCall,
+  recordError,
+  type TraceInfo,
+} from './tracing';
 export * from './errors';
 export * from './retry';
 export * from './providers/openai';
