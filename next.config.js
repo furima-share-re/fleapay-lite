@@ -10,6 +10,10 @@ const nextConfig = {
   
   // 静的ファイルの配信
   // 既存のpublic/ディレクトリをNext.jsでも使用
+  
+  // BASE_URLが設定されている場合、assetPrefixを設定
+  // Render環境では通常空文字列で問題ないが、必要に応じて設定
+  // assetPrefix: process.env.BASE_URL || '',
 };
 
 // ES module形式でエクスポート（package.jsonに"type": "module"があるため）
