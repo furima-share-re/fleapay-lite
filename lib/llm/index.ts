@@ -120,6 +120,9 @@ export async function imageEdit(options: ImageEditOptions) {
 
 /**
  * 画像解析を実行
+ * 
+ * モデルは config.ts の環境変数から自動取得されます。
+ * 環境変数: LLM_TASK_IMAGE_ANALYSIS_MODEL (デフォルト: 'gpt-4o')
  */
 export async function analyzeImage(
   imageUrl: string,
@@ -127,7 +130,7 @@ export async function analyzeImage(
   options?: Partial<ChatCompletionOptions>
 ) {
   return executeTask('image-analysis', {
-    model: 'gpt-4o',
+    // model は config.ts から自動取得されるため指定不要
     messages: [{
       role: 'user',
       content: [
@@ -141,13 +144,16 @@ export async function analyzeImage(
 
 /**
  * テキスト生成を実行
+ * 
+ * モデルは config.ts の環境変数から自動取得されます。
+ * 環境変数: LLM_TASK_TEXT_GENERATION_MODEL (デフォルト: 'gpt-4o')
  */
 export async function generateText(
   prompt: string,
   options?: Partial<ChatCompletionOptions>
 ) {
   return executeTask('text-generation', {
-    model: 'gpt-4o',
+    // model は config.ts から自動取得されるため指定不要
     messages: [{ role: 'user', content: prompt }],
     ...options,
   });

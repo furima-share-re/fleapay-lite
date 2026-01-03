@@ -65,8 +65,10 @@ export async function generateSNSPost(
   const prompt = buildSNSPrompt(options, platformConfig);
 
   // LLMで投稿文を生成
+  // モデルは config.ts の環境変数から自動取得されます。
+  // 環境変数: LLM_TASK_TEXT_GENERATION_MODEL (デフォルト: 'gpt-4o')
   const response = await executeTask('text-generation', {
-    model: 'gpt-4o',
+    // model は config.ts から自動取得されるため指定不要
     messages: [
       {
         role: 'system',

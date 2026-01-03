@@ -199,7 +199,7 @@ export const openai = {
           model: options.model || 'dall-e-2',
           image: adaptedImage,
           prompt: options.prompt,
-          size: options.size,
+          size: options.size ?? undefined,
         });
 
         // OpenAI形式に変換
