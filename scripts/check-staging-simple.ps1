@@ -1,43 +1,36 @@
-# 検証環境の全画面チェックツール（PowerShell版）
-# Node.jsがなくても実行できます
+# Check all screens on staging environment (PowerShell)
+# Works without Node.js
 
-$ErrorActionPreference = "Stop"
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-
-# 設定
 $BaseUrl = "https://fleapay-lite-t1.onrender.com"
-$Timeout = 10000  # 10秒
+$Timeout = 10
 
-# チェック対象のページルート
 $PageRoutes = @(
-    @{ Path = "/"; Name = "トップページ" },
-    @{ Path = "/success"; Name = "成功ページ" },
-    @{ Path = "/thanks"; Name = "サンクスページ" },
-    @{ Path = "/cancel"; Name = "キャンセルページ" },
-    @{ Path = "/onboarding/complete"; Name = "オンボーディング完了" },
-    @{ Path = "/onboarding/refresh"; Name = "オンボーディング更新" },
-    @{ Path = "/checkout"; Name = "チェックアウト画面" },
-    @{ Path = "/seller-register"; Name = "セラー登録画面" },
-    @{ Path = "/seller-purchase-standard"; Name = "セラー購入標準画面" },
-    @{ Path = "/admin/dashboard"; Name = "管理者ダッシュボード" },
-    @{ Path = "/admin/sellers"; Name = "管理者出店者画面" },
-    @{ Path = "/admin/frames"; Name = "管理者フレーム画面" },
-    @{ Path = "/admin/payments"; Name = "管理者決済画面" },
-    @{ Path = "/kids-dashboard"; Name = "Kidsダッシュボード" }
+    @{ Path = "/"; Name = "Top Page" },
+    @{ Path = "/success"; Name = "Success Page" },
+    @{ Path = "/thanks"; Name = "Thanks Page" },
+    @{ Path = "/cancel"; Name = "Cancel Page" },
+    @{ Path = "/onboarding/complete"; Name = "Onboarding Complete" },
+    @{ Path = "/onboarding/refresh"; Name = "Onboarding Refresh" },
+    @{ Path = "/checkout"; Name = "Checkout" },
+    @{ Path = "/seller-register"; Name = "Seller Register" },
+    @{ Path = "/seller-purchase-standard"; Name = "Seller Purchase Standard" },
+    @{ Path = "/admin/dashboard"; Name = "Admin Dashboard" },
+    @{ Path = "/admin/sellers"; Name = "Admin Sellers" },
+    @{ Path = "/admin/frames"; Name = "Admin Frames" },
+    @{ Path = "/admin/payments"; Name = "Admin Payments" },
+    @{ Path = "/kids-dashboard"; Name = "Kids Dashboard" }
 )
 
-# チェック対象のAPIエンドポイント
 $ApiRoutes = @(
-    @{ Path = "/api/ping"; Method = "GET"; Name = "ヘルスチェック" },
-    @{ Path = "/api/seller/summary"; Method = "GET"; Name = "セラーサマリー" },
-    @{ Path = "/api/seller/kids-summary"; Method = "GET"; Name = "Kidsサマリー" },
-    @{ Path = "/api/admin/dashboard"; Method = "GET"; Name = "管理ダッシュボードAPI" },
-    @{ Path = "/api/admin/sellers"; Method = "GET"; Name = "出店者管理API" },
-    @{ Path = "/api/admin/frames"; Method = "GET"; Name = "フレーム管理API" },
-    @{ Path = "/api/admin/stripe/summary"; Method = "GET"; Name = "StripeサマリーAPI" }
+    @{ Path = "/api/ping"; Method = "GET"; Name = "Health Check" },
+    @{ Path = "/api/seller/summary"; Method = "GET"; Name = "Seller Summary" },
+    @{ Path = "/api/seller/kids-summary"; Method = "GET"; Name = "Kids Summary" },
+    @{ Path = "/api/admin/dashboard"; Method = "GET"; Name = "Admin Dashboard API" },
+    @{ Path = "/api/admin/sellers"; Method = "GET"; Name = "Admin Sellers API" },
+    @{ Path = "/api/admin/frames"; Method = "GET"; Name = "Admin Frames API" },
+    @{ Path = "/api/admin/stripe/summary"; Method = "GET"; Name = "Stripe Summary API" }
 )
 
-# 結果を格納する配列
 $Results = @{
     Pages = @()
     Apis = @()
@@ -51,7 +44,6 @@ $Results = @{
     }
 }
 
-# URLをチェックする関数
 function Test-Url {
     param(
         [string]$Url,
@@ -71,7 +63,7 @@ function Test-Url {
     
     try {
         $startTime = Get-Date
-        $response = Invoke-WebRequest -Uri $Url -Method $Method -TimeoutSec ($Timeout / 1000) -UseBasicParsing -ErrorAction Stop
+        $response = Invoke-WebRequest -Uri $Url -Method $Method -TimeoutSec $Timeout -UseBasicParsing -ErrorAction Stop
         $responseTime = ((Get-Date) - $startTime).TotalMilliseconds
         
         $result.StatusCode = $response.StatusCode
@@ -81,13 +73,12 @@ function Test-Url {
             $result.Status = "success"
             $Results.Summary.Success++
             
-            # HTML構造のチェック
             $html = $response.Content
             if ($html -notmatch "<html" -and $html -notmatch "<!DOCTYPE") {
-                $result.Issues += @{ Type = "warning"; Message = "HTMLドキュメント構造が見つかりません" }
+                $result.Issues += @{ Type = "warning"; Message = "HTML structure not found" }
             }
             if ($html -match "Application error" -or $html -match "Error occurred") {
-                $result.Issues += @{ Type = "error"; Message = "Next.jsエラーページが表示されています" }
+                $result.Issues += @{ Type = "error"; Message = "Next.js error page detected" }
                 $result.Status = "error"
                 $Results.Summary.Success--
                 $Results.Summary.Errors++
@@ -95,12 +86,12 @@ function Test-Url {
         }
         elseif ($response.StatusCode -ge 400 -and $response.StatusCode -lt 500) {
             $result.Status = "error"
-            $result.Issues += @{ Type = "error"; Message = "HTTP $($response.StatusCode) エラー" }
+            $result.Issues += @{ Type = "error"; Message = "HTTP $($response.StatusCode) error" }
             $Results.Summary.Errors++
         }
         elseif ($response.StatusCode -ge 500) {
             $result.Status = "error"
-            $result.Issues += @{ Type = "error"; Message = "HTTP $($response.StatusCode) サーバーエラー" }
+            $result.Issues += @{ Type = "error"; Message = "HTTP $($response.StatusCode) server error" }
             $Results.Summary.Errors++
         }
     }
@@ -109,10 +100,10 @@ function Test-Url {
         $errorMessage = $_.Exception.Message
         if ($_.Exception.Response) {
             $result.StatusCode = [int]$_.Exception.Response.StatusCode.value__
-            $result.Issues += @{ Type = "error"; Message = "HTTP $($result.StatusCode) エラー: $errorMessage" }
+            $result.Issues += @{ Type = "error"; Message = "HTTP $($result.StatusCode) error: $errorMessage" }
         }
         else {
-            $result.Issues += @{ Type = "error"; Message = "リクエストに失敗しました: $errorMessage" }
+            $result.Issues += @{ Type = "error"; Message = "Request failed: $errorMessage" }
         }
         $Results.Summary.Errors++
     }
@@ -121,28 +112,26 @@ function Test-Url {
     return $result
 }
 
-# メイン処理
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "検証環境の全画面チェックを開始します" -ForegroundColor Cyan
-Write-Host "ベースURL: $BaseUrl" -ForegroundColor Cyan
+Write-Host "Checking all screens on staging..." -ForegroundColor Cyan
+Write-Host "Base URL: $BaseUrl" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# ページをチェック
-Write-Host "$($PageRoutes.Count)個のページをチェック中..." -ForegroundColor Magenta
+Write-Host "Checking $($PageRoutes.Count) pages..." -ForegroundColor Magenta
 Write-Host ""
 
 foreach ($route in $PageRoutes) {
     $url = "$BaseUrl$($route.Path)"
-    Write-Host "チェック中: $($route.Name) ($($route.Path))" -ForegroundColor Gray -NoNewline
+    Write-Host "Checking: $($route.Name) ($($route.Path))" -ForegroundColor Gray -NoNewline
     $result = Test-Url -Url $url -Name $route.Name
     
     $Results.Pages += $result
     
     $statusIcon = switch ($result.Status) {
-        "success" { "✓" }
-        "error" { "✗" }
-        "warning" { "⚠" }
+        "success" { "OK" }
+        "error" { "ERROR" }
+        "warning" { "WARN" }
         default { "?" }
     }
     
@@ -153,25 +142,25 @@ foreach ($route in $PageRoutes) {
         default { "Gray" }
     }
     
-    Write-Host " $statusIcon " -ForegroundColor $statusColor -NoNewline
+    Write-Host " [$statusIcon] " -ForegroundColor $statusColor -NoNewline
     Write-Host "$($result.StatusCode) - $($result.ResponseTime)ms" -ForegroundColor White
 }
 
 Write-Host ""
-Write-Host "$($ApiRoutes.Count)個のAPIエンドポイントをチェック中..." -ForegroundColor Magenta
+Write-Host "Checking $($ApiRoutes.Count) API endpoints..." -ForegroundColor Magenta
 Write-Host ""
 
 foreach ($route in $ApiRoutes) {
     $url = "$BaseUrl$($route.Path)"
-    Write-Host "チェック中: $($route.Name) ($($route.Path))" -ForegroundColor Gray -NoNewline
+    Write-Host "Checking: $($route.Name) ($($route.Path))" -ForegroundColor Gray -NoNewline
     $result = Test-Url -Url $url -Name $route.Name -Method $route.Method
     
     $Results.Apis += $result
     
     $statusIcon = switch ($result.Status) {
-        "success" { "✓" }
-        "error" { "✗" }
-        "warning" { "⚠" }
+        "success" { "OK" }
+        "error" { "ERROR" }
+        "warning" { "WARN" }
         default { "?" }
     }
     
@@ -182,34 +171,32 @@ foreach ($route in $ApiRoutes) {
         default { "Gray" }
     }
     
-    Write-Host " $statusIcon " -ForegroundColor $statusColor -NoNewline
+    Write-Host " [$statusIcon] " -ForegroundColor $statusColor -NoNewline
     Write-Host "$($result.StatusCode) - $($result.ResponseTime)ms" -ForegroundColor White
 }
 
 $Results.Summary.EndTime = Get-Date -Format "yyyy-MM-ddTHH:mm:ss.fffZ"
 
-# 結果サマリー
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "チェック結果サマリー" -ForegroundColor Cyan
+Write-Host "Summary" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "総チェック数: $($Results.Summary.Total)" -ForegroundColor White
-Write-Host "成功: " -NoNewline
+Write-Host "Total: $($Results.Summary.Total)" -ForegroundColor White
+Write-Host "Success: " -NoNewline
 Write-Host "$($Results.Summary.Success)" -ForegroundColor Green
-Write-Host "エラー: " -NoNewline
+Write-Host "Errors: " -NoNewline
 Write-Host "$($Results.Summary.Errors)" -ForegroundColor Red
-Write-Host "警告: " -NoNewline
+Write-Host "Warnings: " -NoNewline
 Write-Host "$($Results.Summary.Warnings)" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "チェック開始: $($Results.Summary.StartTime)" -ForegroundColor Gray
-Write-Host "チェック終了: $($Results.Summary.EndTime)" -ForegroundColor Gray
+Write-Host "Start: $($Results.Summary.StartTime)" -ForegroundColor Gray
+Write-Host "End: $($Results.Summary.EndTime)" -ForegroundColor Gray
 Write-Host ""
 
-# エラーがある場合は詳細を表示
 if ($Results.Summary.Errors -gt 0) {
     Write-Host "==========================================" -ForegroundColor Red
-    Write-Host "エラーが検出されました" -ForegroundColor Red
+    Write-Host "Errors detected:" -ForegroundColor Red
     Write-Host "==========================================" -ForegroundColor Red
     Write-Host ""
     
@@ -217,9 +204,9 @@ if ($Results.Summary.Errors -gt 0) {
     $errorApis = $Results.Apis | Where-Object { $_.Status -eq "error" }
     
     if ($errorPages.Count -gt 0) {
-        Write-Host "エラーがあるページ:" -ForegroundColor Yellow
+        Write-Host "Pages with errors:" -ForegroundColor Yellow
         foreach ($page in $errorPages) {
-            Write-Host "  ✗ $($page.Name) ($($page.Path))" -ForegroundColor Red
+            Write-Host "  ERROR: $($page.Name) ($($page.Path))" -ForegroundColor Red
             foreach ($issue in $page.Issues) {
                 Write-Host "    - $($issue.Message)" -ForegroundColor Gray
             }
@@ -228,9 +215,9 @@ if ($Results.Summary.Errors -gt 0) {
     }
     
     if ($errorApis.Count -gt 0) {
-        Write-Host "エラーがあるAPI:" -ForegroundColor Yellow
+        Write-Host "APIs with errors:" -ForegroundColor Yellow
         foreach ($api in $errorApis) {
-            Write-Host "  ✗ $($api.Name) ($($api.Path))" -ForegroundColor Red
+            Write-Host "  ERROR: $($api.Name) ($($api.Path))" -ForegroundColor Red
             foreach ($issue in $api.Issues) {
                 Write-Host "    - $($issue.Message)" -ForegroundColor Gray
             }
@@ -239,24 +226,22 @@ if ($Results.Summary.Errors -gt 0) {
     }
 }
 
-# JSON形式で結果を出力
 $jsonOutput = $Results | ConvertTo-Json -Depth 10
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "JSON形式の結果:" -ForegroundColor Cyan
+Write-Host "JSON Results:" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host $jsonOutput
 
-# 結果をファイルに保存するか確認
-$saveToFile = Read-Host "`n結果をファイルに保存しますか？ (y/n)"
+$saveToFile = Read-Host "`nSave results to file? (y/n)"
 if ($saveToFile -eq "y" -or $saveToFile -eq "Y") {
     $fileName = "staging-check-$(Get-Date -Format 'yyyyMMdd-HHmmss').json"
     $jsonOutput | Out-File -FilePath $fileName -Encoding UTF8
-    Write-Host "結果を $fileName に保存しました" -ForegroundColor Green
+    Write-Host "Results saved to $fileName" -ForegroundColor Green
 }
 
-# 終了コード
 if ($Results.Summary.Errors -gt 0) {
     exit 1
 } else {
     exit 0
 }
+
