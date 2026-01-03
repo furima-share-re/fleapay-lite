@@ -225,9 +225,9 @@ export async function GET(request: NextRequest) {
           
           const row: any = {};
           headers.forEach((header, index) => {
-            let value = values[index] || '';
+            let value: string | number = values[index] || '';
             if (header === 'week' || header === 'base' || header === 'improvement') {
-              value = parseInt(value, 10) || 0;
+              value = parseInt(value as string, 10) || 0;
             }
             row[header] = value;
           });
