@@ -15,6 +15,8 @@ function requireAdmin(request: NextRequest): boolean {
   return token === ADMIN_TOKEN;
 }
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     if (!requireAdmin(request)) {

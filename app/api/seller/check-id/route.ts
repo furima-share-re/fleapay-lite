@@ -11,6 +11,8 @@ const checkIdSchema = z.object({
   id: z.string().min(3, 'IDは3文字以上である必要があります').max(32, 'IDは32文字以下である必要があります').regex(/^[a-zA-Z0-9_-]+$/, 'IDは英数字、ハイフン、アンダーバーのみ使用できます'),
 });
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const id = request.nextUrl.searchParams.get('id')?.trim();
