@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -53,22 +53,7 @@ function KidsDashboardContent() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [missions, setMissions] = useState<{ [key: string]: boolean }>({});
 
-  useEffect(() => {
-    if (!sellerId) return;
-    
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      const keyPrefix = `kids-mission-${sellerId}-`;
-      const mission1 = localStorage.getItem(keyPrefix + '1') === 'done';
-      const mission2 = localStorage.getItem(keyPrefix + '2') === 'done';
-      const mission3 = localStorage.getItem(keyPrefix + '3') === 'done';
-      setMissions({ '1': mission1, '2': mission2, '3': mission3 });
-    }
-    
-    loadSummary();
-    loadKidsSummary();
-  }, [sellerId]);
-
-  const loadSummary = async () => {
+  const loadSummary = useCallback(async () => {
     if (!sellerId) return;
     
     try {
@@ -89,9 +74,9 @@ function KidsDashboardContent() {
     } catch (e) {
       console.error('loadSummary error', e);
     }
-  };
+  }, [sellerId]);
 
-  const loadKidsSummary = async () => {
+  const loadKidsSummary = useCallback(async () => {
     if (!sellerId) return;
     
     try {
@@ -103,7 +88,22 @@ function KidsDashboardContent() {
     } catch (e) {
       console.error('loadKidsSummary error', e);
     }
-  };
+  }, [sellerId]);
+
+  useEffect(() => {
+    if (!sellerId) return;
+    
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      const keyPrefix = `kids-mission-${sellerId}-`;
+      const mission1 = localStorage.getItem(keyPrefix + '1') === 'done';
+      const mission2 = localStorage.getItem(keyPrefix + '2') === 'done';
+      const mission3 = localStorage.getItem(keyPrefix + '3') === 'done';
+      setMissions({ '1': mission1, '2': mission2, '3': mission3 });
+    }
+    
+    loadSummary();
+    loadKidsSummary();
+  }, [sellerId, loadSummary, loadKidsSummary]);
 
   const toggleMission = (id: string) => {
     if (!sellerId) return;
