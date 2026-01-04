@@ -1588,21 +1588,31 @@
             return;
           }
 
-          // サブスク未加入（standard または isSubscribed=false）の場合はダッシュボードをブロック
-          // planType が "pro" または "kids" 以外の場合にブロック
-          if (
-            data &&
-            data.planType &&
-            data.planType === "standard"
-          ) {
-            blockForNonSubscriber();
-            return;
-          }
+          // サブスク未加入（standard または isSubscribed=false）の場合でも、基本的な取引履歴は表示する
+          // planType が "pro" または "kids" 以外の場合は、一部機能をブロック
+          const isStandardPlan = data && data.planType && data.planType === "standard";
+          const isNotSubscribed = data && data.isSubscribed === false;
           
-          // または isSubscribed が明示的に false の場合
-          if (data && data.isSubscribed === false) {
-            blockForNonSubscriber();
-            return;
+          if (isStandardPlan || isNotSubscribed) {
+            // サブスク未加入の場合は、一部の機能をブロック
+            // ただし、基本的な取引履歴は表示する
+            if (homeHintEl) {
+              homeHintEl.textContent = "このダッシュボードの一部機能は、プロ / キッズプランご契約中の出店者さま専用です。";
+            }
+            if (kpiTotalEl) kpiTotalEl.textContent = "–";
+            if (kpiCountEl) kpiCountEl.textContent = "–";
+            if (kpiAvgEl)   kpiAvgEl.textContent   = "–";
+            if (recentListEl) {
+              recentListEl.innerHTML = "";
+            }
+            if (recentHintEl) {
+              recentHintEl.textContent = "サブスクにご加入いただくと、売上のくわしい分析が表示されます。";
+            }
+            if (purchaseUrlEl) {
+              purchaseUrlEl.textContent = "サブスクご契約で販売用URLが表示されます";
+              purchaseUrlEl.removeAttribute("href");
+            }
+            // 注意: returnしない - 取引履歴は表示する
           }
 
           // 店名
