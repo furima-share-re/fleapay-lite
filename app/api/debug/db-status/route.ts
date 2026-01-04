@@ -64,6 +64,7 @@ export async function GET() {
     try {
       const seller = await prisma.seller.findUnique({
         where: { id: 'seller-test01' },
+        select: { id: true }, // auth_providerカラムが存在しない場合の回避策
       });
       sellerTest01Exists = !!seller;
 
