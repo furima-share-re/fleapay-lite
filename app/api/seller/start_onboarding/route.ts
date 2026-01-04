@@ -108,11 +108,24 @@ export async function POST(request: Request) {
     });
 
     // 5) Fleapayのデータベースに保存
-    await pool.query(
-      `INSERT INTO sellers (id, display_name, stripe_account_id, email, auth_provider, supabase_user_id)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [normalizedId, displayName, account.id, email, 'supabase', supabaseUserId]
-    );
+    try {
+      await pool.query(
+        `INSERT INTO sellers (id, display_name, stripe_account_id, email, auth_provider, supabase_user_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [normalizedId, displayName, account.id, email, 'supabase', supabaseUserId]
+      );
+    } catch (insertError: any) {
+      // auth_providerカラムが存在しない場合のフォールバック
+      if (insertError.message?.includes('auth_provider') || insertError.message?.includes('does not exist')) {
+        await pool.query(
+          `INSERT INTO sellers (id, display_name, stripe_account_id, email, supabase_user_id)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [normalizedId, displayName, account.id, email, supabaseUserId]
+        );
+      } else {
+        throw insertError;
+      }
+    }
 
     // 6) 本人確認ページ（Stripe Onboarding）を作成
     const returnUrl = `${BASE_URL}/seller-dashboard.html?s=${encodeURIComponent(normalizedId)}`;

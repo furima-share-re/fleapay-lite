@@ -15,22 +15,62 @@ export async function resetPasswordAndMigratePrisma(
 ) {
   try {
     // 1. ユーザー情報を取得（emailはunique制約がないためfindFirstを使用）
-    const user = await prisma.seller.findFirst({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-        authProvider: true,
-        supabaseUserId: true,
-      },
-    });
+    // auth_providerカラムが存在しない場合の回避策として、$queryRawを使用
+    let user: {
+      id: string;
+      email: string | null;
+      authProvider: string;
+      supabaseUserId: string | null;
+    } | null = null;
+
+    try {
+      // まず通常のPrismaクエリを試す
+      const prismaUser = await prisma.seller.findFirst({
+        where: { email },
+        select: {
+          id: true,
+          email: true,
+          authProvider: true,
+          supabaseUserId: true,
+        },
+      });
+      user = prismaUser;
+    } catch (error: any) {
+      // auth_providerカラムが存在しない場合、$queryRawで取得
+      if (error.message?.includes('auth_provider') || error.message?.includes('does not exist')) {
+        const result = await prisma.$queryRaw<Array<{
+          id: string;
+          email: string;
+          auth_provider: string | null;
+          supabase_user_id: string | null;
+        }>>`
+          SELECT id, email, auth_provider, supabase_user_id
+          FROM sellers
+          WHERE email = ${email}
+          LIMIT 1
+        `;
+        if (result.length > 0) {
+          user = {
+            id: result[0].id,
+            email: result[0].email,
+            authProvider: result[0].auth_provider || 'bcryptjs',
+            supabaseUserId: result[0].supabase_user_id,
+          };
+        }
+      } else {
+        throw error;
+      }
+    }
 
     if (!user) {
       return { success: false, error: 'user_not_found' };
     }
 
+    // authProviderがnullの場合はbcryptjsとして扱う
+    const authProvider = user.authProvider || 'bcryptjs';
+
     // 2. 既にSupabase Authに移行済みの場合は、Supabase Authでパスワードを更新
-    if (user.authProvider === 'supabase' && user.supabaseUserId) {
+    if (authProvider === 'supabase' && user.supabaseUserId) {
       if (!supabaseAdmin) {
         return { success: false, error: 'supabase_admin_not_available' };
       }
@@ -48,7 +88,7 @@ export async function resetPasswordAndMigratePrisma(
     }
 
     // 3. bcryptjsユーザーの場合、Supabase Authに移行
-    if (user.authProvider === 'bcryptjs' || !user.supabaseUserId) {
+    if (authProvider === 'bcryptjs' || !user.supabaseUserId) {
       if (!supabaseAdmin) {
         return { success: false, error: 'supabase_admin_not_available' };
       }
@@ -120,15 +160,29 @@ export async function resetPasswordAndMigratePrisma(
         }
       }
 
-      // 4. sellersテーブルを更新
-      await prisma.seller.update({
-        where: { id: user.id },
-        data: {
-          authProvider: 'supabase',
-          supabaseUserId: supabaseUserId,
-          updatedAt: new Date(),
-        },
-      });
+      // 4. sellersテーブルを更新（auth_providerカラムが存在する場合のみ）
+      try {
+        await prisma.seller.update({
+          where: { id: user.id },
+          data: {
+            authProvider: 'supabase',
+            supabaseUserId: supabaseUserId,
+            updatedAt: new Date(),
+          },
+        });
+      } catch (updateError: any) {
+        // auth_providerカラムが存在しない場合は$queryRawで更新
+        if (updateError.message?.includes('auth_provider') || updateError.message?.includes('does not exist')) {
+          await prisma.$queryRaw`
+            UPDATE sellers
+            SET supabase_user_id = ${supabaseUserId},
+                updated_at = NOW()
+            WHERE id = ${user.id}
+          `;
+        } else {
+          throw updateError;
+        }
+      }
 
       return { success: true, message: 'migrated_to_supabase' };
     }
@@ -177,6 +231,30 @@ export async function getMigrationStatusPrisma(prisma: PrismaClient) {
     };
   } catch (error: any) {
     console.error('getMigrationStatusPrisma error', error);
+    // auth_providerカラムが存在しない場合は、すべてbcryptjsとして扱う
+    if (error.message?.includes('auth_provider') || error.message?.includes('does not exist')) {
+      try {
+        const result = await prisma.$queryRaw<Array<{ count: bigint }>>`
+          SELECT COUNT(*)::bigint as count FROM sellers
+        `;
+        const totalUsers = result.length > 0 ? Number(result[0].count) : 0;
+        return {
+          supabaseUsers: 0,
+          bcryptjsUsers: totalUsers,
+          totalUsers: totalUsers,
+          migrationRatePercent: 0,
+          error: 'auth_provider column does not exist - migration required',
+        };
+      } catch (fallbackError: any) {
+        return {
+          supabaseUsers: 0,
+          bcryptjsUsers: 0,
+          totalUsers: 0,
+          migrationRatePercent: 0,
+          error: error.message,
+        };
+      }
+    }
     return {
       supabaseUsers: 0,
       bcryptjsUsers: 0,
