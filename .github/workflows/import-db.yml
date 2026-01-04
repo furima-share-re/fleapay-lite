@@ -27,6 +27,7 @@ jobs:
           cd tmp/2026-01-03T15_42Z/fleapay_prod_db
           if [ -f backup.sql ]; then
             echo "Using backup.sql file"
+            echo "DATABASE_URL is set: ${DATABASE_URL:0:50}..."
             psql "$DATABASE_URL" -f backup.sql
           else
             echo "backup.sql not found. Trying pg_restore with directory format..."
