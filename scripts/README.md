@@ -44,6 +44,16 @@
   -TargetUrl "postgresql://postgres:pass@db.project.supabase.co:5432/postgres"
 ```
 
+#### 4. マイグレーション状態をチェック
+
+```powershell
+# 環境変数DATABASE_URLが設定されている場合
+.\scripts\check-migration-status.ps1
+
+# または接続文字列を直接指定
+.\scripts\check-migration-status.ps1 -DatabaseUrl "postgresql://postgres:pass@db.project.supabase.co:5432/postgres"
+```
+
 ### Bash (Git Bash / WSL / Linux / macOS)
 
 #### 1. Render DBからスキーマ・データをダンプ
@@ -87,6 +97,11 @@
 6. **データ整合性チェック**
    - レコード数の比較
    - サンプルデータの確認
+
+7. **マイグレーション状態チェック**
+   - スキーマ変更の確認（カラム追加など）
+   - インデックスの確認
+   - データの整合性確認
 
 7. **環境変数の更新**
    - `.env` ファイルの `DATABASE_URL` を更新

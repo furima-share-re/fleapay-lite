@@ -108,6 +108,7 @@ export async function GET(request: NextRequest) {
     // ① 今日の売上KPI（旧DB対応: order_metadataが存在しない場合はstripe_paymentsのみ）
     try {
       console.log(`[seller/summary] kpiToday query開始`);
+        const deletedAtCondition = hasDeletedAt ? prisma.$queryRaw`AND o.deleted_at IS NULL` : prisma.$queryRaw``;
         kpiToday = await prisma.$queryRaw`
           SELECT
             COUNT(*)::int AS cnt,
@@ -139,6 +140,7 @@ export async function GET(request: NextRequest) {
           WHERE o.seller_id = ${sellerId}
             AND o.created_at >= ${todayStart}
             AND o.created_at <  ${tomorrowStart}
+            ${hasDeletedAt ? prisma.$queryRaw`AND o.deleted_at IS NULL` : prisma.$queryRaw``}
             AND (
               om.is_cash = true
               OR sp.status = 'succeeded'
