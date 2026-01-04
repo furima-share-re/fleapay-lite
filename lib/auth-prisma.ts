@@ -18,8 +18,8 @@ export async function resetPasswordAndMigratePrisma(
     // auth_providerカラムが存在しない場合の回避策として、$queryRawを使用
     let user: {
       id: string;
-      email: string;
-      authProvider: string | null;
+      email: string | null;
+      authProvider: string;
       supabaseUserId: string | null;
     } | null = null;
 
