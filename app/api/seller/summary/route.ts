@@ -345,6 +345,9 @@ export async function GET(request: NextRequest) {
           `;
         }
         console.log(`[seller/summary] recentRes query成功: ${recentRes.length}件`);
+        if (recentRes.length > 0) {
+          console.log(`[seller/summary] recentRes[0]のサンプル:`, JSON.stringify(recentRes[0], null, 2));
+        }
       } catch (e: any) {
         // 旧DB対応: order_metadataやbuyer_attributesが存在しない場合は、stripe_paymentsのみで取得
         console.warn("[seller/summary] recentRes query failed (likely old DB), trying simplified query:", e.message);
@@ -426,7 +429,14 @@ export async function GET(request: NextRequest) {
     const countToday = kpiToday[0]?.cnt || 0;
     const avgToday = countToday > 0 ? Math.round(todayNet / countToday) : 0;
 
+    console.log(`[seller/summary] recentResマッピング開始: ${recentRes.length}件`);
     const recent = recentRes.map((r: any) => {
+      // デバッグ: 最初の1件だけログ出力
+      if (recentRes.indexOf(r) === 0) {
+        console.log(`[seller/summary] recentRes[0]のキー:`, Object.keys(r));
+        console.log(`[seller/summary] recentRes[0].order_id:`, r.order_id);
+        console.log(`[seller/summary] recentRes[0].created_at:`, r.created_at);
+      }
       const amt = Number(r.amount || 0);
       const created = r.created_at;
       const createdSec = created ? Math.floor(new Date(created).getTime() / 1000) : null;
@@ -475,6 +485,9 @@ export async function GET(request: NextRequest) {
     const dataScore = totalOrdersForScore > 0 ? Math.round((ordersWithAttrs / totalOrdersForScore) * 100) : 0;
 
     console.log(`[seller/summary] API呼び出し成功: recent=${recent.length}件, countToday=${countToday}`);
+    if (recent.length > 0) {
+      console.log(`[seller/summary] recent[0]のサンプル:`, JSON.stringify(recent[0], null, 2));
+    }
 
     return NextResponse.json({
       sellerId,
