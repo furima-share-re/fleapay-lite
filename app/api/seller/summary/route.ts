@@ -275,51 +275,55 @@ export async function GET(request: NextRequest) {
         console.log(`[seller/summary] recentRes query開始`);
         
         // デバッグ: 移行データの状態を確認
-        if (hasDeletedAt) {
-          const debugRes = await prisma.$queryRaw<Array<{
-            total_orders: bigint;
-            with_order_metadata: bigint;
-            with_stripe_payments: bigint;
-            with_succeeded_status: bigint;
-            with_is_cash_true: bigint;
-            within_30days: bigint;
-          }>>`
-            SELECT 
-              COUNT(*)::bigint as total_orders,
-              COUNT(om.order_id)::bigint as with_order_metadata,
-              COUNT(sp.id)::bigint as with_stripe_payments,
-              COUNT(CASE WHEN sp.status = 'succeeded' THEN 1 END)::bigint as with_succeeded_status,
-              COUNT(CASE WHEN om.is_cash = true THEN 1 END)::bigint as with_is_cash_true,
-              COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '30 days' THEN 1 END)::bigint as within_30days
-            FROM orders o
-            LEFT JOIN order_metadata om ON om.order_id = o.id
-            LEFT JOIN stripe_payments sp ON sp.order_id = o.id
-            WHERE o.seller_id = ${sellerId}
-              AND o.deleted_at IS NULL
-          `;
-          console.log(`[seller/summary] デバッグ統計:`, debugRes[0]);
-        } else {
-          const debugRes = await prisma.$queryRaw<Array<{
-            total_orders: bigint;
-            with_order_metadata: bigint;
-            with_stripe_payments: bigint;
-            with_succeeded_status: bigint;
-            with_is_cash_true: bigint;
-            within_30days: bigint;
-          }>>`
-            SELECT 
-              COUNT(*)::bigint as total_orders,
-              COUNT(om.order_id)::bigint as with_order_metadata,
-              COUNT(sp.id)::bigint as with_stripe_payments,
-              COUNT(CASE WHEN sp.status = 'succeeded' THEN 1 END)::bigint as with_succeeded_status,
-              COUNT(CASE WHEN om.is_cash = true THEN 1 END)::bigint as with_is_cash_true,
-              COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '30 days' THEN 1 END)::bigint as within_30days
-            FROM orders o
-            LEFT JOIN order_metadata om ON om.order_id = o.id
-            LEFT JOIN stripe_payments sp ON sp.order_id = o.id
-            WHERE o.seller_id = ${sellerId}
-          `;
-          console.log(`[seller/summary] デバッグ統計:`, debugRes[0]);
+        try {
+          if (hasDeletedAt) {
+            const debugRes = await prisma.$queryRaw<Array<{
+              total_orders: bigint;
+              with_order_metadata: bigint;
+              with_stripe_payments: bigint;
+              with_succeeded_status: bigint;
+              with_is_cash_true: bigint;
+              within_30days: bigint;
+            }>>`
+              SELECT 
+                COUNT(*)::bigint as total_orders,
+                COUNT(om.order_id)::bigint as with_order_metadata,
+                COUNT(sp.id)::bigint as with_stripe_payments,
+                COUNT(CASE WHEN sp.status = 'succeeded' THEN 1 END)::bigint as with_succeeded_status,
+                COUNT(CASE WHEN om.is_cash = true THEN 1 END)::bigint as with_is_cash_true,
+                COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '30 days' THEN 1 END)::bigint as within_30days
+              FROM orders o
+              LEFT JOIN order_metadata om ON om.order_id = o.id
+              LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+              WHERE o.seller_id = ${sellerId}
+                AND o.deleted_at IS NULL
+            `;
+            console.log(`[seller/summary] デバッグ統計:`, JSON.stringify(debugRes[0], null, 2));
+          } else {
+            const debugRes = await prisma.$queryRaw<Array<{
+              total_orders: bigint;
+              with_order_metadata: bigint;
+              with_stripe_payments: bigint;
+              with_succeeded_status: bigint;
+              with_is_cash_true: bigint;
+              within_30days: bigint;
+            }>>`
+              SELECT 
+                COUNT(*)::bigint as total_orders,
+                COUNT(om.order_id)::bigint as with_order_metadata,
+                COUNT(sp.id)::bigint as with_stripe_payments,
+                COUNT(CASE WHEN sp.status = 'succeeded' THEN 1 END)::bigint as with_succeeded_status,
+                COUNT(CASE WHEN om.is_cash = true THEN 1 END)::bigint as with_is_cash_true,
+                COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '30 days' THEN 1 END)::bigint as within_30days
+              FROM orders o
+              LEFT JOIN order_metadata om ON om.order_id = o.id
+              LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+              WHERE o.seller_id = ${sellerId}
+            `;
+            console.log(`[seller/summary] デバッグ統計:`, JSON.stringify(debugRes[0], null, 2));
+          }
+        } catch (debugError: any) {
+          console.warn(`[seller/summary] デバッグ統計取得エラー:`, debugError.message);
         }
         
         // Build query conditionally based on table existence
@@ -481,16 +485,21 @@ export async function GET(request: NextRequest) {
     const avgToday = countToday > 0 ? Math.round(todayNet / countToday) : 0;
 
     console.log(`[seller/summary] recentResマッピング開始: ${recentRes.length}件`);
-    const recent = recentRes.map((r: any) => {
-      // デバッグ: 最初の1件だけログ出力
-      if (recentRes.indexOf(r) === 0) {
-        console.log(`[seller/summary] recentRes[0]のキー:`, Object.keys(r));
-        console.log(`[seller/summary] recentRes[0].order_id:`, r.order_id);
-        console.log(`[seller/summary] recentRes[0].created_at:`, r.created_at);
-      }
-      const amt = Number(r.amount || 0);
-      const created = r.created_at;
-      const createdSec = created ? Math.floor(new Date(created).getTime() / 1000) : null;
+    let recent: any[] = [];
+    try {
+      recent = recentRes.map((r: any, index: number) => {
+        // デバッグ: 最初の1件だけログ出力
+        if (index === 0) {
+          console.log(`[seller/summary] recentRes[0]のキー:`, Object.keys(r));
+          console.log(`[seller/summary] recentRes[0].order_id:`, r.order_id);
+          console.log(`[seller/summary] recentRes[0].created_at:`, r.created_at);
+          console.log(`[seller/summary] recentRes[0].amount:`, r.amount);
+          console.log(`[seller/summary] recentRes[0].is_cash:`, r.is_cash);
+          console.log(`[seller/summary] recentRes[0].payment_method:`, r.payment_method);
+        }
+        const amt = Number(r.amount || 0);
+        const created = r.created_at;
+        const createdSec = created ? Math.floor(new Date(created).getTime() / 1000) : null;
 
       return {
         // 新しいフィールド名
@@ -529,7 +538,13 @@ export async function GET(request: NextRequest) {
           age_band: r.age_band || "unknown",
         },
       };
-    });
+      });
+      console.log(`[seller/summary] recentマッピング完了: ${recent.length}件`);
+    } catch (mapError: any) {
+      console.error(`[seller/summary] recentマッピングエラー:`, mapError.message);
+      console.error(`[seller/summary] recentマッピングエラー詳細:`, mapError);
+      recent = [];
+    }
 
     const totalOrdersForScore = scoreRes[0]?.total || 0;
     const ordersWithAttrs = scoreRes[0]?.with_attrs || 0;
@@ -540,7 +555,7 @@ export async function GET(request: NextRequest) {
       console.log(`[seller/summary] recent[0]のサンプル:`, JSON.stringify(recent[0], null, 2));
     }
 
-    return NextResponse.json({
+    const responseData = {
       sellerId,
       planType,
       isSubscribed,
@@ -570,7 +585,12 @@ export async function GET(request: NextRequest) {
 
       dataScore,
       recent
-    });
+    };
+    
+    console.log(`[seller/summary] レスポンス準備完了: recent=${responseData.recent.length}件`);
+    console.log(`[seller/summary] レスポンス全体のサイズ:`, JSON.stringify(responseData).length, "bytes");
+    
+    return NextResponse.json(responseData);
   } catch (e) {
     console.error("seller_summary_error (Next.js):", e);
     console.error("seller_summary_error details:", {
