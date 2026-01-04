@@ -108,44 +108,83 @@ export async function GET(request: NextRequest) {
     // ① 今日の売上KPI（旧DB対応: order_metadataが存在しない場合はstripe_paymentsのみ）
     try {
       console.log(`[seller/summary] kpiToday query開始`);
-        const deletedAtCondition = hasDeletedAt ? prisma.$queryRaw`AND o.deleted_at IS NULL` : prisma.$queryRaw``;
-        kpiToday = await prisma.$queryRaw`
-          SELECT
-            COUNT(*)::int AS cnt,
-            COALESCE(SUM(
-              CASE
-                WHEN om.is_cash = true THEN o.amount
-                WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
-                ELSE 0
-              END
-            ), 0)::int AS gross,
-            COALESCE(SUM(
-              CASE
-                WHEN om.is_cash = true THEN o.amount
-                WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
-                ELSE 0
-              END
-            ), 0)::int AS net,
-            COALESCE(SUM(
-              CASE
-                WHEN om.is_cash = true THEN 0
-                WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN COALESCE(sp.amount_fee, 0)
-                ELSE 0
-              END
-            ), 0)::int AS fee,
-            COALESCE(SUM(o.cost_amount), 0)::int AS cost
-          FROM orders o
-          LEFT JOIN order_metadata  om ON om.order_id = o.id
-          LEFT JOIN stripe_payments sp ON sp.order_id = o.id
-          WHERE o.seller_id = ${sellerId}
-            AND o.created_at >= ${todayStart}
-            AND o.created_at <  ${tomorrowStart}
-            ${hasDeletedAt ? prisma.$queryRaw`AND o.deleted_at IS NULL` : prisma.$queryRaw``}
-            AND (
-              om.is_cash = true
-              OR sp.status = 'succeeded'
-            )
-        `;
+        // Build query conditionally based on table existence
+        if (hasDeletedAt) {
+          kpiToday = await prisma.$queryRaw`
+            SELECT
+              COUNT(*)::int AS cnt,
+              COALESCE(SUM(
+                CASE
+                  WHEN om.is_cash = true THEN o.amount
+                  WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+                  ELSE 0
+                END
+              ), 0)::int AS gross,
+              COALESCE(SUM(
+                CASE
+                  WHEN om.is_cash = true THEN o.amount
+                  WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+                  ELSE 0
+                END
+              ), 0)::int AS net,
+              COALESCE(SUM(
+                CASE
+                  WHEN om.is_cash = true THEN 0
+                  WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN COALESCE(sp.amount_fee, 0)
+                  ELSE 0
+                END
+              ), 0)::int AS fee,
+              COALESCE(SUM(o.cost_amount), 0)::int AS cost
+            FROM orders o
+            LEFT JOIN order_metadata  om ON om.order_id = o.id
+            LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+            WHERE o.seller_id = ${sellerId}
+              AND o.created_at >= ${todayStart}
+              AND o.created_at <  ${tomorrowStart}
+              AND o.deleted_at IS NULL
+              AND (
+                om.is_cash = true
+                OR sp.status = 'succeeded'
+              )
+          `;
+        } else {
+          kpiToday = await prisma.$queryRaw`
+            SELECT
+              COUNT(*)::int AS cnt,
+              COALESCE(SUM(
+                CASE
+                  WHEN om.is_cash = true THEN o.amount
+                  WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+                  ELSE 0
+                END
+              ), 0)::int AS gross,
+              COALESCE(SUM(
+                CASE
+                  WHEN om.is_cash = true THEN o.amount
+                  WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+                  ELSE 0
+                END
+              ), 0)::int AS net,
+              COALESCE(SUM(
+                CASE
+                  WHEN om.is_cash = true THEN 0
+                  WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN COALESCE(sp.amount_fee, 0)
+                  ELSE 0
+                END
+              ), 0)::int AS fee,
+              COALESCE(SUM(o.cost_amount), 0)::int AS cost
+            FROM orders o
+            LEFT JOIN order_metadata  om ON om.order_id = o.id
+            LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+            WHERE o.seller_id = ${sellerId}
+              AND o.created_at >= ${todayStart}
+              AND o.created_at <  ${tomorrowStart}
+              AND (
+                om.is_cash = true
+                OR sp.status = 'succeeded'
+              )
+          `;
+        }
       } catch (e: any) {
         // 旧DB対応: order_metadataやcost_amountが存在しない場合は、stripe_paymentsのみで集計
         console.warn("kpiToday query failed (likely old DB), trying simplified query:", e.message);
