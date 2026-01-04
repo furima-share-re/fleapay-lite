@@ -273,6 +273,55 @@ export async function GET(request: NextRequest) {
       // ② 取引履歴(orders を基準に、カードも現金も一緒に出す)
       try {
         console.log(`[seller/summary] recentRes query開始`);
+        
+        // デバッグ: 移行データの状態を確認
+        if (hasDeletedAt) {
+          const debugRes = await prisma.$queryRaw<Array<{
+            total_orders: bigint;
+            with_order_metadata: bigint;
+            with_stripe_payments: bigint;
+            with_succeeded_status: bigint;
+            with_is_cash_true: bigint;
+            within_30days: bigint;
+          }>>`
+            SELECT 
+              COUNT(*)::bigint as total_orders,
+              COUNT(om.order_id)::bigint as with_order_metadata,
+              COUNT(sp.id)::bigint as with_stripe_payments,
+              COUNT(CASE WHEN sp.status = 'succeeded' THEN 1 END)::bigint as with_succeeded_status,
+              COUNT(CASE WHEN om.is_cash = true THEN 1 END)::bigint as with_is_cash_true,
+              COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '30 days' THEN 1 END)::bigint as within_30days
+            FROM orders o
+            LEFT JOIN order_metadata om ON om.order_id = o.id
+            LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+            WHERE o.seller_id = ${sellerId}
+              AND o.deleted_at IS NULL
+          `;
+          console.log(`[seller/summary] デバッグ統計:`, debugRes[0]);
+        } else {
+          const debugRes = await prisma.$queryRaw<Array<{
+            total_orders: bigint;
+            with_order_metadata: bigint;
+            with_stripe_payments: bigint;
+            with_succeeded_status: bigint;
+            with_is_cash_true: bigint;
+            within_30days: bigint;
+          }>>`
+            SELECT 
+              COUNT(*)::bigint as total_orders,
+              COUNT(om.order_id)::bigint as with_order_metadata,
+              COUNT(sp.id)::bigint as with_stripe_payments,
+              COUNT(CASE WHEN sp.status = 'succeeded' THEN 1 END)::bigint as with_succeeded_status,
+              COUNT(CASE WHEN om.is_cash = true THEN 1 END)::bigint as with_is_cash_true,
+              COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '30 days' THEN 1 END)::bigint as within_30days
+            FROM orders o
+            LEFT JOIN order_metadata om ON om.order_id = o.id
+            LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+            WHERE o.seller_id = ${sellerId}
+          `;
+          console.log(`[seller/summary] デバッグ統計:`, debugRes[0]);
+        }
+        
         // Build query conditionally based on table existence
         if (hasDeletedAt) {
           recentRes = await prisma.$queryRaw`
@@ -305,6 +354,7 @@ export async function GET(request: NextRequest) {
               AND (
                 om.is_cash = true
                 OR sp.status = 'succeeded'
+                OR (sp.id IS NOT NULL AND sp.status IS NOT NULL)  -- 移行データ対応: stripe_paymentsがあれば表示
               )
               AND o.created_at >= NOW() - INTERVAL '30 days'
             ORDER BY o.created_at DESC
@@ -339,6 +389,7 @@ export async function GET(request: NextRequest) {
               AND (
                 om.is_cash = true
                 OR sp.status = 'succeeded'
+                OR (sp.id IS NOT NULL AND sp.status IS NOT NULL)  -- 移行データ対応: stripe_paymentsがあれば表示
               )
               AND o.created_at >= NOW() - INTERVAL '30 days'
             ORDER BY o.created_at DESC
