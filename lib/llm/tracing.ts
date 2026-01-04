@@ -67,15 +67,17 @@ export function createTrace(
   
   if (!client) {
     // Langfuse未設定時はダミートレース（何もしない）
-    return {
-      trace: {
-        generation: () => ({
-          end: () => {},
-        }),
-      } as any,
-      generation: {
+    const dummyTrace = {
+      generation: () => ({
         end: () => {},
-      } as any,
+      }),
+    };
+    const dummyGeneration = {
+      end: () => {},
+    };
+    return {
+      trace: dummyTrace as ReturnType<Langfuse['trace']>,
+      generation: dummyGeneration as ReturnType<ReturnType<Langfuse['trace']>['generation']>,
     };
   }
 
@@ -125,6 +127,11 @@ export function recordLLMCall(
       }
     : undefined;
 
+  // Helicone識別子を安全に取得
+  const heliconeTraceId = output.raw && typeof output.raw === 'object' && 'heliconeTraceId' in output.raw
+    ? (output.raw as { heliconeTraceId?: string }).heliconeTraceId
+    : undefined;
+
   traceInfo.generation.end({
     output: output.content,
     model: output.model,
@@ -132,7 +139,7 @@ export function recordLLMCall(
     metadata: {
       ...metadata,
       // Helicone識別子を追加（Heliconeと連携）
-      heliconeTraceId: (output.raw as any)?.heliconeTraceId,
+      heliconeTraceId,
     },
   });
 }

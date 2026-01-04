@@ -1,7 +1,7 @@
 // lib/sql-conditions.ts
 // SQL条件の共通化と整合性管理
 
-import { Prisma } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 /**
  * 取引データのフィルタリング条件
@@ -158,7 +158,7 @@ export const salesAmountCase = {
  * @param prisma - PrismaClientインスタンス
  * @returns テーブルの存在有無を表すオブジェクト
  */
-export async function checkTableExistence(prisma: any): Promise<{
+export async function checkTableExistence(prisma: PrismaClient): Promise<{
   deletedAt: boolean;
   orderMetadata: boolean;
   buyerAttributes: boolean;

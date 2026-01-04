@@ -1,7 +1,7 @@
 // lib/llm/types-extended.ts
 // 拡張型定義（画像生成・音声・埋め込み・ストリーミング等）
 
-import type { ChatCompletionOptions, ChatCompletionResponse } from './types';
+import type { ChatCompletionOptions } from './types';
 
 /**
  * 画像生成リクエストオプション

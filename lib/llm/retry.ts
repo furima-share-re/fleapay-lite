@@ -144,7 +144,10 @@ export async function withRetry<T>(
   }
 
   // ここには到達しないはずだが、型安全性のため
-  throw lastError!;
+  if (lastError) {
+    throw lastError;
+  }
+  throw new Error('Unexpected error: retry loop exited without error');
 }
 
 /**

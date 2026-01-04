@@ -3,7 +3,6 @@
 
 import { NextResponse, NextRequest } from 'next/server';
 import sharp from 'sharp';
-import { sanitizeError } from '@/lib/utils';
 import { openai, isOpenAIAvailable } from '@/lib/openai';
 
 export async function POST(request: NextRequest) {

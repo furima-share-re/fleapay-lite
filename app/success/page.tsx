@@ -6,10 +6,21 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+interface PaymentData {
+  orderId: string;
+  sellerId: string;
+  amount: number;
+  currency: string;
+  orderStatus: string;
+  paymentStatus: string | null;
+  isPaid: boolean;
+  paidAt: string | null;
+}
+
 function SuccessContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order');
-  const [paymentData, setPaymentData] = useState<any>(null);
+  const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<'ja' | 'en' | 'zh'>('ja');
 

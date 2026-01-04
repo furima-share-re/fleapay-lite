@@ -9,7 +9,6 @@ import type {
   ChatCompletionResponse,
   ImageEditOptions,
   ImageEditResponse,
-  ChatMessage,
 } from '../types';
 import type {
   ImageGenerationOptions,

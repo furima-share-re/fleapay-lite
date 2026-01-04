@@ -31,7 +31,7 @@ export * from './testing';
 import { getLLMProvider } from './factory';
 import { executeTask, executeImageEditTask } from './router';
 import { getTaskConfig } from './config';
-import type { ChatCompletionOptions, ImageEditOptions, TaskType } from './types';
+import type { ChatCompletionOptions, ImageEditOptions } from './types';
 
 /**
  * チャット完了を実行（簡易API）

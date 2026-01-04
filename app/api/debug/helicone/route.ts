@@ -2,7 +2,7 @@
 // Helicone設定確認用デバッグエンドポイント
 
 import { NextResponse } from 'next/server';
-import { openai, isOpenAIAvailable } from '@/lib/openai';
+import { isOpenAIAvailable } from '@/lib/openai';
 
 export async function GET() {
   const hasOpenAIKey = !!process.env.OPENAI_API_KEY;

@@ -207,7 +207,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ベンチマークデータの取得（オプショナル）
-    let benchmarkData: any[] = [];
+    const benchmarkData: any[] = [];
     try {
       const fs = await import('fs');
       const path = await import('path');

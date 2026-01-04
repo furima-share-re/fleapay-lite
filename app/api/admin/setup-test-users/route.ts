@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       for (const user of testUsers) {
         try {
           // 1. セラーが存在するか確認（存在しない場合は作成）
-          const seller = await prisma.seller.upsert({
+          await prisma.seller.upsert({
             where: { id: user.sellerId },
             update: {},
             create: {
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 1. セラーが存在するか確認（存在しない場合は作成）
-      const seller = await prisma.seller.upsert({
+      await prisma.seller.upsert({
         where: { id: sellerId },
         update: {},
         create: {

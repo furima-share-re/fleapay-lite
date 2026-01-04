@@ -8,7 +8,7 @@ import { sanitizeError } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // プロジェクトルートのdataディレクトリを参照
     const csvPath = path.join(process.cwd(), 'data', 'benchmark.csv');

@@ -47,8 +47,8 @@ function adaptImageInput(
   // 配列の場合は最初の要素を使用
   const imageInput = Array.isArray(image) ? image[0] : image;
   
-  // 型をanyにキャストしてから処理（Uploadable型の複雑さを回避）
-  const input = imageInput as any;
+  // 型をunknownにキャストしてから処理（Uploadable型の複雑さを回避）
+  const input = imageInput as unknown;
 
   // Fileの場合はそのまま返す
   if (input instanceof File) {
@@ -139,7 +139,7 @@ export const openai = {
     completions: {
       create: async (
         options: OpenAI.Chat.Completions.ChatCompletionCreateParams,
-        requestOptions?: OpenAI.RequestOptions
+        _requestOptions?: OpenAI.RequestOptions
       ): Promise<OpenAI.Chat.Completions.ChatCompletion> => {
         const provider = getLLMProvider('openai');
         if (!provider) {
