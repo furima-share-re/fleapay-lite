@@ -47,7 +47,7 @@ export function buildOrderFilterConditions(
     )`
   );
 
-  return Prisma.sql`WHERE ${Prisma.join(conditions, Prisma.sql` AND `)}`;
+  return Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`;
 }
 
 /**
@@ -85,7 +85,7 @@ export function buildOrderFilterConditionsWithDateRange(
     )`
   );
 
-  return Prisma.sql`WHERE ${Prisma.join(conditions, Prisma.sql` AND `)}`;
+  return Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`;
 }
 
 /**
@@ -120,7 +120,7 @@ export function buildOrderFilterConditionsWithRelativeDate(
     )`
   );
 
-  return Prisma.sql`WHERE ${Prisma.join(conditions, Prisma.sql` AND `)}`;
+  return Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`;
 }
 
 /**
