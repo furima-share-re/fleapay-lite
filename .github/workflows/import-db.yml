@@ -12,12 +12,17 @@ jobs:
       - name: Setup PostgreSQL
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y postgresql-client-18
+      
+      - name: Convert backup to SQL format
+        run: |
+          cd tmp/2026-01-03T15_42Z/fleapay_prod_db
+          pg_restore --file=backup.sql --format=directory --verbose .
       
       - name: Import database
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
         run: |
           cd tmp/2026-01-03T15_42Z/fleapay_prod_db
-          pg_restore --dbname="$DATABASE_URL" --verbose --clean --no-owner --no-privileges --format=directory .
+          psql "$DATABASE_URL" -f backup.sql
 
