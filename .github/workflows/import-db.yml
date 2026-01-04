@@ -19,5 +19,5 @@ jobs:
           DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
         run: |
           cd tmp/2026-01-03T15_42Z/fleapay_prod_db
-          pg_restore --dbname=$DATABASE_URL --verbose --clean --no-owner --no-privileges .
+          pg_restore --dbname="$DATABASE_URL" --verbose --clean --no-owner --no-privileges --format=directory .
 
