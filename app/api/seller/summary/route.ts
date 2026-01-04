@@ -284,6 +284,7 @@ export async function GET(request: NextRequest) {
               with_succeeded_status: bigint;
               with_is_cash_true: bigint;
               within_30days: bigint;
+              within_90days: bigint;
             }>>`
               SELECT 
                 COUNT(*)::bigint as total_orders,
@@ -291,14 +292,25 @@ export async function GET(request: NextRequest) {
                 COUNT(sp.id)::bigint as with_stripe_payments,
                 COUNT(CASE WHEN sp.status = 'succeeded' THEN 1 END)::bigint as with_succeeded_status,
                 COUNT(CASE WHEN om.is_cash = true THEN 1 END)::bigint as with_is_cash_true,
-                COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '30 days' THEN 1 END)::bigint as within_30days
+                COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '30 days' THEN 1 END)::bigint as within_30days,
+                COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '90 days' THEN 1 END)::bigint as within_90days
               FROM orders o
               LEFT JOIN order_metadata om ON om.order_id = o.id
               LEFT JOIN stripe_payments sp ON sp.order_id = o.id
               WHERE o.seller_id = ${sellerId}
                 AND o.deleted_at IS NULL
             `;
-            console.log(`[seller/summary] デバッグ統計:`, JSON.stringify(debugRes[0], null, 2));
+            // BigIntを文字列に変換してからログ出力
+            const debugStats = {
+            total_orders: String(debugRes[0].total_orders),
+            with_order_metadata: String(debugRes[0].with_order_metadata),
+            with_stripe_payments: String(debugRes[0].with_stripe_payments),
+            with_succeeded_status: String(debugRes[0].with_succeeded_status),
+            with_is_cash_true: String(debugRes[0].with_is_cash_true),
+            within_30days: String(debugRes[0].within_30days),
+            within_90days: String(debugRes[0].within_90days),
+          };
+          console.log(`[seller/summary] デバッグ統計:`, debugStats);
           } else {
             const debugRes = await prisma.$queryRaw<Array<{
               total_orders: bigint;
@@ -307,6 +319,7 @@ export async function GET(request: NextRequest) {
               with_succeeded_status: bigint;
               with_is_cash_true: bigint;
               within_30days: bigint;
+              within_90days: bigint;
             }>>`
               SELECT 
                 COUNT(*)::bigint as total_orders,
@@ -314,13 +327,24 @@ export async function GET(request: NextRequest) {
                 COUNT(sp.id)::bigint as with_stripe_payments,
                 COUNT(CASE WHEN sp.status = 'succeeded' THEN 1 END)::bigint as with_succeeded_status,
                 COUNT(CASE WHEN om.is_cash = true THEN 1 END)::bigint as with_is_cash_true,
-                COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '30 days' THEN 1 END)::bigint as within_30days
+                COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '30 days' THEN 1 END)::bigint as within_30days,
+                COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '90 days' THEN 1 END)::bigint as within_90days
               FROM orders o
               LEFT JOIN order_metadata om ON om.order_id = o.id
               LEFT JOIN stripe_payments sp ON sp.order_id = o.id
               WHERE o.seller_id = ${sellerId}
             `;
-            console.log(`[seller/summary] デバッグ統計:`, JSON.stringify(debugRes[0], null, 2));
+            // BigIntを文字列に変換してからログ出力
+            const debugStats = {
+            total_orders: String(debugRes[0].total_orders),
+            with_order_metadata: String(debugRes[0].with_order_metadata),
+            with_stripe_payments: String(debugRes[0].with_stripe_payments),
+            with_succeeded_status: String(debugRes[0].with_succeeded_status),
+            with_is_cash_true: String(debugRes[0].with_is_cash_true),
+            within_30days: String(debugRes[0].within_30days),
+            within_90days: String(debugRes[0].within_90days),
+          };
+          console.log(`[seller/summary] デバッグ統計:`, debugStats);
           }
         } catch (debugError: any) {
           console.warn(`[seller/summary] デバッグ統計取得エラー:`, debugError.message);
@@ -360,7 +384,7 @@ export async function GET(request: NextRequest) {
                 OR sp.status = 'succeeded'
                 OR (sp.id IS NOT NULL AND sp.status IS NOT NULL)  -- 移行データ対応: stripe_paymentsがあれば表示
               )
-              AND o.created_at >= NOW() - INTERVAL '30 days'
+              AND o.created_at >= NOW() - INTERVAL '90 days'  -- 30日から90日に拡張
             ORDER BY o.created_at DESC
           `;
         } else {
@@ -395,7 +419,7 @@ export async function GET(request: NextRequest) {
                 OR sp.status = 'succeeded'
                 OR (sp.id IS NOT NULL AND sp.status IS NOT NULL)  -- 移行データ対応: stripe_paymentsがあれば表示
               )
-              AND o.created_at >= NOW() - INTERVAL '30 days'
+              AND o.created_at >= NOW() - INTERVAL '90 days'  -- 30日から90日に拡張
             ORDER BY o.created_at DESC
           `;
         }
