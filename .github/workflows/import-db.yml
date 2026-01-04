@@ -28,7 +28,18 @@ jobs:
           if [ -f backup.sql ]; then
             echo "Using backup.sql file"
             echo "DATABASE_URL is set: ${DATABASE_URL:0:50}..."
-            psql "$DATABASE_URL" -f backup.sql
+            # Parse DATABASE_URL and set individual environment variables for psql
+            # Format: postgresql://user:password@host:port/database
+            export PGHOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
+            export PGPORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+            export PGUSER=$(echo $DATABASE_URL | sed -n 's/.*:\/\/\([^:]*\):.*/\1/p')
+            export PGPASSWORD=$(echo $DATABASE_URL | sed -n 's/.*:\/\/[^:]*:\([^@]*\)@.*/\1/p' | sed 's/%2E/./g' | sed 's/%40/@/g')
+            export PGDATABASE=$(echo $DATABASE_URL | sed -n 's/.*\/\([^?]*\).*/\1/p')
+            echo "PGHOST: $PGHOST"
+            echo "PGPORT: $PGPORT"
+            echo "PGUSER: $PGUSER"
+            echo "PGDATABASE: $PGDATABASE"
+            psql -f backup.sql
           else
             echo "backup.sql not found. Trying pg_restore with directory format..."
             pg_restore --dbname="$DATABASE_URL" --verbose --clean --no-owner --no-privileges --format=directory . || true
