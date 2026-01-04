@@ -35,8 +35,18 @@ interface SummaryData {
   isSubscribed?: boolean;
 }
 
+interface KidsStats {
+  totalOrders?: number;
+  ordersWithAttrs?: number;
+  cashOrders?: number;
+  cashlessOrders?: number;
+  inboundCount?: number;
+  childCustomerCount?: number;
+  dataScore?: number;
+}
+
 interface KidsSummaryData {
-  stats?: Record<string, unknown>;
+  stats?: KidsStats;
   badges?: Array<Record<string, unknown>>;
   titles?: Array<{
     label: string;
@@ -153,7 +163,7 @@ function KidsDashboardContent() {
     );
   }
 
-  const stats = kidsSummary?.stats || {};
+  const stats: KidsStats = kidsSummary?.stats || {};
   const badges = kidsSummary?.badges || [];
   const titles = kidsSummary?.titles || [];
   const nowJst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -561,7 +571,7 @@ function KidsDashboardContent() {
           </div>
         </div>
         <div className="kid-chip">
-          {summary?.displayName || summary?.sellerId || 'おみせ'} の 若旦那 / 若女将
+          {sellerId || 'おみせ'} の 若旦那 / 若女将
         </div>
       </header>
 

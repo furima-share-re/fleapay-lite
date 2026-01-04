@@ -259,12 +259,13 @@ export async function getMigrationStatusPrisma(prisma: PrismaClient) {
         };
       }
     }
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       supabaseUsers: 0,
       bcryptjsUsers: 0,
       totalUsers: 0,
       migrationRatePercent: 0,
-      error: error.message,
+      error: errorMessage,
     };
   }
 }

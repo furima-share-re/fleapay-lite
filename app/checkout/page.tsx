@@ -293,7 +293,7 @@ function CheckoutContent() {
   };
 
   const t = dict[lang];
-  const amountInt = orderData ? parseInt(orderData.amount, 10) : 0;
+  const amountInt = orderData?.amount ?? 0;
   const isEmpty = !orderData || !amountInt || amountInt <= 0;
 
   return (

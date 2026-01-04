@@ -76,8 +76,8 @@ export function createTrace(
       end: () => {},
     };
     return {
-      trace: dummyTrace as ReturnType<Langfuse['trace']>,
-      generation: dummyGeneration as ReturnType<ReturnType<Langfuse['trace']>['generation']>,
+      trace: dummyTrace as unknown as ReturnType<Langfuse['trace']>,
+      generation: dummyGeneration as unknown as ReturnType<ReturnType<Langfuse['trace']>['generation']>,
     };
   }
 

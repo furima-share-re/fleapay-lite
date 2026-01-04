@@ -110,7 +110,7 @@ export async function withRetry<T>(
     onRetry,
   } = options;
 
-  let lastError: Error;
+  let lastError: Error | undefined;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
