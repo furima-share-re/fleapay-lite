@@ -176,14 +176,14 @@ function SellerPurchaseStandardContent() {
       setCurrentOrderId(data.orderId || null);
       
       const base = window.location.origin;
-      let checkoutUrl = null;
+      let checkoutUrl: string | null = null;
       
       if (data.checkoutUrl) {
         checkoutUrl = data.checkoutUrl;
       } else if (data.orderId) {
-        checkoutUrl = `${base}/checkout?s=${encodeURIComponent(sellerId)}&order=${encodeURIComponent(data.orderId)}`;
+        checkoutUrl = `${base}/checkout?s=${encodeURIComponent(sellerId!)}&order=${encodeURIComponent(data.orderId)}`;
       } else {
-        checkoutUrl = `${base}/checkout?s=${encodeURIComponent(sellerId)}`;
+        checkoutUrl = `${base}/checkout?s=${encodeURIComponent(sellerId!)}`;
       }
       
       setQrUrl(checkoutUrl);

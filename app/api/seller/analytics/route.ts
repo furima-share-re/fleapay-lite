@@ -11,7 +11,14 @@ export const dynamic = 'force-dynamic';
 async function getDailyAnalytics(sellerId: string, days: number = 30) {
   const { todayStart } = jstDayBounds();
   
-  const results = [];
+  const results: Array<{
+    date: string;
+    grossSales: number;
+    netSales: number;
+    totalCost: number;
+    profit: number;
+    transactionCount: number;
+  }> = [];
   
   for (let i = days - 1; i >= 0; i--) {
     const dayStart = new Date(todayStart.getTime() - i * 24 * 60 * 60 * 1000);
@@ -96,7 +103,14 @@ async function getWeeklyAnalytics(sellerId: string, weeks: number = 4) {
   const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 月曜日までの日数
   const thisMonday = new Date(todayStart.getTime() - mondayOffset * 24 * 60 * 60 * 1000);
   
-  const results = [];
+  const results: Array<{
+    weekStart: string;
+    grossSales: number;
+    netSales: number;
+    totalCost: number;
+    profit: number;
+    transactionCount: number;
+  }> = [];
   
   for (let i = weeks - 1; i >= 0; i--) {
     const weekStart = new Date(thisMonday.getTime() - i * 7 * 24 * 60 * 60 * 1000);

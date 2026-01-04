@@ -53,7 +53,12 @@ export async function POST(request: NextRequest) {
         { sellerId: 'test-seller-kids', planType: 'kids' },
       ];
 
-      const results = [];
+      const results: Array<{
+        sellerId: string;
+        planType: string;
+        status: string;
+        error?: string;
+      }> = [];
 
       for (const user of testUsers) {
         try {

@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 画像をS3に保存
-    let imageUrl = null;
+    let imageUrl: string | null = null;
 
     if (imageData && typeof imageData === 'string' && imageData.startsWith('data:')) {
       try {

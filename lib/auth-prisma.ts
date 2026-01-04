@@ -96,7 +96,7 @@ export async function resetPasswordAndMigratePrisma(
       // 既存ユーザーを検索
       const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
 
-      let supabaseUserId = null;
+      let supabaseUserId: string | null = null;
       if (!listError && existingUsers) {
         const existingUser = existingUsers.users.find((u) => u.email === email);
         if (existingUser) {
