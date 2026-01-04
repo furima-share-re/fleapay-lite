@@ -1474,11 +1474,18 @@
 
       // 取引リスト描画（フィルタ付き）
       function renderTxList() {
-        if (!txListEl) return;
+        console.log("[seller-dashboard] renderTxList()呼び出し");
+        console.log("[seller-dashboard] txListEl:", !!txListEl);
+        console.log("[seller-dashboard] latestTxList:", latestTxList?.length || 0, "件");
+        if (!txListEl) {
+          console.warn("[seller-dashboard] txListElが見つかりません");
+          return;
+        }
         txListEl.innerHTML = "";
 
         const source = latestTxList || [];
         let list = source;
+        console.log("[seller-dashboard] フィルタ前:", source.length, "件, フィルタ後:", list.length, "件");
 
         if (txFilterNeedInputOnly) {
           list = source.filter(isNeedInputTx);
@@ -1708,8 +1715,12 @@
           }
 
           // 取引履歴（過去30日分）を保持＆描画
+          console.log("[seller-dashboard] APIレスポンス data.recent:", data.recent);
           latestTxList = data.recent || [];
+          console.log("[seller-dashboard] latestTxList設定:", latestTxList.length, "件");
+          console.log("[seller-dashboard] txListEl存在確認:", !!txListEl);
           renderTxList();
+          console.log("[seller-dashboard] renderTxList()実行完了");
 
         } catch (e){
           console.error("loadSummary error", e);
