@@ -51,9 +51,11 @@ async function getDailyAnalytics(sellerId: string, days: number = 30) {
         AND o.created_at < ${dayEnd}
         AND o.deleted_at IS NULL
         AND (
-          om.is_cash = true
-          OR sp.status = 'succeeded'
+          om.is_cash = true  -- 現金決済は表示
+          OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+          OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
         )
+        -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
     `;
     
     const row = result[0] || {};
@@ -134,9 +136,11 @@ async function getWeeklyAnalytics(sellerId: string, weeks: number = 4) {
         AND o.created_at < ${weekEnd}
         AND o.deleted_at IS NULL
         AND (
-          om.is_cash = true
-          OR sp.status = 'succeeded'
+          om.is_cash = true  -- 現金決済は表示
+          OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+          OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
         )
+        -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
     `;
     
     const row = result[0] || {};

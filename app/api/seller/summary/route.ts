@@ -143,9 +143,11 @@ export async function GET(request: NextRequest) {
               AND o.created_at <  ${tomorrowStart}
               AND o.deleted_at IS NULL
               AND (
-                om.is_cash = true
-                OR sp.status = 'succeeded'
+                om.is_cash = true  -- 現金決済は表示
+                OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
               )
+              -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
           `;
           console.log(`[seller/summary] kpiToday query成功:`, kpiToday);
         } else {
@@ -181,9 +183,11 @@ export async function GET(request: NextRequest) {
               AND o.created_at >= ${todayStart}
               AND o.created_at <  ${tomorrowStart}
               AND (
-                om.is_cash = true
-                OR sp.status = 'succeeded'
+                om.is_cash = true  -- 現金決済は表示
+                OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
               )
+              -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
           `;
           console.log(`[seller/summary] kpiToday query成功:`, kpiToday);
         }
@@ -215,39 +219,80 @@ export async function GET(request: NextRequest) {
       // ② 累計売上KPI
       try {
         console.log(`[seller/summary] kpiTotal query開始`);
-        kpiTotal = await prisma.$queryRaw`
-          SELECT
-            COALESCE(SUM(
-              CASE
-                WHEN om.is_cash = true THEN o.amount
-                WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
-                ELSE 0
-              END
-            ), 0)::int AS gross,
-            COALESCE(SUM(
-              CASE
-                WHEN om.is_cash = true THEN o.amount
-                WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
-                ELSE 0
-              END
-            ), 0)::int AS net,
-            COALESCE(SUM(
-              CASE
-                WHEN om.is_cash = true THEN 0
-                WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN COALESCE(sp.amount_fee, 0)
-                ELSE 0
-              END
-            ), 0)::int AS fee,
-            COALESCE(SUM(o.cost_amount), 0)::int AS cost
-          FROM orders o
-          LEFT JOIN order_metadata  om ON om.order_id = o.id
-          LEFT JOIN stripe_payments sp ON sp.order_id = o.id
-          WHERE o.seller_id = ${sellerId}
-            AND (
-              om.is_cash = true
-              OR sp.status = 'succeeded'
-            )
-        `;
+        if (hasDeletedAt) {
+          kpiTotal = await prisma.$queryRaw`
+            SELECT
+              COALESCE(SUM(
+                CASE
+                  WHEN om.is_cash = true THEN o.amount
+                  WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+                  ELSE 0
+                END
+              ), 0)::int AS gross,
+              COALESCE(SUM(
+                CASE
+                  WHEN om.is_cash = true THEN o.amount
+                  WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+                  ELSE 0
+                END
+              ), 0)::int AS net,
+              COALESCE(SUM(
+                CASE
+                  WHEN om.is_cash = true THEN 0
+                  WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN COALESCE(sp.amount_fee, 0)
+                  ELSE 0
+                END
+              ), 0)::int AS fee,
+              COALESCE(SUM(o.cost_amount), 0)::int AS cost
+            FROM orders o
+            LEFT JOIN order_metadata  om ON om.order_id = o.id
+            LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+            WHERE o.seller_id = ${sellerId}
+              AND o.deleted_at IS NULL
+              AND (
+                om.is_cash = true  -- 現金決済は表示
+                OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+              )
+              -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+          `;
+        } else {
+          kpiTotal = await prisma.$queryRaw`
+            SELECT
+              COALESCE(SUM(
+                CASE
+                  WHEN om.is_cash = true THEN o.amount
+                  WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+                  ELSE 0
+                END
+              ), 0)::int AS gross,
+              COALESCE(SUM(
+                CASE
+                  WHEN om.is_cash = true THEN o.amount
+                  WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+                  ELSE 0
+                END
+              ), 0)::int AS net,
+              COALESCE(SUM(
+                CASE
+                  WHEN om.is_cash = true THEN 0
+                  WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN COALESCE(sp.amount_fee, 0)
+                  ELSE 0
+                END
+              ), 0)::int AS fee,
+              COALESCE(SUM(o.cost_amount), 0)::int AS cost
+            FROM orders o
+            LEFT JOIN order_metadata  om ON om.order_id = o.id
+            LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+            WHERE o.seller_id = ${sellerId}
+              AND (
+                om.is_cash = true  -- 現金決済は表示
+                OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+              )
+              -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+          `;
+        }
         console.log(`[seller/summary] kpiTotal query成功:`, kpiTotal);
       } catch (e: any) {
         // 旧DB対応: order_metadataが存在しない場合は、stripe_paymentsのみで集計
@@ -380,10 +425,11 @@ export async function GET(request: NextRequest) {
             WHERE o.seller_id = ${sellerId}
               AND o.deleted_at IS NULL
               AND (
-                om.is_cash = true
-                OR sp.status = 'succeeded'
-                OR (sp.id IS NOT NULL AND sp.status IS NOT NULL)  -- 移行データ対応: stripe_paymentsがあれば表示
+                om.is_cash = true  -- 現金決済は表示
+                OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
               )
+              -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
               AND o.created_at >= NOW() - INTERVAL '90 days'  -- 30日から90日に拡張
             ORDER BY o.created_at DESC
           `;
@@ -415,10 +461,11 @@ export async function GET(request: NextRequest) {
             LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
             WHERE o.seller_id = ${sellerId}
               AND (
-                om.is_cash = true
-                OR sp.status = 'succeeded'
-                OR (sp.id IS NOT NULL AND sp.status IS NOT NULL)  -- 移行データ対応: stripe_paymentsがあれば表示
+                om.is_cash = true  -- 現金決済は表示
+                OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
               )
+              -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
               AND o.created_at >= NOW() - INTERVAL '90 days'  -- 30日から90日に拡張
             ORDER BY o.created_at DESC
           `;
