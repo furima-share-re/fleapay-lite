@@ -147,6 +147,7 @@ export async function GET(request: NextRequest) {
                 OR sp.status = 'succeeded'
               )
           `;
+          console.log(`[seller/summary] kpiToday query成功:`, kpiToday);
         } else {
           kpiToday = await prisma.$queryRaw`
             SELECT
@@ -184,6 +185,7 @@ export async function GET(request: NextRequest) {
                 OR sp.status = 'succeeded'
               )
           `;
+          console.log(`[seller/summary] kpiToday query成功:`, kpiToday);
         }
       } catch (e: any) {
         // 旧DB対応: order_metadataやcost_amountが存在しない場合は、stripe_paymentsのみで集計
@@ -271,39 +273,77 @@ export async function GET(request: NextRequest) {
       // ② 取引履歴(orders を基準に、カードも現金も一緒に出す)
       try {
         console.log(`[seller/summary] recentRes query開始`);
-        recentRes = await prisma.$queryRaw`
-          SELECT
-            o.id                     AS order_id,
-            o.created_at,
-            o.amount,
-            o.cost_amount,
-            o.summary              AS memo,
-            o.world_price_median,
-            o.world_price_high,
-            o.world_price_low,
-            o.world_price_sample_count,
-            om.is_cash,
-            om.category            AS raw_category,
-            CASE
-              WHEN om.is_cash THEN 'cash'
-              WHEN sp.id IS NOT NULL THEN 'card'
-              ELSE 'other'
-            END                      AS payment_method,
-            ba.customer_type,
-            ba.gender,
-            ba.age_band
-          FROM orders o
-          LEFT JOIN order_metadata   om ON om.order_id = o.id
-          LEFT JOIN stripe_payments  sp ON sp.order_id = o.id
-          LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
-          WHERE o.seller_id = ${sellerId}
-            AND (
-              om.is_cash = true
-              OR sp.status = 'succeeded'
-            )
-            AND o.created_at >= NOW() - INTERVAL '30 days'
-          ORDER BY o.created_at DESC
-        `;
+        // Build query conditionally based on table existence
+        if (hasDeletedAt) {
+          recentRes = await prisma.$queryRaw`
+            SELECT
+              o.id                     AS order_id,
+              o.created_at,
+              o.amount,
+              o.cost_amount,
+              o.summary              AS memo,
+              o.world_price_median,
+              o.world_price_high,
+              o.world_price_low,
+              o.world_price_sample_count,
+              om.is_cash,
+              om.category            AS raw_category,
+              CASE
+                WHEN om.is_cash THEN 'cash'
+                WHEN sp.id IS NOT NULL THEN 'card'
+                ELSE 'other'
+              END                      AS payment_method,
+              ba.customer_type,
+              ba.gender,
+              ba.age_band
+            FROM orders o
+            LEFT JOIN order_metadata   om ON om.order_id = o.id
+            LEFT JOIN stripe_payments  sp ON sp.order_id = o.id
+            LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
+            WHERE o.seller_id = ${sellerId}
+              AND o.deleted_at IS NULL
+              AND (
+                om.is_cash = true
+                OR sp.status = 'succeeded'
+              )
+              AND o.created_at >= NOW() - INTERVAL '30 days'
+            ORDER BY o.created_at DESC
+          `;
+        } else {
+          recentRes = await prisma.$queryRaw`
+            SELECT
+              o.id                     AS order_id,
+              o.created_at,
+              o.amount,
+              o.cost_amount,
+              o.summary              AS memo,
+              o.world_price_median,
+              o.world_price_high,
+              o.world_price_low,
+              o.world_price_sample_count,
+              om.is_cash,
+              om.category            AS raw_category,
+              CASE
+                WHEN om.is_cash THEN 'cash'
+                WHEN sp.id IS NOT NULL THEN 'card'
+                ELSE 'other'
+              END                      AS payment_method,
+              ba.customer_type,
+              ba.gender,
+              ba.age_band
+            FROM orders o
+            LEFT JOIN order_metadata   om ON om.order_id = o.id
+            LEFT JOIN stripe_payments  sp ON sp.order_id = o.id
+            LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
+            WHERE o.seller_id = ${sellerId}
+              AND (
+                om.is_cash = true
+                OR sp.status = 'succeeded'
+              )
+              AND o.created_at >= NOW() - INTERVAL '30 days'
+            ORDER BY o.created_at DESC
+          `;
+        }
         console.log(`[seller/summary] recentRes query成功: ${recentRes.length}件`);
       } catch (e: any) {
         // 旧DB対応: order_metadataやbuyer_attributesが存在しない場合は、stripe_paymentsのみで取得
