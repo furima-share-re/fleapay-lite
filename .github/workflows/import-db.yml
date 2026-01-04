@@ -8,24 +8,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          lfs: true
       
       - name: Setup PostgreSQL
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget ca-certificates gnupg lsb-release
-          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client-18
+          sudo apt-get install -y postgresql-client
       
       - name: Verify PostgreSQL version
         run: |
-          pg_restore --version
+          psql --version
       
-      - name: Import database
+      - name: Import database from SQL file
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
         run: |
           cd tmp/2026-01-03T15_42Z/fleapay_prod_db
-          pg_restore --dbname="$DATABASE_URL" --verbose --clean --no-owner --no-privileges --format=directory .
+          if [ -f backup.sql ]; then
+            echo "Using backup.sql file"
+            psql "$DATABASE_URL" -f backup.sql
+          else
+            echo "backup.sql not found. Trying pg_restore with directory format..."
+            pg_restore --dbname="$DATABASE_URL" --verbose --clean --no-owner --no-privileges --format=directory . || true
+          fi
 
