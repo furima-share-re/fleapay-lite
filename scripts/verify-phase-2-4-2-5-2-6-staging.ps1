@@ -141,3 +141,4 @@ if ($report.summary.failed -gt 0) {
 $report | ConvertTo-Json -Depth 10 | Out-File -FilePath "phase-2-4-2-5-2-6-verification-report.json" -Encoding UTF8
 Write-Host "📄 詳細レポートを保存しました: phase-2-4-2-5-2-6-verification-report.json" -ForegroundColor Green
 
+

@@ -75,3 +75,4 @@ Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "詳細な使い方は scripts/USAGE_GUIDE.md を参照してください" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 
+

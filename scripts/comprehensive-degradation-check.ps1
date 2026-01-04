@@ -185,3 +185,4 @@ $script:report | ConvertTo-Json -Depth 10 | Out-File -FilePath "comprehensive-de
 
 Write-Host "📄 詳細レポートを保存しました: comprehensive-degradation-check-report.json" -ForegroundColor Green
 
+

@@ -249,3 +249,4 @@ npm install --save-dev puppeteer
 3. **結果は保存**: `OUTPUT_FILE` を指定して結果を保存しておくと、後で比較できます
 4. **CI/CDに組み込む**: GitHub Actionsなどで自動チェックを設定
 
+

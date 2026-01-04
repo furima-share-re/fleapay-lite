@@ -63,3 +63,4 @@ postgresql://postgres.snowkercpcuixnwxchkc:[YOUR-PASSWORD]@aws-1-ap-northeast-1.
 
 **まずは、GitHub SecretsにConnection Pooling URLを設定してください！**
 
+
