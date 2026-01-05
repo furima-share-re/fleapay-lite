@@ -9,6 +9,38 @@ import Script from 'next/script';
 
 type Step = 'intro' | 'camera' | 'analyzing' | 'form' | 'confirm' | 'done';
 
+interface AIAnalysisResult {
+  summary?: string;
+  total?: number;
+  items?: Array<{
+    name: string;
+    unit_price: number | null;
+    quantity: number;
+  }>;
+}
+
+interface QRCodeLib {
+  new (element: HTMLElement, options: {
+    text: string;
+    width: number;
+    height: number;
+    colorDark: string;
+    colorLight: string;
+    correctLevel: number;
+  }): void;
+  CorrectLevel: {
+    L: number;
+    M: number;
+    H: number;
+  };
+}
+
+declare global {
+  interface Window {
+    QRCode?: QRCodeLib;
+  }
+}
+
 function SellerPurchaseStandardContent() {
   const searchParams = useSearchParams();
   const sellerIdParam = searchParams.get('s');
@@ -20,12 +52,10 @@ function SellerPurchaseStandardContent() {
   const [blockedMessage, setBlockedMessage] = useState<string>('');
   
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
-  const [torchEnabled, setTorchEnabled] = useState(false);
   const [capturedImageDataURL, setCapturedImageDataURL] = useState<string | null>(null);
-  const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<AIAnalysisResult | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'cashless'>('cashless');
   const [amount, setAmount] = useState<string>('');
-  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -154,12 +184,15 @@ function SellerPurchaseStandardContent() {
       return;
     }
     
+    // sellerIdがnullでないことを確認（上記のチェックで保証されている）
+    const validSellerId = sellerId;
+    
     try {
       const res = await fetch('/api/pending/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sellerId,
+          sellerId: validSellerId,
           amount: parseInt(amount),
           summary: aiAnalysisResult?.summary || '',
           imageData: capturedImageDataURL,
@@ -173,17 +206,16 @@ function SellerPurchaseStandardContent() {
       }
       
       const data = await res.json();
-      setCurrentOrderId(data.orderId || null);
       
       const base = window.location.origin;
-      let checkoutUrl = null;
+      let checkoutUrl: string | null = null;
       
       if (data.checkoutUrl) {
         checkoutUrl = data.checkoutUrl;
       } else if (data.orderId) {
-        checkoutUrl = `${base}/checkout?s=${encodeURIComponent(sellerId)}&order=${encodeURIComponent(data.orderId)}`;
+        checkoutUrl = `${base}/checkout?s=${encodeURIComponent(validSellerId)}&order=${encodeURIComponent(data.orderId)}`;
       } else {
-        checkoutUrl = `${base}/checkout?s=${encodeURIComponent(sellerId)}`;
+        checkoutUrl = `${base}/checkout?s=${encodeURIComponent(validSellerId)}`;
       }
       
       setQrUrl(checkoutUrl);
@@ -191,15 +223,15 @@ function SellerPurchaseStandardContent() {
       
       // QRコード生成
       if (paymentMethod !== 'cash' && checkoutUrl && qrCodeRef.current) {
-        if (typeof window !== 'undefined' && (window as any).QRCode) {
+        if (typeof window !== 'undefined' && window.QRCode) {
           qrCodeRef.current.innerHTML = '';
-          new (window as any).QRCode(qrCodeRef.current, {
+          new window.QRCode(qrCodeRef.current, {
             text: checkoutUrl,
             width: 200,
             height: 200,
             colorDark: '#000000',
             colorLight: '#ffffff',
-            correctLevel: (window as any).QRCode.CorrectLevel.M
+            correctLevel: window.QRCode.CorrectLevel.M
           });
         }
       }
@@ -248,7 +280,6 @@ function SellerPurchaseStandardContent() {
   const handleNextItem = () => {
     setCapturedImageDataURL(null);
     setAiAnalysisResult(null);
-    setCurrentOrderId(null);
     setQrUrl(null);
     setAmount('');
     setPaymentMethod('cashless');

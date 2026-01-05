@@ -1,0 +1,14 @@
+{
+  "*.{ts,tsx}": [
+    "eslint --fix",
+    "bash -c 'tsc --noEmit --pretty false'"
+  ],
+  "*.{js,jsx}": [
+    "eslint --fix"
+  ],
+  "*.{json,md}": [
+    "prettier --write"
+  ]
+}
+
+

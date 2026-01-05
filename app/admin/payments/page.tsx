@@ -3,23 +3,35 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
+
+interface StripeSummary {
+  paymentsCount?: number;
+  paymentsGross?: number;
+  netSales?: number;
+  disputeCount?: number;
+  urgentDisputes?: number;
+  refundCount?: number;
+  refundAmount?: number;
+}
+
+declare global {
+  interface Window {
+    ADMIN_TOKEN?: string;
+  }
+}
 
 export default function AdminPaymentsPage() {
-  const [summary, setSummary] = useState<any>(null);
+  const [summary, setSummary] = useState<StripeSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState('today');
 
-  useEffect(() => {
-    loadStripeSummary();
-  }, [period]);
-
-  const loadStripeSummary = async () => {
+  const loadStripeSummary = useCallback(async () => {
     try {
       const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
-        ? ((window as any).ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
+        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
         : 'admin-devtoken';
       
       const res = await fetch(`/api/admin/stripe/summary?period=${encodeURIComponent(period)}`, {
@@ -50,7 +62,11 @@ export default function AdminPaymentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
+
+  useEffect(() => {
+    loadStripeSummary();
+  }, [loadStripeSummary]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(amount);

@@ -50,8 +50,8 @@ export function getLLMProvider(provider?: LLMProvider): LLMProviderInterface | n
 
   // キャッシュから取得
   if (providerCache.has(providerName)) {
-    const cached = providerCache.get(providerName)!;
-    if (cached.isAvailable()) {
+    const cached = providerCache.get(providerName);
+    if (cached && cached.isAvailable()) {
       return cached;
     }
     // 利用不可の場合はキャッシュから削除

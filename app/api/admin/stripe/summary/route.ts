@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { jstDayBounds, sanitizeError } from '@/lib/utils';
+import { jstDayBounds } from '@/lib/utils';
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'admin-devtoken';
 
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const { todayStart, tomorrowStart } = jstDayBounds();
     
     let startDate: Date;
-    let endDate: Date = tomorrowStart;
+    const endDate: Date = tomorrowStart;
     
     if (period === 'week') {
       startDate = new Date(todayStart);

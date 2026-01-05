@@ -2,7 +2,6 @@
 // Phase 2.6: Express.js廃止 - Prisma対応の認証関数
 
 import { supabase, supabaseAdmin } from './supabase.js';
-import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 
 /**
@@ -35,9 +34,10 @@ export async function resetPasswordAndMigratePrisma(
         },
       });
       user = prismaUser;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // auth_providerカラムが存在しない場合、$queryRawで取得
-      if (error.message?.includes('auth_provider') || error.message?.includes('does not exist')) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('auth_provider') || errorMessage.includes('does not exist')) {
         const result = await prisma.$queryRaw<Array<{
           id: string;
           email: string;
@@ -96,7 +96,7 @@ export async function resetPasswordAndMigratePrisma(
       // 既存ユーザーを検索
       const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
 
-      let supabaseUserId = null;
+      let supabaseUserId: string | null = null;
       if (!listError && existingUsers) {
         const existingUser = existingUsers.users.find((u) => u.email === email);
         if (existingUser) {
@@ -170,9 +170,10 @@ export async function resetPasswordAndMigratePrisma(
             updatedAt: new Date(),
           },
         });
-      } catch (updateError: any) {
+      } catch (updateError: unknown) {
         // auth_providerカラムが存在しない場合は$queryRawで更新
-        if (updateError.message?.includes('auth_provider') || updateError.message?.includes('does not exist')) {
+        const updateErrorMessage = updateError instanceof Error ? updateError.message : String(updateError);
+        if (updateErrorMessage.includes('auth_provider') || updateErrorMessage.includes('does not exist')) {
           await prisma.$queryRaw`
             UPDATE sellers
             SET supabase_user_id = ${supabaseUserId},
@@ -188,9 +189,10 @@ export async function resetPasswordAndMigratePrisma(
     }
 
     return { success: false, error: 'unknown_auth_provider' };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('resetPasswordAndMigratePrisma error', error);
-    return { success: false, error: error.message || 'internal_error' };
+    const errorMessage = error instanceof Error ? error.message : 'internal_error';
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -229,10 +231,11 @@ export async function getMigrationStatusPrisma(prisma: PrismaClient) {
       totalUsers: Number(row.total_users) || 0,
       migrationRatePercent: Number(row.migration_rate_percent) || 0,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('getMigrationStatusPrisma error', error);
     // auth_providerカラムが存在しない場合は、すべてbcryptjsとして扱う
-    if (error.message?.includes('auth_provider') || error.message?.includes('does not exist')) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('auth_provider') || errorMessage.includes('does not exist')) {
       try {
         const result = await prisma.$queryRaw<Array<{ count: bigint }>>`
           SELECT COUNT(*)::bigint as count FROM sellers
@@ -245,13 +248,14 @@ export async function getMigrationStatusPrisma(prisma: PrismaClient) {
           migrationRatePercent: 0,
           error: 'auth_provider column does not exist - migration required',
         };
-      } catch (fallbackError: any) {
+      } catch (fallbackError: unknown) {
+        const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
         return {
           supabaseUsers: 0,
           bcryptjsUsers: 0,
           totalUsers: 0,
           migrationRatePercent: 0,
-          error: error.message,
+          error: fallbackErrorMessage,
         };
       }
     }
@@ -260,7 +264,7 @@ export async function getMigrationStatusPrisma(prisma: PrismaClient) {
       bcryptjsUsers: 0,
       totalUsers: 0,
       migrationRatePercent: 0,
-      error: error.message,
+      error: errorMessage,
     };
   }
 }

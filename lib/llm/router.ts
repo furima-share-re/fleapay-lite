@@ -5,7 +5,6 @@ import { getLLMProvider } from './factory';
 import type { LLMProvider, ChatCompletionOptions, ChatCompletionResponse, TaskType } from './types';
 import type { TaskConfig } from './config';
 import { getTaskConfig, customizeTaskConfig } from './config';
-import { getPrompt } from './prompts';
 import { createTrace, recordLLMCall, recordError } from './tracing';
 import { withRetry } from './retry';
 import { classifyError, getUserFriendlyErrorMessage } from './errors';

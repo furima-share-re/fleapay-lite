@@ -251,3 +251,4 @@ GET https://fleapay-lite-t1.onrender.com/seller-register
 **レポート作成日**: 2026-01-03  
 **確認実施者**: AI Assistant
 
+

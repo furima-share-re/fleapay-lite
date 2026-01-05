@@ -11,7 +11,14 @@ export const dynamic = 'force-dynamic';
 async function getDailyAnalytics(sellerId: string, days: number = 30) {
   const { todayStart } = jstDayBounds();
   
-  const results = [];
+  const results: Array<{
+    date: string;
+    grossSales: number;
+    netSales: number;
+    totalCost: number;
+    profit: number;
+    transactionCount: number;
+  }> = [];
   
   for (let i = days - 1; i >= 0; i--) {
     const dayStart = new Date(todayStart.getTime() - i * 24 * 60 * 60 * 1000);
@@ -51,9 +58,11 @@ async function getDailyAnalytics(sellerId: string, days: number = 30) {
         AND o.created_at < ${dayEnd}
         AND o.deleted_at IS NULL
         AND (
-          om.is_cash = true
-          OR sp.status = 'succeeded'
+          om.is_cash = true  -- 現金決済は表示
+          OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+          OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
         )
+        -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
     `;
     
     const row = result[0] || {};
@@ -94,7 +103,14 @@ async function getWeeklyAnalytics(sellerId: string, weeks: number = 4) {
   const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 月曜日までの日数
   const thisMonday = new Date(todayStart.getTime() - mondayOffset * 24 * 60 * 60 * 1000);
   
-  const results = [];
+  const results: Array<{
+    weekStart: string;
+    grossSales: number;
+    netSales: number;
+    totalCost: number;
+    profit: number;
+    transactionCount: number;
+  }> = [];
   
   for (let i = weeks - 1; i >= 0; i--) {
     const weekStart = new Date(thisMonday.getTime() - i * 7 * 24 * 60 * 60 * 1000);
@@ -134,9 +150,11 @@ async function getWeeklyAnalytics(sellerId: string, weeks: number = 4) {
         AND o.created_at < ${weekEnd}
         AND o.deleted_at IS NULL
         AND (
-          om.is_cash = true
-          OR sp.status = 'succeeded'
+          om.is_cash = true  -- 現金決済は表示
+          OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+          OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
         )
+        -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
     `;
     
     const row = result[0] || {};
@@ -189,7 +207,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ベンチマークデータの取得（オプショナル）
-    let benchmarkData: any[] = [];
+    const benchmarkData: any[] = [];
     try {
       const fs = await import('fs');
       const path = await import('path');

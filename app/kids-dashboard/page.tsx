@@ -3,36 +3,67 @@
 
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+
+interface RecentTransaction {
+  createdAt?: string;
+  created?: number | string;
+  paymentMethod?: string;
+  customerType?: string;
+  gender?: string;
+  ageBand?: string;
+  amount?: number;
+  net_amount?: number;
+  summary?: string;
+  memo?: string;
+}
+
+interface SummaryData {
+  recent?: RecentTransaction[];
+  salesToday?: {
+    net?: number;
+    count?: number;
+    avgNet?: number;
+  };
+  salesTodayNet?: number;
+  countToday?: number;
+  avgToday?: number;
+  dataScore?: number;
+  planType?: string;
+  isSubscribed?: boolean;
+}
+
+interface KidsStats {
+  totalOrders?: number;
+  ordersWithAttrs?: number;
+  cashOrders?: number;
+  cashlessOrders?: number;
+  inboundCount?: number;
+  childCustomerCount?: number;
+  dataScore?: number;
+}
+
+interface KidsSummaryData {
+  stats?: KidsStats;
+  badges?: Array<Record<string, unknown>>;
+  titles?: Array<{
+    label: string;
+    first_earned_at?: string;
+  }>;
+}
 
 function KidsDashboardContent() {
   const searchParams = useSearchParams();
   const sellerId = searchParams.get('s');
   
-  const [summary, setSummary] = useState<any>(null);
-  const [kidsSummary, setKidsSummary] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<SummaryData | null>(null);
+  const [kidsSummary, setKidsSummary] = useState<KidsSummaryData | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [missions, setMissions] = useState<{ [key: string]: boolean }>({});
 
-  useEffect(() => {
-    if (!sellerId) return;
-    
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      const keyPrefix = `kids-mission-${sellerId}-`;
-      const mission1 = localStorage.getItem(keyPrefix + '1') === 'done';
-      const mission2 = localStorage.getItem(keyPrefix + '2') === 'done';
-      const mission3 = localStorage.getItem(keyPrefix + '3') === 'done';
-      setMissions({ '1': mission1, '2': mission2, '3': mission3 });
-    }
-    
-    loadSummary();
-    loadKidsSummary();
-  }, [sellerId]);
-
-  const loadSummary = async () => {
+  const loadSummary = useCallback(async () => {
     if (!sellerId) return;
     
     try {
@@ -52,12 +83,10 @@ function KidsDashboardContent() {
       setSummary(data);
     } catch (e) {
       console.error('loadSummary error', e);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [sellerId]);
 
-  const loadKidsSummary = async () => {
+  const loadKidsSummary = useCallback(async () => {
     if (!sellerId) return;
     
     try {
@@ -69,7 +98,22 @@ function KidsDashboardContent() {
     } catch (e) {
       console.error('loadKidsSummary error', e);
     }
-  };
+  }, [sellerId]);
+
+  useEffect(() => {
+    if (!sellerId) return;
+    
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      const keyPrefix = `kids-mission-${sellerId}-`;
+      const mission1 = localStorage.getItem(keyPrefix + '1') === 'done';
+      const mission2 = localStorage.getItem(keyPrefix + '2') === 'done';
+      const mission3 = localStorage.getItem(keyPrefix + '3') === 'done';
+      setMissions({ '1': mission1, '2': mission2, '3': mission3 });
+    }
+    
+    loadSummary();
+    loadKidsSummary();
+  }, [sellerId, loadSummary, loadKidsSummary]);
 
   const toggleMission = (id: string) => {
     if (!sellerId) return;
@@ -89,12 +133,6 @@ function KidsDashboardContent() {
   const formatDateJp = (date: Date) => {
     const w = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
     return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日(${w})`;
-  };
-
-  const formatTime = (date: Date) => {
-    const hh = String(date.getHours()).padStart(2, '0');
-    const mm = String(date.getMinutes()).padStart(2, '0');
-    return `${hh}:${mm}`;
   };
 
   if (!sellerId) {
@@ -125,7 +163,7 @@ function KidsDashboardContent() {
     );
   }
 
-  const stats = kidsSummary?.stats || {};
+  const stats: KidsStats = kidsSummary?.stats || {};
   const badges = kidsSummary?.badges || [];
   const titles = kidsSummary?.titles || [];
   const nowJst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -133,7 +171,7 @@ function KidsDashboardContent() {
 
   let cashlessToday = 0;
   let attrsToday = 0;
-  (summary?.recent || []).forEach((tx: any) => {
+  (summary?.recent || []).forEach((tx: RecentTransaction) => {
     if (!tx.createdAt) return;
     const created = new Date(tx.createdAt);
     const jst = new Date(created.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -147,7 +185,7 @@ function KidsDashboardContent() {
   });
 
   const currentTitle = titles.length > 0
-    ? titles.sort((a: any, b: any) => {
+    ? titles.sort((a, b) => {
         const ta = a.first_earned_at ? new Date(a.first_earned_at).getTime() : 0;
         const tb = b.first_earned_at ? new Date(b.first_earned_at).getTime() : 0;
         return tb - ta;
@@ -159,7 +197,7 @@ function KidsDashboardContent() {
   const avg = summary?.avgToday ?? summary?.salesToday?.avgNet ?? (count > 0 ? Math.round(todayNet / count) : 0);
 
   let maxAmount = 0;
-  (summary?.recent || []).forEach((tx: any) => {
+  (summary?.recent || []).forEach((tx: RecentTransaction) => {
     const amt = Number(tx.amount || tx.net_amount || 0);
     if (amt > maxAmount) maxAmount = amt;
   });
@@ -533,7 +571,7 @@ function KidsDashboardContent() {
           </div>
         </div>
         <div className="kid-chip">
-          {summary?.displayName || summary?.sellerId || 'おみせ'} の 若旦那 / 若女将
+          {sellerId || 'おみせ'} の 若旦那 / 若女将
         </div>
       </header>
 
@@ -598,9 +636,9 @@ function KidsDashboardContent() {
         </div>
         <div className="badge-list">
           {badges.length > 0 ? (
-            badges.map((badge: any, idx: number) => (
+            badges.map((badge, idx: number) => (
               <div key={idx} className="badge-chip">
-                {badge.label}
+                {'label' in badge && typeof badge.label === 'string' ? badge.label : String(badge)}
               </div>
             ))
           ) : (
@@ -622,7 +660,7 @@ function KidsDashboardContent() {
         </div>
         <div className="title-list">
           {titles.length > 0 ? (
-            titles.map((title: any, idx: number) => (
+            titles.map((title, idx: number) => (
               <div key={idx} className="title-chip">
                 {title.label}
               </div>
@@ -788,7 +826,7 @@ function KidsDashboardContent() {
 
         <ul className="list">
           {summary?.recent && summary.recent.length > 0 ? (
-            summary.recent.slice(0, 3).map((tx: any, idx: number) => {
+            summary.recent.slice(0, 3).map((tx: RecentTransaction, idx: number) => {
               const summary = (tx.summary || tx.memo || 'しょうひん').split('\n')[0];
               const amt = Number(tx.amount || tx.net_amount || 0);
               let created: Date | null = null;

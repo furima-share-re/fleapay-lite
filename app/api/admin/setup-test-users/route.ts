@@ -53,12 +53,17 @@ export async function POST(request: NextRequest) {
         { sellerId: 'test-seller-kids', planType: 'kids' },
       ];
 
-      const results = [];
+      const results: Array<{
+        sellerId: string;
+        planType: string;
+        status: string;
+        error?: string;
+      }> = [];
 
       for (const user of testUsers) {
         try {
           // 1. セラーが存在するか確認（存在しない場合は作成）
-          const seller = await prisma.seller.upsert({
+          await prisma.seller.upsert({
             where: { id: user.sellerId },
             update: {},
             create: {
@@ -130,7 +135,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 1. セラーが存在するか確認（存在しない場合は作成）
-      const seller = await prisma.seller.upsert({
+      await prisma.seller.upsert({
         where: { id: sellerId },
         update: {},
         create: {

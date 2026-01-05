@@ -81,7 +81,6 @@ export async function POST(request: NextRequest) {
           const currency = pi.currency || 'jpy';
           const chargeId =
             typeof pi.latest_charge === 'string' ? pi.latest_charge : null;
-          const created = pi.created ? new Date(pi.created * 1000) : new Date();
 
           // Charge情報から手数料を取得
           let fee: number | null = null;

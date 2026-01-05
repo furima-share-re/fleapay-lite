@@ -3,7 +3,6 @@
 
 import { executeTask } from '../router';
 import { getTaskConfig } from '../config';
-import type { ChatCompletionOptions } from '../types';
 
 /**
  * SNS投稿プラットフォーム
@@ -204,7 +203,7 @@ function formatPostText(
 function estimateEngagement(
   text: string,
   hashtags: string[],
-  platform: SNSPlatform
+  _platform: SNSPlatform
 ): number {
   let score = 50; // ベーススコア
 

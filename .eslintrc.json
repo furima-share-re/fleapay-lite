@@ -1,0 +1,52 @@
+{
+  "extends": [
+    "next/core-web-vitals",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "plugins": ["@typescript-eslint"],
+  "overrides": [
+    {
+      "files": ["**/*.js"],
+      "parser": "espree",
+      "parserOptions": {
+        "ecmaVersion": 2022,
+        "sourceType": "module"
+      },
+      "extends": [],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-unused-vars": "off"
+      }
+    }
+  ],
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "@typescript-eslint/no-non-null-assertion": "warn",
+    "prefer-const": "warn",
+    "no-console": ["warn", { "allow": ["warn", "error"] }]
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    ".next/",
+    "dist/",
+    "*.config.js",
+    "*.config.cjs",
+    "**/lib/auth.js"
+  ]
+}
+

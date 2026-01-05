@@ -3,7 +3,6 @@
 
 import { executeTask } from '../router';
 import { getTaskConfig } from '../config';
-import type { ChatCompletionOptions } from '../types';
 
 /**
  * 情報収集ソース

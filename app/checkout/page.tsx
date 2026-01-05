@@ -7,13 +7,20 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Script from 'next/script';
 
+interface OrderData {
+  orderId: string | null;
+  sellerId: string | null;
+  amount: number;
+  summary: string;
+}
+
 function CheckoutContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order');
   const sellerId = searchParams.get('s');
   
   const [lang, setLang] = useState<'ja' | 'en' | 'zh'>('ja');
-  const [orderData, setOrderData] = useState<any>(null);
+  const [orderData, setOrderData] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const [allowAutoRetry, setAllowAutoRetry] = useState(true);
@@ -54,14 +61,19 @@ function CheckoutContent() {
 
     async function fetchLatest() {
       try {
-        let url;
+        let url: string | undefined;
         if (orderId) {
           url = `/api/seller/order-detail?s=${sellerId}&orderId=${encodeURIComponent(orderId)}`;
         } else if (sellerId) {
           url = `/api/price/latest?s=${encodeURIComponent(sellerId)}`;
         }
 
-        const res = await fetch(url!);
+        if (!url) {
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch(url);
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
@@ -151,7 +163,7 @@ function CheckoutContent() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        await response.json().catch(() => ({}));
         alert(dict[lang].errorCheckout || '決済処理でエラーが発生しました。');
         if (btn) btn.removeAttribute('disabled');
         return;
@@ -281,7 +293,7 @@ function CheckoutContent() {
   };
 
   const t = dict[lang];
-  const amountInt = orderData ? parseInt(orderData.amount, 10) : 0;
+  const amountInt = orderData?.amount ?? 0;
   const isEmpty = !orderData || !amountInt || amountInt <= 0;
 
   return (
