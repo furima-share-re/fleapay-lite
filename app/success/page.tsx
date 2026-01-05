@@ -118,7 +118,7 @@ function SuccessContent() {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Fleapay｜決済完了</title>
-        <link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet" />
+        {/* Fonts are loaded in root layout.tsx */}
         <style dangerouslySetInnerHTML={{ __html: `
           :root{
             --night1:#0f2740;

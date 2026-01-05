@@ -21,10 +21,13 @@ export async function GET() {
       );
     }
 
-    console.log('[Helicone Test] Sending test request to OpenAI via Helicone...');
+    console.warn('[Helicone Test] Sending test request to OpenAI via Helicone...');
 
     // 簡単なテストリクエストを送信
-    const response = await openai!.chat.completions.create({
+    if (!openai) {
+      throw new Error('OpenAI client is not available');
+    }
+    const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini', // コストが低いモデルを使用
       messages: [
         {
@@ -37,7 +40,7 @@ export async function GET() {
 
     const content = response.choices[0]?.message?.content || '';
 
-    console.log('[Helicone Test] Response received:', content);
+    console.warn('[Helicone Test] Response received:', content);
 
     return NextResponse.json({
       status: 'success',
@@ -53,18 +56,36 @@ export async function GET() {
       },
       note: 'Check Helicone dashboard to verify this request was tracked.',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Helicone Test] Error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorDetails: {
+      status?: number;
+      code?: string | number;
+      type?: string;
+    } = {};
+    
+    if (error && typeof error === 'object') {
+      if ('status' in error && typeof error.status === 'number') {
+        errorDetails.status = error.status;
+      }
+      if ('response' in error && error.response && typeof error.response === 'object' && 'status' in error.response && typeof error.response.status === 'number') {
+        errorDetails.status = error.response.status;
+      }
+      if ('code' in error) {
+        errorDetails.code = error.code as string | number;
+      }
+      if ('type' in error && typeof error.type === 'string') {
+        errorDetails.type = error.type;
+      }
+    }
 
     return NextResponse.json(
       {
         error: 'test_failed',
-        message: error?.message || 'Unknown error occurred',
-        details: {
-          status: error?.status || error?.response?.status,
-          code: error?.code,
-          type: error?.type,
-        },
+        message: errorMessage,
+        details: errorDetails,
         configuration: {
           hasOpenAIKey: !!process.env.OPENAI_API_KEY,
           hasHeliconeKey: !!process.env.HELICONE_API_KEY,

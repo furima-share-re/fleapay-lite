@@ -6,8 +6,23 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+interface Frame {
+  id: string;
+  displayName: string;
+  category: string | null;
+  metadata: string | null;
+  createdAt: Date | string;
+  orderCount: number;
+}
+
+declare global {
+  interface Window {
+    ADMIN_TOKEN?: string;
+  }
+}
+
 export default function AdminFramesPage() {
-  const [frames, setFrames] = useState<any[]>([]);
+  const [frames, setFrames] = useState<Frame[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -20,7 +35,7 @@ export default function AdminFramesPage() {
   const loadFrames = async () => {
     try {
       const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
-        ? ((window as any).ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
+        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
         : 'admin-devtoken';
       
       const res = await fetch('/api/admin/frames', {
@@ -43,7 +58,7 @@ export default function AdminFramesPage() {
   const handleCreateFrame = async () => {
     try {
       const token = typeof window !== 'undefined' 
-        ? (window as any).ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken'
+        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
         : 'admin-devtoken';
       
       const metadata = formData.metadata ? JSON.parse(formData.metadata) : null;

@@ -16,6 +16,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
+      <head>
+        <link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Nunito+Sans:wght@400;700;900&display=swap" rel="stylesheet" />
+      </head>
       <body>{children}</body>
     </html>
   );

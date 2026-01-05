@@ -54,13 +54,13 @@ export async function GET(request: NextRequest) {
     // 旧DB対応: order_metadata, cost_amount, deleted_atが存在しない場合に対応
     const { todayStart, tomorrowStart } = jstDayBounds();
 
-    let kpiToday: any[] = [];
-    let kpiTotal: any[] = [];
-    let recentRes: any[] = [];
-    let scoreRes: any[] = [];
+    let kpiToday: Record<string, unknown>[] = [];
+    let kpiTotal: Record<string, unknown>[] = [];
+    let recentRes: Record<string, unknown>[] = [];
+    let scoreRes: Record<string, unknown>[] = [];
 
   try {
-    console.log(`[seller/summary] API呼び出し開始: sellerId=${sellerId}`);
+    console.warn(`[seller/summary] API呼び出し開始: sellerId=${sellerId}`);
     
     // テーブルとカラムの存在確認（旧DBと新DBの両方に対応）
     let hasOrderMetadata = false;
@@ -93,21 +93,22 @@ export async function GET(request: NextRequest) {
         hasWorldPrice = tableCheck[0].world_price_exists || false;
       }
       
-      console.log(`[seller/summary] テーブル存在確認:`, {
+      console.warn(`[seller/summary] テーブル存在確認:`, {
         order_metadata: hasOrderMetadata,
         buyer_attributes: hasBuyerAttributes,
         cost_amount: hasCostAmount,
         deleted_at: hasDeletedAt,
         world_price: hasWorldPrice,
       });
-    } catch (checkError: any) {
-      console.warn("[seller/summary] テーブル存在確認エラー（デフォルト値を使用）:", checkError.message);
+    } catch (checkError: unknown) {
+      const message = checkError instanceof Error ? checkError.message : 'Unknown error';
+      console.warn("[seller/summary] テーブル存在確認エラー（デフォルト値を使用）:", message);
       // エラーが発生した場合は、安全のため全てfalseとして扱う（旧DB想定）
     }
 
     // ① 今日の売上KPI（旧DB対応: order_metadataが存在しない場合はstripe_paymentsのみ）
     try {
-      console.log(`[seller/summary] kpiToday query開始`);
+      console.warn(`[seller/summary] kpiToday query開始`);
         // Build query conditionally based on table existence
         if (hasDeletedAt) {
           kpiToday = await prisma.$queryRaw`
@@ -149,7 +150,7 @@ export async function GET(request: NextRequest) {
               )
               -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
           `;
-          console.log(`[seller/summary] kpiToday query成功:`, kpiToday);
+          console.warn(`[seller/summary] kpiToday query成功:`, kpiToday);
         } else {
           kpiToday = await prisma.$queryRaw`
             SELECT
@@ -189,11 +190,12 @@ export async function GET(request: NextRequest) {
               )
               -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
           `;
-          console.log(`[seller/summary] kpiToday query成功:`, kpiToday);
+          console.warn(`[seller/summary] kpiToday query成功:`, kpiToday);
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         // 旧DB対応: order_metadataやcost_amountが存在しない場合は、stripe_paymentsのみで集計
-        console.warn("kpiToday query failed (likely old DB), trying simplified query:", e.message);
+        const message = e instanceof Error ? e.message : 'Unknown error';
+        console.warn("kpiToday query failed (likely old DB), trying simplified query:", message);
         try {
           kpiToday = await prisma.$queryRaw`
             SELECT
@@ -209,16 +211,17 @@ export async function GET(request: NextRequest) {
               AND o.created_at <  ${tomorrowStart}
               AND sp.status = 'succeeded'
           `;
-          console.log(`[seller/summary] kpiToday simplified query成功:`, kpiToday);
-        } catch (e2: any) {
-          console.error("[seller/summary] kpiToday simplified query also failed:", e2.message);
+          console.warn(`[seller/summary] kpiToday simplified query成功:`, kpiToday);
+        } catch (e2: unknown) {
+          const message2 = e2 instanceof Error ? e2.message : 'Unknown error';
+          console.error("[seller/summary] kpiToday simplified query also failed:", message2);
           kpiToday = [{ cnt: 0, gross: 0, net: 0, fee: 0, cost: 0 }];
         }
       }
 
       // ② 累計売上KPI
       try {
-        console.log(`[seller/summary] kpiTotal query開始`);
+        console.warn(`[seller/summary] kpiTotal query開始`);
         if (hasDeletedAt) {
           kpiTotal = await prisma.$queryRaw`
             SELECT
@@ -293,10 +296,11 @@ export async function GET(request: NextRequest) {
               -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
           `;
         }
-        console.log(`[seller/summary] kpiTotal query成功:`, kpiTotal);
-      } catch (e: any) {
+        console.warn(`[seller/summary] kpiTotal query成功:`, kpiTotal);
+      } catch (e: unknown) {
         // 旧DB対応: order_metadataが存在しない場合は、stripe_paymentsのみで集計
-        console.warn("[seller/summary] kpiTotal query failed (likely old DB), trying simplified query:", e.message);
+        const message = e instanceof Error ? e.message : 'Unknown error';
+        console.warn("[seller/summary] kpiTotal query failed (likely old DB), trying simplified query:", message);
         try {
           kpiTotal = await prisma.$queryRaw`
             SELECT
@@ -309,15 +313,16 @@ export async function GET(request: NextRequest) {
             WHERE o.seller_id = ${sellerId}
               AND sp.status = 'succeeded'
           `;
-        } catch (e2: any) {
-          console.error("kpiTotal simplified query also failed:", e2.message);
+        } catch (e2: unknown) {
+          const message2 = e2 instanceof Error ? e2.message : 'Unknown error';
+          console.error("kpiTotal simplified query also failed:", message2);
           kpiTotal = [{ gross: 0, net: 0, fee: 0, cost: 0 }];
         }
       }
 
       // ② 取引履歴(orders を基準に、カードも現金も一緒に出す)
       try {
-        console.log(`[seller/summary] recentRes query開始`);
+        console.warn(`[seller/summary] recentRes query開始`);
         
         // デバッグ: 移行データの状態を確認
         try {
@@ -355,7 +360,7 @@ export async function GET(request: NextRequest) {
             within_30days: String(debugRes[0].within_30days),
             within_90days: String(debugRes[0].within_90days),
           };
-          console.log(`[seller/summary] デバッグ統計:`, debugStats);
+          console.warn(`[seller/summary] デバッグ統計:`, debugStats);
           } else {
             const debugRes = await prisma.$queryRaw<Array<{
               total_orders: bigint;
@@ -389,10 +394,11 @@ export async function GET(request: NextRequest) {
             within_30days: String(debugRes[0].within_30days),
             within_90days: String(debugRes[0].within_90days),
           };
-          console.log(`[seller/summary] デバッグ統計:`, debugStats);
+          console.warn(`[seller/summary] デバッグ統計:`, debugStats);
           }
-        } catch (debugError: any) {
-          console.warn(`[seller/summary] デバッグ統計取得エラー:`, debugError.message);
+        } catch (debugError: unknown) {
+          const debugMessage = debugError instanceof Error ? debugError.message : 'Unknown error';
+          console.warn(`[seller/summary] デバッグ統計取得エラー:`, debugMessage);
         }
         
         // Build query conditionally based on table existence
@@ -470,13 +476,14 @@ export async function GET(request: NextRequest) {
             ORDER BY o.created_at DESC
           `;
         }
-        console.log(`[seller/summary] recentRes query成功: ${recentRes.length}件`);
+        console.warn(`[seller/summary] recentRes query成功: ${recentRes.length}件`);
         if (recentRes.length > 0) {
-          console.log(`[seller/summary] recentRes[0]のサンプル:`, JSON.stringify(recentRes[0], null, 2));
+          console.warn(`[seller/summary] recentRes[0]のサンプル:`, JSON.stringify(recentRes[0], null, 2));
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         // 旧DB対応: order_metadataやbuyer_attributesが存在しない場合は、stripe_paymentsのみで取得
-        console.warn("[seller/summary] recentRes query failed (likely old DB), trying simplified query:", e.message);
+        const message = e instanceof Error ? e.message : 'Unknown error';
+        console.warn("[seller/summary] recentRes query failed (likely old DB), trying simplified query:", message);
         try {
           recentRes = await prisma.$queryRaw`
             SELECT
@@ -505,9 +512,10 @@ export async function GET(request: NextRequest) {
               AND o.created_at >= NOW() - INTERVAL '30 days'
             ORDER BY o.created_at DESC
           `;
-          console.log(`[seller/summary] recentRes simplified query成功: ${recentRes.length}件`);
-        } catch (e2: any) {
-          console.error("[seller/summary] recentRes simplified query also failed:", e2.message);
+          console.warn(`[seller/summary] recentRes simplified query成功: ${recentRes.length}件`);
+        } catch (e2: unknown) {
+          const message2 = e2 instanceof Error ? e2.message : 'Unknown error';
+          console.error("[seller/summary] recentRes simplified query also failed:", message2);
           recentRes = [];
         }
       }
@@ -522,9 +530,10 @@ export async function GET(request: NextRequest) {
           LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
           WHERE o.seller_id = ${sellerId}
         `;
-      } catch (e: any) {
+      } catch (e: unknown) {
         // 旧DB対応: buyer_attributesが存在しない場合は、スコア0を返す
-        console.warn("scoreRes query failed, using default score:", e.message);
+        const message = e instanceof Error ? e.message : 'Unknown error';
+        console.warn("scoreRes query failed, using default score:", message);
         try {
           scoreRes = await prisma.$queryRaw`
             SELECT
@@ -533,12 +542,13 @@ export async function GET(request: NextRequest) {
             FROM orders o
             WHERE o.seller_id = ${sellerId}
           `;
-        } catch (e2: any) {
-          console.error("scoreRes simplified query also failed:", e2.message);
+        } catch (e2: unknown) {
+          const message2 = e2 instanceof Error ? e2.message : 'Unknown error';
+          console.error("scoreRes simplified query also failed:", message2);
           scoreRes = [{ total: 0, with_attrs: 0 }];
         }
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Database query error:", e);
       // エラーが発生した場合は、デフォルト値を返す
       kpiToday = [{ cnt: 0, gross: 0, net: 0, fee: 0, cost: 0 }];
@@ -547,30 +557,37 @@ export async function GET(request: NextRequest) {
       scoreRes = [{ total: 0, with_attrs: 0 }];
     }
 
-    const todayGross = kpiToday[0]?.gross || 0;
-    const todayNet = kpiToday[0]?.net || 0;
-    const todayFee = kpiToday[0]?.fee || 0;
-    const todayCost = kpiToday[0]?.cost || 0;
+    const todayGross = Number(kpiToday[0]?.gross) || 0;
+    const todayNet = Number(kpiToday[0]?.net) || 0;
+    const todayFee = Number(kpiToday[0]?.fee) || 0;
+    const todayCost = Number(kpiToday[0]?.cost) || 0;
     const todayProfit = todayNet - todayCost;
-    const countToday = kpiToday[0]?.cnt || 0;
-    const avgToday = countToday > 0 ? Math.round(todayNet / countToday) : 0;
+    let countToday = Number(kpiToday[0]?.cnt) || 0;
+    let avgToday = countToday > 0 ? Math.round(todayNet / countToday) : 0;
 
-    console.log(`[seller/summary] recentResマッピング開始: ${recentRes.length}件`);
-    let recent: any[] = [];
+    console.warn(`[seller/summary] recentResマッピング開始: ${recentRes.length}件`);
+    let recent: Record<string, unknown>[] = [];
     try {
-      recent = recentRes.map((r: any, index: number) => {
+      recent = recentRes.map((r: Record<string, unknown>, index: number) => {
         // デバッグ: 最初の1件だけログ出力
         if (index === 0) {
-          console.log(`[seller/summary] recentRes[0]のキー:`, Object.keys(r));
-          console.log(`[seller/summary] recentRes[0].order_id:`, r.order_id);
-          console.log(`[seller/summary] recentRes[0].created_at:`, r.created_at);
-          console.log(`[seller/summary] recentRes[0].amount:`, r.amount);
-          console.log(`[seller/summary] recentRes[0].is_cash:`, r.is_cash);
-          console.log(`[seller/summary] recentRes[0].payment_method:`, r.payment_method);
+          console.warn(`[seller/summary] recentRes[0]のキー:`, Object.keys(r));
+          console.warn(`[seller/summary] recentRes[0].order_id:`, r.order_id);
+          console.warn(`[seller/summary] recentRes[0].created_at:`, r.created_at);
+          console.warn(`[seller/summary] recentRes[0].amount:`, r.amount);
+          console.warn(`[seller/summary] recentRes[0].is_cash:`, r.is_cash);
+          console.warn(`[seller/summary] recentRes[0].payment_method:`, r.payment_method);
+          console.warn(`[seller/summary] recentRes[0].cost_amount:`, r.cost_amount);
+          console.warn(`[seller/summary] recentRes[0].raw_category:`, r.raw_category);
+          console.warn(`[seller/summary] recentRes[0].customer_type:`, r.customer_type);
+          console.warn(`[seller/summary] recentRes[0].gender:`, r.gender);
+          console.warn(`[seller/summary] recentRes[0].age_band:`, r.age_band);
         }
         const amt = Number(r.amount || 0);
         const created = r.created_at;
-        const createdSec = created ? Math.floor(new Date(created).getTime() / 1000) : null;
+        const createdSec = created && (typeof created === 'string' || created instanceof Date) 
+          ? Math.floor(new Date(created).getTime() / 1000) 
+          : null;
 
       return {
         // 新しいフィールド名
@@ -610,20 +627,56 @@ export async function GET(request: NextRequest) {
         },
       };
       });
-      console.log(`[seller/summary] recentマッピング完了: ${recent.length}件`);
-    } catch (mapError: any) {
-      console.error(`[seller/summary] recentマッピングエラー:`, mapError.message);
+      console.warn(`[seller/summary] recentマッピング完了: ${recent.length}件`);
+    } catch (mapError: unknown) {
+      const mapMessage = mapError instanceof Error ? mapError.message : 'Unknown error';
+      console.error(`[seller/summary] recentマッピングエラー:`, mapMessage);
       console.error(`[seller/summary] recentマッピングエラー詳細:`, mapError);
       recent = [];
     }
 
-    const totalOrdersForScore = scoreRes[0]?.total || 0;
-    const ordersWithAttrs = scoreRes[0]?.with_attrs || 0;
+    const totalOrdersForScore = Number(scoreRes[0]?.total) || 0;
+    const ordersWithAttrs = Number(scoreRes[0]?.with_attrs) || 0;
     const dataScore = totalOrdersForScore > 0 ? Math.round((ordersWithAttrs / totalOrdersForScore) * 100) : 0;
 
-    console.log(`[seller/summary] API呼び出し成功: recent=${recent.length}件, countToday=${countToday}`);
+    // 🔍 検証: recentResから今日の取引を抽出して、kpiTodayと比較
+    // 取引履歴と売上カウントの整合性を確保するため
+    try {
+      let countTodayFromRecent = 0;
+      
+      for (const r of recentRes) {
+        const created = r.created_at;
+        if (!created) continue;
+        
+        if (typeof created === 'string' || created instanceof Date) {
+          const createdDate = new Date(created);
+          if (createdDate >= todayStart && createdDate < tomorrowStart) {
+            countTodayFromRecent += 1;
+          }
+        }
+      }
+      
+      // 不一致を検出した場合、recentResから計算した値を優先（取引履歴と一致させる）
+      if (countTodayFromRecent !== countToday) {
+        console.warn(`[seller/summary] ⚠️ カウント不一致検出: kpiToday=${countToday}, recentResから=${countTodayFromRecent}`);
+        console.warn(`[seller/summary] ⚠️ recentResから計算した値を優先します（取引履歴と一致）`);
+        
+        // countTodayを更新（取引履歴と一致させる）
+        countToday = countTodayFromRecent;
+        
+        // avgTodayを再計算
+        avgToday = countToday > 0 ? Math.round(todayNet / countToday) : 0;
+      } else {
+        console.warn(`[seller/summary] ✅ カウント一致: countToday=${countToday}`);
+      }
+    } catch (verifyError: unknown) {
+      const verifyMessage = verifyError instanceof Error ? verifyError.message : 'Unknown error';
+      console.warn(`[seller/summary] recentRes検証エラー（kpiTodayの値を使用）:`, verifyMessage);
+    }
+
+    console.warn(`[seller/summary] API呼び出し成功: recent=${recent.length}件, countToday=${countToday}`);
     if (recent.length > 0) {
-      console.log(`[seller/summary] recent[0]のサンプル:`, JSON.stringify(recent[0], null, 2));
+      console.warn(`[seller/summary] recent[0]のサンプル:`, JSON.stringify(recent[0], null, 2));
     }
 
     const responseData = {
@@ -646,7 +699,7 @@ export async function GET(request: NextRequest) {
         net:   kpiTotal[0]?.net   || 0,
         fee:   kpiTotal[0]?.fee   || 0,
         cost:  kpiTotal[0]?.cost  || 0,
-        profit: (kpiTotal[0]?.net || 0) - (kpiTotal[0]?.cost || 0)
+        profit: (Number(kpiTotal[0]?.net) || 0) - (Number(kpiTotal[0]?.cost) || 0)
       },
 
       // 旧フロント用の互換フィールド
@@ -658,8 +711,8 @@ export async function GET(request: NextRequest) {
       recent
     };
     
-    console.log(`[seller/summary] レスポンス準備完了: recent=${responseData.recent.length}件`);
-    console.log(`[seller/summary] レスポンス全体のサイズ:`, JSON.stringify(responseData).length, "bytes");
+    console.warn(`[seller/summary] レスポンス準備完了: recent=${responseData.recent.length}件`);
+    console.warn(`[seller/summary] レスポンス全体のサイズ:`, JSON.stringify(responseData).length, "bytes");
     
     return NextResponse.json(responseData);
   } catch (e) {
