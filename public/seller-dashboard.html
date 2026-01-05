@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="ja">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -10,726 +11,766 @@
 
   <style>
     :root {
-      --bg:#f7f7fb;
-      --panel:#ffffff;
-      --border:#e3e3ef;
-      --text:#222222;
-      --sub:#555555;
-      --muted:#777777;
-      --brand:#5a6bff;
-      --ok:#1a9b63;
-      --warn:#f59e0b;
-      --danger:#e11d48;
-      --badge:#eef0ff;
+      --bg: #f7f7fb;
+      --panel: #ffffff;
+      --border: #e3e3ef;
+      --text: #222222;
+      --sub: #555555;
+      --muted: #777777;
+      --brand: #5a6bff;
+      --ok: #1a9b63;
+      --warn: #f59e0b;
+      --danger: #e11d48;
+      --badge: #eef0ff;
     }
 
-    * { box-sizing:border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
-      margin:0;
-      font-family:system-ui,-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif;
-      background:var(--bg);
-      color:var(--text);
-      -webkit-font-smoothing:antialiased;
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
     }
 
     .wrap {
-      max-width:720px;
-      margin:0 auto;
-      padding:12px 12px 64px;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 12px 12px 64px;
     }
 
     header {
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      padding:8px 4px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 4px 12px;
     }
 
     .brand {
-      display:flex;
-      align-items:center;
-      gap:8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .brand-logo {
-      width:28px;
-      height:28px;
-      border-radius:999px;
-      background:radial-gradient(circle at 30% 30%, #fff 0, #fff 35%, #5a6bff 100%);
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, #fff 0, #fff 35%, #5a6bff 100%);
     }
 
     .brand-title {
-      margin:0;
-      font-size:1.1rem;
-      font-weight:700;
-      letter-spacing:.03em;
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: .03em;
     }
 
     .brand-sub {
-      font-size:.75rem;
-      color:var(--sub);
+      font-size: .75rem;
+      color: var(--sub);
     }
 
     .user-chip {
-      font-size:.8rem;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:#fff;
-      color:var(--sub);
-      max-width:50%;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      overflow:hidden;
+      font-size: .8rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--sub);
+      max-width: 50%;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
     }
 
     .card {
-      background:var(--panel);
-      border-radius:16px;
-      border:1px solid var(--border);
-      padding:14px 14px 16px;
-      margin-bottom:12px;
-      box-shadow:0 2px 8px rgba(0,0,0,.04);
+      background: var(--panel);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 14px 14px 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .04);
     }
 
     .card-header {
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-bottom:8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
     }
 
     .card-title {
-      font-size:.98rem;
-      font-weight:700;
+      font-size: .98rem;
+      font-weight: 700;
     }
 
     .card-sub {
-      font-size:.8rem;
-      color:var(--muted);
+      font-size: .8rem;
+      color: var(--muted);
     }
 
     .pill {
-      font-size:.75rem;
-      padding:4px 8px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:#f9fafb;
-      color:var(--sub);
-      cursor:pointer;
+      font-size: .75rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      color: var(--sub);
+      cursor: pointer;
     }
 
     /* 入力まちフィルタ ON 時の見た目 */
     .pill-toggle-active {
-      background:var(--brand);
-      color:#fff;
-      border-color:var(--brand);
+      background: var(--brand);
+      color: #fff;
+      border-color: var(--brand);
     }
 
     .kpi-row {
-      display:flex;
-      gap:8px;
-      margin-top:6px;
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
     }
 
     .kpi {
-      flex:1;
-      padding:10px 10px;
-      border-radius:12px;
-      background:#f9f9ff;
-      border:1px solid #e4e6ff;
+      flex: 1;
+      padding: 10px 10px;
+      border-radius: 12px;
+      background: #f9f9ff;
+      border: 1px solid #e4e6ff;
     }
 
     .kpi-label {
-      font-size:.75rem;
-      color:var(--muted);
-      margin-bottom:4px;
+      font-size: .75rem;
+      color: var(--muted);
+      margin-bottom: 4px;
     }
 
     .kpi-value {
-      font-size:1.2rem;
-      font-weight:750;
+      font-size: 1.2rem;
+      font-weight: 750;
     }
 
     .kpi-note {
-      font-size:.75rem;
-      color:var(--muted);
-      margin-top:2px;
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: 2px;
     }
 
     .hint {
-      font-size:.78rem;
-      color:var(--muted);
-      margin-top:4px;
+      font-size: .78rem;
+      color: var(--muted);
+      margin-top: 4px;
     }
 
     .list {
-      margin:6px 0 0;
-      padding:0;
-      list-style:none;
+      margin: 6px 0 0;
+      padding: 0;
+      list-style: none;
     }
 
     .tx-item {
-      padding:8px 0;
-      border-bottom:1px solid #f0f0f5;
-      display:flex;
-      justify-content:space-between;
-      gap:8px;
-      align-items:flex-start;
-      cursor:pointer;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f5;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: flex-start;
+      cursor: pointer;
     }
 
     /* QR / カード決済の取引をやや強調 */
     .tx-item.tx-cashless {
-      background:#f0f9ff;
-      border-radius:8px;
-      padding:10px;
+      background: #f0f9ff;
+      border-radius: 8px;
+      padding: 10px;
     }
 
     /* 現金取引はフラットな見た目 */
     .tx-item.tx-cash {
-      background:#f9fafb;
-      border-radius:8px;
-      padding:8px;
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 8px;
     }
 
     .tx-badge-cashless {
-      margin-left:4px;
-      background:#e0f2fe;
-      color:#0369a1;
-      border-color:#bae6fd;
+      margin-left: 4px;
+      background: #e0f2fe;
+      color: #0369a1;
+      border-color: #bae6fd;
     }
 
     .tx-badge-cash {
-      margin-left:4px;
-      background:#f3f4f6;
-      color:#4b5563;
-      border-color:#d1d5db;
+      margin-left: 4px;
+      background: #f3f4f6;
+      color: #4b5563;
+      border-color: #d1d5db;
     }
 
     .tx-item:last-child {
-      border-bottom:none;
+      border-bottom: none;
     }
 
     .tx-main {
-      flex:1;
+      flex: 1;
     }
 
     .tx-top {
-      display:flex;
-      align-items:center;
-      gap:6px;
-      margin-bottom:2px;
-      flex-wrap:wrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 2px;
+      flex-wrap: wrap;
     }
 
     .tx-time {
-      font-size:.8rem;
-      color:var(--muted);
+      font-size: .8rem;
+      color: var(--muted);
     }
 
     .tx-title {
-      font-size:.9rem;
+      font-size: .9rem;
     }
 
     .tx-sub {
-      font-size:.78rem;
-      color:var(--muted);
+      font-size: .78rem;
+      color: var(--muted);
     }
 
     .tx-amt {
-      font-size:.95rem;
-      font-weight:700;
-      text-align:right;
-      white-space:nowrap;
+      font-size: .95rem;
+      font-weight: 700;
+      text-align: right;
+      white-space: nowrap;
     }
 
     .badge {
-      font-size:.7rem;
-      padding:2px 6px;
-      border-radius:999px;
-      background:var(--badge);
-      color:var(--sub);
-      border:1px solid rgba(90,107,255,0.15);
+      font-size: .7rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: var(--badge);
+      color: var(--sub);
+      border: 1px solid rgba(90, 107, 255, 0.15);
     }
 
     .badge-ok {
-      background:#e6f7f0;
-      color:var(--ok);
-      border-color:#b6e3c9;
+      background: #e6f7f0;
+      color: var(--ok);
+      border-color: #b6e3c9;
     }
 
     .badge-refund {
-      background:#f3f4f6;
-      color:#4b5563;
-      border-color:#d1d5db;
+      background: #f3f4f6;
+      color: #4b5563;
+      border-color: #d1d5db;
     }
 
     .badge-cb-pending {
-      background:#fffbeb;
-      color:#92400e;
-      border-color:#fbbf24;
+      background: #fffbeb;
+      color: #92400e;
+      border-color: #fbbf24;
     }
 
     .badge-cb-lost {
-      background:#fef2f2;
-      color:#b91c1c;
-      border-color:#fecaca;
+      background: #fef2f2;
+      color: #b91c1c;
+      border-color: #fecaca;
     }
 
     /* 入力まちバッジ */
     .badge-need-input {
-      background:#fef3c7;
-      color:#92400e;
-      border-color:#fbbf24;
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fbbf24;
     }
 
     .tx-sub-warn {
-      font-size:.75rem;
-      color:var(--warn);
+      font-size: .75rem;
+      color: var(--warn);
     }
 
     .tx-detail {
-      margin-top:4px;
-      font-size:.78rem;
-      color:var(--muted);
-      display:none;
+      margin-top: 4px;
+      font-size: .78rem;
+      color: var(--muted);
+      display: none;
     }
-    .tx-item.expanded .tx-detail { display:block; }
+
+    .tx-item.expanded .tx-detail {
+      display: block;
+    }
 
     .notice-item {
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid var(--border);
-      background:#fff;
-      margin-bottom:8px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #fff;
+      margin-bottom: 8px;
     }
 
     .notice-title {
-      font-size:.9rem;
-      font-weight:700;
-      margin-bottom:4px;
+      font-size: .9rem;
+      font-weight: 700;
+      margin-bottom: 4px;
     }
 
     .notice-meta {
-      font-size:.78rem;
-      color:var(--muted);
-      margin-bottom:4px;
+      font-size: .78rem;
+      color: var(--muted);
+      margin-bottom: 4px;
     }
 
     .notice-body {
-      font-size:.82rem;
-      line-height:1.5;
+      font-size: .82rem;
+      line-height: 1.5;
     }
 
     .notice-important {
-      border-left:4px solid var(--warn);
-      padding-left:8px;
-      background:linear-gradient(to right, rgba(245,158,11,0.05), transparent);
+      border-left: 4px solid var(--warn);
+      padding-left: 8px;
+      background: linear-gradient(to right, rgba(245, 158, 11, 0.05), transparent);
     }
 
     .field {
-      margin-bottom:10px;
+      margin-bottom: 10px;
     }
 
     .field-label {
-      font-size:.8rem;
-      color:var(--sub);
-      margin-bottom:4px;
+      font-size: .8rem;
+      color: var(--sub);
+      margin-bottom: 4px;
     }
 
     .field-value {
-      font-size:.9rem;
-      padding:8px 10px;
-      border-radius:10px;
-      border:1px solid var(--border);
-      background:#f9fafb;
+      font-size: .9rem;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #f9fafb;
     }
 
     /* 販売画面リンク＆QR表示 */
-    .qr-box{
-      margin-top:6px;
-      padding:8px 10px;
-      border-radius:10px;
-      border:1px dashed var(--border);
-      background:#f9fafb;
-      text-align:center;
+    .qr-box {
+      margin-top: 6px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px dashed var(--border);
+      background: #f9fafb;
+      text-align: center;
     }
-    .qr-img{
-      width:160px;
-      max-width:60%;
-      margin:6px auto 4px;
-      display:block;
+
+    .qr-img {
+      width: 160px;
+      max-width: 60%;
+      margin: 6px auto 4px;
+      display: block;
     }
-    .qr-url{
-      font-size:.78rem;
-      word-break:break-all;
-      color:var(--sub);
-      text-decoration:none;
+
+    .qr-url {
+      font-size: .78rem;
+      word-break: break-all;
+      color: var(--sub);
+      text-decoration: none;
     }
-    .qr-url-btn{
-      margin-top:6px;
-      font-size:.78rem;
-      padding:4px 10px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:#fff;
-      cursor:pointer;
+
+    .qr-url-btn {
+      margin-top: 6px;
+      font-size: .78rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
     }
 
     .nav {
-      position:fixed;
-      left:0;
-      right:0;
-      bottom:0;
-      border-top:1px solid #ddddee;
-      background:#ffffff;
-      display:flex;
-      justify-content:space-around;
-      padding:6px 0 4px;
-      z-index:100;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-top: 1px solid #ddddee;
+      background: #ffffff;
+      display: flex;
+      justify-content: space-around;
+      padding: 6px 0 4px;
+      z-index: 100;
     }
 
     .nav-btn {
-      flex:1;
-      text-align:center;
-      font-size:.72rem;
-      padding:4px 0;
-      color:var(--sub);
-      background:none;
-      border:none;
-      cursor:pointer;
+      flex: 1;
+      text-align: center;
+      font-size: .72rem;
+      padding: 4px 0;
+      color: var(--sub);
+      background: none;
+      border: none;
+      cursor: pointer;
     }
 
     .nav-btn span {
-      display:block;
-      margin-top:2px;
+      display: block;
+      margin-top: 2px;
     }
 
     .nav-btn.active {
-      color:var(--brand);
-      font-weight:700;
+      color: var(--brand);
+      font-weight: 700;
     }
 
     .nav-icon {
-      font-size:1.1rem;
+      font-size: 1.1rem;
     }
 
     .section {
-      display:none;
+      display: none;
     }
+
     .section.active {
-      display:block;
+      display: block;
     }
 
     button:focus-visible,
     .nav-btn:focus-visible {
-      outline:2px solid var(--brand);
-      outline-offset:2px;
-      border-radius:999px;
+      outline: 2px solid var(--brand);
+      outline-offset: 2px;
+      border-radius: 999px;
     }
 
     /* 🆕 モーダル用CSS */
-    .modal-backdrop{
-      position:fixed;
-      inset:0;
-      background:rgba(15,23,42,0.45);
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      z-index:300;
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 300;
     }
-    .modal{
-      width:100%;
-      max-width:420px;
-      max-height:90vh;
-      background:#fff;
-      border-radius:16px;
-      box-shadow:0 10px 40px rgba(15,23,42,0.35);
-      display:flex;
-      flex-direction:column;
+
+    .modal {
+      width: 100%;
+      max-width: 420px;
+      max-height: 90vh;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(15, 23, 42, 0.35);
+      display: flex;
+      flex-direction: column;
     }
-    .modal-header{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      padding:10px 14px;
-      border-bottom:1px solid #e5e7eb;
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid #e5e7eb;
     }
-    .modal-body{
-      padding:10px 14px 4px;
-      overflow-y:auto;
+
+    .modal-body {
+      padding: 10px 14px 4px;
+      overflow-y: auto;
     }
-    .modal-footer{
-      padding:10px 14px 12px;
-      border-top:1px solid #e5e7eb;
-      text-align:right;
+
+    .modal-footer {
+      padding: 10px 14px 12px;
+      border-top: 1px solid #e5e7eb;
+      text-align: right;
     }
-    #modal-close-btn{
-      border:none;
-      background:transparent;
-      font-size:1rem;
-      cursor:pointer;
+
+    #modal-close-btn {
+      border: none;
+      background: transparent;
+      font-size: 1rem;
+      cursor: pointer;
     }
-    .modal-image-wrap{
-      text-align:center;
-      margin-bottom:8px;
+
+    .modal-image-wrap {
+      text-align: center;
+      margin-bottom: 8px;
     }
-    #order-image{
-      max-width:100%;
-      max-height:180px;
-      border-radius:12px;
-      object-fit:contain;
-      background:#f3f4f6;
+
+    #order-image {
+      max-width: 100%;
+      max-height: 180px;
+      border-radius: 12px;
+      object-fit: contain;
+      background: #f3f4f6;
     }
-    .field-select{
-      width:100%;
-      padding:8px 10px;
-      border-radius:10px;
-      border:1px solid var(--border);
-      background:#fff;
-      font-size:.85rem;
+
+    .field-select {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: .85rem;
     }
-    .btn-primary{
-      padding:8px 14px;
-      border-radius:999px;
-      border:none;
-      background:var(--brand);
-      color:#fff;
-      font-size:.85rem;
-      cursor:pointer;
+
+    .btn-primary {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: none;
+      background: var(--brand);
+      color: #fff;
+      font-size: .85rem;
+      cursor: pointer;
     }
-    .btn-primary:disabled{
-      opacity:0.5;
-      cursor:default;
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: default;
     }
-    .btn-secondary{
-      padding:8px 14px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:#ffffff;
-      color:var(--sub);
-      font-size:.85rem;
-      cursor:pointer;
+
+    .btn-secondary {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--sub);
+      font-size: .85rem;
+      cursor: pointer;
     }
-    .btn-secondary:disabled{
-      opacity:0.5;
-      cursor:default;
+
+    .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: default;
     }
-    .btn-danger{
-      padding:8px 14px;
-      border-radius:999px;
-      border:none;
-      background:var(--danger);
-      color:#fff;
-      font-size:.85rem;
-      cursor:pointer;
+
+    .btn-danger {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: none;
+      background: var(--danger);
+      color: #fff;
+      font-size: .85rem;
+      cursor: pointer;
     }
 
     /* 📊 グラフカードのスタイル */
     .chart-card {
-      background:var(--panel);
-      border-radius:16px;
-      border:1px solid var(--border);
-      padding:14px 14px 16px;
-      margin-bottom:12px;
-      box-shadow:0 2px 8px rgba(0,0,0,.04);
+      background: var(--panel);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 14px 14px 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .04);
     }
 
     .chart-header {
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-bottom:12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
     }
 
     .chart-title {
-      font-size:.98rem;
-      font-weight:700;
-      color:var(--text);
+      font-size: .98rem;
+      font-weight: 700;
+      color: var(--text);
     }
 
     .chart-period-toggle {
-      display:flex;
-      gap:4px;
-      background:#f3f4f6;
-      border-radius:999px;
-      padding:2px;
+      display: flex;
+      gap: 4px;
+      background: #f3f4f6;
+      border-radius: 999px;
+      padding: 2px;
     }
 
     .period-btn {
-      font-size:.75rem;
-      padding:4px 12px;
-      border-radius:999px;
-      border:none;
-      background:transparent;
-      color:var(--sub);
-      cursor:pointer;
-      transition:all 0.2s;
+      font-size: .75rem;
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      color: var(--sub);
+      cursor: pointer;
+      transition: all 0.2s;
     }
 
     .period-btn.active {
-      background:var(--brand);
-      color:#ffffff;
-      font-weight:600;
+      background: var(--brand);
+      color: #ffffff;
+      font-weight: 600;
     }
 
     .chart-container {
-      position:relative;
-      height:280px;
-      width:100%;
+      position: relative;
+      height: 280px;
+      width: 100%;
     }
 
     .chart-loading {
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      height:280px;
-      color:var(--muted);
-      font-size:.9rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 280px;
+      color: var(--muted);
+      font-size: .9rem;
     }
 
     .chart-legend {
-      display:flex;
-      justify-content:center;
-      gap:16px;
-      margin-top:12px;
-      padding-top:12px;
-      border-top:1px solid var(--border);
-      font-size:.8rem;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: .8rem;
     }
 
     .legend-item {
-      display:flex;
-      align-items:center;
-      gap:6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .legend-color {
-      width:12px;
-      height:12px;
-      border-radius:2px;
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
     }
 
     .chart-hint {
-      font-size:.78rem;
-      color:var(--muted);
-      margin-top:8px;
-      text-align:center;
+      font-size: .78rem;
+      color: var(--muted);
+      margin-top: 8px;
+      text-align: center;
     }
 
     /* 🆕 直近1ヶ月企画カード */
     .plans-card {
-      background:linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-      border-radius:16px;
-      padding:20px;
-      margin-bottom:12px;
-      box-shadow:0 4px 15px rgba(0,0,0,.1);
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, .1);
     }
 
     .plans-title {
-      font-size:1.2rem;
-      color:#fff;
-      text-align:center;
-      margin-bottom:16px;
-      font-weight:700;
-      text-shadow:1px 1px 2px rgba(0,0,0,0.1);
+      font-size: 1.2rem;
+      color: #fff;
+      text-align: center;
+      margin-bottom: 16px;
+      font-weight: 700;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
     }
 
     .plan-grid {
-      display:grid;
-      grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
-      gap:12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
     }
 
     .plan-item {
-      background:white;
-      padding:16px;
-      border-radius:12px;
-      box-shadow:0 2px 8px rgba(0,0,0,0.1);
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .plan-week {
-      font-size:0.8rem;
-      color:var(--brand);
-      font-weight:600;
-      margin-bottom:6px;
+      font-size: 0.8rem;
+      color: var(--brand);
+      font-weight: 600;
+      margin-bottom: 6px;
     }
 
     .plan-title {
-      font-size:1.1rem;
-      color:#fa709a;
-      margin-bottom:8px;
-      font-weight:700;
+      font-size: 1.1rem;
+      color: #fa709a;
+      margin-bottom: 8px;
+      font-weight: 700;
     }
 
     .plan-description {
-      font-size:0.9rem;
-      line-height:1.6;
-      color:var(--text);
-      margin-bottom:12px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: var(--text);
+      margin-bottom: 12px;
     }
 
     .plan-metrics {
-      display:flex;
-      justify-content:space-between;
-      padding-top:12px;
-      border-top:2px dashed var(--border);
+      display: flex;
+      justify-content: space-between;
+      padding-top: 12px;
+      border-top: 2px dashed var(--border);
     }
 
     .metric {
-      text-align:center;
+      text-align: center;
     }
 
     .metric-label {
-      font-size:0.75rem;
-      color:var(--muted);
-      margin-bottom:4px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 4px;
     }
 
     .metric-value {
-      font-size:1.1rem;
-      font-weight:700;
-      color:var(--brand);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--brand);
     }
 
     .improvement-badge {
-      display:inline-block;
-      background:linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-      color:white;
-      padding:2px 8px;
-      border-radius:12px;
-      font-size:0.75rem;
-      margin-left:5px;
-      font-weight:600;
+      display: inline-block;
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      margin-left: 5px;
+      font-weight: 600;
     }
 
     .rank-badge {
-      display:inline-block;
-      padding:3px 10px;
-      border-radius:999px;
-      font-size:0.75rem;
-      font-weight:600;
-      margin-left:8px;
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-left: 8px;
     }
 
-    .rank-s { background-color:#fff3cd; color:#856404; }
-    .rank-a { background-color:#d1ecf1; color:#0c5460; }
-    .rank-b { background-color:#d4edda; color:#155724; }
-    .rank-c { background-color:#f8d7da; color:#721c24; }
-
-    .btn-danger:disabled{
-      opacity:0.5;
-      cursor:default;
+    .rank-s {
+      background-color: #fff3cd;
+      color: #856404;
     }
 
-    @media (min-width:768px){
-      .wrap { padding:16px 16px 72px; }
+    .rank-a {
+      background-color: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .rank-b {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .rank-c {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+
+    .btn-danger:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    @media (min-width:768px) {
+      .wrap {
+        padding: 16px 16px 72px;
+      }
     }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <header>
@@ -1038,18 +1079,11 @@
 
         <div class="field">
           <div class="field-label">仕入額</div>
-          <input
-            id="modal-cost"
-            class="field-select"
-            type="number"
-            min="0"
-            step="1"
-            inputmode="numeric"
-            placeholder="例: 200"
-          />
+          <input id="modal-cost" class="field-select" type="number" min="0" step="1" inputmode="numeric"
+            placeholder="例: 200" />
         </div>
 
-        <hr/>
+        <hr />
 
         <div class="field">
           <div class="field-label">購入者タイプ</div>
@@ -1129,7 +1163,7 @@
   <script>
     // タブ切り替え
     const navButtons = document.querySelectorAll('.nav-btn');
-    const sections   = document.querySelectorAll('.section');
+    const sections = document.querySelectorAll('.section');
 
     navButtons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1138,32 +1172,32 @@
           sec.classList.toggle('active', sec.id === targetId);
         });
         navButtons.forEach(b => b.classList.toggle('active', b === btn));
-        window.scrollTo({ top:0, behavior:'instant' });
+        window.scrollTo({ top: 0, behavior: 'instant' });
       });
     });
 
     // ====== ダッシュボード用API連携 (/api/seller/summary?s=publicId) ======
-    (function(){
+    (function () {
       const $ = s => document.querySelector(s);
       const params = new URLSearchParams(location.search);
       const sellerId = params.get("s") || "";
 
-      const shopNameEl   = $("#shop-name");
-      const shopDisplayEl= $("#shop-display");
+      const shopNameEl = $("#shop-name");
+      const shopDisplayEl = $("#shop-display");
       const todayLabelEl = $("#today-label");
-      const kpiTotalEl   = $("#kpi-total");
-      const kpiCountEl   = $("#kpi-count");
-      const kpiAvgEl     = $("#kpi-avg");
-      const homeHintEl   = $("#home-hint");
+      const kpiTotalEl = $("#kpi-total");
+      const kpiCountEl = $("#kpi-count");
+      const kpiAvgEl = $("#kpi-avg");
+      const homeHintEl = $("#home-hint");
       const recentListEl = $("#recent-list");
       const recentHintEl = $("#recent-hint");
-      const txListEl     = $("#tx-list");
+      const txListEl = $("#tx-list");
       const purchaseUrlEl = $("#purchase-url");
-      const purchaseQrEl  = $("#purchase-qr");
-      const copyBtnEl     = $("#copy-purchase-url");
-      
+      const purchaseQrEl = $("#purchase-qr");
+      const copyBtnEl = $("#copy-purchase-url");
+
       // 🟦 (A) データ精度スコア用の要素
-      const dataScoreEl  = $("#data-score");
+      const dataScoreEl = $("#data-score");
 
       // 取引リストのフィルタ状態
       const txFilterBtn = document.getElementById("tx-filter-need-input");
@@ -1177,7 +1211,7 @@
         }
         if (kpiTotalEl) kpiTotalEl.textContent = "–";
         if (kpiCountEl) kpiCountEl.textContent = "–";
-        if (kpiAvgEl)   kpiAvgEl.textContent   = "–";
+        if (kpiAvgEl) kpiAvgEl.textContent = "–";
         if (recentListEl) {
           recentListEl.innerHTML = "";
         }
@@ -1190,30 +1224,30 @@
         }
       }
 
-      function formatYen(n){
+      function formatYen(n) {
         if (!Number.isFinite(n)) return "¥—";
         return "¥" + n.toLocaleString("ja-JP");
       }
 
-      function formatTime(date){
-        return date.toLocaleTimeString("ja-JP",{ hour:"2-digit", minute:"2-digit" });
+      function formatTime(date) {
+        return date.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
       }
 
-      function formatDateJp(date){
-        const w = ["日","月","火","水","木","金","土"][date.getDay()];
-        return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日（${w}）`;
+      function formatDateJp(date) {
+        const w = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
+        return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日（${w}）`;
       }
 
       // 購入者属性ラベルを生成する関数
-      function formatBuyerLabel(tx){
+      function formatBuyerLabel(tx) {
         // 現金＋カテゴリ未設定の場合の特別表示
         if ((tx.isCash || tx.is_cash) && !(tx.rawCategory || tx.raw_category)) {
           return "（現金：追加情報未入力）";
         }
 
         const customerType = tx.customerType ?? tx.customer_type ?? tx.buyer?.customer_type ?? null;
-        const gender       = tx.gender       ?? tx.buyer?.gender       ?? null;
-        const ageBand      = tx.ageBand      ?? tx.age_band ?? tx.buyer?.age_band ?? null;
+        const gender = tx.gender ?? tx.buyer?.gender ?? null;
+        const ageBand = tx.ageBand ?? tx.age_band ?? tx.buyer?.age_band ?? null;
 
         // null、undefined、空文字列の場合は未入力
         if ((!customerType || customerType === "") && (!gender || gender === "") && (!ageBand || ageBand === "")) {
@@ -1221,19 +1255,19 @@
         }
 
         const typeLabel =
-          customerType === "inbound"  ? "外国のひと" :
-          customerType === "domestic" ? "日本のひと" : "";
+          customerType === "inbound" ? "外国のひと" :
+            customerType === "domestic" ? "日本のひと" : "";
 
         const genderLabel =
-          gender === "male"   ? "男性" :
-          gender === "female" ? "女性" :
-          gender === "unknown" ? "性別 不明" : "";
+          gender === "male" ? "男性" :
+            gender === "female" ? "女性" :
+              gender === "unknown" ? "性別 不明" : "";
 
         const ageLabel =
-          ageBand === "child"      ? "こども" :
-          ageBand === "age_16_29"  ? "16〜29" :
-          ageBand === "age_30_59"  ? "30〜59" :
-          ageBand === "age_60_plus"? "60+"   : "";
+          ageBand === "child" ? "こども" :
+            ageBand === "age_16_29" ? "16〜29" :
+              ageBand === "age_30_59" ? "30〜59" :
+                ageBand === "age_60_plus" ? "60+" : "";
 
         // 全ての情報が揃っている場合のみ表示
         if (typeLabel && genderLabel && ageLabel) {
@@ -1346,18 +1380,18 @@
       }
 
       // ★ 修正1: 一覧生成時に必ずorderIdをdata属性に保存
-      function createTransactionItem(tx){
+      function createTransactionItem(tx) {
         const li = document.createElement("li");
         li.className = "tx-item";
-        
+
         // ★ 必須: orderIdをdata属性に保存
         li.dataset.orderId = tx.orderId || "";
-        
+
         // 支払い方法の判定（payment_methodを優先、なければisCashを使用）
         const paymentMethod = tx.paymentMethod || tx.payment_method || '';
         const isCash = !!(tx.isCash || tx.is_cash || paymentMethod === 'cash');
         li.classList.add(isCash ? "tx-cash" : "tx-cashless");
-        
+
         // created(秒) or createdAt(ISO文字列) のどちらでもOKにする
         let created = null;
         if (typeof tx.created === "number") {
@@ -1368,7 +1402,7 @@
 
         const timeStr = created ? formatTime(created) : "";
         const dateStr = created
-          ? `${created.getFullYear()}-${String(created.getMonth()+1).padStart(2,"0")}-${String(created.getDate()).padStart(2,"0")}`
+          ? `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}-${String(created.getDate()).padStart(2, "0")}`
           : "";
 
         // summary / memo どちらでも
@@ -1415,7 +1449,7 @@
         const hasCost = costVal !== null && costVal > 0;
 
         const missing = [];
-        if (!hasCost)     missing.push("仕入額");
+        if (!hasCost) missing.push("仕入額");
         if (!hasCategory) missing.push("カテゴリ");
         if (!hasBuyerAll) missing.push("購入者情報");
 
@@ -1442,12 +1476,12 @@
             <div class="tx-sub">${buyerLabel}</div>
             ${needInputSub}
             <div class="tx-detail">
-              ${tx.summary ? tx.summary.replace(/\n/g,"<br>") : ""}
+              ${tx.summary ? tx.summary.replace(/\n/g, "<br>") : ""}
             </div>
           </div>
           <div class="tx-amt">${formatYen(tx.net_amount ?? tx.amount)}</div>
         `;
-        
+
         // 🌍 世界相場（参考）行を追加（worldMedian が入っているときだけ）
         if (typeof tx.worldMedian === "number" && tx.worldMedian > 0) {
           const worldRow = document.createElement("div");
@@ -1488,7 +1522,7 @@
             li.classList.toggle("expanded");
           }
         });
-        
+
         return li;
       }
 
@@ -1516,16 +1550,14 @@
           li.className = "tx-item";
           li.innerHTML = `
             <div class="tx-main">
-              <div class="tx-title">${
-                txFilterNeedInputOnly
-                  ? "入力まちの 取引は ありません"
-                  : "まだ 取引がありません"
-              }</div>
-              <div class="tx-sub">${
-                txFilterNeedInputOnly
-                  ? "仕入額・カテゴリ・購入者情報が そろっていない取引だけを ひょうじします。"
-                  : "きょうの決済や さいきんの決済がここに表示されます。"
-              }</div>
+              <div class="tx-title">${txFilterNeedInputOnly
+              ? "入力まちの 取引は ありません"
+              : "まだ 取引がありません"
+            }</div>
+              <div class="tx-sub">${txFilterNeedInputOnly
+              ? "仕入額・カテゴリ・購入者情報が そろっていない取引だけを ひょうじします。"
+              : "きょうの決済や さいきんの決済がここに表示されます。"
+            }</div>
             </div>
           `;
           txListEl.appendChild(li);
@@ -1548,7 +1580,7 @@
                 gender != null && gender !== "" &&
                 ageBand != null && ageBand !== ""
               );
-              
+
               console.log(`[seller-dashboard] 取引${txIndex} 入力まち判定:`, {
                 orderId: tx.orderId || tx.order_id,
                 customerType: customerType,
@@ -1579,14 +1611,14 @@
       // QRコード生成の共通関数（sellerIdを動的に含める）
       function generateQRCode() {
         // sellerIdを含む動的URL: seller-purchase-standard.html?s=sellerId
-        const baseUrl = `${location.origin.replace(/\/$/,"")}/seller-purchase-standard.html`;
-        const purchaseUrl = sellerId 
+        const baseUrl = `${location.origin.replace(/\/$/, "")}/seller-purchase-standard.html`;
+        const purchaseUrl = sellerId
           ? `${baseUrl}?s=${encodeURIComponent(sellerId)}`
           : baseUrl;
 
         // URLリンク
         const urlEl = document.getElementById("purchase-url");
-        if (urlEl){
+        if (urlEl) {
           urlEl.textContent = purchaseUrl;
           urlEl.href = purchaseUrl;
         } else {
@@ -1595,7 +1627,7 @@
 
         // QR生成（要素を再取得して確認）
         const qrEl = document.getElementById("purchase-qr");
-        if (qrEl){
+        if (qrEl) {
           const qrApi = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=";
           qrEl.src = qrApi + encodeURIComponent(purchaseUrl);
           qrEl.alt = "販売画面QRコード";
@@ -1606,31 +1638,31 @@
 
         // コピー ボタン
         const copyBtn = document.getElementById("copy-purchase-url");
-        if (copyBtn){
+        if (copyBtn) {
           copyBtn.onclick = () => {
-            navigator.clipboard?.writeText(purchaseUrl).then(()=>{
+            navigator.clipboard?.writeText(purchaseUrl).then(() => {
               alert("販売画面のURLをコピーしました");
-            }).catch(()=>{
+            }).catch(() => {
               alert("コピーに失敗しました。手動でコピーしてください。");
             });
           };
         }
       }
 
-      async function loadSummary(){
+      async function loadSummary() {
         // 🆕 sellerIdを含む動的URLのQRコードを即座に生成
         generateQRCode();
 
-        if (!sellerId){
+        if (!sellerId) {
           if (homeHintEl) homeHintEl.textContent = "URLに ?s=出店者ID が ひつようです。";
           return;
         }
 
-        try{
+        try {
           const res = await fetch(`/api/seller/summary?s=${encodeURIComponent(sellerId)}`);
           const data = await res.json();
 
-          if (!res.ok){
+          if (!res.ok) {
             console.error("summary error", data);
             if (homeHintEl) homeHintEl.textContent = "売上データ取得でエラーが発生しました。QRコードは表示されています。";
             // 🆕 APIエラー時でもQRコードは既に生成されているので、ここでreturn
@@ -1639,7 +1671,7 @@
 
           // デバッグ: APIレスポンスの最初の3件をログ出力
           if (data.recent && data.recent.length > 0) {
-            console.log("[seller-dashboard] APIレスポンス (最初の3件):", data.recent.slice(0, 3).map((tx: any) => ({
+            console.log("[seller-dashboard] APIレスポンス (最初の3件):", data.recent.slice(0, 3).map((tx) => ({
               orderId: tx.orderId || tx.order_id,
               customerType: tx.customerType ?? tx.customer_type ?? tx.buyer?.customer_type,
               gender: tx.gender ?? tx.buyer?.gender,
@@ -1653,7 +1685,7 @@
           // planType が "pro" または "kids" 以外の場合は、一部機能をブロック
           const isStandardPlan = data && data.planType && data.planType === "standard";
           const isNotSubscribed = data && data.isSubscribed === false;
-          
+
           if (isStandardPlan || isNotSubscribed) {
             // サブスク未加入の場合は、一部の機能をブロック
             // ただし、基本的な取引履歴は表示する
@@ -1662,7 +1694,7 @@
             }
             if (kpiTotalEl) kpiTotalEl.textContent = "–";
             if (kpiCountEl) kpiCountEl.textContent = "–";
-            if (kpiAvgEl)   kpiAvgEl.textContent   = "–";
+            if (kpiAvgEl) kpiAvgEl.textContent = "–";
             if (recentListEl) {
               recentListEl.innerHTML = "";
             }
@@ -1677,8 +1709,8 @@
           }
 
           // 店名
-          if (shopNameEl)   shopNameEl.textContent   = data.displayName || data.sellerId || "出店者";
-          if (shopDisplayEl)shopDisplayEl.textContent= data.displayName || data.sellerId || "出店者";
+          if (shopNameEl) shopNameEl.textContent = data.displayName || data.sellerId || "出店者";
+          if (shopDisplayEl) shopDisplayEl.textContent = data.displayName || data.sellerId || "出店者";
 
           // きょうの日付（JST）。UTC に +9時間してから「日付」を決める
           const now = new Date();
@@ -1693,20 +1725,20 @@
           //   toISOString() は UTC なので使わず、UTCフィールドを直接取り出す
           const todayStr =
             `${nowJst.getUTCFullYear()}-` +
-            `${String(nowJst.getUTCMonth() + 1).padStart(2,"0")}-` +
-            `${String(nowJst.getUTCDate()).padStart(2,"0")}`;
+            `${String(nowJst.getUTCMonth() + 1).padStart(2, "0")}-` +
+            `${String(nowJst.getUTCDate()).padStart(2, "0")}`;
 
-          let todayNet   = 0;  // きょうの純売上
+          let todayNet = 0;  // きょうの純売上
           let countToday = 0;  // きょうの件数
-          let avgToday   = 0;  // きょうの平均客単価
+          let avgToday = 0;  // きょうの平均客単価
 
           // 2. まず API が salesToday を持っていればそれを優先して使う
           if (data.salesToday && typeof data.salesToday.net === "number" && data.salesToday.net > 0) {
-            todayNet   = data.salesToday.net;
+            todayNet = data.salesToday.net;
             countToday = typeof data.salesToday.count === "number"
               ? data.salesToday.count
               : (typeof data.countToday === "number" ? data.countToday : 0);
-            avgToday   = typeof data.salesToday.avgNet === "number"
+            avgToday = typeof data.salesToday.avgNet === "number"
               ? data.salesToday.avgNet
               : (typeof data.avgToday === "number" ? data.avgToday : (countToday > 0 ? Math.round(todayNet / countToday) : 0));
           } else {
@@ -1726,14 +1758,14 @@
               const jst = new Date(created.getTime() + 9 * 60 * 60 * 1000);
               const dStr =
                 `${jst.getUTCFullYear()}-` +
-                `${String(jst.getUTCMonth() + 1).padStart(2,"0")}-` +
-                `${String(jst.getUTCDate()).padStart(2,"0")}`;
+                `${String(jst.getUTCMonth() + 1).padStart(2, "0")}-` +
+                `${String(jst.getUTCDate()).padStart(2, "0")}`;
               if (dStr !== todayStr) return; // きょう以外は無視
 
               const amt = Number(tx.amount || tx.net_amount || 0);
               if (!Number.isFinite(amt)) return;
 
-              todayNet   += amt;
+              todayNet += amt;
               countToday += 1;
             });
 
@@ -1745,7 +1777,7 @@
           // 4. 画面に反映
           if (kpiTotalEl) kpiTotalEl.textContent = formatYen(todayNet);
           if (kpiCountEl) kpiCountEl.textContent = `${countToday}件`;
-          if (kpiAvgEl)   kpiAvgEl.textContent   = formatYen(avgToday || 0);
+          if (kpiAvgEl) kpiAvgEl.textContent = formatYen(avgToday || 0);
 
           // 🟦 仕入額・利益の表示
           const costToday = data.salesToday?.cost ?? 0;
@@ -1759,8 +1791,8 @@
 
           // 🟦 (A) データ精度スコアの表示
           if (dataScoreEl) {
-            const score = data.dataScore !== undefined && data.dataScore !== null 
-              ? data.dataScore 
+            const score = data.dataScore !== undefined && data.dataScore !== null
+              ? data.dataScore
               : 0;
             dataScoreEl.textContent = score + "%";
           }
@@ -1774,10 +1806,10 @@
           }
 
           // さいきんの決済（3件まで）
-          const recent = (data.recent || []).slice(0,3);
-          if (recentListEl){
+          const recent = (data.recent || []).slice(0, 3);
+          if (recentListEl) {
             recentListEl.innerHTML = "";
-            if (recent.length === 0){
+            if (recent.length === 0) {
               const li = document.createElement("li");
               li.className = "tx-item";
               li.innerHTML = `
@@ -1788,7 +1820,7 @@
               `;
               recentListEl.appendChild(li);
             } else {
-              for (const tx of recent){
+              for (const tx of recent) {
                 recentListEl.appendChild(createTransactionItem(tx));
               }
             }
@@ -1813,7 +1845,7 @@
             console.log("[seller-dashboard] renderTxList()実行完了");
           }
 
-        } catch (e){
+        } catch (e) {
           console.error("loadSummary error", e);
           if (homeHintEl) homeHintEl.textContent = "通信エラーが発生しました。ネットワークを確認してください。";
         }
@@ -1861,7 +1893,7 @@
     let currentDetailOrderId = null;
 
     // 🟩 修正3: サーバーのレスポンス構造に合わせて修正
-    async function openOrderDetail(orderId){
+    async function openOrderDetail(orderId) {
       const modal = document.getElementById("order-detail-modal");
       if (!modal) return;
       currentDetailOrderId = orderId;
@@ -1869,30 +1901,30 @@
       try {
         const params = new URLSearchParams(location.search);
         const sellerId = params.get("s") || "";
-        
+
         // 画像や属性を含む専用APIを呼ぶ
         const res = await fetch(
           `/api/seller/order-detail-full?s=${encodeURIComponent(sellerId)}&orderId=${encodeURIComponent(orderId)}`
         );
         const data = await res.json();
-        
-        if (!res.ok){
+
+        if (!res.ok) {
           alert("取引の読み込みに失敗しました");
           console.error("order-detail error", data);
           return;
         }
 
         // 要素取得
-        const imgEl      = document.getElementById("order-image");
+        const imgEl = document.getElementById("order-image");
         const imgWrapper = document.getElementById("order-image-wrapper");
-        const sumEl      = document.getElementById("modal-summary");
-        const amtEl      = document.getElementById("modal-amount");
-        const costEl     = document.getElementById("modal-cost");
-        const typeEl     = document.getElementById("modal-customer-type");
-        const genEl      = document.getElementById("modal-gender");
-        const ageEl      = document.getElementById("modal-age");
-        const catEl      = document.getElementById("modal-category");
-        const langEl     = document.getElementById("modal-language");
+        const sumEl = document.getElementById("modal-summary");
+        const amtEl = document.getElementById("modal-amount");
+        const costEl = document.getElementById("modal-cost");
+        const typeEl = document.getElementById("modal-customer-type");
+        const genEl = document.getElementById("modal-gender");
+        const ageEl = document.getElementById("modal-age");
+        const catEl = document.getElementById("modal-category");
+        const langEl = document.getElementById("modal-language");
 
         // 🟩 画像の表示制御（サーバーは imageUrl を直接返す）
         if (data.imageUrl) {
@@ -1926,22 +1958,22 @@
 
         // 🟩 購入者属性（サーバーは buyer オブジェクトではなく直接返す）
         if (typeEl) typeEl.value = data.customerType || "";
-        if (genEl)  genEl.value = data.gender || "";
-        if (ageEl)  ageEl.value = data.ageBand || "";
+        if (genEl) genEl.value = data.gender || "";
+        if (ageEl) ageEl.value = data.ageBand || "";
 
         // 🟩 カテゴリ / 言語（サーバーは metadata オブジェクトではなく直接返す）
-        if (catEl)  catEl.value = data.itemCategory || "";
+        if (catEl) catEl.value = data.itemCategory || "";
         if (langEl) langEl.value = data.buyerLanguage || "";
 
         modal.style.display = "flex";
 
-      } catch (e){
+      } catch (e) {
         console.error("openOrderDetail error", e);
         alert("取引の読み込みでエラーが発生しました");
       }
     }
 
-    function closeOrderDetail(){
+    function closeOrderDetail() {
       const modal = document.getElementById("order-detail-modal");
       if (modal) modal.style.display = "none";
       currentDetailOrderId = null;
@@ -1963,33 +1995,33 @@
           const params = new URLSearchParams(location.search);
           const sellerId = params.get("s") || "";
 
-          const sumEl  = document.getElementById("modal-summary");
+          const sumEl = document.getElementById("modal-summary");
           const typeEl = document.getElementById("modal-customer-type");
-          const genEl  = document.getElementById("modal-gender");
-          const ageEl  = document.getElementById("modal-age");
-          const catEl  = document.getElementById("modal-category");
+          const genEl = document.getElementById("modal-gender");
+          const ageEl = document.getElementById("modal-age");
+          const catEl = document.getElementById("modal-category");
           const langEl = document.getElementById("modal-language");
           const costEl = document.getElementById("modal-cost");
 
-          const summary       = sumEl?.value  || "";
+          const summary = sumEl?.value || "";
           const customer_type = typeEl?.value || "";
-          const gender        = genEl?.value  || "";
-          const age_band      = ageEl?.value  || "";
-          const category      = catEl?.value  || "";
-          const buyer_language= langEl?.value || "";
-          const cost_raw      = costEl?.value || "";
-          const costAmount    = cost_raw ? Number(cost_raw) : 0;
+          const gender = genEl?.value || "";
+          const age_band = ageEl?.value || "";
+          const category = catEl?.value || "";
+          const buyer_language = langEl?.value || "";
+          const cost_raw = costEl?.value || "";
+          const costAmount = cost_raw ? Number(cost_raw) : 0;
 
           try {
             saveBtn.disabled = true;
             saveBtn.textContent = "保存中…";
 
             // 1) 購入者属性を保存
-            if (customer_type && gender && age_band){
-              await fetch("/api/orders/buyer-attributes",{
-                method:"POST",
-                headers:{ "Content-Type":"application/json" },
-                body:JSON.stringify({
+            if (customer_type && gender && age_band) {
+              await fetch("/api/orders/buyer-attributes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
                   orderId: currentDetailOrderId,
                   customer_type,
                   gender,
@@ -1999,10 +2031,10 @@
             }
 
             // 2) メタデータ（カテゴリ・言語）を保存
-            await fetch("/api/orders/metadata",{
-              method:"POST",
-              headers:{ "Content-Type":"application/json" },
-              body:JSON.stringify({
+            await fetch("/api/orders/metadata", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
                 orderId: currentDetailOrderId,
                 category,
                 buyer_language,
@@ -2012,9 +2044,9 @@
 
             // 3) 商品メモ(summary) を保存
             await fetch("/api/orders/update-summary", {
-              method:"POST",
-              headers:{ "Content-Type":"application/json" },
-              body:JSON.stringify({
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
                 orderId: currentDetailOrderId,
                 summary
               })
@@ -2023,9 +2055,9 @@
             // 4) 仕入額(cost_amount) を保存（0以上のときだけ）
             if (cost_raw !== "") {
               await fetch("/api/orders/update-cost", {
-                method:"POST",
-                headers:{ "Content-Type":"application/json" },
-                body:JSON.stringify({
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
                   orderId: currentDetailOrderId,
                   costAmount: costAmount
                 })
@@ -2038,7 +2070,7 @@
             if (window.loadSummary) {
               window.loadSummary();
             }
-          } catch (e){
+          } catch (e) {
             console.error("save detail error", e);
             alert("保存でエラーが発生しました");
           } finally {
@@ -2156,14 +2188,14 @@
     // ====================================
     // 📊 グラフ表示スクリプト
     // ====================================
-    (function() {
+    (function () {
       try {
         const canvas = document.getElementById('sales-profit-chart');
         const loadingEl = document.getElementById('chart-loading');
         const periodBtns = document.querySelectorAll('.period-btn');
-        
+
         if (!canvas) return; // グラフ要素がない場合は終了
-        
+
         // Chart.jsが読み込まれているか確認
         if (typeof Chart === 'undefined') {
           console.error('Chart.jsが読み込まれていません');
@@ -2173,7 +2205,7 @@
           }
           return;
         }
-        
+
         let chartInstance = null;
         let currentPeriod = 'daily';
 
@@ -2189,101 +2221,101 @@
 
             // Chart.jsの設定
             chartInstance = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [
-              {
-                label: '売上',
-                data: salesData,
-                backgroundColor: 'rgba(90, 107, 255, 0.7)',
-                borderColor: 'rgba(90, 107, 255, 1)',
-                borderWidth: 1,
-                order: 3
-              },
-              {
-                label: '仕入額',
-                data: costData,
-                backgroundColor: 'rgba(245, 158, 11, 0.7)',
-                borderColor: 'rgba(245, 158, 11, 1)',
-                borderWidth: 1,
-                order: 2
-              },
-              {
-                label: '利益',
-                data: profitData,
-                backgroundColor: 'rgba(26, 155, 99, 0.8)',
-                borderColor: 'rgba(26, 155, 99, 1)',
-                borderWidth: 2,
-                type: 'line',
-                fill: false,
-                tension: 0.3,
-                order: 1
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-              mode: 'index',
-              intersect: false,
-            },
-            scales: {
-              y: {
-                beginAtZero: true,
-                ticks: {
-                  callback: function(value) {
-                    return '¥' + value.toLocaleString('ja-JP');
+              type: 'bar',
+              data: {
+                labels: labels,
+                datasets: [
+                  {
+                    label: '売上',
+                    data: salesData,
+                    backgroundColor: 'rgba(90, 107, 255, 0.7)',
+                    borderColor: 'rgba(90, 107, 255, 1)',
+                    borderWidth: 1,
+                    order: 3
                   },
-                  font: {
-                    size: 10
+                  {
+                    label: '仕入額',
+                    data: costData,
+                    backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                    borderColor: 'rgba(245, 158, 11, 1)',
+                    borderWidth: 1,
+                    order: 2
+                  },
+                  {
+                    label: '利益',
+                    data: profitData,
+                    backgroundColor: 'rgba(26, 155, 99, 0.8)',
+                    borderColor: 'rgba(26, 155, 99, 1)',
+                    borderWidth: 2,
+                    type: 'line',
+                    fill: false,
+                    tension: 0.3,
+                    order: 1
                   }
-                },
-                grid: {
-                  color: 'rgba(0, 0, 0, 0.05)'
-                }
+                ]
               },
-              x: {
-                ticks: {
-                  font: {
-                    size: 9
-                  },
-                  maxRotation: 45,
-                  minRotation: 45
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                  mode: 'index',
+                  intersect: false,
                 },
-                grid: {
-                  display: false
-                }
-              }
-            },
-            plugins: {
-              legend: {
-                display: false // カスタム凡例を使用
-              },
-              tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 12,
-                titleFont: {
-                  size: 13
-                },
-                bodyFont: {
-                  size: 12
-                },
-                callbacks: {
-                  label: function(context) {
-                    let label = context.dataset.label || '';
-                    if (label) {
-                      label += ': ';
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      callback: function (value) {
+                        return '¥' + value.toLocaleString('ja-JP');
+                      },
+                      font: {
+                        size: 10
+                      }
+                    },
+                    grid: {
+                      color: 'rgba(0, 0, 0, 0.05)'
                     }
-                    label += '¥' + context.parsed.y.toLocaleString('ja-JP');
-                    return label;
+                  },
+                  x: {
+                    ticks: {
+                      font: {
+                        size: 9
+                      },
+                      maxRotation: 45,
+                      minRotation: 45
+                    },
+                    grid: {
+                      display: false
+                    }
+                  }
+                },
+                plugins: {
+                  legend: {
+                    display: false // カスタム凡例を使用
+                  },
+                  tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                      size: 13
+                    },
+                    bodyFont: {
+                      size: 12
+                    },
+                    callbacks: {
+                      label: function (context) {
+                        let label = context.dataset.label || '';
+                        if (label) {
+                          label += ': ';
+                        }
+                        label += '¥' + context.parsed.y.toLocaleString('ja-JP');
+                        return label;
+                      }
+                    }
                   }
                 }
               }
-            }
-          }
-        });
+            });
           } catch (chartError) {
             console.error('グラフの初期化エラー:', chartError);
             if (loadingEl) {
@@ -2293,106 +2325,106 @@
           }
         }
 
-      // APIからデータを取得してグラフを更新
-      async function loadChartData(period = 'daily') {
-        const params = new URLSearchParams(location.search);
-        const sellerId = params.get('s') || '';
+        // APIからデータを取得してグラフを更新
+        async function loadChartData(period = 'daily') {
+          const params = new URLSearchParams(location.search);
+          const sellerId = params.get('s') || '';
 
-        if (!sellerId) {
-          console.warn('出店者IDが指定されていません');
-          return;
-        }
-
-        try {
-          // ローディング表示
-          if (loadingEl) {
-            loadingEl.style.display = 'flex';
-          }
-          canvas.style.opacity = '0.3';
-
-          const days = period === 'daily' ? 30 : 28; // 週毎の場合は4週間
-          const response = await fetch(
-            `/api/seller/analytics?s=${encodeURIComponent(sellerId)}&period=${period}&days=${days}`
-          );
-
-          if (!response.ok) {
-            throw new Error('データの取得に失敗しました');
+          if (!sellerId) {
+            console.warn('出店者IDが指定されていません');
+            return;
           }
 
-          const result = await response.json();
-          
-          if (!result.ok || !result.data) {
-            throw new Error('データが不正です');
-          }
+          try {
+            // ローディング表示
+            if (loadingEl) {
+              loadingEl.style.display = 'flex';
+            }
+            canvas.style.opacity = '0.3';
 
-          // データの整形
-          const labels = [];
-          const salesData = [];
-          const costData = [];
-          const profitData = [];
+            const days = period === 'daily' ? 30 : 28; // 週毎の場合は4週間
+            const response = await fetch(
+              `/api/seller/analytics?s=${encodeURIComponent(sellerId)}&period=${period}&days=${days}`
+            );
 
-          result.data.forEach(item => {
-            // 日付ラベルの整形
-            let label;
-            if (period === 'daily') {
-              const date = new Date(item.date);
-              label = `${date.getMonth() + 1}/${date.getDate()}`;
-            } else {
-              const date = new Date(item.weekStart);
-              label = `${date.getMonth() + 1}/${date.getDate()}週`;
+            if (!response.ok) {
+              throw new Error('データの取得に失敗しました');
             }
 
-            labels.push(label);
-            salesData.push(item.grossSales);
-            costData.push(item.totalCost);
-            profitData.push(item.profit);
-          });
+            const result = await response.json();
 
-          // グラフを描画
-          initChart(labels, salesData, costData, profitData);
+            if (!result.ok || !result.data) {
+              throw new Error('データが不正です');
+            }
 
-          // ヒントテキストを更新
-          const hintEl = document.querySelector('.chart-hint');
-          if (hintEl) {
-            hintEl.textContent = period === 'daily' 
-              ? '直近30日間のデータを表示しています'
-              : '直近4週間のデータを表示しています';
+            // データの整形
+            const labels = [];
+            const salesData = [];
+            const costData = [];
+            const profitData = [];
+
+            result.data.forEach(item => {
+              // 日付ラベルの整形
+              let label;
+              if (period === 'daily') {
+                const date = new Date(item.date);
+                label = `${date.getMonth() + 1}/${date.getDate()}`;
+              } else {
+                const date = new Date(item.weekStart);
+                label = `${date.getMonth() + 1}/${date.getDate()}週`;
+              }
+
+              labels.push(label);
+              salesData.push(item.grossSales);
+              costData.push(item.totalCost);
+              profitData.push(item.profit);
+            });
+
+            // グラフを描画
+            initChart(labels, salesData, costData, profitData);
+
+            // ヒントテキストを更新
+            const hintEl = document.querySelector('.chart-hint');
+            if (hintEl) {
+              hintEl.textContent = period === 'daily'
+                ? '直近30日間のデータを表示しています'
+                : '直近4週間のデータを表示しています';
+            }
+
+          } catch (error) {
+            console.error('グラフデータの読み込みエラー:', error);
+            alert('グラフデータの読み込みに失敗しました');
+          } finally {
+            // ローディング非表示
+            if (loadingEl) {
+              loadingEl.style.display = 'none';
+            }
+            canvas.style.opacity = '1';
           }
-
-        } catch (error) {
-          console.error('グラフデータの読み込みエラー:', error);
-          alert('グラフデータの読み込みに失敗しました');
-        } finally {
-          // ローディング非表示
-          if (loadingEl) {
-            loadingEl.style.display = 'none';
-          }
-          canvas.style.opacity = '1';
         }
-      }
 
-      // 期間切り替えボタンのイベント
-      periodBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const period = btn.getAttribute('data-period');
-          
-          // ボタンのアクティブ状態を切り替え
-          periodBtns.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
+        // 期間切り替えボタンのイベント
+        periodBtns.forEach(btn => {
+          btn.addEventListener('click', () => {
+            const period = btn.getAttribute('data-period');
 
-          // グラフを更新
-          currentPeriod = period;
-          loadChartData(period);
+            // ボタンのアクティブ状態を切り替え
+            periodBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // グラフを更新
+            currentPeriod = period;
+            loadChartData(period);
+          });
         });
-      });
 
-      // 初回ロード
-      loadChartData(currentPeriod);
-
-      // グローバルスコープに公開（他の部分から再読み込みできるように）
-      window.reloadChart = function() {
+        // 初回ロード
         loadChartData(currentPeriod);
-      };
+
+        // グローバルスコープに公開（他の部分から再読み込みできるように）
+        window.reloadChart = function () {
+          loadChartData(currentPeriod);
+        };
       } catch (graphError) {
         console.error('グラフスクリプトの初期化エラー:', graphError);
       }
@@ -2401,14 +2433,14 @@
     // ====================================
     // 📊 ベンチマークグラフ表示スクリプト
     // ====================================
-    (function() {
+    (function () {
       try {
         const canvas = document.getElementById('benchmark-chart');
         const loadingEl = document.getElementById('chart-benchmark-loading');
         const periodBtns = document.querySelectorAll('[data-period-benchmark]');
-        
+
         if (!canvas) return; // グラフ要素がない場合は終了
-        
+
         // Chart.jsが読み込まれているか確認
         if (typeof Chart === 'undefined') {
           console.error('Chart.jsが読み込まれていません（ベンチマークグラフ）');
@@ -2418,296 +2450,296 @@
           }
           return;
         }
-        
+
         let chartInstance = null;
         let currentPeriod = 'monthly';
         let benchmarkData = [];
 
-      // ベンチマークデータの読み込み
-      async function loadBenchmarkData() {
-        try {
-          const response = await fetch('/api/benchmark/data');
-          if (!response.ok) {
-            throw new Error('ベンチマークデータの取得に失敗しました');
+        // ベンチマークデータの読み込み
+        async function loadBenchmarkData() {
+          try {
+            const response = await fetch('/api/benchmark/data');
+            if (!response.ok) {
+              throw new Error('ベンチマークデータの取得に失敗しました');
+            }
+            const result = await response.json();
+            if (result.ok && result.data) {
+              benchmarkData = result.data;
+            }
+          } catch (error) {
+            console.error('ベンチマークデータの読み込みエラー:', error);
           }
-          const result = await response.json();
-          if (result.ok && result.data) {
-            benchmarkData = result.data;
-          }
-        } catch (error) {
-          console.error('ベンチマークデータの読み込みエラー:', error);
         }
-      }
 
-      // グラフの初期化
-      function initBenchmarkChart(labels, actualData, benchmarkData, improvedData) {
-        try {
-          const ctx = canvas.getContext('2d');
+        // グラフの初期化
+        function initBenchmarkChart(labels, actualData, benchmarkData, improvedData) {
+          try {
+            const ctx = canvas.getContext('2d');
 
-          if (chartInstance) {
-            chartInstance.destroy();
-          }
+            if (chartInstance) {
+              chartInstance.destroy();
+            }
 
-          chartInstance = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [
-              {
-                label: '実績売上',
-                data: actualData,
-                backgroundColor: 'rgba(90, 107, 255, 0.7)',
-                borderColor: 'rgba(90, 107, 255, 1)',
-                borderWidth: 2,
-                order: 3
-              },
-              {
-                label: 'ベンチマーク（目標）',
-                data: benchmarkData,
-                backgroundColor: 'rgba(250, 112, 154, 0.5)',
-                borderColor: 'rgba(250, 112, 154, 1)',
-                borderWidth: 2,
-                borderDash: [5, 5],
-                type: 'line',
-                fill: false,
-                tension: 0.3,
-                pointStyle: 'circle',
-                pointRadius: 6,
-                order: 1
-              },
-              {
-                label: '企画後予想',
-                data: improvedData,
-                backgroundColor: 'rgba(56, 239, 125, 0.8)',
-                borderColor: 'rgba(56, 239, 125, 1)',
-                borderWidth: 2,
-                type: 'line',
-                fill: false,
-                tension: 0.3,
-                pointStyle: 'rectRot',
-                pointRadius: 5,
-                order: 2
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-              mode: 'index',
-              intersect: false,
-            },
-            scales: {
-              y: {
-                beginAtZero: true,
-                ticks: {
-                  callback: function(value) {
-                    return value;
+            chartInstance = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: labels,
+                datasets: [
+                  {
+                    label: '実績売上',
+                    data: actualData,
+                    backgroundColor: 'rgba(90, 107, 255, 0.7)',
+                    borderColor: 'rgba(90, 107, 255, 1)',
+                    borderWidth: 2,
+                    order: 3
                   },
-                  font: {
-                    size: 10
+                  {
+                    label: 'ベンチマーク（目標）',
+                    data: benchmarkData,
+                    backgroundColor: 'rgba(250, 112, 154, 0.5)',
+                    borderColor: 'rgba(250, 112, 154, 1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    type: 'line',
+                    fill: false,
+                    tension: 0.3,
+                    pointStyle: 'circle',
+                    pointRadius: 6,
+                    order: 1
+                  },
+                  {
+                    label: '企画後予想',
+                    data: improvedData,
+                    backgroundColor: 'rgba(56, 239, 125, 0.8)',
+                    borderColor: 'rgba(56, 239, 125, 1)',
+                    borderWidth: 2,
+                    type: 'line',
+                    fill: false,
+                    tension: 0.3,
+                    pointStyle: 'rectRot',
+                    pointRadius: 5,
+                    order: 2
+                  }
+                ]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                  mode: 'index',
+                  intersect: false,
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      callback: function (value) {
+                        return value;
+                      },
+                      font: {
+                        size: 10
+                      }
+                    },
+                    grid: {
+                      color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                  },
+                  x: {
+                    ticks: {
+                      font: {
+                        size: 9
+                      },
+                      maxRotation: 45,
+                      minRotation: 45
+                    },
+                    grid: {
+                      display: false
+                    }
                   }
                 },
-                grid: {
-                  color: 'rgba(0, 0, 0, 0.05)'
-                }
-              },
-              x: {
-                ticks: {
-                  font: {
-                    size: 9
+                plugins: {
+                  legend: {
+                    display: false
                   },
-                  maxRotation: 45,
-                  minRotation: 45
-                },
-                grid: {
-                  display: false
-                }
-              }
-            },
-            plugins: {
-              legend: {
-                display: false
-              },
-              tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 12,
-                titleFont: {
-                  size: 13
-                },
-                bodyFont: {
-                  size: 12
-                },
-                callbacks: {
-                  label: function(context) {
-                    let label = context.dataset.label || '';
-                    if (label) {
-                      label += ': ';
-                    }
-                    label += context.parsed.y;
-                    
-                    if (context.datasetIndex === 0) {
-                      const benchmark = benchmarkData[context.dataIndex];
-                      if (benchmark) {
-                        const achievement = ((context.parsed.y / benchmark) * 100).toFixed(1);
-                        label += ` (達成率: ${achievement}%)`;
+                  tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                      size: 13
+                    },
+                    bodyFont: {
+                      size: 12
+                    },
+                    callbacks: {
+                      label: function (context) {
+                        let label = context.dataset.label || '';
+                        if (label) {
+                          label += ': ';
+                        }
+                        label += context.parsed.y;
+
+                        if (context.datasetIndex === 0) {
+                          const benchmark = benchmarkData[context.dataIndex];
+                          if (benchmark) {
+                            const achievement = ((context.parsed.y / benchmark) * 100).toFixed(1);
+                            label += ` (達成率: ${achievement}%)`;
+                          }
+                        }
+
+                        return label;
                       }
                     }
-                    
-                    return label;
                   }
                 }
               }
+            });
+          } catch (benchmarkChartError) {
+            console.error('ベンチマークグラフの初期化エラー:', benchmarkChartError);
+            if (loadingEl) {
+              loadingEl.textContent = 'グラフの表示に失敗しました';
+              loadingEl.style.display = 'flex';
             }
           }
-        });
-        } catch (benchmarkChartError) {
-          console.error('ベンチマークグラフの初期化エラー:', benchmarkChartError);
-          if (loadingEl) {
-            loadingEl.textContent = 'グラフの表示に失敗しました';
-            loadingEl.style.display = 'flex';
-          }
-        }
-      }
-
-      // APIからデータを取得してグラフを更新
-      async function loadBenchmarkChartData(period = 'monthly') {
-        const params = new URLSearchParams(location.search);
-        const sellerId = params.get('s') || '';
-
-        if (!sellerId) {
-          console.warn('出店者IDが指定されていません');
-          return;
         }
 
-        try {
-          if (loadingEl) {
-            loadingEl.style.display = 'flex';
-          }
-          if (canvas) {
-            canvas.style.opacity = '0.3';
-          }
+        // APIからデータを取得してグラフを更新
+        async function loadBenchmarkChartData(period = 'monthly') {
+          const params = new URLSearchParams(location.search);
+          const sellerId = params.get('s') || '';
 
-          // 実績データの取得
-          const days = period === 'monthly' ? 90 : 28;
-          const response = await fetch(
-            `/api/seller/analytics?s=${encodeURIComponent(sellerId)}&period=${period === 'monthly' ? 'daily' : 'weekly'}&days=${days}`
-          );
-
-          if (!response.ok) {
-            throw new Error('データの取得に失敗しました');
+          if (!sellerId) {
+            console.warn('出店者IDが指定されていません');
+            return;
           }
 
-          const result = await response.json();
-          
-          if (!result.ok || !result.data) {
-            throw new Error('データが不正です');
-          }
+          try {
+            if (loadingEl) {
+              loadingEl.style.display = 'flex';
+            }
+            if (canvas) {
+              canvas.style.opacity = '0.3';
+            }
 
-          // データの整形
-          let labels = [];
-          let actualData = [];
-          let benchmarkValues = [];
-          let improvedValues = [];
+            // 実績データの取得
+            const days = period === 'monthly' ? 90 : 28;
+            const response = await fetch(
+              `/api/seller/analytics?s=${encodeURIComponent(sellerId)}&period=${period === 'monthly' ? 'daily' : 'weekly'}&days=${days}`
+            );
 
-          // 実績データを売上指数に変換（10月平均週=100を基準）
-          const octoberAvg = 110; // 10月の平均値（ベンチマークから計算）
-          const normalizeToIndex = (sales) => {
-            // 実績売上を指数に変換（簡易版：実際の計算ロジックに合わせて調整）
-            return Math.round((sales / (octoberAvg * 1000)) * 100); // 仮の換算率
-          };
+            if (!response.ok) {
+              throw new Error('データの取得に失敗しました');
+            }
 
-          if (period === 'monthly') {
-            // 月次データ
-            const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-            labels = months;
-            
-            months.forEach(month => {
-              const monthBenchmark = benchmarkData.filter(d => d.month === month);
-              const avgBenchmark = monthBenchmark.length > 0 
-                ? monthBenchmark.reduce((sum, d) => sum + d.base, 0) / monthBenchmark.length 
-                : 0;
-              const avgImproved = monthBenchmark.length > 0
-                ? monthBenchmark.reduce((sum, d) => sum + d.improvement, 0) / monthBenchmark.length
-                : 0;
-              
-              // 実績データは月ごとに集計
-              // 実際の実績データから月ごとの平均売上を計算
-              const monthActualSales = result.data
-                .filter(item => {
-                  if (!item.date) return false;
-                  const date = new Date(item.date);
-                  const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-                  return monthNames[date.getMonth()] === month;
-                })
-                .reduce((sum, item) => sum + item.grossSales, 0);
-              
-              // 実績データが少ない場合はベンチマークの90%を使用
-              const monthActual = monthActualSales > 0 
-                ? normalizeToIndex(monthActualSales) 
-                : Math.round(avgBenchmark * 0.9);
-              
-              actualData.push(monthActual);
-              benchmarkValues.push(Math.round(avgBenchmark));
-              improvedValues.push(Math.round(avgImproved));
-            });
-          } else {
-            // 週次データ（直近4週）
-            const now = new Date();
-            const yearStart = new Date(now.getFullYear(), 0, 1);
-            const daysSinceStart = Math.floor((now - yearStart) / (1000 * 60 * 60 * 24));
-            const currentWeek = Math.min(Math.floor(daysSinceStart / 7) + 1, 47);
-            const startWeek = Math.max(1, currentWeek - 3);
-            const endWeek = currentWeek;
-            
-            for (let i = startWeek; i <= endWeek; i++) {
-              const weekData = benchmarkData.find(d => d.week === i);
-              if (weekData) {
-                labels.push(`W${i} (${weekData.period})`);
-                
-                // 実績データから該当週の売上を取得（簡易版）
-                const weekActual = Math.round(weekData.base * 0.9); // デモ用：実際はDBから取得
-                
-                actualData.push(weekActual);
-                benchmarkValues.push(weekData.base);
-                improvedValues.push(weekData.improvement);
+            const result = await response.json();
+
+            if (!result.ok || !result.data) {
+              throw new Error('データが不正です');
+            }
+
+            // データの整形
+            let labels = [];
+            let actualData = [];
+            let benchmarkValues = [];
+            let improvedValues = [];
+
+            // 実績データを売上指数に変換（10月平均週=100を基準）
+            const octoberAvg = 110; // 10月の平均値（ベンチマークから計算）
+            const normalizeToIndex = (sales) => {
+              // 実績売上を指数に変換（簡易版：実際の計算ロジックに合わせて調整）
+              return Math.round((sales / (octoberAvg * 1000)) * 100); // 仮の換算率
+            };
+
+            if (period === 'monthly') {
+              // 月次データ
+              const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+              labels = months;
+
+              months.forEach(month => {
+                const monthBenchmark = benchmarkData.filter(d => d.month === month);
+                const avgBenchmark = monthBenchmark.length > 0
+                  ? monthBenchmark.reduce((sum, d) => sum + d.base, 0) / monthBenchmark.length
+                  : 0;
+                const avgImproved = monthBenchmark.length > 0
+                  ? monthBenchmark.reduce((sum, d) => sum + d.improvement, 0) / monthBenchmark.length
+                  : 0;
+
+                // 実績データは月ごとに集計
+                // 実際の実績データから月ごとの平均売上を計算
+                const monthActualSales = result.data
+                  .filter(item => {
+                    if (!item.date) return false;
+                    const date = new Date(item.date);
+                    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+                    return monthNames[date.getMonth()] === month;
+                  })
+                  .reduce((sum, item) => sum + item.grossSales, 0);
+
+                // 実績データが少ない場合はベンチマークの90%を使用
+                const monthActual = monthActualSales > 0
+                  ? normalizeToIndex(monthActualSales)
+                  : Math.round(avgBenchmark * 0.9);
+
+                actualData.push(monthActual);
+                benchmarkValues.push(Math.round(avgBenchmark));
+                improvedValues.push(Math.round(avgImproved));
+              });
+            } else {
+              // 週次データ（直近4週）
+              const now = new Date();
+              const yearStart = new Date(now.getFullYear(), 0, 1);
+              const daysSinceStart = Math.floor((now - yearStart) / (1000 * 60 * 60 * 24));
+              const currentWeek = Math.min(Math.floor(daysSinceStart / 7) + 1, 47);
+              const startWeek = Math.max(1, currentWeek - 3);
+              const endWeek = currentWeek;
+
+              for (let i = startWeek; i <= endWeek; i++) {
+                const weekData = benchmarkData.find(d => d.week === i);
+                if (weekData) {
+                  labels.push(`W${i} (${weekData.period})`);
+
+                  // 実績データから該当週の売上を取得（簡易版）
+                  const weekActual = Math.round(weekData.base * 0.9); // デモ用：実際はDBから取得
+
+                  actualData.push(weekActual);
+                  benchmarkValues.push(weekData.base);
+                  improvedValues.push(weekData.improvement);
+                }
               }
             }
-          }
 
-          initBenchmarkChart(labels, actualData, benchmarkValues, improvedValues);
+            initBenchmarkChart(labels, actualData, benchmarkValues, improvedValues);
 
-        } catch (error) {
-          console.error('ベンチマークグラフの読み込みエラー:', error);
-        } finally {
-          if (loadingEl) {
-            loadingEl.style.display = 'none';
-          }
-          if (canvas) {
-            canvas.style.opacity = '1';
+          } catch (error) {
+            console.error('ベンチマークグラフの読み込みエラー:', error);
+          } finally {
+            if (loadingEl) {
+              loadingEl.style.display = 'none';
+            }
+            if (canvas) {
+              canvas.style.opacity = '1';
+            }
           }
         }
-      }
 
-      // 期間切り替えボタンのイベント
-      periodBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const period = btn.getAttribute('data-period-benchmark');
-          
-          periodBtns.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
+        // 期間切り替えボタンのイベント
+        periodBtns.forEach(btn => {
+          btn.addEventListener('click', () => {
+            const period = btn.getAttribute('data-period-benchmark');
 
-          currentPeriod = period;
-          loadBenchmarkChartData(period);
+            periodBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            currentPeriod = period;
+            loadBenchmarkChartData(period);
+          });
         });
-      });
 
-      // 初期化
-      loadBenchmarkData().then(() => {
-        loadBenchmarkChartData(currentPeriod);
-      }).catch((error) => {
-        console.error('ベンチマークデータの初期化エラー:', error);
-      });
+        // 初期化
+        loadBenchmarkData().then(() => {
+          loadBenchmarkChartData(currentPeriod);
+        }).catch((error) => {
+          console.error('ベンチマークデータの初期化エラー:', error);
+        });
       } catch (benchmarkError) {
         console.error('ベンチマークグラフスクリプトの初期化エラー:', benchmarkError);
       }
@@ -2716,45 +2748,45 @@
     // ====================================
     // 🎯 直近1ヶ月の企画提案を生成
     // ====================================
-    (function() {
+    (function () {
       try {
         async function generateUpcomingPlans() {
           const grid = document.getElementById('upcoming-plans-grid');
           if (!grid) return;
 
           try {
-          const response = await fetch('/api/benchmark/data');
-          if (!response.ok) {
-            throw new Error('企画データの取得に失敗しました');
-          }
+            const response = await fetch('/api/benchmark/data');
+            if (!response.ok) {
+              throw new Error('企画データの取得に失敗しました');
+            }
 
-          const result = await response.json();
-          if (!result.ok || !result.data) {
-            throw new Error('データが不正です');
-          }
+            const result = await response.json();
+            if (!result.ok || !result.data) {
+              throw new Error('データが不正です');
+            }
 
-          const benchmarkData = result.data;
-          
-          // 現在の週を計算（簡易版：1月1週を基準に）
-          const now = new Date();
-          const yearStart = new Date(now.getFullYear(), 0, 1);
-          const daysSinceStart = Math.floor((now - yearStart) / (1000 * 60 * 60 * 24));
-          const currentWeek = Math.min(Math.floor(daysSinceStart / 7) + 1, 47);
-          
-          const startWeek = currentWeek;
-          const endWeek = Math.min(currentWeek + 3, benchmarkData.length);
-          
-          grid.innerHTML = '';
-          
-          for (let i = startWeek; i <= endWeek; i++) {
-            const data = benchmarkData[i - 1];
-            if (!data) continue;
-            
-            const improvement = data.improvement - data.base;
-            
-            const planItem = document.createElement('div');
-            planItem.className = 'plan-item';
-            planItem.innerHTML = `
+            const benchmarkData = result.data;
+
+            // 現在の週を計算（簡易版：1月1週を基準に）
+            const now = new Date();
+            const yearStart = new Date(now.getFullYear(), 0, 1);
+            const daysSinceStart = Math.floor((now - yearStart) / (1000 * 60 * 60 * 24));
+            const currentWeek = Math.min(Math.floor(daysSinceStart / 7) + 1, 47);
+
+            const startWeek = currentWeek;
+            const endWeek = Math.min(currentWeek + 3, benchmarkData.length);
+
+            grid.innerHTML = '';
+
+            for (let i = startWeek; i <= endWeek; i++) {
+              const data = benchmarkData[i - 1];
+              if (!data) continue;
+
+              const improvement = data.improvement - data.base;
+
+              const planItem = document.createElement('div');
+              planItem.className = 'plan-item';
+              planItem.innerHTML = `
               <div class="plan-week">第${data.week}週</div>
               <div class="plan-title">
                 ${data.period}
@@ -2777,9 +2809,9 @@
                 </div>
               </div>
             `;
-            
-            grid.appendChild(planItem);
-          }
+
+              grid.appendChild(planItem);
+            }
           } catch (error) {
             console.error('企画データの読み込みエラー:', error);
             const grid = document.getElementById('upcoming-plans-grid');
@@ -2797,7 +2829,7 @@
     })();
 
     // 週番号を取得するヘルパー関数
-    Date.prototype.getWeek = function() {
+    Date.prototype.getWeek = function () {
       const d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
       const dayNum = d.getUTCDay() || 7;
       d.setUTCDate(d.getUTCDate() + 4 - dayNum);
@@ -2806,4 +2838,5 @@
     };
   </script>
 </body>
+
 </html>
