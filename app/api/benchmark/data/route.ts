@@ -40,7 +40,7 @@ export async function GET(_request: NextRequest) {
     const headers = lines[0].split(',').map(h => h.trim());
     
     // データ行をパース
-    const data: any[] = [];
+    const data: Record<string, string | number>[] = [];
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
@@ -64,7 +64,7 @@ export async function GET(_request: NextRequest) {
       values.push(current.trim());
       
       // オブジェクトに変換
-      const row: any = {};
+      const row: Record<string, string | number> = {};
       headers.forEach((header, index) => {
         let value: string | number = values[index] || '';
         // 数値に変換できる場合は数値に
@@ -82,7 +82,7 @@ export async function GET(_request: NextRequest) {
       data: data,
       count: data.length
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('benchmark/data error:', error);
     return NextResponse.json(
       sanitizeError(error),

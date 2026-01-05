@@ -16,8 +16,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
-      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <head>
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Nunito+Sans:wght@400;700;900&display=swap" rel="stylesheet" />

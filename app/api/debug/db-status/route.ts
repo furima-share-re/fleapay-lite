@@ -20,9 +20,9 @@ export async function GET() {
     try {
       await prisma.$queryRaw`SELECT 1`;
       dbConnected = true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       dbConnected = false;
-      dbError = error?.message || 'Unknown error';
+      dbError = error instanceof Error ? error.message : 'Unknown error';
     }
 
     // sellersテーブルの存在確認
