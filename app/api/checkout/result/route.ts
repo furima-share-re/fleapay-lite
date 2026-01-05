@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       LIMIT 1
     `;
 
-    const row = (result as any[])[0];
+    const row = (result as Array<Record<string, unknown>>)[0];
 
     if (!row) {
       return NextResponse.json(

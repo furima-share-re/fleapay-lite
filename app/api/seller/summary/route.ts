@@ -118,6 +118,7 @@ export async function GET(request: NextRequest) {
                 CASE
                   WHEN om.is_cash = true THEN o.amount
                   WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+                  WHEN sp.id IS NULL THEN o.amount  -- Stripe決済がない場合はorders.amountを使用
                   ELSE 0
                 END
               ), 0)::int AS gross,
@@ -125,6 +126,7 @@ export async function GET(request: NextRequest) {
                 CASE
                   WHEN om.is_cash = true THEN o.amount
                   WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+                  WHEN sp.id IS NULL THEN o.amount  -- Stripe決済がない場合はorders.amountを使用
                   ELSE 0
                 END
               ), 0)::int AS net,
@@ -159,6 +161,7 @@ export async function GET(request: NextRequest) {
                 CASE
                   WHEN om.is_cash = true THEN o.amount
                   WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+                  WHEN sp.id IS NULL THEN o.amount  -- Stripe決済がない場合はorders.amountを使用
                   ELSE 0
                 END
               ), 0)::int AS gross,
@@ -166,6 +169,7 @@ export async function GET(request: NextRequest) {
                 CASE
                   WHEN om.is_cash = true THEN o.amount
                   WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+                  WHEN sp.id IS NULL THEN o.amount  -- Stripe決済がない場合はorders.amountを使用
                   ELSE 0
                 END
               ), 0)::int AS net,
@@ -229,6 +233,7 @@ export async function GET(request: NextRequest) {
                 CASE
                   WHEN om.is_cash = true THEN o.amount
                   WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+                  WHEN sp.id IS NULL THEN o.amount  -- Stripe決済がない場合はorders.amountを使用
                   ELSE 0
                 END
               ), 0)::int AS gross,
@@ -236,6 +241,7 @@ export async function GET(request: NextRequest) {
                 CASE
                   WHEN om.is_cash = true THEN o.amount
                   WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+                  WHEN sp.id IS NULL THEN o.amount  -- Stripe決済がない場合はorders.amountを使用
                   ELSE 0
                 END
               ), 0)::int AS net,
@@ -266,6 +272,7 @@ export async function GET(request: NextRequest) {
                 CASE
                   WHEN om.is_cash = true THEN o.amount
                   WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+                  WHEN sp.id IS NULL THEN o.amount  -- Stripe決済がない場合はorders.amountを使用
                   ELSE 0
                 END
               ), 0)::int AS gross,
@@ -273,6 +280,7 @@ export async function GET(request: NextRequest) {
                 CASE
                   WHEN om.is_cash = true THEN o.amount
                   WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+                  WHEN sp.id IS NULL THEN o.amount  -- Stripe決済がない場合はorders.amountを使用
                   ELSE 0
                 END
               ), 0)::int AS net,
@@ -604,9 +612,10 @@ export async function GET(request: NextRequest) {
         isCash: !!r.is_cash,
         rawCategory: r.raw_category,
         paymentMethod: r.payment_method,
-        customerType: r.customer_type || "unknown",
-        gender: r.gender || "unknown",
-        ageBand: r.age_band || "unknown",
+        // nullの場合はnullのまま返す（データが存在しない場合と"unknown"を区別するため）
+        customerType: r.customer_type ?? null,
+        gender: r.gender ?? null,
+        ageBand: r.age_band ?? null,
 
         // 旧フロント互換フィールド
         created: createdSec,
@@ -616,14 +625,15 @@ export async function GET(request: NextRequest) {
         is_cash: !!r.is_cash,
         raw_category: r.raw_category,
         payment_method: r.payment_method,
-        customer_type: r.customer_type || "unknown",
-        age_band: r.age_band || "unknown",
+        // nullの場合はnullのまま返す（データが存在しない場合と"unknown"を区別するため）
+        customer_type: r.customer_type ?? null,
+        age_band: r.age_band ?? null,
 
         // 旧コードが想定していた buyer オブジェクト
         buyer: {
-          customer_type: r.customer_type || "unknown",
-          gender: r.gender || "unknown",
-          age_band: r.age_band || "unknown",
+          customer_type: r.customer_type ?? null,
+          gender: r.gender ?? null,
+          age_band: r.age_band ?? null,
         },
       };
       });

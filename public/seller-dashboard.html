@@ -1211,11 +1211,12 @@
           return "（現金：追加情報未入力）";
         }
 
-        const customerType = tx.customerType || tx.customer_type || tx.buyer?.customer_type || "";
-        const gender       = tx.gender       || tx.buyer?.gender       || "";
-        const ageBand      = tx.ageBand      || tx.age_band || tx.buyer?.age_band || "";
+        const customerType = tx.customerType ?? tx.customer_type ?? tx.buyer?.customer_type ?? null;
+        const gender       = tx.gender       ?? tx.buyer?.gender       ?? null;
+        const ageBand      = tx.ageBand      ?? tx.age_band ?? tx.buyer?.age_band ?? null;
 
-        if (!customerType && !gender && !ageBand) {
+        // null、undefined、空文字列の場合は未入力
+        if ((!customerType || customerType === "") && (!gender || gender === "") && (!ageBand || ageBand === "")) {
           return "購入者情報：未入力";
         }
 
@@ -1225,15 +1226,17 @@
 
         const genderLabel =
           gender === "male"   ? "男性" :
-          gender === "female" ? "女性" : "性別 不明";
+          gender === "female" ? "女性" :
+          gender === "unknown" ? "性別 不明" : "";
 
         const ageLabel =
           ageBand === "child"      ? "こども" :
           ageBand === "age_16_29"  ? "16〜29" :
           ageBand === "age_30_59"  ? "30〜59" :
-          ageBand === "age_60_plus"? "60+"   : "年齢 不明";
+          ageBand === "age_60_plus"? "60+"   : "";
 
-        if (typeLabel) {
+        // 全ての情報が揃っている場合のみ表示
+        if (typeLabel && genderLabel && ageLabel) {
           return `${typeLabel} / ${genderLabel} / ${ageLabel}`;
         }
         return "購入者情報：未入力";
@@ -1242,16 +1245,16 @@
       // 「入力まち」かどうかを判定する関数
       function isNeedInputTx(tx) {
         const customerType =
-          tx.customerType || tx.customer_type || tx.buyer?.customer_type || "";
+          tx.customerType ?? tx.customer_type ?? tx.buyer?.customer_type ?? null;
         const gender =
-          tx.gender || tx.buyer?.gender || "";
+          tx.gender ?? tx.buyer?.gender ?? null;
         const ageBand =
-          tx.ageBand || tx.age_band || tx.buyer?.age_band || "";
-        // "unknown"や空文字列は未入力として扱う
+          tx.ageBand ?? tx.age_band ?? tx.buyer?.age_band ?? null;
+        // null、undefined、空文字列のみを未入力として扱う（"unknown"は有効な入力値）
         const hasBuyerAll = !!(
-          customerType && customerType !== "unknown" &&
-          gender && gender !== "unknown" &&
-          ageBand && ageBand !== "unknown"
+          customerType != null && customerType !== "" &&
+          gender != null && gender !== "" &&
+          ageBand != null && ageBand !== ""
         );
 
         const hasCategory = !!(tx.rawCategory || tx.raw_category);
@@ -1389,18 +1392,19 @@
         const buyerLabel = formatBuyerLabel(tx);
 
         // 🔶 入力まち判定
-        // "unknown"は未入力として扱う
+        // "unknown"は有効な入力値として扱う（モーダルで「わからない」が選択可能なため）
+        // null、undefined、空文字列のみを未入力として扱う
         const customerType =
-          tx.customerType || tx.customer_type || tx.buyer?.customer_type || "";
+          tx.customerType ?? tx.customer_type ?? tx.buyer?.customer_type ?? null;
         const gender =
-          tx.gender || tx.buyer?.gender || "";
+          tx.gender ?? tx.buyer?.gender ?? null;
         const ageBand =
-          tx.ageBand || tx.age_band || tx.buyer?.age_band || "";
-        // "unknown"や空文字列は未入力として扱う
+          tx.ageBand ?? tx.age_band ?? tx.buyer?.age_band ?? null;
+        // null、undefined、空文字列のみを未入力として扱う（"unknown"は有効な入力値）
         const hasBuyerAll = !!(
-          customerType && customerType !== "unknown" &&
-          gender && gender !== "unknown" &&
-          ageBand && ageBand !== "unknown"
+          customerType != null && customerType !== "" &&
+          gender != null && gender !== "" &&
+          ageBand != null && ageBand !== ""
         );
 
         const hasCategory = !!(tx.rawCategory || tx.raw_category);
@@ -1527,8 +1531,20 @@
           return;
         }
 
+        let txIndex = 0;
         for (const tx of list) {
           try {
+            // デバッグ: 最初の3件だけログ出力
+            if (txIndex < 3) {
+              console.log(`[seller-dashboard] 取引${txIndex}:`, {
+                orderId: tx.orderId || tx.order_id,
+                customerType: tx.customerType || tx.customer_type || tx.buyer?.customer_type,
+                gender: tx.gender || tx.buyer?.gender,
+                ageBand: tx.ageBand || tx.age_band || tx.buyer?.age_band,
+                rawCategory: tx.rawCategory || tx.raw_category,
+                costAmount: tx.costAmount,
+              });
+            }
             const item = createTransactionItem(tx);
             if (item) {
               txListEl.appendChild(item);
@@ -1538,6 +1554,7 @@
           } catch (itemError) {
             console.error("[seller-dashboard] createTransactionItemエラー:", itemError, tx);
           }
+          txIndex++;
         }
         console.log("[seller-dashboard] renderTxList()完了: ", list.length, "件を表示");
       }

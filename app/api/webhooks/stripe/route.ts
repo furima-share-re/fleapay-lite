@@ -3,6 +3,7 @@
 
 import { NextResponse, NextRequest } from 'next/server';
 import Stripe from 'stripe';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { audit } from '@/lib/utils';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
               currency,
               status: 'succeeded',
               refundedTotal: 0,
-              rawEvent: event as any,
+              rawEvent: JSON.parse(JSON.stringify(event)) as unknown as Prisma.InputJsonValue,
             },
             update: {
               chargeId: chargeId || undefined,
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
               amountFee: fee !== null ? fee : undefined,
               amountNet: netAmount,
               status: 'succeeded',
-              rawEvent: event as any,
+              rawEvent: JSON.parse(JSON.stringify(event)) as unknown as Prisma.InputJsonValue,
               updatedAt: new Date(),
             },
           });
@@ -251,7 +252,7 @@ export async function POST(request: NextRequest) {
                 refundedTotal: refunded,
                 status,
                 chargeId: ch.id,
-                rawEvent: event as any,
+                rawEvent: JSON.parse(JSON.stringify(event)) as unknown as Prisma.InputJsonValue,
                 updatedAt: new Date(),
               },
             });
@@ -296,7 +297,7 @@ export async function POST(request: NextRequest) {
                 status: 'disputed',
                 disputeStatus: 'needs_response',
                 amountNet: 0,
-                rawEvent: event as any,
+                rawEvent: JSON.parse(JSON.stringify(event)) as unknown as Prisma.InputJsonValue,
                 updatedAt: new Date(),
               },
             });
@@ -364,7 +365,7 @@ export async function POST(request: NextRequest) {
                 status: newStatus,
                 disputeStatus,
                 amountNet,
-                rawEvent: event as any,
+                rawEvent: JSON.parse(JSON.stringify(event)) as unknown as Prisma.InputJsonValue,
                 updatedAt: new Date(),
               },
             });
