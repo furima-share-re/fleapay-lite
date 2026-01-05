@@ -5,7 +5,6 @@
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Script from 'next/script';
 
 interface OrderData {
   orderId: string | null;
@@ -298,7 +297,9 @@ function CheckoutContent() {
 
   return (
     <>
-      <Script src="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Nunito+Sans:wght@400;700;900&display=swap" />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Nunito+Sans:wght@400;700;900&display=swap" rel="stylesheet" />
       <div className="checkout-container">
         <style jsx>{`
           :root {

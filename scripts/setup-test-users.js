@@ -1,5 +1,6 @@
 // テストユーザーのプランを設定するスクリプト（Prisma使用）
-import { prisma } from '../lib/prisma.js';
+import 'dotenv/config';
+import { prisma } from '../lib/prisma.ts';
 
 /**
  * テストユーザーのプランを設定
