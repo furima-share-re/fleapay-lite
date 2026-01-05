@@ -577,25 +577,43 @@ export async function GET(request: NextRequest) {
     let recent: Record<string, unknown>[] = [];
     try {
       recent = recentRes.map((r: Record<string, unknown>, index: number) => {
-        // デバッグ: 最初の1件だけログ出力
-        if (index === 0) {
-          console.warn(`[seller/summary] recentRes[0]のキー:`, Object.keys(r));
-          console.warn(`[seller/summary] recentRes[0].order_id:`, r.order_id);
-          console.warn(`[seller/summary] recentRes[0].created_at:`, r.created_at);
-          console.warn(`[seller/summary] recentRes[0].amount:`, r.amount);
-          console.warn(`[seller/summary] recentRes[0].is_cash:`, r.is_cash);
-          console.warn(`[seller/summary] recentRes[0].payment_method:`, r.payment_method);
-          console.warn(`[seller/summary] recentRes[0].cost_amount:`, r.cost_amount);
-          console.warn(`[seller/summary] recentRes[0].raw_category:`, r.raw_category);
-          console.warn(`[seller/summary] recentRes[0].customer_type:`, r.customer_type);
-          console.warn(`[seller/summary] recentRes[0].gender:`, r.gender);
-          console.warn(`[seller/summary] recentRes[0].age_band:`, r.age_band);
+        // デバッグ: 最初の5件のログ出力（入力まち判定に必要なフィールド）
+        if (index < 5) {
+          console.warn(`[seller/summary] recentRes[${index}] データ:`, {
+            order_id: r.order_id,
+            cost_amount: r.cost_amount,
+            raw_category: r.raw_category,
+            customer_type: r.customer_type,
+            gender: r.gender,
+            age_band: r.age_band,
+            // 生データの確認
+            customer_type_raw: r.customer_type,
+            gender_raw: r.gender,
+            age_band_raw: r.age_band,
+          });
         }
         const amt = Number(r.amount || 0);
         const created = r.created_at;
         const createdSec = created && (typeof created === 'string' || created instanceof Date) 
           ? Math.floor(new Date(created).getTime() / 1000) 
           : null;
+
+      // nullの場合はnullのまま返す（データが存在しない場合と"unknown"を区別するため）
+      const customerType = r.customer_type === null || r.customer_type === undefined ? null : String(r.customer_type);
+      const gender = r.gender === null || r.gender === undefined ? null : String(r.gender);
+      const ageBand = r.age_band === null || r.age_band === undefined ? null : String(r.age_band);
+      
+      // デバッグ: 最初の5件のマッピング結果をログ出力
+      if (index < 5) {
+        console.warn(`[seller/summary] recentRes[${index}] マッピング後:`, {
+          order_id: r.order_id,
+          costAmount: r.cost_amount === null ? null : Number(r.cost_amount || 0),
+          rawCategory: r.raw_category,
+          customerType,
+          gender,
+          ageBand,
+        });
+      }
 
       return {
         // 新しいフィールド名
@@ -612,10 +630,9 @@ export async function GET(request: NextRequest) {
         isCash: !!r.is_cash,
         rawCategory: r.raw_category,
         paymentMethod: r.payment_method,
-        // nullの場合はnullのまま返す（データが存在しない場合と"unknown"を区別するため）
-        customerType: r.customer_type ?? null,
-        gender: r.gender ?? null,
-        ageBand: r.age_band ?? null,
+        customerType,
+        gender,
+        ageBand,
 
         // 旧フロント互換フィールド
         created: createdSec,
@@ -625,15 +642,14 @@ export async function GET(request: NextRequest) {
         is_cash: !!r.is_cash,
         raw_category: r.raw_category,
         payment_method: r.payment_method,
-        // nullの場合はnullのまま返す（データが存在しない場合と"unknown"を区別するため）
-        customer_type: r.customer_type ?? null,
-        age_band: r.age_band ?? null,
+        customer_type: customerType,
+        age_band: ageBand,
 
         // 旧コードが想定していた buyer オブジェクト
         buyer: {
-          customer_type: r.customer_type ?? null,
-          gender: r.gender ?? null,
-          age_band: r.age_band ?? null,
+          customer_type: customerType,
+          gender: gender,
+          age_band: ageBand,
         },
       };
       });

@@ -146,22 +146,32 @@ export async function POST(request: Request) {
       }] : []
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[AI分析][${requestId}] ❌ エラー発生:`, error);
-    console.error(`[AI分析][${requestId}] ❌ エラータイプ:`, error?.constructor?.name);
-    console.error(`[AI分析][${requestId}] ❌ エラーメッセージ:`, error?.message);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorConstructor = error instanceof Error ? error.constructor.name : typeof error;
+    console.error(`[AI分析][${requestId}] ❌ エラータイプ:`, errorConstructor);
+    console.error(`[AI分析][${requestId}] ❌ エラーメッセージ:`, errorMessage);
     
     // OpenAI APIエラーの詳細ログ
-    if (error?.response) {
-      console.error(`[AI分析][${requestId}] ❌ OpenAI API Error:`, {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-      });
+    let statusFromOpenAI: number | undefined;
+    if (error && typeof error === 'object') {
+      if ('response' in error && error.response && typeof error.response === 'object') {
+        const response = error.response as Record<string, unknown>;
+        console.error(`[AI分析][${requestId}] ❌ OpenAI API Error:`, {
+          status: response.status,
+          statusText: response.statusText,
+          data: response.data,
+        });
+        if (typeof response.status === 'number') {
+          statusFromOpenAI = response.status;
+        }
+      }
     }
     
     // Helicone関連のエラーかどうか確認
-    if (error?.message?.includes('helicone') || error?.message?.includes('Helicone')) {
+    if (errorMessage.includes('helicone') || errorMessage.includes('Helicone')) {
       console.error(`[AI分析][${requestId}] ⚠️ Helicone関連のエラーの可能性があります`);
     }
     

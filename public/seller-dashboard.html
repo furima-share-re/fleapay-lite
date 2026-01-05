@@ -1534,15 +1534,31 @@
         let txIndex = 0;
         for (const tx of list) {
           try {
-            // デバッグ: 最初の3件だけログ出力
-            if (txIndex < 3) {
-              console.log(`[seller-dashboard] 取引${txIndex}:`, {
+            // デバッグ: 最初の5件のログ出力（入力まち判定に必要なフィールドを詳細に）
+            if (txIndex < 5) {
+              const customerType = tx.customerType ?? tx.customer_type ?? tx.buyer?.customer_type ?? null;
+              const gender = tx.gender ?? tx.buyer?.gender ?? null;
+              const ageBand = tx.ageBand ?? tx.age_band ?? tx.buyer?.age_band ?? null;
+              const hasCategory = !!(tx.rawCategory || tx.raw_category);
+              const costVal = typeof tx.costAmount === "number" ? tx.costAmount : null;
+              const hasCost = costVal !== null && costVal > 0;
+              const hasBuyerAll = !!(
+                customerType != null && customerType !== "" &&
+                gender != null && gender !== "" &&
+                ageBand != null && ageBand !== ""
+              );
+              
+              console.log(`[seller-dashboard] 取引${txIndex} 入力まち判定:`, {
                 orderId: tx.orderId || tx.order_id,
-                customerType: tx.customerType || tx.customer_type || tx.buyer?.customer_type,
-                gender: tx.gender || tx.buyer?.gender,
-                ageBand: tx.ageBand || tx.age_band || tx.buyer?.age_band,
+                customerType: customerType,
+                gender: gender,
+                ageBand: ageBand,
                 rawCategory: tx.rawCategory || tx.raw_category,
                 costAmount: tx.costAmount,
+                hasBuyerAll,
+                hasCategory,
+                hasCost,
+                needInput: !hasCost || !hasCategory || !hasBuyerAll,
               });
             }
             const item = createTransactionItem(tx);
