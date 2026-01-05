@@ -37,6 +37,7 @@ async function getDailyAnalytics(sellerId: string, days: number = 30) {
           CASE 
             WHEN om.is_cash = true THEN o.amount
             WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+            WHEN sp.id IS NULL THEN o.amount  -- Stripe決済がない場合はorders.amountを使用
             ELSE 0
           END
         ), 0)::bigint AS gross_sales,
@@ -45,6 +46,7 @@ async function getDailyAnalytics(sellerId: string, days: number = 30) {
           CASE 
             WHEN om.is_cash = true THEN o.amount
             WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+            WHEN sp.id IS NULL THEN o.amount  -- Stripe決済がない場合はorders.amountを使用
             ELSE 0
           END
         ), 0)::bigint AS net_sales,
@@ -130,6 +132,7 @@ async function getWeeklyAnalytics(sellerId: string, weeks: number = 4) {
           CASE 
             WHEN om.is_cash = true THEN o.amount
             WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+            WHEN sp.id IS NULL THEN o.amount  -- Stripe決済がない場合はorders.amountを使用
             ELSE 0
           END
         ), 0)::bigint AS gross_sales,
@@ -138,6 +141,7 @@ async function getWeeklyAnalytics(sellerId: string, weeks: number = 4) {
           CASE 
             WHEN om.is_cash = true THEN o.amount
             WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+            WHEN sp.id IS NULL THEN o.amount  -- Stripe決済がない場合はorders.amountを使用
             ELSE 0
           END
         ), 0)::bigint AS net_sales,
@@ -209,7 +213,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ベンチマークデータの取得（オプショナル）
-    const benchmarkData: any[] = [];
+    const benchmarkData: Record<string, string | number>[] = [];
     try {
       const fs = await import('fs');
       const path = await import('path');
@@ -241,7 +245,7 @@ export async function GET(request: NextRequest) {
           }
           values.push(current.trim());
           
-          const row: any = {};
+          const row: Record<string, string | number> = {};
           headers.forEach((header, index) => {
             let value: string | number = values[index] || '';
             if (header === 'week' || header === 'base' || header === 'improvement') {
@@ -258,11 +262,21 @@ export async function GET(request: NextRequest) {
       // ベンチマークデータの読み込みに失敗しても続行
     }
 
-    const response: any = { 
+    const response: {
+      ok: boolean;
+      period: string;
+      days: number;
+      daily?: unknown[];
+      weekly?: unknown[];
+      data?: unknown;
+      benchmark?: Record<string, string | number>[];
+    } = { 
       ok: true, 
       period, 
-      days, 
-      data
+      days,
+      ...(period === 'daily' ? { daily: data } : { weekly: data }),
+      data,
+      benchmark: benchmarkData.length > 0 ? benchmarkData : undefined
     };
     
     // ベンチマークデータがある場合のみ追加

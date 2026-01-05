@@ -29,10 +29,10 @@ export async function GET() {
     let sellersTableExists = false;
     let sellersCount = 0;
     try {
-      const result = await prisma.$queryRaw`SELECT COUNT(*)::int as count FROM sellers`;
+      const result = await prisma.$queryRaw<Array<{ count: number }>>`SELECT COUNT(*)::int as count FROM sellers`;
       sellersTableExists = true;
-      sellersCount = (result as any[])[0]?.count || 0;
-    } catch (error: any) {
+      sellersCount = result[0]?.count || 0;
+    } catch (error: unknown) {
       sellersTableExists = false;
     }
 
@@ -40,10 +40,10 @@ export async function GET() {
     let ordersTableExists = false;
     let ordersCount = 0;
     try {
-      const result = await prisma.$queryRaw`SELECT COUNT(*)::int as count FROM orders`;
+      const result = await prisma.$queryRaw<Array<{ count: number }>>`SELECT COUNT(*)::int as count FROM orders`;
       ordersTableExists = true;
-      ordersCount = (result as any[])[0]?.count || 0;
-    } catch (error: any) {
+      ordersCount = result[0]?.count || 0;
+    } catch (error: unknown) {
       ordersTableExists = false;
     }
 
@@ -51,10 +51,10 @@ export async function GET() {
     let stripePaymentsTableExists = false;
     let stripePaymentsCount = 0;
     try {
-      const result = await prisma.$queryRaw`SELECT COUNT(*)::int as count FROM stripe_payments`;
+      const result = await prisma.$queryRaw<Array<{ count: number }>>`SELECT COUNT(*)::int as count FROM stripe_payments`;
       stripePaymentsTableExists = true;
-      stripePaymentsCount = (result as any[])[0]?.count || 0;
-    } catch (error: any) {
+      stripePaymentsCount = result[0]?.count || 0;
+    } catch (error: unknown) {
       stripePaymentsTableExists = false;
     }
 
@@ -69,14 +69,14 @@ export async function GET() {
       sellerTest01Exists = !!seller;
 
       if (sellerTest01Exists) {
-        const ordersResult = await prisma.$queryRaw`
+        const ordersResult = await prisma.$queryRaw<Array<{ count: number }>>`
           SELECT COUNT(*)::int as count 
           FROM orders 
           WHERE seller_id = 'seller-test01' AND deleted_at IS NULL
         `;
-        sellerTest01OrdersCount = (ordersResult as any[])[0]?.count || 0;
+        sellerTest01OrdersCount = ordersResult[0]?.count || 0;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // エラーは無視
     }
 
@@ -114,11 +114,12 @@ export async function GET() {
         ? 'Database is connected. Check table counts to see if data exists.'
         : 'Database connection failed. Check DATABASE_URL environment variable.',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       {
         status: 'error',
-        error: error?.message || 'Unknown error',
+        error: errorMessage,
         database: {
           hasDatabaseUrl: !!process.env.DATABASE_URL,
         },

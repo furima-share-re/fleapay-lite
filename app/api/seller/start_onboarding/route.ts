@@ -114,9 +114,10 @@ export async function POST(request: Request) {
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [normalizedId, displayName, account.id, email, 'supabase', supabaseUserId]
       );
-    } catch (insertError: any) {
+    } catch (insertError: unknown) {
       // auth_providerカラムが存在しない場合のフォールバック
-      if (insertError.message?.includes('auth_provider') || insertError.message?.includes('does not exist')) {
+      const errorMessage = insertError instanceof Error ? insertError.message : '';
+      if (errorMessage.includes('auth_provider') || errorMessage.includes('does not exist')) {
         await pool.query(
           `INSERT INTO sellers (id, display_name, stripe_account_id, email, supabase_user_id)
            VALUES ($1, $2, $3, $4, $5)`,

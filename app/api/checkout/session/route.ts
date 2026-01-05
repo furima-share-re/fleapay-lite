@@ -122,12 +122,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url, sessionId: session.id });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("/api/checkout/session エラー発生:", error);
-    if (error.type === "StripeInvalidRequestError") {
+    const errorType = error && typeof error === 'object' && 'type' in error ? error.type : undefined;
+    if (errorType === "StripeInvalidRequestError") {
+      const errorMessage = error instanceof Error ? error.message : 'Stripe error occurred';
       return NextResponse.json({
         error: "stripe_error",
-        message: error.message,
+        message: errorMessage,
       }, { status: 400 });
     }
     return NextResponse.json(sanitizeError(error), { status: 500 });
