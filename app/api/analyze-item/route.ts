@@ -155,7 +155,6 @@ export async function POST(request: Request) {
     console.error(`[AI分析][${requestId}] ❌ エラーメッセージ:`, errorMessage);
     
     // OpenAI APIエラーの詳細ログ
-    let statusFromOpenAI: number | undefined;
     if (error && typeof error === 'object') {
       if ('response' in error && error.response && typeof error.response === 'object') {
         const response = error.response as Record<string, unknown>;
@@ -164,9 +163,6 @@ export async function POST(request: Request) {
           statusText: response.statusText,
           data: response.data,
         });
-        if (typeof response.status === 'number') {
-          statusFromOpenAI = response.status;
-        }
       }
     }
     
