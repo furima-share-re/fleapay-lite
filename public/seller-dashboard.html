@@ -1758,8 +1758,11 @@
           if (kpiProfitEl) kpiProfitEl.textContent = formatYen(profitToday);
 
           // 🟦 (A) データ精度スコアの表示
-          if (dataScoreEl && data.dataScore !== undefined) {
-            dataScoreEl.textContent = data.dataScore + "%";
+          if (dataScoreEl) {
+            const score = data.dataScore !== undefined && data.dataScore !== null 
+              ? data.dataScore 
+              : 0;
+            dataScoreEl.textContent = score + "%";
           }
 
           if (homeHintEl) {
@@ -2154,26 +2157,38 @@
     // 📊 グラフ表示スクリプト
     // ====================================
     (function() {
-      const canvas = document.getElementById('sales-profit-chart');
-      const loadingEl = document.getElementById('chart-loading');
-      const periodBtns = document.querySelectorAll('.period-btn');
-      
-      if (!canvas) return; // グラフ要素がない場合は終了
-      
-      let chartInstance = null;
-      let currentPeriod = 'daily';
-
-      // グラフの初期化
-      function initChart(labels, salesData, costData, profitData) {
-        const ctx = canvas.getContext('2d');
-
-        // 既存のグラフを破棄
-        if (chartInstance) {
-          chartInstance.destroy();
+      try {
+        const canvas = document.getElementById('sales-profit-chart');
+        const loadingEl = document.getElementById('chart-loading');
+        const periodBtns = document.querySelectorAll('.period-btn');
+        
+        if (!canvas) return; // グラフ要素がない場合は終了
+        
+        // Chart.jsが読み込まれているか確認
+        if (typeof Chart === 'undefined') {
+          console.error('Chart.jsが読み込まれていません');
+          if (loadingEl) {
+            loadingEl.textContent = 'グラフライブラリの読み込みに失敗しました';
+            loadingEl.style.display = 'flex';
+          }
+          return;
         }
+        
+        let chartInstance = null;
+        let currentPeriod = 'daily';
 
-        // Chart.jsの設定
-        chartInstance = new Chart(ctx, {
+        // グラフの初期化
+        function initChart(labels, salesData, costData, profitData) {
+          try {
+            const ctx = canvas.getContext('2d');
+
+            // 既存のグラフを破棄
+            if (chartInstance) {
+              chartInstance.destroy();
+            }
+
+            // Chart.jsの設定
+            chartInstance = new Chart(ctx, {
           type: 'bar',
           data: {
             labels: labels,
@@ -2269,7 +2284,14 @@
             }
           }
         });
-      }
+          } catch (chartError) {
+            console.error('グラフの初期化エラー:', chartError);
+            if (loadingEl) {
+              loadingEl.textContent = 'グラフの表示に失敗しました';
+              loadingEl.style.display = 'flex';
+            }
+          }
+        }
 
       // APIからデータを取得してグラフを更新
       async function loadChartData(period = 'daily') {
@@ -2371,19 +2393,35 @@
       window.reloadChart = function() {
         loadChartData(currentPeriod);
       };
+      } catch (graphError) {
+        console.error('グラフスクリプトの初期化エラー:', graphError);
+      }
     })();
 
     // ====================================
     // 📊 ベンチマークグラフ表示スクリプト
     // ====================================
     (function() {
-      const canvas = document.getElementById('benchmark-chart');
-      const loadingEl = document.getElementById('chart-benchmark-loading');
-      const periodBtns = document.querySelectorAll('[data-period-benchmark]');
-      
-      let chartInstance = null;
-      let currentPeriod = 'monthly';
-      let benchmarkData = [];
+      try {
+        const canvas = document.getElementById('benchmark-chart');
+        const loadingEl = document.getElementById('chart-benchmark-loading');
+        const periodBtns = document.querySelectorAll('[data-period-benchmark]');
+        
+        if (!canvas) return; // グラフ要素がない場合は終了
+        
+        // Chart.jsが読み込まれているか確認
+        if (typeof Chart === 'undefined') {
+          console.error('Chart.jsが読み込まれていません（ベンチマークグラフ）');
+          if (loadingEl) {
+            loadingEl.textContent = 'グラフライブラリの読み込みに失敗しました';
+            loadingEl.style.display = 'flex';
+          }
+          return;
+        }
+        
+        let chartInstance = null;
+        let currentPeriod = 'monthly';
+        let benchmarkData = [];
 
       // ベンチマークデータの読み込み
       async function loadBenchmarkData() {
@@ -2403,13 +2441,14 @@
 
       // グラフの初期化
       function initBenchmarkChart(labels, actualData, benchmarkData, improvedData) {
-        const ctx = canvas.getContext('2d');
+        try {
+          const ctx = canvas.getContext('2d');
 
-        if (chartInstance) {
-          chartInstance.destroy();
-        }
+          if (chartInstance) {
+            chartInstance.destroy();
+          }
 
-        chartInstance = new Chart(ctx, {
+          chartInstance = new Chart(ctx, {
           type: 'bar',
           data: {
             labels: labels,
@@ -2522,6 +2561,13 @@
             }
           }
         });
+        } catch (benchmarkChartError) {
+          console.error('ベンチマークグラフの初期化エラー:', benchmarkChartError);
+          if (loadingEl) {
+            loadingEl.textContent = 'グラフの表示に失敗しました';
+            loadingEl.style.display = 'flex';
+          }
+        }
       }
 
       // APIからデータを取得してグラフを更新
@@ -2659,18 +2705,24 @@
       // 初期化
       loadBenchmarkData().then(() => {
         loadBenchmarkChartData(currentPeriod);
+      }).catch((error) => {
+        console.error('ベンチマークデータの初期化エラー:', error);
       });
+      } catch (benchmarkError) {
+        console.error('ベンチマークグラフスクリプトの初期化エラー:', benchmarkError);
+      }
     })();
 
     // ====================================
     // 🎯 直近1ヶ月の企画提案を生成
     // ====================================
     (function() {
-      async function generateUpcomingPlans() {
-        const grid = document.getElementById('upcoming-plans-grid');
-        if (!grid) return;
+      try {
+        async function generateUpcomingPlans() {
+          const grid = document.getElementById('upcoming-plans-grid');
+          if (!grid) return;
 
-        try {
+          try {
           const response = await fetch('/api/benchmark/data');
           if (!response.ok) {
             throw new Error('企画データの取得に失敗しました');
@@ -2728,14 +2780,20 @@
             
             grid.appendChild(planItem);
           }
-        } catch (error) {
-          console.error('企画データの読み込みエラー:', error);
-          grid.innerHTML = '<p style="text-align:center;color:#fff;">企画データの読み込みに失敗しました</p>';
+          } catch (error) {
+            console.error('企画データの読み込みエラー:', error);
+            const grid = document.getElementById('upcoming-plans-grid');
+            if (grid) {
+              grid.innerHTML = '<p style="text-align:center;color:#fff;">企画データの読み込みに失敗しました</p>';
+            }
+          }
         }
-      }
 
-      // 初期化
-      generateUpcomingPlans();
+        // 初期化
+        generateUpcomingPlans();
+      } catch (planError) {
+        console.error('企画提案スクリプトの初期化エラー:', planError);
+      }
     })();
 
     // 週番号を取得するヘルパー関数

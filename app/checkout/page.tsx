@@ -297,9 +297,7 @@ function CheckoutContent() {
 
   return (
     <>
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Nunito+Sans:wght@400;700;900&display=swap" rel="stylesheet" />
+      {/* Fonts are loaded in root layout.tsx */}
       <div className="checkout-container">
         <style jsx>{`
           :root {
@@ -316,13 +314,13 @@ function CheckoutContent() {
             --radius-xl: 20px;
           }
           * { box-sizing: border-box; }
-          html, body { height: 100%; margin: 0; }
-          body {
+          :global(html), :global(body) { height: 100%; margin: 0; }
+          :global(body) {
             font-family: "Nunito Sans", "Noto Sans JP", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
             color: var(--sumi);
-            background: var(--kinari);
+            background: var(--kinari) !important;
             background-image: radial-gradient(1200px 700px at 80% -10%, rgba(230,57,70,.06) 0%, transparent 60%),
-                              radial-gradient(1200px 700px at -20% 110%, rgba(27,54,93,.08) 0%, transparent 60%);
+                              radial-gradient(1200px 700px at -20% 110%, rgba(27,54,93,.08) 0%, transparent 60%) !important;
           }
           .checkout-container {
             max-width: 640px;
