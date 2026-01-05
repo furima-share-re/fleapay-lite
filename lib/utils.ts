@@ -42,7 +42,7 @@ export function isSameOrigin(request: NextRequest | Request): boolean {
 
 // 監査ログ
 export function audit(event: string, payload: Record<string, unknown>): void {
-  console.log(`[AUDIT] ${event}`, JSON.stringify(payload, null, 2));
+  console.warn(`[AUDIT] ${event}`, JSON.stringify(payload, null, 2));
 }
 
 // StripeアカウントID解決（Prisma用）

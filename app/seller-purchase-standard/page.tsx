@@ -712,6 +712,7 @@ function SellerPurchaseStandardContent() {
                 </h2>
                 {capturedImageDataURL && (
                   <div className="preview">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={capturedImageDataURL} alt="商品写真" />
                   </div>
                 )}

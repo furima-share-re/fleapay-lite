@@ -15,12 +15,12 @@ const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY || process.env.AWS_ACCESS_KEY_
 const AWS_SECRET_KEY = process.env.AWS_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY;
 const HAS_S3_CONFIG = !!(AWS_REGION && AWS_BUCKET && AWS_ACCESS_KEY && AWS_SECRET_KEY);
 
-const s3 = HAS_S3_CONFIG
+const s3 = HAS_S3_CONFIG && AWS_REGION && AWS_ACCESS_KEY && AWS_SECRET_KEY
   ? new S3Client({
       region: AWS_REGION,
       credentials: {
-        accessKeyId: AWS_ACCESS_KEY!,
-        secretAccessKey: AWS_SECRET_KEY!,
+        accessKeyId: AWS_ACCESS_KEY,
+        secretAccessKey: AWS_SECRET_KEY,
       },
     })
   : null;
@@ -105,9 +105,12 @@ export async function POST(request: NextRequest) {
         const buffer = Buffer.from(base64, 'base64');
         const key = `orders/${order.id}.jpg`;
 
+        if (!S3_BUCKET) {
+          throw new Error('S3 bucket not configured');
+        }
         await s3.send(
           new PutObjectCommand({
-            Bucket: S3_BUCKET!,
+            Bucket: S3_BUCKET,
             Key: key,
             Body: buffer,
             ContentType: 'image/jpeg'

@@ -12,14 +12,14 @@ const RATE_LIMIT_MAX_WRITES = 12;
 
 export async function POST(request: Request) {
   const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  console.log(`[AI分析][${requestId}] ===== API呼び出し開始 =====`);
+  console.warn(`[AI分析][${requestId}] ===== API呼び出し開始 =====`);
   
   try {
     const formData = await request.formData();
     const file = formData.get('image') as File;
 
     if (!file) {
-      console.log(`[AI分析][${requestId}] ❌ 画像ファイルなし`);
+      console.warn(`[AI分析][${requestId}] ❌ 画像ファイルなし`);
       return NextResponse.json(
         { error: 'file_required', message: '画像ファイルが必要です' },
         { status: 400 }
@@ -28,21 +28,21 @@ export async function POST(request: Request) {
 
     const ip = clientIp(request);
     if (!bumpAndAllow(`ai:${ip}`, RATE_LIMIT_MAX_WRITES)) {
-      console.log(`[AI分析][${requestId}] ❌ レート制限`);
+      console.warn(`[AI分析][${requestId}] ❌ レート制限`);
       return NextResponse.json(
         { error: 'rate_limited' },
         { status: 429 }
       );
     }
 
-    console.log(`[AI分析][${requestId}] 📸 画像処理開始: ${file.name || 'unknown'} (${file.size} bytes)`);
+    console.warn(`[AI分析][${requestId}] 📸 画像処理開始: ${file.name || 'unknown'} (${file.size} bytes)`);
 
     // Helicone設定確認
     const heliconeConfigured = isOpenAIAvailable();
-    console.log(`[AI分析][${requestId}] 🔧 Helicone設定:`, heliconeConfigured ? '✅ 有効' : '❌ 無効');
-    console.log(`[AI分析][${requestId}] 🔧 OPENAI_API_KEY:`, process.env.OPENAI_API_KEY ? '✅ 設定済み' : '❌ 未設定');
-    console.log(`[AI分析][${requestId}] 🔧 HELICONE_API_KEY:`, process.env.HELICONE_API_KEY ? '✅ 設定済み' : '❌ 未設定');
-    console.log(`[AI分析][${requestId}] 🔧 NODE_ENV:`, process.env.NODE_ENV || 'development');
+    console.warn(`[AI分析][${requestId}] 🔧 Helicone設定:`, heliconeConfigured ? '✅ 有効' : '❌ 無効');
+    console.warn(`[AI分析][${requestId}] 🔧 OPENAI_API_KEY:`, process.env.OPENAI_API_KEY ? '✅ 設定済み' : '❌ 未設定');
+    console.warn(`[AI分析][${requestId}] 🔧 HELICONE_API_KEY:`, process.env.HELICONE_API_KEY ? '✅ 設定済み' : '❌ 未設定');
+    console.warn(`[AI分析][${requestId}] 🔧 NODE_ENV:`, process.env.NODE_ENV || 'development');
 
     if (!heliconeConfigured) {
       console.error(`[AI分析][${requestId}] ❌ OpenAI SDKが利用できません`);
@@ -66,14 +66,17 @@ export async function POST(request: Request) {
     const base64Image = imageBuffer.toString('base64');
     const dataUrl = `data:image/jpeg;base64,${base64Image}`;
 
-    console.log(`[AI分析][${requestId}] 🚀 Helicone経由でOpenAI API呼び出し開始`);
-    console.log(`[AI分析][${requestId}] 📤 Base URL: https://oai.helicone.ai/v1`);
-    console.log(`[AI分析][${requestId}] 📤 Model: gpt-4o`);
+    console.warn(`[AI分析][${requestId}] 🚀 Helicone経由でOpenAI API呼び出し開始`);
+    console.warn(`[AI分析][${requestId}] 📤 Base URL: https://oai.helicone.ai/v1`);
+    console.warn(`[AI分析][${requestId}] 📤 Model: gpt-4o`);
 
     const startTime = Date.now();
     
     // openaiがnullでないことは既にチェック済み
-    const response = await openai!.chat.completions.create({
+    if (!openai) {
+      throw new Error('OpenAI client is not available');
+    }
+    const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [{
         role: 'user',
@@ -109,14 +112,14 @@ export async function POST(request: Request) {
     const endTime = Date.now();
     const duration = endTime - startTime;
     
-    console.log(`[AI分析][${requestId}] ✅ OpenAI API呼び出し成功 (${duration}ms)`);
-    console.log(`[AI分析][${requestId}] 📊 Usage:`, {
+    console.warn(`[AI分析][${requestId}] ✅ OpenAI API呼び出し成功 (${duration}ms)`);
+    console.warn(`[AI分析][${requestId}] 📊 Usage:`, {
       prompt_tokens: response.usage?.prompt_tokens,
       completion_tokens: response.usage?.completion_tokens,
       total_tokens: response.usage?.total_tokens,
     });
-    console.log(`[AI分析][${requestId}] 📝 Response ID:`, response.id);
-    console.log(`[AI分析][${requestId}] 🔍 Heliconeでこのリクエストを確認してください`);
+    console.warn(`[AI分析][${requestId}] 📝 Response ID:`, response.id);
+    console.warn(`[AI分析][${requestId}] 🔍 Heliconeでこのリクエストを確認してください`);
 
     const content = response.choices[0]?.message?.content || '{}';
     let parsed;
@@ -130,8 +133,8 @@ export async function POST(request: Request) {
     const summary = String(parsed.summary || '').trim();
     const total = Number(parsed.total) || 0;
 
-    console.log(`[AI分析][${requestId}] ✅ 解析完了:`, { summary, total });
-    console.log(`[AI分析][${requestId}] ===== API呼び出し終了 =====`);
+    console.warn(`[AI分析][${requestId}] ✅ 解析完了:`, { summary, total });
+    console.warn(`[AI分析][${requestId}] ===== API呼び出し終了 =====`);
 
     return NextResponse.json({
       summary,

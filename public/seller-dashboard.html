@@ -1247,7 +1247,12 @@
           tx.gender || tx.buyer?.gender || "";
         const ageBand =
           tx.ageBand || tx.age_band || tx.buyer?.age_band || "";
-        const hasBuyerAll = !!(customerType && gender && ageBand);
+        // "unknown"や空文字列は未入力として扱う
+        const hasBuyerAll = !!(
+          customerType && customerType !== "unknown" &&
+          gender && gender !== "unknown" &&
+          ageBand && ageBand !== "unknown"
+        );
 
         const hasCategory = !!(tx.rawCategory || tx.raw_category);
         const costVal =
@@ -1344,7 +1349,9 @@
         // ★ 必須: orderIdをdata属性に保存
         li.dataset.orderId = tx.orderId || "";
         
-        const isCash = !!(tx.isCash || tx.is_cash);
+        // 支払い方法の判定（payment_methodを優先、なければisCashを使用）
+        const paymentMethod = tx.paymentMethod || tx.payment_method || '';
+        const isCash = !!(tx.isCash || tx.is_cash || paymentMethod === 'cash');
         li.classList.add(isCash ? "tx-cash" : "tx-cashless");
         
         // created(秒) or createdAt(ISO文字列) のどちらでもOKにする
@@ -1365,14 +1372,16 @@
 
         // 🟦 (B) 未分類フォルダ表示
         const isUncategorized =
-          (tx.is_cash || tx.isCash) &&
+          (tx.is_cash || tx.isCash || paymentMethod === 'cash') &&
           !(tx.rawCategory || tx.raw_category);
         const uncategorizedBadge = isUncategorized
           ? '<span class="badge badge-cb-pending">未分類</span>'
           : '';
 
         // 支払い方法バッジ（QR / 現金）
-        const paymentBadge = isCash
+        // payment_methodを優先、なければisCashを使用して判定
+        const isActuallyCash = paymentMethod === 'cash' || isCash;
+        const paymentBadge = isActuallyCash
           ? '<span class="badge tx-badge-cash">現金</span>'
           : '<span class="badge tx-badge-cashless">QR / カード</span>';
 
@@ -1380,13 +1389,19 @@
         const buyerLabel = formatBuyerLabel(tx);
 
         // 🔶 入力まち判定
+        // "unknown"は未入力として扱う
         const customerType =
           tx.customerType || tx.customer_type || tx.buyer?.customer_type || "";
         const gender =
           tx.gender || tx.buyer?.gender || "";
         const ageBand =
           tx.ageBand || tx.age_band || tx.buyer?.age_band || "";
-        const hasBuyerAll = !!(customerType && gender && ageBand);
+        // "unknown"や空文字列は未入力として扱う
+        const hasBuyerAll = !!(
+          customerType && customerType !== "unknown" &&
+          gender && gender !== "unknown" &&
+          ageBand && ageBand !== "unknown"
+        );
 
         const hasCategory = !!(tx.rawCategory || tx.raw_category);
         const costVal =

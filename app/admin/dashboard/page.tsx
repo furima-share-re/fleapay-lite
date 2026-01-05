@@ -6,8 +6,53 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+interface RecentActivity {
+  id: string;
+  sellerId: string;
+  paymentIntentId: string | null;
+  amountGross: number | null;
+  status: string | null;
+  createdAt: Date | string;
+  sellerName: string | null;
+  orderNo: number | null;
+}
+
+interface DashboardData {
+  today: {
+    orderCount: number;
+    gross: number;
+    net: number;
+    fee: number;
+  };
+  yesterday: {
+    orderCount: number;
+    gross: number;
+    net: number;
+  };
+  total: {
+    orderCount: number;
+    gross: number;
+    net: number;
+    fee: number;
+  };
+  sellerCount: number;
+  recentActivity: RecentActivity[];
+  paymentCount: number;
+  totalRevenue: number;
+  netRevenue: number;
+  disputeCount: number;
+  refundCount: number;
+  urgentCount: number;
+}
+
+declare global {
+  interface Window {
+    ADMIN_TOKEN?: string;
+  }
+}
+
 export default function AdminDashboardPage() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +65,7 @@ export default function AdminDashboardPage() {
   const loadDashboardData = async () => {
     try {
       const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
-        ? ((window as any).ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
+        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
         : 'admin-devtoken';
       
       const res = await fetch('/api/admin/dashboard', {
@@ -296,7 +341,7 @@ export default function AdminDashboardPage() {
                     </thead>
                     <tbody>
                       {data?.recentActivity && data.recentActivity.length > 0 ? (
-                        data.recentActivity.map((activity: any, idx: number) => (
+                        data.recentActivity.map((activity, idx) => (
                           <tr key={idx}>
                             <td>{activity.sellerId}</td>
                             <td>{activity.sellerName || '-'}</td>

@@ -14,7 +14,7 @@ export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('[WEBHOOK] hit /api/webhooks/stripe');
+    console.warn('[WEBHOOK] hit /api/webhooks/stripe');
 
     // Raw bodyを取得
     const body = await request.text();
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     try {
       if (process.env.SKIP_WEBHOOK_VERIFY === '1') {
         // テスト用: 署名検証をスキップ
-        console.log('[WEBHOOK] SKIP_WEBHOOK_VERIFY=1, raw body =', body);
+        console.warn('[WEBHOOK] SKIP_WEBHOOK_VERIFY=1, raw body =', body);
         event = JSON.parse(body) as Stripe.Event;
       } else {
         // 通常ルート: 署名検証あり
@@ -42,22 +42,23 @@ export async function POST(request: NextRequest) {
           process.env.STRIPE_WEBHOOK_SECRET || ''
         );
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[WEBHOOK] construct error', err);
+      const message = err instanceof Error ? err.message : 'Unknown error';
       return NextResponse.json(
-        { error: `Webhook Error: ${err.message}` },
+        { error: `Webhook Error: ${message}` },
         { status: 400 }
       );
     }
 
     try {
       const t = event.type;
-      console.log('[WEBHOOK] event.type =', t);
+      console.warn('[WEBHOOK] event.type =', t);
 
       // 🟢 決済成功時にUPSERTパターンを使用（Race Condition回避）
       if (t === 'payment_intent.succeeded') {
         const pi = event.data.object as Stripe.PaymentIntent;
-        console.log(
+        console.warn(
           '[WEBHOOK] payment_intent.succeeded pi.id=',
           pi.id,
           'sellerId=',
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
           let balanceTxId: string | null = null;
           if (chargeId) {
             try {
-              console.log('[WEBHOOK] Fetching charge info for chargeId=', chargeId);
+              console.warn('[WEBHOOK] Fetching charge info for chargeId=', chargeId);
               const charge = await stripe.charges.retrieve(chargeId);
               balanceTxId =
                 typeof charge.balance_transaction === 'string'
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
                   : null;
 
               if (balanceTxId) {
-                console.log(
+                console.warn(
                   '[WEBHOOK] Fetching balance transaction for balanceTxId=',
                   balanceTxId
                 );
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
                   balanceTxId
                 );
                 fee = balanceTx.fee || 0;
-                console.log('[WEBHOOK] Retrieved fee=', fee);
+                console.warn('[WEBHOOK] Retrieved fee=', fee);
               }
             } catch (stripeErr) {
               console.error(
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
 
           const netAmount = fee !== null ? amount - fee : amount;
 
-          console.log(
+          console.warn(
             '[WEBHOOK] Upserting payment: amount=',
             amount,
             'fee=',
@@ -153,11 +154,11 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          console.log('[WEBHOOK] Payment upserted successfully for pi.id=', pi.id);
+          console.warn('[WEBHOOK] Payment upserted successfully for pi.id=', pi.id);
 
           // ordersテーブルのステータス更新
           if (orderId) {
-            console.log('[WEBHOOK] Updating order status for orderId=', orderId);
+            console.warn('[WEBHOOK] Updating order status for orderId=', orderId);
             await prisma.order.update({
               where: { id: orderId },
               data: {
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
                 updatedAt: new Date(),
               },
             });
-            console.log(
+            console.warn(
               '[WEBHOOK] Order status updated to "paid" for orderId=',
               orderId
             );
@@ -180,13 +181,13 @@ export async function POST(request: NextRequest) {
             fee,
             netAmount,
           });
-          console.log('[WEBHOOK] Audit log created for pi_succeeded');
+          console.warn('[WEBHOOK] Audit log created for pi_succeeded');
         }
       }
 
       // --- 返金: charge.refunded ---
       if (t === 'charge.refunded' || t === 'charge.refund.updated') {
-        console.log('[WEBHOOK] Processing refund event:', t);
+        console.warn('[WEBHOOK] Processing refund event:', t);
         const ch = event.data.object as Stripe.Charge;
         const piId =
           typeof ch.payment_intent === 'string' ? ch.payment_intent : null;
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
         const refunded =
           typeof ch.amount_refunded === 'number' ? ch.amount_refunded : 0;
 
-        console.log(
+        console.warn(
           '[WEBHOOK] Refund details: piId=',
           piId,
           'amount=',
@@ -210,7 +211,7 @@ export async function POST(request: NextRequest) {
             : null;
         if (balanceTxId) {
           try {
-            console.log(
+            console.warn(
               '[WEBHOOK] Fetching balance transaction for refund, balanceTxId=',
               balanceTxId
             );
@@ -218,7 +219,7 @@ export async function POST(request: NextRequest) {
               balanceTxId
             );
             fee = balanceTx.fee || 0;
-            console.log('[WEBHOOK] Refund fee retrieved:', fee);
+            console.warn('[WEBHOOK] Refund fee retrieved:', fee);
           } catch (stripeErr) {
             console.error(
               '[WEBHOOK] Failed to retrieve balance transaction for refund',
@@ -230,7 +231,7 @@ export async function POST(request: NextRequest) {
         const net = Math.max(amount - refunded - fee, 0);
         const status = refunded >= amount ? 'refunded' : 'partially_refunded';
 
-        console.log('[WEBHOOK] Calculated net=', net, 'status=', status);
+        console.warn('[WEBHOOK] Calculated net=', net, 'status=', status);
 
         if (piId) {
           const payment = await prisma.stripePayment.findUnique({
@@ -255,7 +256,7 @@ export async function POST(request: NextRequest) {
               },
             });
 
-            console.log('[WEBHOOK] Refund updated successfully for piId=', piId);
+            console.warn('[WEBHOOK] Refund updated successfully for piId=', piId);
             audit('charge_refund', {
               pi: piId,
               amount,
@@ -270,12 +271,12 @@ export async function POST(request: NextRequest) {
 
       // --- チャージバック発生: charge.dispute.created ---
       if (t === 'charge.dispute.created') {
-        console.log('[WEBHOOK] Processing charge.dispute.created');
+        console.warn('[WEBHOOK] Processing charge.dispute.created');
         const dispute = event.data.object as Stripe.Dispute;
         const chargeId =
           typeof dispute.charge === 'string' ? dispute.charge : null;
 
-        console.log('[WEBHOOK] Dispute created for chargeId=', chargeId);
+        console.warn('[WEBHOOK] Dispute created for chargeId=', chargeId);
 
         if (chargeId) {
           const payment = await prisma.stripePayment.findFirst({
@@ -300,7 +301,7 @@ export async function POST(request: NextRequest) {
               },
             });
 
-            console.log(
+            console.warn(
               '[WEBHOOK] Dispute recorded for sellerId=',
               payment.sellerId,
               'pi=',
@@ -316,13 +317,13 @@ export async function POST(request: NextRequest) {
 
       // --- チャージバッククローズ: charge.dispute.closed ---
       if (t === 'charge.dispute.closed') {
-        console.log('[WEBHOOK] Processing charge.dispute.closed');
+        console.warn('[WEBHOOK] Processing charge.dispute.closed');
         const dispute = event.data.object as Stripe.Dispute;
         const chargeId =
           typeof dispute.charge === 'string' ? dispute.charge : null;
         const outcome = dispute.status;
 
-        console.log(
+        console.warn(
           '[WEBHOOK] Dispute closed for chargeId=',
           chargeId,
           'outcome=',
@@ -368,7 +369,7 @@ export async function POST(request: NextRequest) {
               },
             });
 
-            console.log('[WEBHOOK] Dispute closed successfully, status=', newStatus);
+            console.warn('[WEBHOOK] Dispute closed successfully, status=', newStatus);
             audit('dispute_closed', {
               sellerId: payment.sellerId,
               pi: payment.paymentIntentId,
@@ -378,7 +379,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      console.log(
+      console.warn(
         '[WEBHOOK] Event processing completed successfully for event.type=',
         t
       );
@@ -387,7 +388,7 @@ export async function POST(request: NextRequest) {
       console.error('[WEBHOOK] handler error', err);
       return NextResponse.json({ error: 'handler error' }, { status: 500 });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[WEBHOOK] error', error);
     return NextResponse.json(
       { error: 'internal_error' },

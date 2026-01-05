@@ -98,7 +98,7 @@ export async function executeTask(
       
       // 成功したプロバイダーをログ
       if (providerName !== config.preferredProvider) {
-        console.info(`Task ${taskType} completed using fallback provider: ${providerName}`);
+        console.warn(`Task ${taskType} completed using fallback provider: ${providerName}`);
       }
 
       return response;

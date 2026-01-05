@@ -6,8 +6,29 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+interface Seller {
+  id: string;
+  displayName: string | null;
+  shopName: string | null;
+  stripeAccountId: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  orderCount: number;
+  lastOrderAt: Date | string | null;
+  urls?: {
+    onboardingUrl?: string;
+    dashboardUrl?: string;
+  };
+}
+
+declare global {
+  interface Window {
+    ADMIN_TOKEN?: string;
+  }
+}
+
 export default function AdminSellersPage() {
-  const [sellers, setSellers] = useState<any[]>([]);
+  const [sellers, setSellers] = useState<Seller[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,7 +42,7 @@ export default function AdminSellersPage() {
   const loadSellers = async () => {
     try {
       const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
-        ? ((window as any).ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
+        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
         : 'admin-devtoken';
       
       const res = await fetch('/api/admin/sellers', {
@@ -44,7 +65,7 @@ export default function AdminSellersPage() {
   const handleCreateSeller = async () => {
     try {
       const token = typeof window !== 'undefined' 
-        ? (window as any).ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken'
+        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
         : 'admin-devtoken';
       
       const res = await fetch('/api/admin/sellers', {

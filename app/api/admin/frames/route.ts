@@ -17,7 +17,7 @@ function requireAdmin(request: Request): boolean {
 }
 
 function audit(event: string, payload: Record<string, unknown>) {
-  console.log(`[AUDIT] ${event}`, JSON.stringify(payload, null, 2));
+  console.warn(`[AUDIT] ${event}`, JSON.stringify(payload, null, 2));
 }
 
 export async function POST(request: Request) {

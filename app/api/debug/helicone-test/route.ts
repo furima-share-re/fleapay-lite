@@ -21,10 +21,13 @@ export async function GET() {
       );
     }
 
-    console.log('[Helicone Test] Sending test request to OpenAI via Helicone...');
+    console.warn('[Helicone Test] Sending test request to OpenAI via Helicone...');
 
     // 簡単なテストリクエストを送信
-    const response = await openai!.chat.completions.create({
+    if (!openai) {
+      throw new Error('OpenAI client is not available');
+    }
+    const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini', // コストが低いモデルを使用
       messages: [
         {
@@ -37,7 +40,7 @@ export async function GET() {
 
     const content = response.choices[0]?.message?.content || '';
 
-    console.log('[Helicone Test] Response received:', content);
+    console.warn('[Helicone Test] Response received:', content);
 
     return NextResponse.json({
       status: 'success',
@@ -53,7 +56,7 @@ export async function GET() {
       },
       note: 'Check Helicone dashboard to verify this request was tracked.',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Helicone Test] Error:', error);
 
     return NextResponse.json(
