@@ -112,33 +112,51 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: unknown) {
     console.error(`[写真フレーム][${requestId}] ❌ エラー発生:`, error);
-    console.error(`[写真フレーム][${requestId}] ❌ エラータイプ:`, error?.constructor?.name);
-    console.error(`[写真フレーム][${requestId}] ❌ エラーメッセージ:`, error?.message);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorConstructor = error instanceof Error ? error.constructor.name : typeof error;
+    console.error(`[写真フレーム][${requestId}] ❌ エラータイプ:`, errorConstructor);
+    console.error(`[写真フレーム][${requestId}] ❌ エラーメッセージ:`, errorMessage);
 
     // OpenAI APIエラーの詳細ログ
-    if (error?.response) {
-      console.error(`[写真フレーム][${requestId}] ❌ OpenAI API Error:`, {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-      });
+    let statusFromOpenAI: number | undefined;
+    let messageFromOpenAI: string = '画像の加工処理中にエラーが発生しました';
+    
+    if (error && typeof error === 'object') {
+      if ('response' in error && error.response && typeof error.response === 'object') {
+        const response = error.response as Record<string, unknown>;
+        console.error(`[写真フレーム][${requestId}] ❌ OpenAI API Error:`, {
+          status: response.status,
+          statusText: response.statusText,
+          data: response.data,
+        });
+        if (typeof response.status === 'number') {
+          statusFromOpenAI = response.status;
+        }
+        if (response.data && typeof response.data === 'object' && 'error' in response.data) {
+          const errorData = response.data.error as Record<string, unknown>;
+          if (typeof errorData.message === 'string') {
+            messageFromOpenAI = errorData.message;
+          }
+        }
+      }
+      if ('status' in error && typeof error.status === 'number') {
+        statusFromOpenAI = error.status;
+      }
     }
     
     // Helicone関連のエラーかどうか確認
-    if (error?.message?.includes('helicone') || error?.message?.includes('Helicone')) {
+    if (errorMessage.includes('helicone') || errorMessage.includes('Helicone')) {
       console.error(`[写真フレーム][${requestId}] ⚠️ Helicone関連のエラーの可能性があります`);
     }
     
     console.error(`[写真フレーム][${requestId}] ===== API呼び出し失敗 =====`);
 
     // クライアントへの適切なエラーレスポンス
-    const statusFromOpenAI = error?.response?.status || error?.status;
-    const status = typeof statusFromOpenAI === 'number' ? statusFromOpenAI : 500;
-
-    const messageFromOpenAI =
-      error?.response?.data?.error?.message ||
-      error?.message ||
-      '画像の加工処理中にエラーが発生しました';
+    const status = statusFromOpenAI ?? 500;
+    if (!messageFromOpenAI || messageFromOpenAI === 'Unknown error') {
+      messageFromOpenAI = errorMessage || '画像の加工処理中にエラーが発生しました';
+    }
 
     return NextResponse.json(
       {

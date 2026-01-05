@@ -58,16 +58,34 @@ export async function GET() {
     });
   } catch (error: unknown) {
     console.error('[Helicone Test] Error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorDetails: {
+      status?: number;
+      code?: string | number;
+      type?: string;
+    } = {};
+    
+    if (error && typeof error === 'object') {
+      if ('status' in error && typeof error.status === 'number') {
+        errorDetails.status = error.status;
+      }
+      if ('response' in error && error.response && typeof error.response === 'object' && 'status' in error.response && typeof error.response.status === 'number') {
+        errorDetails.status = error.response.status;
+      }
+      if ('code' in error) {
+        errorDetails.code = error.code as string | number;
+      }
+      if ('type' in error && typeof error.type === 'string') {
+        errorDetails.type = error.type;
+      }
+    }
 
     return NextResponse.json(
       {
         error: 'test_failed',
-        message: error?.message || 'Unknown error occurred',
-        details: {
-          status: error?.status || error?.response?.status,
-          code: error?.code,
-          type: error?.type,
-        },
+        message: errorMessage,
+        details: errorDetails,
         configuration: {
           hasOpenAIKey: !!process.env.OPENAI_API_KEY,
           hasHeliconeKey: !!process.env.HELICONE_API_KEY,

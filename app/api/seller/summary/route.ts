@@ -300,7 +300,7 @@ export async function GET(request: NextRequest) {
       } catch (e: unknown) {
         // 旧DB対応: order_metadataが存在しない場合は、stripe_paymentsのみで集計
         const message = e instanceof Error ? e.message : 'Unknown error';
-        console.warn("[seller/summary] kpiTotal query failed (likely old DB), trying simplified query:", e.message);
+        console.warn("[seller/summary] kpiTotal query failed (likely old DB), trying simplified query:", message);
         try {
           kpiTotal = await prisma.$queryRaw`
             SELECT
@@ -483,7 +483,7 @@ export async function GET(request: NextRequest) {
       } catch (e: unknown) {
         // 旧DB対応: order_metadataやbuyer_attributesが存在しない場合は、stripe_paymentsのみで取得
         const message = e instanceof Error ? e.message : 'Unknown error';
-        console.warn("[seller/summary] recentRes query failed (likely old DB), trying simplified query:", e.message);
+        console.warn("[seller/summary] recentRes query failed (likely old DB), trying simplified query:", message);
         try {
           recentRes = await prisma.$queryRaw`
             SELECT
@@ -533,7 +533,7 @@ export async function GET(request: NextRequest) {
       } catch (e: unknown) {
         // 旧DB対応: buyer_attributesが存在しない場合は、スコア0を返す
         const message = e instanceof Error ? e.message : 'Unknown error';
-        console.warn("scoreRes query failed, using default score:", e.message);
+        console.warn("scoreRes query failed, using default score:", message);
         try {
           scoreRes = await prisma.$queryRaw`
             SELECT
@@ -557,13 +557,13 @@ export async function GET(request: NextRequest) {
       scoreRes = [{ total: 0, with_attrs: 0 }];
     }
 
-    const todayGross = kpiToday[0]?.gross || 0;
-    const todayNet = kpiToday[0]?.net || 0;
-    const todayFee = kpiToday[0]?.fee || 0;
-    const todayCost = kpiToday[0]?.cost || 0;
+    const todayGross = Number(kpiToday[0]?.gross) || 0;
+    const todayNet = Number(kpiToday[0]?.net) || 0;
+    const todayFee = Number(kpiToday[0]?.fee) || 0;
+    const todayCost = Number(kpiToday[0]?.cost) || 0;
     const todayProfit = todayNet - todayCost;
-    const countToday = kpiToday[0]?.cnt || 0;
-    const avgToday = countToday > 0 ? Math.round(todayNet / countToday) : 0;
+    let countToday = Number(kpiToday[0]?.cnt) || 0;
+    let avgToday = countToday > 0 ? Math.round(todayNet / countToday) : 0;
 
     console.warn(`[seller/summary] recentResマッピング開始: ${recentRes.length}件`);
     let recent: Record<string, unknown>[] = [];
@@ -585,7 +585,9 @@ export async function GET(request: NextRequest) {
         }
         const amt = Number(r.amount || 0);
         const created = r.created_at;
-        const createdSec = created ? Math.floor(new Date(created).getTime() / 1000) : null;
+        const createdSec = created && (typeof created === 'string' || created instanceof Date) 
+          ? Math.floor(new Date(created).getTime() / 1000) 
+          : null;
 
       return {
         // 新しいフィールド名
@@ -633,8 +635,8 @@ export async function GET(request: NextRequest) {
       recent = [];
     }
 
-    const totalOrdersForScore = scoreRes[0]?.total || 0;
-    const ordersWithAttrs = scoreRes[0]?.with_attrs || 0;
+    const totalOrdersForScore = Number(scoreRes[0]?.total) || 0;
+    const ordersWithAttrs = Number(scoreRes[0]?.with_attrs) || 0;
     const dataScore = totalOrdersForScore > 0 ? Math.round((ordersWithAttrs / totalOrdersForScore) * 100) : 0;
 
     // 🔍 検証: recentResから今日の取引を抽出して、kpiTodayと比較
@@ -646,9 +648,11 @@ export async function GET(request: NextRequest) {
         const created = r.created_at;
         if (!created) continue;
         
-        const createdDate = new Date(created);
-        if (createdDate >= todayStart && createdDate < tomorrowStart) {
-          countTodayFromRecent += 1;
+        if (typeof created === 'string' || created instanceof Date) {
+          const createdDate = new Date(created);
+          if (createdDate >= todayStart && createdDate < tomorrowStart) {
+            countTodayFromRecent += 1;
+          }
         }
       }
       
@@ -695,7 +699,7 @@ export async function GET(request: NextRequest) {
         net:   kpiTotal[0]?.net   || 0,
         fee:   kpiTotal[0]?.fee   || 0,
         cost:  kpiTotal[0]?.cost  || 0,
-        profit: (kpiTotal[0]?.net || 0) - (kpiTotal[0]?.cost || 0)
+        profit: (Number(kpiTotal[0]?.net) || 0) - (Number(kpiTotal[0]?.cost) || 0)
       },
 
       // 旧フロント用の互換フィールド

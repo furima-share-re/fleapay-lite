@@ -85,13 +85,17 @@ export default function AdminDashboardPage() {
       console.error('Dashboard load error:', e);
       setError((e as Error).message);
       setData({
+        today: { orderCount: 0, gross: 0, net: 0, fee: 0 },
+        yesterday: { orderCount: 0, gross: 0, net: 0 },
+        total: { orderCount: 0, gross: 0, net: 0, fee: 0 },
+        sellerCount: 0,
+        recentActivity: [],
         paymentCount: 0,
         totalRevenue: 0,
         netRevenue: 0,
         disputeCount: 0,
         refundCount: 0,
-        urgentCount: 0,
-        recentSellers: []
+        urgentCount: 0
       });
     } finally {
       setLoading(false);
@@ -301,20 +305,20 @@ export default function AdminDashboardPage() {
               <section>
                 <h2>最近のアラート</h2>
                 <div id="alertsList">
-                  {data?.urgentCount > 0 || data?.disputeCount > 0 ? (
+                  {(data?.urgentCount ?? 0) > 0 || (data?.disputeCount ?? 0) > 0 ? (
                     <div>
-                      {data.urgentCount > 0 && (
+                      {(data?.urgentCount ?? 0) > 0 && (
                         <div style={{ background: '#fff3f3', padding: '12px', borderRadius: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
-                            <strong>⚠️ チャージバック {data.urgentCount}件（期限間近）</strong><br />
+                            <strong>⚠️ チャージバック {data?.urgentCount ?? 0}件（期限間近）</strong><br />
                             <small>早急な対応が必要です</small>
                           </div>
                           <Link href="/admin/payments?status=disputed" className="btn">対応</Link>
                         </div>
                       )}
-                      {data.disputeCount > 0 && (
+                      {(data?.disputeCount ?? 0) > 0 && (
                         <div style={{ background: '#fef9e7', padding: '12px', borderRadius: '8px', border: '1px solid var(--warning-amber)' }}>
-                          <strong>📋 チャージバック {data.disputeCount}件</strong><br />
+                          <strong>📋 チャージバック {data?.disputeCount ?? 0}件</strong><br />
                           <small>対応状況を確認してください</small>
                         </div>
                       )}
