@@ -63,6 +63,7 @@ async function getDailyAnalytics(sellerId: string, days: number = 30) {
           OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
         )
         -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+        -- 注意: この条件は app/api/seller/summary/route.ts の kpiToday クエリと一致している必要がある
     `;
     
     const row = result[0] || {};
@@ -155,6 +156,7 @@ async function getWeeklyAnalytics(sellerId: string, weeks: number = 4) {
           OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
         )
         -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+        -- 注意: この条件は app/api/seller/summary/route.ts の kpiToday クエリと一致している必要がある
     `;
     
     const row = result[0] || {};

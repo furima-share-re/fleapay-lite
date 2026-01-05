@@ -637,6 +637,39 @@ export async function GET(request: NextRequest) {
     const ordersWithAttrs = scoreRes[0]?.with_attrs || 0;
     const dataScore = totalOrdersForScore > 0 ? Math.round((ordersWithAttrs / totalOrdersForScore) * 100) : 0;
 
+    // 🔍 検証: recentResから今日の取引を抽出して、kpiTodayと比較
+    // 取引履歴と売上カウントの整合性を確保するため
+    try {
+      let countTodayFromRecent = 0;
+      
+      for (const r of recentRes) {
+        const created = r.created_at;
+        if (!created) continue;
+        
+        const createdDate = new Date(created);
+        if (createdDate >= todayStart && createdDate < tomorrowStart) {
+          countTodayFromRecent += 1;
+        }
+      }
+      
+      // 不一致を検出した場合、recentResから計算した値を優先（取引履歴と一致させる）
+      if (countTodayFromRecent !== countToday) {
+        console.warn(`[seller/summary] ⚠️ カウント不一致検出: kpiToday=${countToday}, recentResから=${countTodayFromRecent}`);
+        console.warn(`[seller/summary] ⚠️ recentResから計算した値を優先します（取引履歴と一致）`);
+        
+        // countTodayを更新（取引履歴と一致させる）
+        countToday = countTodayFromRecent;
+        
+        // avgTodayを再計算
+        avgToday = countToday > 0 ? Math.round(todayNet / countToday) : 0;
+      } else {
+        console.warn(`[seller/summary] ✅ カウント一致: countToday=${countToday}`);
+      }
+    } catch (verifyError: unknown) {
+      const verifyMessage = verifyError instanceof Error ? verifyError.message : 'Unknown error';
+      console.warn(`[seller/summary] recentRes検証エラー（kpiTodayの値を使用）:`, verifyMessage);
+    }
+
     console.warn(`[seller/summary] API呼び出し成功: recent=${recent.length}件, countToday=${countToday}`);
     if (recent.length > 0) {
       console.warn(`[seller/summary] recent[0]のサンプル:`, JSON.stringify(recent[0], null, 2));
