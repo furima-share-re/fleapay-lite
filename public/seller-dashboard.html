@@ -1239,6 +1239,7 @@
         if (typeLabel && genderLabel && ageLabel) {
           return `${typeLabel} / ${genderLabel} / ${ageLabel}`;
         }
+        // 一部だけ入力されている場合は「購入者情報：未入力」を返す
         return "購入者情報：未入力";
       }
 
@@ -1634,6 +1635,18 @@
             if (homeHintEl) homeHintEl.textContent = "売上データ取得でエラーが発生しました。QRコードは表示されています。";
             // 🆕 APIエラー時でもQRコードは既に生成されているので、ここでreturn
             return;
+          }
+
+          // デバッグ: APIレスポンスの最初の3件をログ出力
+          if (data.recent && data.recent.length > 0) {
+            console.log("[seller-dashboard] APIレスポンス (最初の3件):", data.recent.slice(0, 3).map((tx: any) => ({
+              orderId: tx.orderId || tx.order_id,
+              customerType: tx.customerType ?? tx.customer_type ?? tx.buyer?.customer_type,
+              gender: tx.gender ?? tx.buyer?.gender,
+              ageBand: tx.ageBand ?? tx.age_band ?? tx.buyer?.age_band,
+              rawCategory: tx.rawCategory || tx.raw_category,
+              costAmount: tx.costAmount,
+            })));
           }
 
           // サブスク未加入（standard または isSubscribed=false）の場合でも、基本的な取引履歴は表示する
