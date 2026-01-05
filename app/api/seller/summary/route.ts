@@ -3,9 +3,9 @@
 // payments.js の実装を完全に一致させる
 // 旧DB対応: order_metadata, buyer_attributes, cost_amount, deleted_atが存在しない場合に対応
 
-import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { jstDayBounds } from '@/lib/utils';
+import { NextRequest, NextResponse } from 'next/server';
 
 // Force dynamic rendering (this route uses nextUrl.searchParams)
 export const dynamic = 'force-dynamic';
@@ -26,6 +26,9 @@ export async function GET(request: NextRequest) {
     // 0) サブスク状態の判定(履歴テーブルから現在プランを取得)
     let planType = "standard";
     let isSubscribed = false;
+    
+    // テストユーザーは常に全機能を利用できるようにする（test-seller-で始まるID）
+    const isTestUser = sellerId.startsWith('test-seller-');
     
     try {
       const sub = await prisma.sellerSubscription.findFirst({
@@ -48,6 +51,12 @@ export async function GET(request: NextRequest) {
       // テーブルが存在しない場合やその他のエラーは無視してデフォルト値を使用
       console.warn("seller_subscriptions table not found or error (Prisma):", (subError as Error).message);
       // planType = "standard", isSubscribed = false のまま（既に設定済み）
+    }
+    
+    // テストユーザーの場合は強制的にkidsプランとして扱う（全機能利用可能：通常機能 + キッズ機能）
+    if (isTestUser) {
+      planType = 'kids';
+      isSubscribed = true;
     }
 
     // ① 売上KPI(JST基準で正しく集計)
