@@ -50,11 +50,11 @@ describe('API Routes Integration Tests', () => {
   });
 
   describe('GET /api/admin/dashboard', () => {
-    it('認証トークンなしでアクセスすると403を返す', async () => {
+    it('認証トークンなしでアクセスすると401を返す', async () => {
       const request = createMockRequest();
       const response = await adminDashboardGET(request);
       
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(401);
       const data = await getJsonResponse(response);
       expect(data).toHaveProperty('error');
     });
@@ -73,14 +73,14 @@ describe('API Routes Integration Tests', () => {
       expect([200, 500]).toContain(response.status);
     });
 
-    it('間違った認証トークンでアクセスすると403を返す', async () => {
+    it('間違った認証トークンでアクセスすると401を返す', async () => {
       const request = createAuthenticatedRequest(
         'http://localhost:3000/api/admin/dashboard',
         'wrong-token'
       );
       
       const response = await adminDashboardGET(request);
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(401);
     });
   });
 
