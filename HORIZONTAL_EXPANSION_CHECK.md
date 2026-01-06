@@ -135,3 +135,4 @@ postgresql://postgres.mluvjdhqgfpcfsmvjae:[PASSWORD]@aws-0-ap-northeast-1.pooler
 **推奨事項**: Render Dashboardで`DATABASE_URL`環境変数を確認し、`pgbouncer=true`が含まれていることを確認してください（含まれていない場合でも動作しますが、明示的に設定することを推奨します）。
 
 
+

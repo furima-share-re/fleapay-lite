@@ -268,3 +268,4 @@ curl "https://your-domain.com/api/seller/summary?s=seller123"
 - **API仕様**: `spec/openapi.yml`
 - **スクリプトでの確認方法**: `scripts/HOW_TO_USE_VIEW_TRANSACTIONS.md`
 
+

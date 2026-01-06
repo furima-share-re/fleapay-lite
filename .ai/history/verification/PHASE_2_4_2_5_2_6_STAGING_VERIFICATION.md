@@ -127,3 +127,4 @@ curl https://fleapay-lite-t1.onrender.com/api/ping
 **確認実施者**: AI Assistant
 
 
+

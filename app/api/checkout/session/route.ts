@@ -188,6 +188,15 @@ export async function POST(request: NextRequest) {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
+    // データベースにstripe_sidを保存（Stripe API確認用）
+    await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        stripeSid: session.id,
+        status: 'in_checkout',
+      },
+    });
+
     audit("checkout_session_created", { orderId: order.id, sellerId: order.sellerId, sessionId: session.id });
 
     return NextResponse.json({ url: session.url, sessionId: session.id });

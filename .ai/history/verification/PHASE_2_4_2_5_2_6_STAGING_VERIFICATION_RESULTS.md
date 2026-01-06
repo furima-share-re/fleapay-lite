@@ -252,3 +252,4 @@ GET https://fleapay-lite-t1.onrender.com/seller-register
 **確認実施者**: AI Assistant
 
 
+

@@ -189,3 +189,4 @@ npx prisma generate
 - [PostgreSQL公式ドキュメント](https://www.postgresql.org/docs/)
 - プロジェクト内のSQLスクリプト: `scripts/check-incomplete-qr-payments.sql`
 
+
