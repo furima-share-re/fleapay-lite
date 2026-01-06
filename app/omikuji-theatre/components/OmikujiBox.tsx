@@ -307,4 +307,5 @@ export default function OmikujiBox({
         distance={5}
       />
     </group>
-
+  );
+}
