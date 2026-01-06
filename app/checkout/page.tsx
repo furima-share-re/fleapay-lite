@@ -162,8 +162,28 @@ function CheckoutContent() {
       });
 
       if (!response.ok) {
-        await response.json().catch(() => ({}));
-        alert(dict[lang].errorCheckout || '決済処理でエラーが発生しました。');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[FleaPay] 決済APIエラー:', errorData);
+        
+        let errorMessage = dict[lang].errorCheckout || '決済処理でエラーが発生しました。';
+        
+        if (response.status === 400 && errorData.error === 'seller_stripe_account_not_found') {
+          errorMessage = '出店者の決済設定が完了していません。出店者にお問い合わせください。';
+        } else if (response.status === 400 && errorData.error === 'invalid_amount') {
+          errorMessage = errorData.message || '金額が無効です。';
+        } else if (response.status === 400 && errorData.error === 'already_paid') {
+          errorMessage = errorData.message || 'この注文は既に支払い済みです。';
+        } else if (response.status === 429) {
+          errorMessage = dict[lang].errorRateLimit || 'アクセスが集中しています。少し待ってから再度お試しください。';
+        } else if (response.status === 404) {
+          errorMessage = dict[lang].errorNotFound || '注文が見つかりませんでした。出店者に確認してください。';
+        } else if (response.status === 403) {
+          errorMessage = dict[lang].errorForbidden || 'アクセスが拒否されました。';
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+        
+        alert(errorMessage);
         if (btn) btn.removeAttribute('disabled');
         return;
       }
