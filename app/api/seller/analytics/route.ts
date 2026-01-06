@@ -62,9 +62,9 @@ async function getDailyAnalytics(sellerId: string, days: number = 30) {
         AND (
           om.is_cash = true  -- 現金決済は表示
           OR sp.status = 'succeeded'  -- Stripe成功決済は表示
-          OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+          OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
         )
-        -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+        -- QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
         -- 注意: この条件は app/api/seller/summary/route.ts の kpiToday クエリと一致している必要がある
     `;
     
@@ -157,9 +157,9 @@ async function getWeeklyAnalytics(sellerId: string, weeks: number = 4) {
         AND (
           om.is_cash = true  -- 現金決済は表示
           OR sp.status = 'succeeded'  -- Stripe成功決済は表示
-          OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+          OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
         )
-        -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+        -- QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
         -- 注意: この条件は app/api/seller/summary/route.ts の kpiToday クエリと一致している必要がある
     `;
     

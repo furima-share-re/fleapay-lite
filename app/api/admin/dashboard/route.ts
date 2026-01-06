@@ -60,9 +60,11 @@ export async function GET(request: Request) {
         AND o.created_at < ${tomorrowStart}
         AND o.deleted_at IS NULL
         AND (
-          om.is_cash = true
-          OR sp.status = 'succeeded'
+          om.is_cash = true  -- 現金決済は表示
+          OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+          OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
         )
+        -- QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
     `;
 
     // 昨日の売上統計
@@ -94,9 +96,11 @@ export async function GET(request: Request) {
         AND o.created_at < ${todayStart}
         AND o.deleted_at IS NULL
         AND (
-          om.is_cash = true
-          OR sp.status = 'succeeded'
+          om.is_cash = true  -- 現金決済は表示
+          OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+          OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
         )
+        -- QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
     `;
 
     // 全期間統計
@@ -134,9 +138,11 @@ export async function GET(request: Request) {
       LEFT JOIN stripe_payments sp ON sp.order_id = o.id
       WHERE o.deleted_at IS NULL
         AND (
-          om.is_cash = true
-          OR sp.status = 'succeeded'
+          om.is_cash = true  -- 現金決済は表示
+          OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+          OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
         )
+        -- QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
     `;
 
     // アクティブな出店者数

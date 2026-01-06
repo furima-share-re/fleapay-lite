@@ -203,9 +203,9 @@ export async function GET(request: NextRequest) {
               AND (
                 om.is_cash = true  -- 現金決済は表示
                 OR sp.status = 'succeeded'  -- Stripe成功決済は表示
-                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+                OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
               )
-              -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+              -- QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
           `;
           console.warn(`[seller/summary] kpiToday query成功:`, kpiToday);
         } else {
@@ -350,9 +350,9 @@ export async function GET(request: NextRequest) {
               AND (
                 om.is_cash = true  -- 現金決済は表示
                 OR sp.status = 'succeeded'  -- Stripe成功決済は表示
-                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+                OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
               )
-              -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+              -- QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
           `;
         } else {
           kpiTotal = await prisma.$queryRaw`
@@ -388,9 +388,9 @@ export async function GET(request: NextRequest) {
               AND (
                 om.is_cash = true  -- 現金決済は表示
                 OR sp.status = 'succeeded'  -- Stripe成功決済は表示
-                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+                OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
               )
-              -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+              -- QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
           `;
         }
         console.warn(`[seller/summary] kpiTotal query成功:`, kpiTotal);
@@ -534,9 +534,9 @@ export async function GET(request: NextRequest) {
               AND (
                 om.is_cash = true  -- 現金決済は表示
                 OR sp.status = 'succeeded'  -- Stripe成功決済は表示
-                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+                OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
               )
-              -- QR決済データが作られているが決済完了していない（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+              -- QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
               AND o.created_at >= NOW() - INTERVAL '90 days'  -- 過去90日以内
             ORDER BY o.created_at DESC
           `;
@@ -574,9 +574,9 @@ export async function GET(request: NextRequest) {
               AND (
                 om.is_cash = true  -- 現金決済は表示
                 OR sp.status = 'succeeded'  -- Stripe成功決済は表示
-                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+                OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
               )
-              -- QR決済データが作られているが決済完了していない（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+              -- QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
               AND o.created_at >= NOW() - INTERVAL '90 days'  -- 過去90日以内
             ORDER BY o.created_at DESC
           `;
@@ -619,9 +619,10 @@ export async function GET(request: NextRequest) {
               -- QR決済データが作られているが決済完了していない取引は除外
               AND (
                 sp.status = 'succeeded'  -- Stripe成功決済は表示
-                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+                OR sp.id IS NULL  -- 旧DB対応: Stripe決済がない場合（現金決済または移行データの可能性）
               )
               -- QR決済データが作られているが決済完了していない（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+              -- 注意: 旧DBではorder_metadataがないため、om.is_cashで判定できない
               AND o.created_at >= NOW() - INTERVAL '90 days'  -- 過去90日以内
             ORDER BY o.created_at DESC
           `;
