@@ -3,7 +3,13 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import Scene from './components/Scene';
+import dynamic from 'next/dynamic';
+
+// Sceneコンポーネントを動的インポート（SSRを回避）
+const Scene = dynamic(() => import('./components/Scene'), {
+  ssr: false,
+  loading: () => <div className="w-full h-[500px] flex items-center justify-center text-white">Loading 3D Scene...</div>,
+});
 
 export default function OmikujiMainPageTheatre() {
   const router = useRouter();
@@ -92,48 +98,20 @@ export default function OmikujiMainPageTheatre() {
         ))}
       </div>
 
-      {/* タイトル */}
-      <motion.div
-        className="absolute top-16 left-1/2 transform -translate-x-1/2 text-center z-20"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-      >
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+      {/* タイトルとサブタイトル */}
+      <div className="absolute top-12 md:top-16 left-1/2 transform -translate-x-1/2 text-center z-20">
+        <h1 className="text-5xl md:text-7xl font-bold text-white mb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] tracking-wider">
           EDO ICHIBA
         </h1>
-        <p className="text-white/90 text-sm md:text-base">Omikuji Fortune-Telling (Theatre.js + Leva)</p>
-      </motion.div>
+        <p className="text-white text-sm md:text-base font-medium">Omikuji Fortune-Telling</p>
+      </div>
 
-      {/* 背景の市場の屋台と人のシルエット（画像推奨） */}
-      {/* TODO: 背景画像を追加する場合は以下を使用
-        <div className="absolute inset-0 z-0 opacity-30">
-          <img src="/images/edo-market-background.png" alt="Edo Market" className="w-full h-full object-cover" />
-        </div>
-      */}
-
-      {/* 暖簾 */}
-      <div className="absolute top-32 left-0 right-0 z-10">
-        <div className="flex justify-between px-4 md:px-8">
-          <motion.div
-            className="w-32 md:w-48 h-64 md:h-80 bg-[#1B365D] border-2 border-white/20 relative overflow-hidden"
-            style={{
-              backgroundImage: `
-                repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 12px),
-                repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255,255,255,0.08) 20px, rgba(255,255,255,0.08) 22px)
-              `,
-            }}
-            animate={{
-              x: [0, -5, 5, 0],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          >
-            {/* 青海波パターン（下部） */}
-            <div className="absolute bottom-0 left-0 right-0 h-24 opacity-20">
+      {/* 左右の暖簾（青海波パターンと金色の楕円） */}
+      <div className="absolute top-24 md:top-32 left-0 right-0 z-10">
+        <div className="flex justify-between px-2 md:px-8">
+          <div className="w-24 md:w-40 h-96 bg-[#1B365D] border-2 border-white/20 relative overflow-hidden">
+            {/* 青海波パターン */}
+            <div className="absolute bottom-0 left-0 right-0 h-24 opacity-30">
               <svg viewBox="0 0 100 100" className="w-full h-full text-white">
                 <path
                   d="M0,80 Q25,60 50,80 T100,80"
@@ -149,35 +127,13 @@ export default function OmikujiMainPageTheatre() {
                 />
               </svg>
             </div>
-
-            {/* 金色の紋章 */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 border-2 border-yellow-500/50 rounded-full">
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-4 bg-yellow-500/50" />
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-1 bg-yellow-500/50" />
-              <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-500/50 rounded-full" />
-              <div className="absolute bottom-1/4 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-500/50 rounded-full" />
-            </div>
-          </motion.div>
-          <motion.div
-            className="w-32 md:w-48 h-64 md:h-80 bg-[#1B365D] border-2 border-white/20 relative overflow-hidden"
-            style={{
-              backgroundImage: `
-                repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 12px),
-                repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255,255,255,0.08) 20px, rgba(255,255,255,0.08) 22px)
-              `,
-            }}
-            animate={{
-              x: [0, 5, -5, 0],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              delay: 0.5,
-              ease: 'easeInOut',
-            }}
-          >
-            {/* 青海波パターン（下部） */}
-            <div className="absolute bottom-0 left-0 right-0 h-24 opacity-20">
+            {/* 金色の楕円モチーフ */}
+            <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 w-8 h-4 border border-yellow-500/50 rounded-full" />
+            <div className="absolute top-2/3 left-1/2 transform -translate-x-1/2 w-6 h-3 border border-yellow-500/50 rounded-full" />
+          </div>
+          <div className="w-24 md:w-40 h-96 bg-[#1B365D] border-2 border-white/20 relative overflow-hidden">
+            {/* 青海波パターン */}
+            <div className="absolute bottom-0 left-0 right-0 h-24 opacity-30">
               <svg viewBox="0 0 100 100" className="w-full h-full text-white">
                 <path
                   d="M0,80 Q25,60 50,80 T100,80"
@@ -193,32 +149,25 @@ export default function OmikujiMainPageTheatre() {
                 />
               </svg>
             </div>
-
-            {/* 金色の紋章 */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 border-2 border-yellow-500/50 rounded-full">
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-4 bg-yellow-500/50" />
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-1 bg-yellow-500/50" />
-              <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-500/50 rounded-full" />
-              <div className="absolute bottom-1/4 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-500/50 rounded-full" />
-            </div>
-          </motion.div>
+            {/* 金色の楕円モチーフ */}
+            <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 w-8 h-4 border border-yellow-500/50 rounded-full" />
+            <div className="absolute top-2/3 left-1/2 transform -translate-x-1/2 w-6 h-3 border border-yellow-500/50 rounded-full" />
+          </div>
         </div>
       </div>
 
-      {/* 「運試し」の文字 */}
-      <motion.div
-        className="absolute top-40 left-1/2 transform -translate-x-1/2 z-30"
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.8, delay: 0.3 }}
-      >
+      {/* 「運試し」の大きな文字 */}
+      <div className="absolute top-32 md:top-40 left-1/2 transform -translate-x-1/2 z-30">
         <motion.div
-          className="text-6xl md:text-8xl font-bold text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]"
+          className="text-7xl md:text-9xl font-bold text-white"
+          style={{
+            textShadow: '0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.3)',
+          }}
           animate={{
             textShadow: [
-              '0 0 20px rgba(255,255,255,0.5)',
-              '0 0 40px rgba(255,255,255,0.8)',
-              '0 0 20px rgba(255,255,255,0.5)',
+              '0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.3)',
+              '0 0 30px rgba(255,255,255,0.7), 0 0 60px rgba(255,255,255,0.5)',
+              '0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.3)',
             ],
           }}
           transition={{
@@ -228,7 +177,7 @@ export default function OmikujiMainPageTheatre() {
         >
           運試し
         </motion.div>
-      </motion.div>
+      </div>
 
       {/* 3Dおみくじ箱（Theatre.js + Leva統合） */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-[500px] z-30">
@@ -262,70 +211,87 @@ export default function OmikujiMainPageTheatre() {
         </div>
       )}
 
-      {/* DRAW FORTUNE ボタン */}
-      <motion.div
-        className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-30"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.7 }}
-      >
-        <motion.button
-          onClick={handleDrawFortune}
-          className="relative px-12 py-4 md:px-16 md:py-5 bg-[#1B365D] border-4 border-yellow-600 rounded-lg text-white font-bold text-lg md:text-xl shadow-[0_0_30px_rgba(234,179,8,0.6)]"
-          whileHover={{
-            scale: 1.05,
-            boxShadow: '0 0 40px rgba(234,179,8,0.8)',
-          }}
-          whileTap={{ scale: 0.95 }}
-          animate={{
-            boxShadow: [
-              '0 0 30px rgba(234,179,8,0.6)',
-              '0 0 40px rgba(234,179,8,0.8)',
-              '0 0 30px rgba(234,179,8,0.6)',
-            ],
-          }}
-          transition={{
-            boxShadow: {
-              duration: 2,
-              repeat: Infinity,
-            },
-          }}
-        >
-          DRAW FORTUNE
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
-            animate={{
-              x: ['-100%', '200%'],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: 'linear',
-            }}
-          />
-        </motion.button>
-      </motion.div>
-
-      {/* ナビゲーションバー */}
-      <motion.div
-        className="absolute bottom-0 left-0 right-0 bg-[#1B365D]/90 border-t-2 border-yellow-600/50 z-40"
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.8, delay: 0.9 }}
-      >
-        <div className="flex justify-around items-center h-16 px-4">
-          {['⛩', '📜', '🎭', '⚙️'].map((icon, i) => (
+      {/* DRAW FORTUNE ボタン（楕円形、コインアイコン付き） */}
+      <div className="absolute bottom-32 md:bottom-40 left-1/2 transform -translate-x-1/2 z-30">
+        <div className="relative">
+          {/* 左右から浮かぶ小判 */}
+          {buttonCoins.map((coin) => (
             <motion.div
-              key={i}
-              className="text-yellow-600 text-2xl cursor-pointer"
-              whileHover={{ scale: 1.2, rotate: 5 }}
-              whileTap={{ scale: 0.9 }}
+              key={coin.id}
+              className="absolute top-1/2 transform -translate-y-1/2"
+              style={{
+                [coin.side]: coin.side === 'left' ? '-60px' : '-60px',
+                right: coin.side === 'right' ? '-60px' : 'auto',
+                left: coin.side === 'left' ? '-60px' : 'auto',
+              }}
+              animate={{
+                x: coin.side === 'left' ? [0, 20, 0] : [0, -20, 0],
+                y: [0, -10, 0],
+                rotate: [0, 15, 0],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                delay: coin.delay,
+              }}
             >
-              {icon}
+              <div className="relative w-10 h-10 md:w-12 md:h-12">
+                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full border-2 border-yellow-700 shadow-[0_0_20px_rgba(234,179,8,1)]" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-2 h-2 md:w-3 md:h-3 bg-yellow-700 rounded-sm transform rotate-45" />
+                </div>
+                <div className="absolute inset-0 bg-yellow-300/70 rounded-full blur-md" />
+              </div>
             </motion.div>
           ))}
+
+          {/* ボタン本体 */}
+          <motion.button
+            onClick={handleDrawFortune}
+            className="relative px-10 py-4 md:px-14 md:py-5 bg-[#1B365D] border-4 border-yellow-600 rounded-full text-white font-bold text-base md:text-xl shadow-[0_0_30px_rgba(234,179,8,0.6)] hover:shadow-[0_0_40px_rgba(234,179,8,0.8)] transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            DRAW FORTUNE
+            {/* コインアイコン */}
+            <div className="relative w-5 h-5 md:w-6 md:h-6">
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full border border-yellow-700" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-yellow-700 rounded-sm transform rotate-45" />
+              </div>
+            </div>
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
+              animate={{
+                x: ['-100%', '200%'],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: 'linear',
+              }}
+            />
+          </motion.button>
         </div>
-      </motion.div>
+      </div>
+
+      {/* ナビゲーションバー */}
+      <div className="absolute bottom-0 left-0 right-0 bg-[#1B365D] border-t-2 border-yellow-600/50 z-40">
+        <div className="flex justify-around items-center h-16 px-4">
+          <div className="text-yellow-600 text-2xl md:text-3xl cursor-pointer hover:scale-110 transition-transform drop-shadow-[0_0_10px_rgba(234,179,8,0.6)]">
+            ⛩
+          </div>
+          <div className="text-yellow-600 text-2xl md:text-3xl cursor-pointer hover:scale-110 transition-transform drop-shadow-[0_0_10px_rgba(234,179,8,0.6)]">
+            📜
+          </div>
+          <div className="text-yellow-600 text-2xl md:text-3xl cursor-pointer hover:scale-110 transition-transform drop-shadow-[0_0_10px_rgba(234,179,8,0.6)]">
+            🎭
+          </div>
+          <div className="text-yellow-600 text-2xl md:text-3xl cursor-pointer hover:scale-110 transition-transform drop-shadow-[0_0_10px_rgba(234,179,8,0.6)]">
+            ⚙️
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
