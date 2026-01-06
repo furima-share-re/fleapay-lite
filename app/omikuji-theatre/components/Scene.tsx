@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, PerspectiveCamera } from '@react-three/drei';
 import { getProject, types as t } from '@theatre/core';
-import { SheetProvider, editable } from '@theatre/r3f';
+import { SheetProvider } from '@theatre/r3f';
 import { useControls, Leva } from 'leva';
 import OmikujiBox from './OmikujiBox';
 import Coin from './Coin';
@@ -53,42 +53,98 @@ export default function Scene({
 
   useEffect(() => {
     if (enableTheatre) {
-      // Theatre.jsプロジェクトの初期化
-      const theatreProject = getProject('Omikuji Scene', {
-        state: {
-          stateByObject: {},
-        },
-      });
+      const initializeTheatre = () => {
+        try {
+          // Theatre.jsの状態が破損している可能性があるため、事前にlocalStorageをクリア
+          if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+            try {
+              const keys = Object.keys(localStorage);
+              keys.forEach(key => {
+                // Theatre.jsは通常 "Theatre.js:project:プロジェクト名" の形式で保存
+                if (key.includes('Theatre.js') || key.includes('theatre') || key.includes('Omikuji Scene')) {
+                  localStorage.removeItem(key);
+                }
+              });
+            } catch (e) {
+              // localStorageクリアのエラーは無視
+            }
+          }
 
-      const theatreSheet = theatreProject.sheet('Main Sheet');
+          // Theatre.jsプロジェクトの初期化
+          const theatreProject = getProject('Omikuji Scene', {
+            state: {
+              stateByObject: {},
+            },
+          });
 
-      // アニメーション設定
-      if (isShaking) {
-        const boxObj = theatreSheet.object('OmikujiBox', {
-          position: t.compound({
-            x: t.number(0, { range: [-2, 2] }),
-            y: t.number(0, { range: [-2, 2] }),
-            z: t.number(0, { range: [-2, 2] }),
-          }),
-          rotation: t.compound({
-            x: t.number(0, { range: [-Math.PI, Math.PI] }),
-            y: t.number(0, { range: [-Math.PI, Math.PI] }),
-            z: t.number(0, { range: [-Math.PI, Math.PI] }),
-          }),
-        });
+          const theatreSheet = theatreProject.sheet('Main Sheet');
 
-        // 振るアニメーション - Theatre.jsのアニメーションはStudioで設定するか、
-        // またはsequenceを使用します。ここではオブジェクトの定義のみ行います。
-        // 実際のアニメーションは@theatre/r3fのeditableコンポーネントが自動的に処理します。
-      }
+          // アニメーション設定
+          if (isShaking) {
+            const boxObj = theatreSheet.object('OmikujiBox', {
+              position: t.compound({
+                x: t.number(0, { range: [-2, 2] }),
+                y: t.number(0, { range: [-2, 2] }),
+                z: t.number(0, { range: [-2, 2] }),
+              }),
+              rotation: t.compound({
+                x: t.number(0, { range: [-Math.PI, Math.PI] }),
+                y: t.number(0, { range: [-Math.PI, Math.PI] }),
+                z: t.number(0, { range: [-Math.PI, Math.PI] }),
+              }),
+            });
 
-      setProject(theatreProject);
-      setSheet(theatreSheet);
+            // 振るアニメーション - Theatre.jsのアニメーションはStudioで設定するか、
+            // またはsequenceを使用します。ここではオブジェクトの定義のみ行います。
+            // 実際のアニメーションは@theatre/r3fのeditableコンポーネントが自動的に処理します。
+          }
+
+          setProject(theatreProject);
+          setSheet(theatreSheet);
+          return true;
+        } catch (error) {
+          console.warn('Theatre.js initialization failed:', error);
+          // エラーが発生した場合、localStorageを再度クリアして再試行
+          if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+            try {
+              const keys = Object.keys(localStorage);
+              keys.forEach(key => {
+                if (key.includes('Theatre.js') || key.includes('theatre') || key.includes('Omikuji Scene')) {
+                  localStorage.removeItem(key);
+                }
+              });
+              // 再試行
+              const theatreProject = getProject('Omikuji Scene', {
+                state: {
+                  stateByObject: {},
+                },
+              });
+              const theatreSheet = theatreProject.sheet('Main Sheet');
+              setProject(theatreProject);
+              setSheet(theatreSheet);
+              return true;
+            } catch (retryError) {
+              console.error('Theatre.js retry failed:', retryError);
+              setProject(null);
+              setSheet(null);
+              return false;
+            }
+          } else {
+            setProject(null);
+            setSheet(null);
+            return false;
+          }
+        }
+      };
+
+      initializeTheatre();
 
       return () => {
         // Theatre.jsプロジェクトのクリーンアップ
-        // detach()メソッドは存在しないため、必要に応じて他のクリーンアップ処理を追加
       };
+    } else {
+      setProject(null);
+      setSheet(null);
     }
   }, [enableTheatre, isShaking]);
 

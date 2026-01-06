@@ -28,7 +28,7 @@ export default function OmikujiMainPageTheatre() {
   const [buttonCoins, setButtonCoins] = useState<
     Array<{ id: number; side: "left" | "right"; delay: number }>
   >([]);
-  const [enableTheatre, setEnableTheatre] = useState(true);
+  const [enableTheatre, setEnableTheatre] = useState(true); // Theatre.jsを有効化
   const [enableLeva, setEnableLeva] = useState(
     process.env.NODE_ENV === "development"
   );
