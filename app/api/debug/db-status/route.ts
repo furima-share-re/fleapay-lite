@@ -80,6 +80,108 @@ export async function GET() {
       // エラーは無視
     }
 
+    // test-seller-1のデータ確認
+    let testSeller1Exists = false;
+    let testSeller1OrdersCount = 0;
+    let testSeller1OrdersWithMetadata = 0;
+    let testSeller1OrdersWithStripe = 0;
+    let testSeller1OrdersWithSucceeded = 0;
+    let testSeller1OrdersWithCash = 0;
+    let testSeller1OrdersWithin90Days = 0;
+    try {
+      const seller = await prisma.seller.findUnique({
+        where: { id: 'test-seller-1' },
+        select: { id: true },
+      });
+      testSeller1Exists = !!seller;
+
+      if (testSeller1Exists) {
+        // 全注文数
+        const ordersResult = await prisma.$queryRaw<Array<{ count: number }>>`
+          SELECT COUNT(*)::int as count 
+          FROM orders 
+          WHERE seller_id = 'test-seller-1' AND deleted_at IS NULL
+        `;
+        testSeller1OrdersCount = ordersResult[0]?.count || 0;
+
+        // 詳細統計
+        const statsResult = await prisma.$queryRaw<Array<{
+          with_metadata: number;
+          with_stripe: number;
+          with_succeeded: number;
+          with_cash: number;
+          within_90days: number;
+        }>>`
+          SELECT 
+            COUNT(om.order_id)::int as with_metadata,
+            COUNT(sp.id)::int as with_stripe,
+            COUNT(CASE WHEN sp.status = 'succeeded' THEN 1 END)::int as with_succeeded,
+            COUNT(CASE WHEN om.is_cash = true THEN 1 END)::int as with_cash,
+            COUNT(CASE WHEN o.created_at >= NOW() - INTERVAL '90 days' THEN 1 END)::int as within_90days
+          FROM orders o
+          LEFT JOIN order_metadata om ON om.order_id = o.id
+          LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+          WHERE o.seller_id = 'test-seller-1' AND o.deleted_at IS NULL
+        `;
+        if (statsResult[0]) {
+          testSeller1OrdersWithMetadata = statsResult[0].with_metadata || 0;
+          testSeller1OrdersWithStripe = statsResult[0].with_stripe || 0;
+          testSeller1OrdersWithSucceeded = statsResult[0].with_succeeded || 0;
+          testSeller1OrdersWithCash = statsResult[0].with_cash || 0;
+          testSeller1OrdersWithin90Days = statsResult[0].within_90days || 0;
+        }
+      }
+    } catch (error: unknown) {
+      // エラーは無視
+    }
+
+    // すべてのseller_idを取得（デバッグ用）
+    let allSellerIds: string[] = [];
+    try {
+      const sellersResult = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM sellers ORDER BY id LIMIT 10
+      `;
+      allSellerIds = sellersResult.map(s => s.id);
+    } catch (error: unknown) {
+      // エラーは無視
+    }
+
+    // test-seller-1の全注文（条件なし）を確認
+    let testSeller1AllOrdersCount = 0;
+    let testSeller1OrdersWithoutDeleted = 0;
+    let testSeller1OrdersWithin90DaysRaw = 0;
+    try {
+      if (testSeller1Exists) {
+        // 全注文数（deleted_at条件なし）
+        const allOrdersResult = await prisma.$queryRaw<Array<{ count: number }>>`
+          SELECT COUNT(*)::int as count 
+          FROM orders 
+          WHERE seller_id = 'test-seller-1'
+        `;
+        testSeller1AllOrdersCount = allOrdersResult[0]?.count || 0;
+
+        // deleted_at IS NULLの注文数
+        const withoutDeletedResult = await prisma.$queryRaw<Array<{ count: number }>>`
+          SELECT COUNT(*)::int as count 
+          FROM orders 
+          WHERE seller_id = 'test-seller-1' AND deleted_at IS NULL
+        `;
+        testSeller1OrdersWithoutDeleted = withoutDeletedResult[0]?.count || 0;
+
+        // 過去90日以内の注文数（クエリ条件なし）
+        const within90DaysResult = await prisma.$queryRaw<Array<{ count: number }>>`
+          SELECT COUNT(*)::int as count 
+          FROM orders 
+          WHERE seller_id = 'test-seller-1' 
+            AND deleted_at IS NULL
+            AND created_at >= NOW() - INTERVAL '90 days'
+        `;
+        testSeller1OrdersWithin90DaysRaw = within90DaysResult[0]?.count || 0;
+      }
+    } catch (error: unknown) {
+      // エラーは無視
+    }
+
     return NextResponse.json({
       status: 'ok',
       database: {
@@ -106,6 +208,19 @@ export async function GET() {
         exists: sellerTest01Exists,
         ordersCount: sellerTest01OrdersCount,
       },
+      testSeller1: {
+        exists: testSeller1Exists,
+        ordersCount: testSeller1OrdersCount,
+        ordersAll: testSeller1AllOrdersCount,
+        ordersWithoutDeleted: testSeller1OrdersWithoutDeleted,
+        ordersWithin90Days: testSeller1OrdersWithin90DaysRaw,
+        ordersWithMetadata: testSeller1OrdersWithMetadata,
+        ordersWithStripe: testSeller1OrdersWithStripe,
+        ordersWithSucceeded: testSeller1OrdersWithSucceeded,
+        ordersWithCash: testSeller1OrdersWithCash,
+        ordersWithin90DaysFromStats: testSeller1OrdersWithin90Days,
+      },
+      allSellerIds: allSellerIds,
       environment: {
         nodeEnv: process.env.NODE_ENV || 'development',
         isProduction: process.env.NODE_ENV === 'production',

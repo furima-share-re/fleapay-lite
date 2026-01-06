@@ -447,13 +447,17 @@ export async function GET(request: NextRequest) {
             LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
             WHERE o.seller_id = ${sellerId}
               AND o.deleted_at IS NULL
+              -- すべての注文を表示（条件を大幅に緩和して移行データも表示）
               AND (
                 om.is_cash = true  -- 現金決済は表示
                 OR sp.status = 'succeeded'  -- Stripe成功決済は表示
-                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+                OR sp.id IS NULL  -- Stripe決済がない場合も表示
+                OR (sp.id IS NOT NULL AND (sp.status IS NULL OR sp.status != 'failed'))  -- Stripe決済があるがstatusがnullまたは失敗以外
+                OR (om.is_cash IS NULL AND sp.id IS NULL)  -- メタデータもStripe決済もない場合（移行データ対応）
+                OR (om.order_id IS NULL AND sp.order_id IS NULL)  -- どちらのJOINもマッチしない場合（移行データ対応）
               )
-              -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
-              AND o.created_at >= NOW() - INTERVAL '90 days'  -- 30日から90日に拡張
+              -- Stripe失敗のみ除外（sp.id IS NOT NULL AND sp.status = 'failed'）
+              AND o.created_at >= NOW() - INTERVAL '90 days'  -- 過去90日以内
             ORDER BY o.created_at DESC
           `;
         } else {
@@ -483,13 +487,17 @@ export async function GET(request: NextRequest) {
             LEFT JOIN stripe_payments  sp ON sp.order_id = o.id
             LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
             WHERE o.seller_id = ${sellerId}
+              -- すべての注文を表示（条件を大幅に緩和して移行データも表示）
               AND (
                 om.is_cash = true  -- 現金決済は表示
                 OR sp.status = 'succeeded'  -- Stripe成功決済は表示
-                OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+                OR sp.id IS NULL  -- Stripe決済がない場合も表示
+                OR (sp.id IS NOT NULL AND (sp.status IS NULL OR sp.status != 'failed'))  -- Stripe決済があるがstatusがnullまたは失敗以外
+                OR (om.is_cash IS NULL AND sp.id IS NULL)  -- メタデータもStripe決済もない場合（移行データ対応）
+                OR (om.order_id IS NULL AND sp.order_id IS NULL)  -- どちらのJOINもマッチしない場合（移行データ対応）
               )
-              -- Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
-              AND o.created_at >= NOW() - INTERVAL '90 days'  -- 30日から90日に拡張
+              -- Stripe失敗のみ除外（sp.id IS NOT NULL AND sp.status = 'failed'）
+              AND o.created_at >= NOW() - INTERVAL '90 days'  -- 過去90日以内
             ORDER BY o.created_at DESC
           `;
         }
@@ -525,8 +533,12 @@ export async function GET(request: NextRequest) {
             FROM orders o
             LEFT JOIN stripe_payments  sp ON sp.order_id = o.id
             WHERE o.seller_id = ${sellerId}
-              AND sp.status = 'succeeded'
-              AND o.created_at >= NOW() - INTERVAL '30 days'
+              AND (
+                sp.status = 'succeeded'  -- Stripe成功決済
+                OR sp.id IS NULL  -- Stripe決済がない場合（移行データ対応）
+                OR (sp.id IS NOT NULL AND (sp.status IS NULL OR sp.status != 'failed'))  -- statusがnullまたは失敗以外
+              )
+              AND o.created_at >= NOW() - INTERVAL '90 days'  -- 過去90日以内
             ORDER BY o.created_at DESC
           `;
           console.warn(`[seller/summary] recentRes simplified query成功: ${recentRes.length}件`);
