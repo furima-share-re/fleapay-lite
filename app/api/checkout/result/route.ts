@@ -90,17 +90,22 @@ export async function GET(request: NextRequest) {
 
     // Webhook未受信で決済が完了していない場合、Stripe APIで直接確認
     // ただし、10秒に1回までに制限（レート制限対策）
+    console.log(`[Checkout Result] orderId=${orderId}, isPaid=${isPaid}, webhookReceived=${webhookReceived}, stripe_sid=${row.stripe_sid || 'null'}`);
+    
     if (!isPaid && !webhookReceived && row.stripe_sid) {
       const now = Date.now();
       const lastCheck = lastStripeCheck.get(orderId);
+      const timeSinceLastCheck = lastCheck ? now - lastCheck : Infinity;
       
       // 10秒以内にチェック済みの場合はスキップ
-      if (lastCheck && (now - lastCheck) < STRIPE_CHECK_INTERVAL_MS) {
+      if (lastCheck && timeSinceLastCheck < STRIPE_CHECK_INTERVAL_MS) {
         // 前回のチェック時刻を返す（デバッグ用）
+        console.log(`[Stripe API] Skipping check for orderId=${orderId}, last check was ${Math.round(timeSinceLastCheck / 1000)}s ago`);
         // 実際の処理はスキップ
       } else {
         // チェック時刻を更新
         lastStripeCheck.set(orderId, now);
+        console.log(`[Stripe API] Checking payment status for orderId=${orderId}, stripe_sid=${row.stripe_sid}`);
         
         // 古いエントリをクリーンアップ（メモリリーク防止）
         // 1時間以上古いエントリを削除
@@ -118,7 +123,9 @@ export async function GET(request: NextRequest) {
           // Checkout Session IDは "cs_" で始まる
           if (stripeSid.startsWith('cs_')) {
             // Checkout Sessionを確認
+            console.log(`[Stripe API] Retrieving Checkout Session: ${stripeSid}`);
             const session = await stripe.checkout.sessions.retrieve(stripeSid);
+            console.log(`[Stripe API] Session status: ${session.status}, payment_status: ${session.payment_status}`);
             
             if (session.payment_status === 'paid' && session.status === 'complete') {
               // 決済が成功している場合、PaymentIntentを取得してデータベースを更新
@@ -127,9 +134,11 @@ export async function GET(request: NextRequest) {
                   ? session.payment_intent 
                   : session.payment_intent.id;
                 
-                const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
-                
-                if (pi.status === 'succeeded') {
+              const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+              console.log(`[Stripe API] PaymentIntent status: ${pi.status}`);
+              
+              if (pi.status === 'succeeded') {
+                console.log(`[Stripe API] Payment succeeded! Updating database for orderId=${orderId}`);
                   const sellerId = row.seller_id as string;
                   const amountGross = pi.amount;
                   const amountFee = pi.application_fee_amount || 0;
@@ -160,18 +169,42 @@ export async function GET(request: NextRequest) {
                       ${currency},
                       NOW()
                     )
-                    ON CONFLICT (payment_intent_id) DO NOTHING
-                  `;
-                  
-                  isPaid = true;
+                  ON CONFLICT (payment_intent_id) DO NOTHING
+                `;
+                
+                console.log(`[Stripe API] Database updated successfully for orderId=${orderId}`);
+                isPaid = true;
+                
+                // データベース更新後、最新の状態を再取得して確認
+                const updatedResult = await prisma.$queryRaw`
+                  SELECT
+                    o.status AS order_status,
+                    EXISTS(
+                      SELECT 1 
+                      FROM stripe_payments sp_succeeded
+                      WHERE sp_succeeded.order_id = o.id 
+                        AND sp_succeeded.status = 'succeeded'
+                    ) AS has_succeeded_payment
+                  FROM orders o
+                  WHERE o.id = ${orderId}::uuid
+                  LIMIT 1
+                `;
+                const updatedRow = (updatedResult as Array<Record<string, unknown>>)[0];
+                if (updatedRow) {
+                  isPaid = updatedRow.order_status === 'paid' || updatedRow.has_succeeded_payment === true;
+                  console.log(`[Stripe API] Verified database update: isPaid=${isPaid}`);
                 }
               }
             }
-          } else if (stripeSid.startsWith('pi_')) {
+          }
+        } else if (stripeSid.startsWith('pi_')) {
             // PaymentIntent IDを直接確認
+            console.log(`[Stripe API] Retrieving PaymentIntent: ${stripeSid}`);
             const pi = await stripe.paymentIntents.retrieve(stripeSid);
+            console.log(`[Stripe API] PaymentIntent status: ${pi.status}`);
             
             if (pi.status === 'succeeded') {
+              console.log(`[Stripe API] Payment succeeded! Updating database for orderId=${orderId}`);
               const sellerId = row.seller_id as string;
               const amountGross = pi.amount;
               const amountFee = pi.application_fee_amount || 0;
@@ -205,12 +238,37 @@ export async function GET(request: NextRequest) {
                 ON CONFLICT (payment_intent_id) DO NOTHING
               `;
               
+              console.log(`[Stripe API] Database updated successfully for orderId=${orderId}`);
               isPaid = true;
+              
+              // データベース更新後、最新の状態を再取得して確認
+              const updatedResult = await prisma.$queryRaw`
+                SELECT
+                  o.status AS order_status,
+                  EXISTS(
+                    SELECT 1 
+                    FROM stripe_payments sp_succeeded
+                    WHERE sp_succeeded.order_id = o.id 
+                      AND sp_succeeded.status = 'succeeded'
+                  ) AS has_succeeded_payment
+                FROM orders o
+                WHERE o.id = ${orderId}::uuid
+                LIMIT 1
+              `;
+              const updatedRow = (updatedResult as Array<Record<string, unknown>>)[0];
+              if (updatedRow) {
+                isPaid = updatedRow.order_status === 'paid' || updatedRow.has_succeeded_payment === true;
+                console.log(`[Stripe API] Verified database update: isPaid=${isPaid}`);
+              }
             }
           }
         } catch (stripeError) {
           // Stripe APIエラーはログに記録するが、処理は続行
-          console.error('/api/checkout/result Stripe API error:', stripeError);
+          console.error(`[Stripe API] Error checking payment for orderId=${orderId}:`, stripeError);
+          if (stripeError instanceof Error) {
+            console.error(`[Stripe API] Error message: ${stripeError.message}`);
+            console.error(`[Stripe API] Error stack: ${stripeError.stack}`);
+          }
         }
       }
     }
