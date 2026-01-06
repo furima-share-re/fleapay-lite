@@ -53,7 +53,7 @@ export default function Scene({
 
   useEffect(() => {
     if (enableTheatre) {
-      const initializeTheatre = () => {
+      const initializeTheatre = async () => {
         try {
           // Theatre.jsの状態が破損している可能性があるため、事前にlocalStorageを完全にクリア
           if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
@@ -68,15 +68,23 @@ export default function Scene({
               // IndexedDBもクリア（Theatre.jsが使用する可能性がある）
               if ('indexedDB' in window) {
                 try {
-                  indexedDB.databases().then(databases => {
-                    databases.forEach(db => {
-                      if (db.name && (db.name.includes('Theatre.js') || db.name.includes('theatre'))) {
-                        indexedDB.deleteDatabase(db.name);
-                      }
-                    });
-                  }).catch(() => {
-                    // IndexedDBのクリアエラーは無視
-                  });
+                  // IndexedDBのクリアが完了するまで待機
+                  const databases = await indexedDB.databases();
+                  await Promise.all(
+                    databases
+                      .filter(db => db.name && (db.name.includes('Theatre.js') || db.name.includes('theatre')))
+                      .map(db => {
+                        return new Promise<void>((resolve, reject) => {
+                          const deleteRequest = indexedDB.deleteDatabase(db.name!);
+                          deleteRequest.onsuccess = () => resolve();
+                          deleteRequest.onerror = () => reject(deleteRequest.error);
+                          deleteRequest.onblocked = () => {
+                            // ブロックされた場合は少し待ってから再試行
+                            setTimeout(() => resolve(), 100);
+                          };
+                        });
+                      })
+                  );
                 } catch (e) {
                   // IndexedDBアクセスのエラーは無視
                 }
