@@ -55,13 +55,16 @@ describe('API Routes Integration Tests', () => {
       const response = await adminDashboardGET(request);
       
       expect(response.status).toBe(403);
+      const data = await getJsonResponse(response);
+      expect(data).toHaveProperty('error');
     });
 
     it('正しい認証トークンでアクセスすると200を返す', async () => {
       const adminToken = process.env.ADMIN_TOKEN || 'admin-devtoken';
-      const request = createMockRequest('http://localhost:3000/api/admin/dashboard', {
-        'x-admin-token': adminToken,
-      });
+      const request = createAuthenticatedRequest(
+        'http://localhost:3000/api/admin/dashboard',
+        adminToken
+      );
       
       const response = await adminDashboardGET(request);
       
@@ -71,9 +74,10 @@ describe('API Routes Integration Tests', () => {
     });
 
     it('間違った認証トークンでアクセスすると403を返す', async () => {
-      const request = createMockRequest('http://localhost:3000/api/admin/dashboard', {
-        'x-admin-token': 'wrong-token',
-      });
+      const request = createAuthenticatedRequest(
+        'http://localhost:3000/api/admin/dashboard',
+        'wrong-token'
+      );
       
       const response = await adminDashboardGET(request);
       expect(response.status).toBe(403);

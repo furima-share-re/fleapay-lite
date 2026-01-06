@@ -32,7 +32,8 @@ export function createAuthenticatedRequest(
   } = {}
 ): Request {
   return createMockRequest(url, {
-    ...options,
+    method: options.method,
+    body: options.body,
     headers: {
       'x-admin-token': token,
     },
