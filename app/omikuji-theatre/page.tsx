@@ -1,31 +1,46 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import dynamic from 'next/dynamic';
+import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 // Sceneコンポーネントを動的インポート（SSRを回避）
-const Scene = dynamic(() => import('./components/Scene'), {
+const Scene = dynamic(() => import("./components/Scene"), {
   ssr: false,
-  loading: () => <div className="w-full h-[500px] flex items-center justify-center text-white">Loading 3D Scene...</div>,
+  loading: () => (
+    <div className="w-full h-[500px] flex items-center justify-center text-white">
+      Loading 3D Scene...
+    </div>
+  ),
 });
 
 export default function OmikujiMainPageTheatre() {
   const router = useRouter();
   const [coins, setCoins] = useState<
-    Array<{ id: number; position: [number, number, number]; text: string; delay: number }>
+    Array<{
+      id: number;
+      position: [number, number, number];
+      text: string;
+      delay: number;
+    }>
+  >([]);
+  const [buttonCoins, setButtonCoins] = useState<
+    Array<{ id: number; side: "left" | "right"; delay: number }>
   >([]);
   const [enableTheatre, setEnableTheatre] = useState(true);
-  const [enableLeva, setEnableLeva] = useState(process.env.NODE_ENV === 'development');
-
-  // ボタン周りの小判の定義
-  const buttonCoins = [
-    { id: 1, side: 'left' as const, delay: 0 },
-    { id: 2, side: 'left' as const, delay: 0.5 },
-    { id: 3, side: 'right' as const, delay: 0.3 },
-    { id: 4, side: 'right' as const, delay: 0.8 },
-  ];
+  const [enableLeva, setEnableLeva] = useState(
+    process.env.NODE_ENV === "development"
+  );
+  const [stars, setStars] = useState<
+    Array<{
+      id: number;
+      top: number;
+      left: number;
+      duration: number;
+      delay: number;
+    }>
+  >([]);
 
   useEffect(() => {
     // 小判の3D位置を生成
@@ -36,56 +51,118 @@ export default function OmikujiMainPageTheatre() {
         (Math.random() - 0.5) * 6 + 2,
         (Math.random() - 0.5) * 4,
       ] as [number, number, number],
-      text: i % 3 === 0 ? '大' : i % 3 === 1 ? '吉' : '福',
+      text: i % 3 === 0 ? "大" : i % 3 === 1 ? "吉" : "福",
       delay: Math.random() * 3,
     }));
     setCoins(coinArray);
+
+    // ボタン周辺の小判（左右から浮かぶ）
+    const coinButtonArray = [
+      { id: 0, side: "left" as const, delay: 0 },
+      { id: 1, side: "right" as const, delay: 0.3 },
+    ];
+    setButtonCoins(coinButtonArray);
+
+    // 星の位置とアニメーション値を生成（一度だけ）
+    const starArray = Array.from({ length: 50 }, (_, i) => ({
+      id: i,
+      top: Math.random() * 100,
+      left: Math.random() * 100,
+      duration: 2 + Math.random() * 2,
+      delay: Math.random() * 2,
+    }));
+    setStars(starArray);
   }, []);
 
   const handleDrawFortune = () => {
-    router.push('/omikuji-theatre/shake');
+    router.push("/omikuji-theatre/shake");
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-[#1B365D] via-[#193e5b] to-[#0f2740]">
-      {/* 背景の花火（2D） */}
-      <div className="absolute inset-0 pointer-events-none">
-        {[...Array(3)].map((_, i) => (
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-[#1B365D] via-[#0f2740] to-black">
+      {/* 背景の夜空と星 */}
+      <div className="absolute inset-0">
+        {stars.map((star) => (
           <motion.div
-            key={i}
-            className="absolute w-2 h-2 bg-yellow-300 rounded-full opacity-40"
+            key={star.id}
+            className="absolute w-1 h-1 bg-white rounded-full"
             style={{
-              top: `${20 + i * 30}%`,
-              left: `${10 + i * 40}%`,
+              top: `${star.top}%`,
+              left: `${star.left}%`,
             }}
             animate={{
-              scale: [1, 1.5, 1],
-              opacity: [0.4, 0.8, 0.4],
+              opacity: [0.3, 1, 0.3],
+              scale: [1, 1.2, 1],
             }}
             transition={{
-              duration: 3,
+              duration: star.duration,
               repeat: Infinity,
-              delay: i * 0.5,
+              delay: star.delay,
             }}
           />
         ))}
       </div>
 
-      {/* 上部の提灯 */}
-      <div className="absolute top-0 left-0 right-0 flex justify-center gap-4 pt-4 z-10">
-        {[...Array(5)].map((_, i) => (
+      {/* 背景の花火（金色） */}
+      <div className="absolute inset-0 pointer-events-none z-5">
+        {[...Array(8)].map((_, i) => (
           <motion.div
             key={i}
-            className="relative w-16 h-20"
+            className="absolute"
+            style={{
+              top: `${15 + (i % 3) * 30}%`,
+              left: `${10 + (i % 4) * 25}%`,
+            }}
             animate={{
-              x: [0, -5, 5, 0],
-              rotate: [0, -2, 2, 0],
+              scale: [0, 1.5, 2, 0],
+              opacity: [0, 1, 1, 0],
             }}
             transition={{
-              duration: 3,
+              duration: 2,
+              delay: i * 0.5,
+              repeat: Infinity,
+              repeatDelay: 1,
+            }}
+          >
+            <div className="w-4 h-4 bg-yellow-400 rounded-full shadow-[0_0_30px_#FFD700]" />
+            {[...Array(8)].map((_, j) => (
+              <motion.div
+                key={j}
+                className="absolute top-1/2 left-1/2 w-2 h-2 bg-yellow-400 rounded-full"
+                style={{
+                  transformOrigin: "0 0",
+                }}
+                animate={{
+                  x: Math.cos((j * 45 * Math.PI) / 180) * 40,
+                  y: Math.sin((j * 45 * Math.PI) / 180) * 40,
+                  scale: [1, 0],
+                  opacity: [1, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  delay: i * 0.5,
+                  repeat: Infinity,
+                  repeatDelay: 1,
+                }}
+              />
+            ))}
+          </motion.div>
+        ))}
+      </div>
+
+      {/* 上部の提灯（赤い提灯の列） */}
+      <div className="absolute top-0 left-0 right-0 flex justify-center gap-2 md:gap-4 pt-2 md:pt-4 z-10 overflow-hidden">
+        {[...Array(7)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="relative w-12 h-16 md:w-16 md:h-20"
+            animate={{
+              y: [0, -3, 0],
+            }}
+            transition={{
+              duration: 2 + Math.random(),
               repeat: Infinity,
               delay: i * 0.2,
-              ease: 'easeInOut',
             }}
           >
             <div className="absolute inset-0 bg-red-600 rounded-t-full rounded-b-none shadow-[0_0_20px_rgba(239,68,68,0.8)]" />
@@ -100,10 +177,25 @@ export default function OmikujiMainPageTheatre() {
                 repeat: Infinity,
               }}
             />
-            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-8 bg-red-800" />
-            <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-yellow-300 rounded-full" />
+            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-6 md:h-8 bg-red-800" />
+            <div className="absolute -bottom-4 md:-bottom-6 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-yellow-300 rounded-full" />
           </motion.div>
         ))}
+      </div>
+
+      {/* 背景の市場の屋台と人のシルエット */}
+      <div className="absolute top-1/3 left-0 right-0 z-5 opacity-30">
+        <div className="flex justify-around items-end h-32 md:h-40">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="relative">
+              {/* 屋台のシルエット */}
+              <div className="w-16 md:w-24 h-12 md:h-16 bg-black/40 rounded-t-lg" />
+              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-20 md:w-28 h-1 bg-black/30" />
+              {/* 人のシルエット */}
+              <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-4 h-8 bg-black/30 rounded-full" />
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* タイトルとサブタイトル */}
@@ -111,7 +203,9 @@ export default function OmikujiMainPageTheatre() {
         <h1 className="text-5xl md:text-7xl font-bold text-white mb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] tracking-wider">
           EDO ICHIBA
         </h1>
-        <p className="text-white text-sm md:text-base font-medium">Omikuji Fortune-Telling</p>
+        <p className="text-white text-sm md:text-base font-medium">
+          Omikuji Fortune-Telling
+        </p>
       </div>
 
       {/* 左右の暖簾（青海波パターンと金色の楕円） */}
@@ -169,13 +263,14 @@ export default function OmikujiMainPageTheatre() {
         <motion.div
           className="text-7xl md:text-9xl font-bold text-white"
           style={{
-            textShadow: '0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.3)',
+            textShadow:
+              "0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.3)",
           }}
           animate={{
             textShadow: [
-              '0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.3)',
-              '0 0 30px rgba(255,255,255,0.7), 0 0 60px rgba(255,255,255,0.5)',
-              '0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.3)',
+              "0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.3)",
+              "0 0 30px rgba(255,255,255,0.7), 0 0 60px rgba(255,255,255,0.5)",
+              "0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(255,255,255,0.3)",
             ],
           }}
           transition={{
@@ -198,7 +293,7 @@ export default function OmikujiMainPageTheatre() {
       </div>
 
       {/* デバッグコントロール（開発環境のみ） */}
-      {process.env.NODE_ENV === 'development' && (
+      {process.env.NODE_ENV === "development" && (
         <div className="absolute top-20 right-4 z-50 bg-black/50 p-2 rounded text-white text-xs">
           <label className="flex items-center gap-2 mb-2">
             <input
@@ -228,12 +323,12 @@ export default function OmikujiMainPageTheatre() {
               key={coin.id}
               className="absolute top-1/2 transform -translate-y-1/2"
               style={{
-                [coin.side]: coin.side === 'left' ? '-60px' : '-60px',
-                right: coin.side === 'right' ? '-60px' : 'auto',
-                left: coin.side === 'left' ? '-60px' : 'auto',
+                [coin.side]: coin.side === "left" ? "-60px" : "-60px",
+                right: coin.side === "right" ? "-60px" : "auto",
+                left: coin.side === "left" ? "-60px" : "auto",
               }}
               animate={{
-                x: coin.side === 'left' ? [0, 20, 0] : [0, -20, 0],
+                x: coin.side === "left" ? [0, 20, 0] : [0, -20, 0],
                 y: [0, -10, 0],
                 rotate: [0, 15, 0],
               }}
@@ -271,12 +366,12 @@ export default function OmikujiMainPageTheatre() {
             <motion.div
               className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
               animate={{
-                x: ['-100%', '200%'],
+                x: ["-100%", "200%"],
               }}
               transition={{
                 duration: 2,
                 repeat: Infinity,
-                ease: 'linear',
+                ease: "linear",
               }}
             />
           </motion.button>
@@ -303,4 +398,3 @@ export default function OmikujiMainPageTheatre() {
     </div>
   );
 }
-
