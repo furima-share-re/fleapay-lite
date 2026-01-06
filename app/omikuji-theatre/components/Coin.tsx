@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Mesh } from 'three';
+import { Group } from 'three';
 import { Text } from '@react-three/drei';
 import { editable as e } from '@theatre/r3f';
 import type { ISheet } from '@theatre/core';
@@ -26,38 +26,40 @@ export default function Coin({
   sheet,
   theatreKey,
 }: CoinProps) {
-  const meshRef = useRef<Mesh>(null);
+  const groupRef = useRef<Group>(null);
 
   useFrame((state, delta) => {
-    if (meshRef.current && !sheet) {
+    if (groupRef.current && !sheet) {
       // Theatre.jsが使われていない場合のフォールバック
-      meshRef.current.rotation.y += 0.05;
-      meshRef.current.rotation.z += 0.02;
+      groupRef.current.rotation.y += 0.05;
+      groupRef.current.rotation.z += 0.02;
 
       if (isSpiraling) {
         const time = state.clock.elapsedTime + delay;
         const radius = 1 + time * 0.5;
         const angle = time * 2;
-        meshRef.current.position.x = Math.cos(angle) * radius;
-        meshRef.current.position.y = Math.sin(angle) * radius + 2;
-        meshRef.current.position.z = Math.sin(angle * 0.5) * 0.5;
+        groupRef.current.position.x = Math.cos(angle) * radius;
+        groupRef.current.position.y = Math.sin(angle) * radius + 2;
+        groupRef.current.position.z = Math.sin(angle * 0.5) * 0.5;
       } else {
-        meshRef.current.position.y -= delta * 2;
-        if (meshRef.current.position.y < -5) {
-          meshRef.current.position.y = 8;
+        groupRef.current.position.y -= delta * 2;
+        if (groupRef.current.position.y < -5) {
+          groupRef.current.position.y = 8;
         }
       }
 
-      const intensity = 0.5 + Math.sin(state.clock.elapsedTime * 3 + delay) * 0.3;
-      if (meshRef.current.material) {
-        (meshRef.current.material as any).emissiveIntensity = intensity;
+      // Update material emissive intensity on the first child mesh
+      const firstChild = groupRef.current.children[0] as any;
+      if (firstChild?.material) {
+        const intensity = 0.5 + Math.sin(state.clock.elapsedTime * 3 + delay) * 0.3;
+        firstChild.material.emissiveIntensity = intensity;
       }
     }
   });
 
   return (
     <group
-      ref={meshRef}
+      ref={groupRef}
       position={position}
       rotation={rotation}
     >

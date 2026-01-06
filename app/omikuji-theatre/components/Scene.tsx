@@ -77,33 +77,17 @@ export default function Scene({
           }),
         });
 
-        // 振るアニメーション
-        boxObj.props.position.x.animate({
-          keyframes: [
-            { value: 0, at: 0 },
-            { value: 0.1, at: 0.1 },
-            { value: -0.1, at: 0.2 },
-            { value: 0, at: 0.3 },
-          ],
-          iterationCount: Infinity,
-        });
-
-        boxObj.props.rotation.x.animate({
-          keyframes: [
-            { value: 0, at: 0 },
-            { value: 0.2, at: 0.1 },
-            { value: -0.2, at: 0.2 },
-            { value: 0, at: 0.3 },
-          ],
-          iterationCount: Infinity,
-        });
+        // 振るアニメーション - Theatre.jsのアニメーションはStudioで設定するか、
+        // またはsequenceを使用します。ここではオブジェクトの定義のみ行います。
+        // 実際のアニメーションは@theatre/r3fのeditableコンポーネントが自動的に処理します。
       }
 
       setProject(theatreProject);
       setSheet(theatreSheet);
 
       return () => {
-        theatreProject.detach();
+        // Theatre.jsプロジェクトのクリーンアップ
+        // detach()メソッドは存在しないため、必要に応じて他のクリーンアップ処理を追加
       };
     }
   }, [enableTheatre, isShaking]);

@@ -42,7 +42,6 @@ export default function OmikujiBox({
       ref={boxRef}
       theatreKey="OmikujiBox"
       position={position}
-      sheet={sheet}
     >
       {/* メインの箱 */}
       <e.mesh
@@ -50,7 +49,6 @@ export default function OmikujiBox({
         theatreKey="BoxMesh"
         castShadow
         receiveShadow
-        sheet={sheet}
       >
         <boxGeometry args={[2, 2, 2]} />
         <meshStandardMaterial
@@ -124,7 +122,8 @@ export default function OmikujiBox({
         color="#ffffff"
         anchorX="center"
         anchorY="middle"
-        opacity={0.4}
+        material-opacity={0.4}
+        material-transparent
       >
         おみくじ
       </Text>
