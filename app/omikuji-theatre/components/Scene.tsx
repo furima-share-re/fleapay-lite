@@ -97,35 +97,46 @@ export default function Scene({
             }
           }
 
-          // 開発環境でのみ@theatre/studioをロード（プロジェクト状態の管理のため）
-          // 注意: ストレージをクリアした後に初期化することで、studioがクリーンな状態で開始される
+          // @theatre/studioをロード（開発環境と本番環境の両方で試行）
+          // Theatre.jsはstudioなしでは正しく動作しないため、studioのロードを試みる
           let studioLoaded = false;
-          if (process.env.NODE_ENV === 'development') {
-            try {
-              const studio = await import('@theatre/studio');
+          try {
+            const studio = await import('@theatre/studio');
+            // studioが利用可能な場合のみ初期化
+            if (studio && studio.default) {
               studio.default.initialize();
               studioLoaded = true;
-            } catch (studioError) {
-              // @theatre/studioのロードに失敗しても続行
-              console.warn('Failed to load @theatre/studio:', studioError);
             }
+          } catch (studioError) {
+            // @theatre/studioが利用できない場合（本番環境など）
+            // Theatre.jsはstudioなしでは動作しないため、Theatre.jsを無効化
+            console.log('@theatre/studio not available. Theatre.js requires studio to function properly. Disabling Theatre.js.');
+            setProject(null);
+            setSheet(null);
+            return false;
           }
 
-          // プロジェクト名を固定（タイムスタンプを使うと毎回新しいプロジェクトが作成され、状態管理が複雑になる）
+          // studioがロードされていない場合、Theatre.jsを無効化
+          if (!studioLoaded) {
+            console.warn('Theatre.js studio not loaded. Disabling Theatre.js.');
+            setProject(null);
+            setSheet(null);
+            return false;
+          }
+
+          // プロジェクト名を固定
           const projectName = 'Omikuji Scene';
           
-          // Theatre.jsプロジェクトの初期化
-          // studioがロードされている場合は自動的に状態が管理される
-          // studioがロードされていない場合でも、configを渡さずに初期化できる
-          // Theatre.jsは自動的に空のプロジェクト状態を作成する
+          // Theatre.jsプロジェクトの初期化（studioがロードされているため、configなしで初期化可能）
           let theatreProject;
           try {
             theatreProject = getProject(projectName);
-          } catch (projectError) {
-            // getProjectでエラーが発生した場合、プロジェクト名を変更して再試行
-            console.warn('Failed to get project with default name, trying with timestamp:', projectError);
-            const fallbackProjectName = `Omikuji Scene ${Date.now()}`;
-            theatreProject = getProject(fallbackProjectName);
+          } catch (projectError: any) {
+            // エラーが発生した場合、Theatre.jsを無効化
+            console.error('Theatre.js project initialization failed. Disabling Theatre.js:', projectError);
+            setProject(null);
+            setSheet(null);
+            return false;
           }
 
           const theatreSheet = theatreProject.sheet('Main Sheet');
