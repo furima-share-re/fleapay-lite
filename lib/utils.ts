@@ -36,6 +36,13 @@ function getBaseUrl(): string {
   if (process.env.APP_BASE_URL) {
     return process.env.APP_BASE_URL.replace(/\/+$/, '');
   }
+  // Vercelの本番環境では、VERCEL_PROJECT_PRODUCTION_URLまたはNEXT_PUBLIC_VERCEL_URLを使用
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return process.env.VERCEL_PROJECT_PRODUCTION_URL.replace(/\/+$/, '');
+  }
+  if (process.env.NEXT_PUBLIC_VERCEL_URL) {
+    return `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`.replace(/\/+$/, '');
+  }
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`.replace(/\/+$/, '');
   }
@@ -47,8 +54,61 @@ export function isSameOrigin(request: NextRequest | Request): boolean {
   const BASE_URL = getBaseUrl();
   if (!BASE_URL) return true;
   
-  const referer = request.headers.get('referer') || request.headers.get('origin') || '';
-  return referer.startsWith(BASE_URL);
+  try {
+    // リクエストのホストを取得
+    const host = request.headers.get('host') || '';
+    const referer = request.headers.get('referer') || '';
+    const origin = request.headers.get('origin') || '';
+    
+    // ホストがBASE_URLに含まれるかチェック
+    if (host && BASE_URL.includes(host)) {
+      return true;
+    }
+    
+    // refererまたはoriginがBASE_URLで始まるかチェック
+    if (referer && referer.startsWith(BASE_URL)) {
+      return true;
+    }
+    
+    if (origin && origin.startsWith(BASE_URL)) {
+      return true;
+    }
+    
+    // 本番環境では、同じドメインからのリクエストを許可
+    // (HTMLファイルから直接APIを呼び出す場合など)
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        // request.urlがNextRequestの場合は文字列、Requestの場合はURLオブジェクト
+        const requestUrlStr = typeof request.url === 'string' ? request.url : request.url?.toString() || '';
+        if (requestUrlStr) {
+          const requestUrl = new URL(requestUrlStr, BASE_URL);
+          const baseUrlObj = new URL(BASE_URL);
+          
+          if (requestUrl.hostname === baseUrlObj.hostname) {
+            return true;
+          }
+        }
+      } catch (urlError) {
+        // URL解析エラーは無視して次のチェックに進む
+      }
+    }
+    
+    // デバッグログ（本番環境では出力しない）
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[isSameOrigin] Check failed:', {
+        BASE_URL,
+        host,
+        referer,
+        origin,
+        requestUrl: typeof request.url === 'string' ? request.url : request.url?.toString()
+      });
+    }
+  } catch (error) {
+    // エラーが発生した場合は、セキュリティのためfalseを返す
+    console.error('[isSameOrigin] Error:', error);
+  }
+  
+  return false;
 }
 
 // 監査ログ
