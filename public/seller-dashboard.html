@@ -1400,10 +1400,14 @@
         // ★ 必須: orderIdをdata属性に保存
         li.dataset.orderId = tx.orderId || "";
 
-        // 支払い方法の判定（payment_methodを優先、なければisCashを使用）
+        // 支払い方法の判定（isCash/is_cashを最優先で使用）
+        // ⚠️ paymentMethodはDBに保存されていない計算フィールドのため、isCashを優先
+        const isCash = !!(tx.isCash || tx.is_cash);
+        // paymentMethodは互換性のため残すが、判定には使用しない
         const paymentMethod = tx.paymentMethod || tx.payment_method || '';
-        const isCash = !!(tx.isCash || tx.is_cash || paymentMethod === 'cash');
-        li.classList.add(isCash ? "tx-cash" : "tx-cashless");
+        // isCashがtrueの場合は確実に現金、falseの場合はStripe決済の有無で判定
+        const isActuallyCash = isCash;
+        li.classList.add(isActuallyCash ? "tx-cash" : "tx-cashless");
 
         // created(秒) or createdAt(ISO文字列) のどちらでもOKにする
         let created = null;
@@ -1423,15 +1427,14 @@
 
         // 🟦 (B) 未分類フォルダ表示
         const isUncategorized =
-          (tx.is_cash || tx.isCash || paymentMethod === 'cash') &&
+          isActuallyCash &&
           !(tx.rawCategory || tx.raw_category);
         const uncategorizedBadge = isUncategorized
           ? '<span class="badge badge-cb-pending">未分類</span>'
           : '';
 
         // 支払い方法バッジ（QR / 現金）
-        // payment_methodを優先、なければisCashを使用して判定
-        const isActuallyCash = paymentMethod === 'cash' || isCash;
+        // isActuallyCashは上で既に判定済み
         const paymentBadge = isActuallyCash
           ? '<span class="badge tx-badge-cash">現金</span>'
           : '<span class="badge tx-badge-cashless">QR / カード</span>';
