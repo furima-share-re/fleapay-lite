@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { sellerId, latest, summary, orderId: bodyOrderId } = body || {};
+    const { sellerId, amount: bodyAmount, summary, orderId: bodyOrderId } = body || {};
     const orderId = bodyOrderId || request.nextUrl.searchParams.get('order') || '';
 
     if (!sellerId && !orderId) {
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // 新規注文作成
-      const amount = latest?.amount || 0;
+      const amount = bodyAmount ? Number(bodyAmount) : 0;
       const nextOrderNo = await getNextOrderNo(prisma, sellerId);
       
       order = await prisma.order.create({
