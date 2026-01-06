@@ -48,11 +48,15 @@ export async function POST(request: NextRequest) {
 
     // orderの取得または作成
     let order;
+    let orderMetadata;
     if (orderId) {
       order = await prisma.order.findFirst({
         where: {
           id: orderId,
           deletedAt: null,
+        },
+        include: {
+          orderMetadata: true,
         },
       });
       if (!order) {
@@ -61,6 +65,7 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
+      orderMetadata = order.orderMetadata;
     } else {
       // 新規注文作成
       const amount = bodyAmount ? Number(bodyAmount) : 0;
@@ -74,7 +79,11 @@ export async function POST(request: NextRequest) {
           summary: summary || "",
           status: 'pending',
         },
+        include: {
+          orderMetadata: true,
+        },
       });
+      orderMetadata = order.orderMetadata;
     }
 
     // 金額バリデーション: 0円以下の注文は決済させない
@@ -108,7 +117,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 既に支払い済みの場合はエラー
+    // ★ バリデーション: 現金決済ではない
+    if (orderMetadata?.isCash) {
+      return NextResponse.json(
+        {
+          error: 'cash_payment_order',
+          message: 'This is a cash payment order',
+        },
+        { status: 400 }
+      );
+    }
+
+    // ★ バリデーション: 既に決済完了していない
+    if (orderMetadata?.paymentState === 'stripe_completed') {
+      return NextResponse.json(
+        {
+          error: 'already_paid',
+          message: 'Order already paid',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 既に支払い済みの場合はエラー（旧コードとの互換性）
     if (order.status === 'paid') {
       return NextResponse.json(
         {

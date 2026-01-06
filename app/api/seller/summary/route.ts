@@ -81,6 +81,7 @@ export async function GET(request: NextRequest) {
     let hasCostAmount = false;
     let hasDeletedAt = false;
     let hasWorldPrice = false;
+    let hasPaymentState = false;
 
     try {
       const tableCheck = await prisma.$queryRaw<Array<{
@@ -89,13 +90,15 @@ export async function GET(request: NextRequest) {
         cost_amount_exists: boolean;
         deleted_at_exists: boolean;
         world_price_exists: boolean;
+        payment_state_exists: boolean;
       }>>`
         SELECT 
           EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'order_metadata') as order_metadata_exists,
           EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'buyer_attributes') as buyer_attributes_exists,
           EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'cost_amount') as cost_amount_exists,
           EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'deleted_at') as deleted_at_exists,
-          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'world_price_median') as world_price_exists
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'world_price_median') as world_price_exists,
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'order_metadata' AND column_name = 'payment_state') as payment_state_exists
       `;
       
       if (tableCheck.length > 0) {
@@ -104,6 +107,7 @@ export async function GET(request: NextRequest) {
         hasCostAmount = tableCheck[0].cost_amount_exists || false;
         hasDeletedAt = tableCheck[0].deleted_at_exists || false;
         hasWorldPrice = tableCheck[0].world_price_exists || false;
+        hasPaymentState = tableCheck[0].payment_state_exists || false;
       }
       
       console.warn(`[seller/summary] テーブル存在確認:`, {
@@ -112,6 +116,7 @@ export async function GET(request: NextRequest) {
         cost_amount: hasCostAmount,
         deleted_at: hasDeletedAt,
         world_price: hasWorldPrice,
+        payment_state: hasPaymentState,
       });
     } catch (checkError: unknown) {
       const message = checkError instanceof Error ? checkError.message : 'Unknown error';
@@ -119,11 +124,48 @@ export async function GET(request: NextRequest) {
       // エラーが発生した場合は、安全のため全てfalseとして扱う（旧DB想定）
     }
 
-    // ① 今日の売上KPI（旧DB対応: order_metadataが存在しない場合はstripe_paymentsのみ）
+    // ① 今日の売上KPI（★ payment_stateを使用してシンプルに集計）
     try {
       console.warn(`[seller/summary] kpiToday query開始`);
         // Build query conditionally based on table existence
-        if (hasDeletedAt) {
+        if (hasPaymentState && hasDeletedAt) {
+          // ★ 新しいクエリ: payment_stateを使用（シンプル！）
+          kpiToday = await prisma.$queryRaw`
+            SELECT
+              COUNT(*)::int AS cnt,
+              COALESCE(SUM(
+                CASE 
+                  WHEN om.payment_state = 'stripe_completed' THEN sp.amount_gross
+                  WHEN om.payment_state = 'cash_completed' THEN o.amount
+                  ELSE 0
+                END
+              ), 0)::int AS gross,
+              COALESCE(SUM(
+                CASE 
+                  WHEN om.payment_state = 'stripe_completed' THEN sp.amount_net
+                  WHEN om.payment_state = 'cash_completed' THEN o.amount
+                  ELSE 0
+                END
+              ), 0)::int AS net,
+              COALESCE(SUM(
+                CASE 
+                  WHEN om.payment_state = 'stripe_completed' THEN COALESCE(sp.amount_fee, 0)
+                  ELSE 0
+                END
+              ), 0)::int AS fee,
+              COALESCE(SUM(o.cost_amount), 0)::int AS cost
+            FROM orders o
+            JOIN order_metadata om ON o.id = om.order_id
+            LEFT JOIN stripe_payments sp ON o.id = sp.order_id
+            WHERE o.seller_id = ${sellerId}
+              AND o.created_at >= ${todayStart}
+              AND o.created_at <  ${tomorrowStart}
+              AND o.deleted_at IS NULL
+              AND om.payment_state IN ('cash_completed', 'stripe_completed')
+          `;
+          console.warn(`[seller/summary] kpiToday query成功 (payment_state使用):`, kpiToday);
+        } else if (hasDeletedAt) {
+          // 旧クエリ: payment_stateが存在しない場合
           kpiToday = await prisma.$queryRaw`
             SELECT
               COUNT(*)::int AS cnt,
@@ -236,10 +278,44 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // ② 累計売上KPI
+      // ② 累計売上KPI（★ payment_stateを使用してシンプルに集計）
       try {
         console.warn(`[seller/summary] kpiTotal query開始`);
-        if (hasDeletedAt) {
+        if (hasPaymentState && hasDeletedAt) {
+          // ★ 新しいクエリ: payment_stateを使用（シンプル！）
+          kpiTotal = await prisma.$queryRaw`
+            SELECT
+              COALESCE(SUM(
+                CASE 
+                  WHEN om.payment_state = 'stripe_completed' THEN sp.amount_gross
+                  WHEN om.payment_state = 'cash_completed' THEN o.amount
+                  ELSE 0
+                END
+              ), 0)::int AS gross,
+              COALESCE(SUM(
+                CASE 
+                  WHEN om.payment_state = 'stripe_completed' THEN sp.amount_net
+                  WHEN om.payment_state = 'cash_completed' THEN o.amount
+                  ELSE 0
+                END
+              ), 0)::int AS net,
+              COALESCE(SUM(
+                CASE 
+                  WHEN om.payment_state = 'stripe_completed' THEN COALESCE(sp.amount_fee, 0)
+                  ELSE 0
+                END
+              ), 0)::int AS fee,
+              COALESCE(SUM(o.cost_amount), 0)::int AS cost
+            FROM orders o
+            JOIN order_metadata om ON o.id = om.order_id
+            LEFT JOIN stripe_payments sp ON o.id = sp.order_id
+            WHERE o.seller_id = ${sellerId}
+              AND o.deleted_at IS NULL
+              AND om.payment_state IN ('cash_completed', 'stripe_completed')
+          `;
+          console.warn(`[seller/summary] kpiTotal query成功 (payment_state使用):`, kpiTotal);
+        } else if (hasDeletedAt) {
+          // 旧クエリ: payment_stateが存在しない場合
           kpiTotal = await prisma.$queryRaw`
             SELECT
               COALESCE(SUM(

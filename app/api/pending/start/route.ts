@@ -38,8 +38,23 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    // ⚠️ paymentMethodはDBに保存しない（isCashに変換して保存）
+    // ★ バリデーション: paymentMethodは必須
     const { sellerId: rawSellerId, amount, summary, imageData, aiAnalysis, paymentMethod, costAmount } = body || {};
+    
+    if (!paymentMethod) {
+      return NextResponse.json(
+        { error: 'paymentMethod is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!['cash', 'cashless'].includes(paymentMethod)) {
+      return NextResponse.json(
+        { error: 'Invalid paymentMethod. Must be "cash" or "cashless"' },
+        { status: 400 }
+      );
+    }
+
     // seller_idエイリアスを正規化
     const sellerId = normalizeSellerId(rawSellerId || '');
     const amt = Number(amount);
@@ -151,13 +166,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // order_metadataに現金支払いフラグを保存
-    // ⚠️ paymentMethodはDBに保存しない。isCash（Boolean）のみ保存する
+    // order_metadataに現金支払いフラグとpayment_stateを保存
+    // ★ payment_stateを設定
     const isCash = paymentMethod === 'cash';
+    const paymentState = isCash ? 'cash_completed' : 'stripe_pending';
     await prisma.orderMetadata.upsert({
       where: { orderId: order.id },
-      update: { isCash: isCash, updatedAt: new Date() },
-      create: { orderId: order.id, isCash: isCash },
+      update: { 
+        isCash: isCash, 
+        paymentState: paymentState,
+        updatedAt: new Date() 
+      },
+      create: { 
+        orderId: order.id, 
+        isCash: isCash,
+        paymentState: paymentState
+      },
     });
 
     audit('pending_order_created', { orderId: order.id, sellerId, orderNo, amount: amt, paymentMethod, isCash });
