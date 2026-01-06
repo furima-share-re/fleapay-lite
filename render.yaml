@@ -4,6 +4,9 @@ services:
     env: node
     plan: starter
     region: singapore
+    # ビルド最適化: npm ci の方が高速（package-lock.jsonが必要）
+    # 現在はnpm installを使用（互換性のため）
+    # 最適化が必要な場合: buildCommand: npm ci && npm run build
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
@@ -35,6 +38,8 @@ services:
     env: node
     plan: starter
     region: singapore
+    # プレビュー環境: 手動デプロイを推奨（ビルド時間削減のため）
+    # Render Dashboardで Auto-Deploy を無効化することを推奨
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:

@@ -3,6 +3,18 @@ const nextConfig = {
   // Phase 2.6: Express.js廃止 - Next.js完全移行
   output: 'standalone',
   
+  // ビルド最適化: 本番環境でソースマップを無効化（ビルド時間短縮）
+  productionBrowserSourceMaps: false,
+  
+  // SWCによる高速化（Next.js 12+でデフォルト有効）
+  swcMinify: true,
+  
+  // 実験的機能: 並列ビルドを有効化（ビルド時間短縮）
+  experimental: {
+    // ページの並列コンパイルを有効化
+    optimizeCss: true,
+  },
+  
   // 環境変数の設定
   env: {
     // 既存の環境変数をNext.jsでも使用可能にする

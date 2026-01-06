@@ -9,7 +9,16 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2025-10-29.clover'
 });
 
-const BASE_URL = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const getBaseUrl = () => {
+  if (process.env.APP_BASE_URL) {
+    return process.env.APP_BASE_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`.replace(/\/+$/, '');
+  }
+  return 'http://localhost:3000';
+};
+const BASE_URL = getBaseUrl();
 const RATE_LIMIT_MAX_CHECKOUT = parseInt(process.env.RATE_LIMIT_MAX_CHECKOUT || "12", 10);
 
 export async function POST(request: NextRequest) {
