@@ -172,6 +172,19 @@ export async function POST(request: NextRequest) {
               '[WEBHOOK] Order status updated to "paid" for orderId=',
               orderId
             );
+
+            // ★ order_metadata.payment_state更新
+            await prisma.orderMetadata.update({
+              where: { orderId: orderId },
+              data: {
+                paymentState: 'stripe_completed',
+                updatedAt: new Date(),
+              },
+            });
+            console.warn(
+              '[WEBHOOK] Payment state updated to "stripe_completed" for orderId=',
+              orderId
+            );
           }
 
           audit('pi_succeeded', {

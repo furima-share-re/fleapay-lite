@@ -59,6 +59,9 @@ export async function POST(request: NextRequest) {
     // is_cash が送られてこなかった場合は、既存の値を維持する
     const normalizedIsCash = typeof is_cash === 'boolean' ? is_cash : null;
 
+    // paymentState を決定: is_cash が true なら cash_completed、それ以外は stripe_pending
+    const paymentState = normalizedIsCash === true ? 'cash_completed' : 'stripe_pending';
+
     // UPSERT
     await prisma.orderMetadata.upsert({
       where: { orderId },
@@ -67,12 +70,15 @@ export async function POST(request: NextRequest) {
         category: category || null,
         buyerLanguage: buyer_language || null,
         isCash: normalizedIsCash ?? false,
+        paymentState,
       },
       update: {
         category: category !== undefined ? category : undefined,
         buyerLanguage: buyer_language !== undefined ? buyer_language : undefined,
         // is_cash が null のときは既存の値を残す
         isCash: normalizedIsCash !== null ? normalizedIsCash : undefined,
+        // is_cash が更新される場合は paymentState も更新して整合性を保つ
+        paymentState: normalizedIsCash !== null ? (normalizedIsCash === true ? 'cash_completed' : 'stripe_pending') : undefined,
       },
     });
 

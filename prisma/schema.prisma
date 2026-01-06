@@ -180,6 +180,7 @@ model OrderMetadata {
   category     String?
   buyerLanguage String?  @map("buyer_language")
   isCash       Boolean   @default(false) @map("is_cash")
+  paymentState String    @map("payment_state") // 'cash_completed' | 'stripe_pending' | 'stripe_completed'
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -187,6 +188,7 @@ model OrderMetadata {
 
   @@index([orderId], name: "order_metadata_order_idx")
   @@index([isCash], name: "order_metadata_is_cash_idx")
+  @@index([paymentState], name: "idx_order_metadata_payment_state")
   @@map("order_metadata")
 }
 
