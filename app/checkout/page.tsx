@@ -34,6 +34,12 @@ function CheckoutContent() {
     if (nav.startsWith('en')) setLang('en');
     else if (nav.startsWith('zh')) setLang('zh');
     else setLang('ja');
+    
+    // bodyにクラスを追加して背景スタイルを適用
+    document.body.classList.add('checkout-page');
+    return () => {
+      document.body.classList.remove('checkout-page');
+    };
   }, []);
 
   useEffect(() => {
@@ -334,30 +340,6 @@ function CheckoutContent() {
             --radius-xl: 20px;
           }
           * { box-sizing: border-box; }
-          :global(html), :global(body) { 
-            height: 100%; 
-            margin: 0; 
-          }
-          :global(body) {
-            font-family: "Nunito Sans", "Noto Sans JP", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
-            color: var(--sumi);
-            background: var(--kinari) !important;
-            background-image: radial-gradient(1200px 700px at 80% -10%, rgba(230,57,70,.06) 0%, transparent 60%),
-                              radial-gradient(1200px 700px at -20% 110%, rgba(27,54,93,.08) 0%, transparent 60%) !important;
-            background-attachment: fixed !important;
-          }
-          /* 和紙の微細ノイズ */
-          :global(body::before) {
-            content: "";
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            opacity: .25;
-            z-index: -1;
-            background-image: radial-gradient(circle at 25% 25%, rgba(255,255,255,.9) 1px, transparent 1px),
-                              radial-gradient(circle at 75% 75%, rgba(27,54,93,.12) 1px, transparent 1px);
-            background-size: 60px 60px, 80px 80px;
-          }
           .checkout-container {
             max-width: 640px;
             margin: 0 auto;

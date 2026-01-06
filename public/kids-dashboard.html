@@ -956,8 +956,12 @@
             const dStr = jst.toISOString().slice(0,10);
             if (dStr !== todayStr) return;
 
-            // QR / カード決済(paymentMethod === 'card' を想定)
-            if (tx.paymentMethod === "card") {
+            // QR / カード決済（isCashがfalseでStripe決済がある場合）
+            // ⚠️ paymentMethodはDBに保存されていないため、isCashとStripe決済の有無で判定
+            const isCash = !!(tx.isCash || tx.is_cash);
+            if (!isCash) {
+              // isCashがfalseの場合、Stripe決済があればカード決済とみなす
+              // paymentMethodは計算フィールドのため、isCashを優先
               cashlessToday++;
             }
 

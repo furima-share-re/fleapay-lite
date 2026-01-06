@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    // ⚠️ paymentMethodはDBに保存しない（isCashに変換して保存）
     const { sellerId: rawSellerId, amount, summary, imageData, aiAnalysis, paymentMethod, costAmount } = body || {};
     // seller_idエイリアスを正規化
     const sellerId = normalizeSellerId(rawSellerId || '');
@@ -151,6 +152,7 @@ export async function POST(request: NextRequest) {
     }
 
     // order_metadataに現金支払いフラグを保存
+    // ⚠️ paymentMethodはDBに保存しない。isCash（Boolean）のみ保存する
     const isCash = paymentMethod === 'cash';
     await prisma.orderMetadata.upsert({
       where: { orderId: order.id },

@@ -438,6 +438,7 @@ export async function GET(request: NextRequest) {
               o.world_price_sample_count,
               om.is_cash,
               om.category            AS raw_category,
+              -- ⚠️ payment_methodは計算フィールド（DBに保存しない）
               CASE
                 WHEN om.is_cash THEN 'cash'
                 WHEN sp.id IS NOT NULL THEN 'card'
@@ -482,6 +483,7 @@ export async function GET(request: NextRequest) {
               o.world_price_sample_count,
               om.is_cash,
               om.category            AS raw_category,
+              -- ⚠️ payment_methodは計算フィールド（DBに保存しない）
               CASE
                 WHEN om.is_cash THEN 'cash'
                 WHEN sp.id IS NOT NULL THEN 'card'
@@ -534,6 +536,7 @@ export async function GET(request: NextRequest) {
               0                        AS world_price_sample_count,
               false                    AS is_cash,
               NULL                     AS raw_category,
+              -- ⚠️ payment_methodは計算フィールド（DBに保存しない）
               CASE
                 WHEN sp.id IS NOT NULL THEN 'card'
                 ELSE 'other'
@@ -671,6 +674,7 @@ export async function GET(request: NextRequest) {
         worldSampleCount: r.world_price_sample_count,
         isCash: !!r.is_cash,
         rawCategory: r.raw_category,
+        // ⚠️ paymentMethodは計算フィールド（DBに保存されていない、互換性のため返す）
         paymentMethod: r.payment_method,
         customerType,
         gender,
