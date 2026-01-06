@@ -53,25 +53,53 @@ export default function Scene({
 
   useEffect(() => {
     if (enableTheatre) {
-      const initializeTheatre = () => {
+      const initializeTheatre = async () => {
         try {
-          // Theatre.jsの状態が破損している可能性があるため、事前にlocalStorageをクリア
+          // Theatre.jsの状態が破損している可能性があるため、事前にlocalStorageを完全にクリア
           if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
             try {
+              // すべてのTheatre.js関連のキーを削除
               const keys = Object.keys(localStorage);
               keys.forEach(key => {
-                // Theatre.jsは通常 "Theatre.js:project:プロジェクト名" の形式で保存
                 if (key.includes('Theatre.js') || key.includes('theatre') || key.includes('Omikuji Scene')) {
                   localStorage.removeItem(key);
                 }
               });
+              // IndexedDBもクリア（Theatre.jsが使用する可能性がある）
+              if ('indexedDB' in window) {
+                try {
+                  // IndexedDBのクリアが完了するまで待機
+                  const databases = await indexedDB.databases();
+                  await Promise.all(
+                    databases
+                      .filter(db => db.name && (db.name.includes('Theatre.js') || db.name.includes('theatre')))
+                      .map(db => {
+                        return new Promise<void>((resolve, reject) => {
+                          const deleteRequest = indexedDB.deleteDatabase(db.name!);
+                          deleteRequest.onsuccess = () => resolve();
+                          deleteRequest.onerror = () => reject(deleteRequest.error);
+                          deleteRequest.onblocked = () => {
+                            // ブロックされた場合は少し待ってから再試行
+                            setTimeout(() => resolve(), 100);
+                          };
+                        });
+                      })
+                  );
+                } catch (e) {
+                  // IndexedDBアクセスのエラーは無視
+                }
+              }
             } catch (e) {
               // localStorageクリアのエラーは無視
             }
           }
 
+          // プロジェクト名を変更して、完全に新しい状態で開始
+          // タイムスタンプを追加することで、既存の破損した状態を回避
+          const projectName = `Omikuji Scene ${Date.now()}`;
+          
           // Theatre.jsプロジェクトの初期化
-          const theatreProject = getProject('Omikuji Scene', {
+          const theatreProject = getProject(projectName, {
             state: {
               stateByObject: {},
             },
@@ -103,37 +131,11 @@ export default function Scene({
           setSheet(theatreSheet);
           return true;
         } catch (error) {
-          console.warn('Theatre.js initialization failed:', error);
-          // エラーが発生した場合、localStorageを再度クリアして再試行
-          if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-            try {
-              const keys = Object.keys(localStorage);
-              keys.forEach(key => {
-                if (key.includes('Theatre.js') || key.includes('theatre') || key.includes('Omikuji Scene')) {
-                  localStorage.removeItem(key);
-                }
-              });
-              // 再試行
-              const theatreProject = getProject('Omikuji Scene', {
-                state: {
-                  stateByObject: {},
-                },
-              });
-              const theatreSheet = theatreProject.sheet('Main Sheet');
-              setProject(theatreProject);
-              setSheet(theatreSheet);
-              return true;
-            } catch (retryError) {
-              console.error('Theatre.js retry failed:', retryError);
-              setProject(null);
-              setSheet(null);
-              return false;
-            }
-          } else {
-            setProject(null);
-            setSheet(null);
-            return false;
-          }
+          console.error('Theatre.js initialization failed, disabling Theatre.js:', error);
+          // エラーが発生した場合、Theatre.jsを完全に無効化
+          setProject(null);
+          setSheet(null);
+          return false;
         }
       };
 
