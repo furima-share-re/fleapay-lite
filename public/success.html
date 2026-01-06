@@ -520,6 +520,14 @@
         const res = await fetch('/api/checkout/result?orderId=' + encodeURIComponent(orderId));
         if (!res.ok) throw new Error('http_' + res.status);
         paymentData = await res.json();
+        
+        // 決済が完了していない場合は、キャンセルページにリダイレクト
+        if (paymentData && !paymentData.isPaid) {
+          const sellerId = paymentData.sellerId || '';
+          window.location.href = '/cancel?order=' + encodeURIComponent(orderId) + '&s=' + encodeURIComponent(sellerId);
+          return;
+        }
+        
         applyPaymentToUI();
       }catch(e){
         console.error('loadPaymentResult error', e);

@@ -19,6 +19,19 @@ const bootstrapSqlSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // セキュリティ: 本番環境では常に無効化
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction) {
+      audit('sql_execution_blocked_production', {
+        ip: clientIp(request),
+        attempted: true,
+      });
+      return NextResponse.json(
+        { error: 'sql_execution_disabled_in_production' },
+        { status: 403 }
+      );
+    }
+
     if (!requireAdmin(request)) {
       audit('admin_auth_failed', {
         ip: clientIp(request),
@@ -30,9 +43,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 開発環境でも明示的に有効化が必要
     if (process.env.ADMIN_BOOTSTRAP_SQL_ENABLED !== 'true') {
       return NextResponse.json(
-        { error: 'bootstrap_sql_disabled' },
+        { error: 'bootstrap_sql_disabled', message: '環境変数 ADMIN_BOOTSTRAP_SQL_ENABLED を "true" に設定する必要があります（開発環境のみ）' },
         { status: 403 }
       );
     }

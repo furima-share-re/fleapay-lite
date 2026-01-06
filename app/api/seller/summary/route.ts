@@ -431,6 +431,7 @@ export async function GET(request: NextRequest) {
               o.amount,
               o.cost_amount,
               o.summary              AS memo,
+              o.status                AS order_status,
               o.world_price_median,
               o.world_price_high,
               o.world_price_low,
@@ -442,6 +443,7 @@ export async function GET(request: NextRequest) {
                 WHEN sp.id IS NOT NULL THEN 'card'
                 ELSE 'other'
               END                      AS payment_method,
+              sp.status               AS payment_status,
               ba.customer_type,
               ba.gender,
               ba.age_band
@@ -451,12 +453,13 @@ export async function GET(request: NextRequest) {
             LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
             WHERE o.seller_id = ${sellerId}
               AND o.deleted_at IS NULL
-              -- すべての注文を表示（条件を大幅に緩和して移行データも表示）
+              -- すべての注文を表示（決済未完了も含む）
               AND (
                 om.is_cash = true  -- 現金決済は表示
                 OR sp.status = 'succeeded'  -- Stripe成功決済は表示
-                OR sp.id IS NULL  -- Stripe決済がない場合も表示
-                OR (sp.id IS NOT NULL AND (sp.status IS NULL OR sp.status != 'failed'))  -- Stripe決済があるがstatusがnullまたは失敗以外
+                OR sp.id IS NULL  -- Stripe決済がない場合も表示（決済待ちの注文を含む）
+                OR (sp.id IS NOT NULL AND (sp.status IS NULL OR sp.status != 'failed'))  -- Stripe決済があるがstatusがnullまたは失敗以外（pending等を含む）
+                OR o.status = 'pending'  -- 注文ステータスがpendingの場合も表示（決済未完了）
                 OR (om.is_cash IS NULL AND sp.id IS NULL)  -- メタデータもStripe決済もない場合（移行データ対応）
                 OR (om.order_id IS NULL AND sp.order_id IS NULL)  -- どちらのJOINもマッチしない場合（移行データ対応）
               )
@@ -472,6 +475,7 @@ export async function GET(request: NextRequest) {
               o.amount,
               o.cost_amount,
               o.summary              AS memo,
+              o.status                AS order_status,
               o.world_price_median,
               o.world_price_high,
               o.world_price_low,
@@ -483,6 +487,7 @@ export async function GET(request: NextRequest) {
                 WHEN sp.id IS NOT NULL THEN 'card'
                 ELSE 'other'
               END                      AS payment_method,
+              sp.status               AS payment_status,
               ba.customer_type,
               ba.gender,
               ba.age_band
@@ -491,12 +496,13 @@ export async function GET(request: NextRequest) {
             LEFT JOIN stripe_payments  sp ON sp.order_id = o.id
             LEFT JOIN buyer_attributes ba ON ba.order_id = o.id
             WHERE o.seller_id = ${sellerId}
-              -- すべての注文を表示（条件を大幅に緩和して移行データも表示）
+              -- すべての注文を表示（決済未完了も含む）
               AND (
                 om.is_cash = true  -- 現金決済は表示
                 OR sp.status = 'succeeded'  -- Stripe成功決済は表示
-                OR sp.id IS NULL  -- Stripe決済がない場合も表示
-                OR (sp.id IS NOT NULL AND (sp.status IS NULL OR sp.status != 'failed'))  -- Stripe決済があるがstatusがnullまたは失敗以外
+                OR sp.id IS NULL  -- Stripe決済がない場合も表示（決済待ちの注文を含む）
+                OR (sp.id IS NOT NULL AND (sp.status IS NULL OR sp.status != 'failed'))  -- Stripe決済があるがstatusがnullまたは失敗以外（pending等を含む）
+                OR o.status = 'pending'  -- 注文ステータスがpendingの場合も表示（決済未完了）
                 OR (om.is_cash IS NULL AND sp.id IS NULL)  -- メタデータもStripe決済もない場合（移行データ対応）
                 OR (om.order_id IS NULL AND sp.order_id IS NULL)  -- どちらのJOINもマッチしない場合（移行データ対応）
               )
@@ -521,6 +527,7 @@ export async function GET(request: NextRequest) {
               o.amount,
               0                        AS cost_amount,
               o.summary              AS memo,
+              o.status                AS order_status,
               NULL                     AS world_price_median,
               NULL                     AS world_price_high,
               NULL                     AS world_price_low,
@@ -531,6 +538,7 @@ export async function GET(request: NextRequest) {
                 WHEN sp.id IS NOT NULL THEN 'card'
                 ELSE 'other'
               END                      AS payment_method,
+              sp.status               AS payment_status,
               NULL                     AS customer_type,
               NULL                     AS gender,
               NULL                     AS age_band
@@ -539,8 +547,9 @@ export async function GET(request: NextRequest) {
             WHERE o.seller_id = ${sellerId}
               AND (
                 sp.status = 'succeeded'  -- Stripe成功決済
-                OR sp.id IS NULL  -- Stripe決済がない場合（移行データ対応）
-                OR (sp.id IS NOT NULL AND (sp.status IS NULL OR sp.status != 'failed'))  -- statusがnullまたは失敗以外
+                OR sp.id IS NULL  -- Stripe決済がない場合（決済待ちの注文を含む）
+                OR (sp.id IS NOT NULL AND (sp.status IS NULL OR sp.status != 'failed'))  -- statusがnullまたは失敗以外（pending等を含む）
+                OR o.status = 'pending'  -- 注文ステータスがpendingの場合も表示（決済未完了）
               )
               AND o.created_at >= NOW() - INTERVAL '90 days'  -- 過去90日以内
             ORDER BY o.created_at DESC
@@ -640,6 +649,11 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      // 決済ステータスの判定
+      const orderStatus = r.order_status ? String(r.order_status) : null;
+      const paymentStatus = r.payment_status ? String(r.payment_status) : null;
+      const isPaid = orderStatus === 'paid' || paymentStatus === 'succeeded';
+
       return {
         // 新しいフィールド名
         orderId: r.order_id,
@@ -647,6 +661,9 @@ export async function GET(request: NextRequest) {
         amount: amt,
         costAmount: r.cost_amount === null ? null : Number(r.cost_amount || 0),
         memo: r.memo || "",
+        orderStatus: orderStatus,
+        paymentStatus: paymentStatus,
+        isPaid: isPaid,
         // 世界相場(参考)
         worldMedian: r.world_price_median,
         worldHigh: r.world_price_high,

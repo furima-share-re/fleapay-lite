@@ -26,7 +26,9 @@
     "check-screens": "node scripts/check-all-screens.js",
     "check-screens:advanced": "node scripts/check-all-screens-advanced.js",
     "check-screens:staging": "node scripts/check-staging-simple.js",
-    "check-screens:staging:advanced": "BASE_URL=https://fleapay-lite-t1.onrender.com node scripts/check-all-screens-advanced.js"
+    "check-screens:staging:advanced": "BASE_URL=https://fleapay-lite-t1.onrender.com node scripts/check-all-screens-advanced.js",
+    "migrate": "node scripts/apply-migration.js",
+    "migrate:prisma": "prisma db pull && prisma generate"
   },
   "dependencies": {
     "stripe": "^19.3.0",

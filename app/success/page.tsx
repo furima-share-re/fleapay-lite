@@ -4,7 +4,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 interface PaymentData {
   orderId: string;
@@ -19,6 +19,7 @@ interface PaymentData {
 
 function SuccessContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const orderId = searchParams.get('order');
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,8 +66,13 @@ function SuccessContent() {
         if (res.ok) {
           const data = await res.json();
           // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:45',message:'Payment data received',data:{hasData:!!data,orderId:data?.orderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:45',message:'Payment data received',data:{hasData:!!data,orderId:data?.orderId,isPaid:data?.isPaid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
           // #endregion
+          // 決済が完了していない場合は、キャンセルページにリダイレクト
+          if (data && !data.isPaid) {
+            router.push(`/cancel?order=${encodeURIComponent(data.orderId)}&s=${encodeURIComponent(data.sellerId)}`);
+            return;
+          }
           setPaymentData(data);
         }
       } catch (e) {
@@ -280,13 +286,11 @@ function SuccessContent() {
                   <span className="payment-info-value status-pending">確認中…</span>
                 </div>
               </div>
-            ) : paymentData ? (
+            ) : paymentData && paymentData.isPaid ? (
               <div className="payment-info">
                 <div className="payment-info-row">
                   <span className="payment-info-label">決済ステータス</span>
-                  <span className={`payment-info-value ${paymentData.isPaid ? 'status-ok' : 'status-pending'}`}>
-                    {paymentData.isPaid ? '完了' : '未完了／確認中'}
-                  </span>
+                  <span className="payment-info-value status-ok">完了</span>
                 </div>
                 <div className="payment-info-row">
                   <span className="payment-info-label">お支払い金額</span>
@@ -295,7 +299,7 @@ function SuccessContent() {
                   </span>
                 </div>
                 <p className="payment-info-hint">
-                  店員さんへ：この画面で「決済ステータス」と「お支払い金額」が表示されているかご確認ください。
+                  店員さんへ：この画面で「決済ステータス：完了」「お支払い金額：{paymentData.amount ? formatJPY(paymentData.amount) : '-'}」と表示されていれば、決済は完了しています。
                 </p>
               </div>
             ) : (
@@ -304,6 +308,9 @@ function SuccessContent() {
                   <span className="payment-info-label">決済ステータス</span>
                   <span className="payment-info-value status-error">状態不明</span>
                 </div>
+                <p className="payment-info-hint">
+                  店員さんへ：ネットワーク等の理由で決済状態を取得できませんでした。ダッシュボードの取引履歴からご確認ください。
+                </p>
               </div>
             )}
 
