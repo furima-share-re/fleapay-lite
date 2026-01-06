@@ -57,6 +57,10 @@ export function isSameOrigin(request: NextRequest | Request): boolean {
     const referer = request.headers.get('referer') || '';
     const origin = request.headers.get('origin') || '';
     
+    // ホスト名を正規化（ポート番号を除去）
+    const normalizeHostname = (h: string) => h.toLowerCase().split(':')[0];
+    const hostLower = host ? normalizeHostname(host) : '';
+    
     // request.urlからホスト名を抽出
     let requestHostname = '';
     try {
@@ -71,13 +75,42 @@ export function isSameOrigin(request: NextRequest | Request): boolean {
           const protocol = request.headers.get('x-forwarded-proto') || 'https';
           requestUrl = new URL(requestUrlStr, `${protocol}://${host}`);
         }
-        requestHostname = requestUrl.hostname.toLowerCase();
+        requestHostname = normalizeHostname(requestUrl.hostname);
       }
     } catch (urlError) {
       // URL解析エラーは無視
     }
     
-    // BASE_URLが設定されている場合は、それと比較
+    // チェック1: ホストヘッダーとrequest.urlのホスト名が一致するか（同じドメインからのリクエスト）
+    if (hostLower && requestHostname && hostLower === requestHostname) {
+      return true;
+    }
+    
+    // チェック2: refererが同じドメインか
+    if (hostLower && referer) {
+      try {
+        const refUrl = new URL(referer);
+        if (normalizeHostname(refUrl.hostname) === hostLower) {
+          return true;
+        }
+      } catch (e) {
+        // URL解析エラーは無視
+      }
+    }
+    
+    // チェック3: originが同じドメインか
+    if (hostLower && origin) {
+      try {
+        const origUrl = new URL(origin);
+        if (normalizeHostname(origUrl.hostname) === hostLower) {
+          return true;
+        }
+      } catch (e) {
+        // URL解析エラーは無視
+      }
+    }
+    
+    // チェック4: BASE_URLが設定されている場合、それと比較
     const BASE_URL = getBaseUrl();
     if (BASE_URL) {
       let baseHostname = '';
@@ -89,15 +122,17 @@ export function isSameOrigin(request: NextRequest | Request): boolean {
         baseHostname = BASE_URL.replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase();
       }
       
-      // ホストヘッダーがBASE_URLのホスト名と一致するかチェック
-      if (host) {
-        const hostLower = host.toLowerCase().split(':')[0]; // ポート番号を除去
-        if (hostLower === baseHostname) {
-          return true;
-        }
+      // ホストヘッダーがBASE_URLのホスト名と一致するか
+      if (hostLower && hostLower === baseHostname) {
+        return true;
       }
       
-      // refererまたはoriginがBASE_URLで始まるかチェック
+      // request.urlのホスト名がBASE_URLのホスト名と一致するか
+      if (requestHostname && requestHostname === baseHostname) {
+        return true;
+      }
+      
+      // refererまたはoriginがBASE_URLで始まるか
       if (referer && referer.startsWith(BASE_URL)) {
         return true;
       }
@@ -105,44 +140,12 @@ export function isSameOrigin(request: NextRequest | Request): boolean {
       if (origin && origin.startsWith(BASE_URL)) {
         return true;
       }
-      
-      // request.urlのホスト名がBASE_URLのホスト名と一致するかチェック
-      if (requestHostname && requestHostname === baseHostname) {
-        return true;
-      }
-    } else {
-      // BASE_URLが設定されていない場合（開発環境など）
-      // ホストヘッダーとrequest.urlのホスト名が一致するかチェック
-      if (host && requestHostname) {
-        const hostLower = host.toLowerCase().split(':')[0];
-        if (hostLower === requestHostname) {
-          return true;
-        }
-      }
-      
-      // refererまたはoriginが同じドメインかチェック
-      if (referer || origin) {
-        try {
-          const refUrl = referer ? new URL(referer) : null;
-          const origUrl = origin ? new URL(origin) : null;
-          const refHostname = refUrl?.hostname.toLowerCase() || '';
-          const origHostname = origUrl?.hostname.toLowerCase() || '';
-          const hostLower = host.toLowerCase().split(':')[0];
-          
-          if ((refHostname && refHostname === hostLower) || 
-              (origHostname && origHostname === hostLower)) {
-            return true;
-          }
-        } catch (e) {
-          // URL解析エラーは無視
-        }
-      }
     }
     
     // デバッグログ（本番環境でも出力して問題を特定しやすくする）
     console.warn('[isSameOrigin] Check failed:', {
       BASE_URL: BASE_URL || '(not set)',
-      host,
+      host: hostLower,
       referer,
       origin,
       requestHostname,

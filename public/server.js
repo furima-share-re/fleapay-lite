@@ -21,7 +21,8 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ====== 設定 ======
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin-devtoken";
-const BASE_URL = (process.env.BASE_URL || "").replace(/\/+$/, "");
+// APP_BASE_URLを優先、フォールバックとしてBASE_URL（後方互換性のため）
+const BASE_URL = (process.env.APP_BASE_URL || process.env.BASE_URL || "").replace(/\/+$/, "");
 
 // ====== multer(10MB、拡張子ゆるめ、メモリ格納) ======
 const upload = multer({
