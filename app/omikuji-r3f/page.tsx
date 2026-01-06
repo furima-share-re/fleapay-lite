@@ -2,30 +2,37 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import Scene from './components/Scene';
 
-export default function OmikujiMainPageFM() {
+export default function OmikujiMainPageR3F() {
   const router = useRouter();
-  const [coins, setCoins] = useState<Array<{ id: number; x: number; y: number; delay: number }>>([]);
+  const [coins, setCoins] = useState<
+    Array<{ id: number; position: [number, number, number]; text: string; delay: number }>
+  >([]);
 
   useEffect(() => {
-    // 小判の位置をランダム生成
+    // 小判の3D位置を生成
     const coinArray = Array.from({ length: 6 }, (_, i) => ({
       id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
+      position: [
+        (Math.random() - 0.5) * 8,
+        (Math.random() - 0.5) * 6 + 2,
+        (Math.random() - 0.5) * 4,
+      ] as [number, number, number],
+      text: i % 3 === 0 ? '大' : i % 3 === 1 ? '吉' : '福',
       delay: Math.random() * 3,
     }));
     setCoins(coinArray);
   }, []);
 
   const handleDrawFortune = () => {
-    router.push('/omikuji-fm/shake');
+    router.push('/omikuji-r3f/shake');
   };
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-[#1B365D] via-[#193e5b] to-[#0f2740]">
-      {/* 背景の花火 */}
+      {/* 背景の花火（2D） */}
       <div className="absolute inset-0 pointer-events-none">
         {[...Array(3)].map((_, i) => (
           <motion.div
@@ -93,7 +100,7 @@ export default function OmikujiMainPageFM() {
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
           EDO ICHIBA
         </h1>
-        <p className="text-white/90 text-sm md:text-base">Omikuji Fortune-Telling</p>
+        <p className="text-white/90 text-sm md:text-base">Omikuji Fortune-Telling (3D)</p>
       </motion.div>
 
       {/* 背景の市場の屋台と人のシルエット（画像推奨） */}
@@ -140,7 +147,7 @@ export default function OmikujiMainPageFM() {
                 />
               </svg>
             </div>
-            
+
             {/* 金色の紋章 */}
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 border-2 border-yellow-500/50 rounded-full">
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-4 bg-yellow-500/50" />
@@ -184,7 +191,7 @@ export default function OmikujiMainPageFM() {
                 />
               </svg>
             </div>
-            
+
             {/* 金色の紋章 */}
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 border-2 border-yellow-500/50 rounded-full">
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-4 bg-yellow-500/50" />
@@ -221,153 +228,10 @@ export default function OmikujiMainPageFM() {
         </motion.div>
       </motion.div>
 
-      {/* おみくじ箱 */}
-      <motion.div
-        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30"
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1, delay: 0.5 }}
-      >
-        <div className="relative w-64 md:w-80 h-64 md:h-80">
-          {/* 箱本体 */}
-          <motion.div
-            className="absolute inset-0 bg-red-700 rounded-lg shadow-[0_0_40px_rgba(220,38,38,0.6)] border-4 border-yellow-600"
-            animate={{
-              boxShadow: [
-                '0 0 40px rgba(220,38,38,0.6)',
-                '0 0 60px rgba(220,38,38,0.8)',
-                '0 0 40px rgba(220,38,38,0.6)',
-              ],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-            }}
-          >
-            {/* 金色の装飾枠 */}
-            <div className="absolute inset-0 border-2 border-yellow-500/50 rounded-lg" />
-            <div className="absolute inset-2 border border-yellow-400/30 rounded-md" />
-            
-            {/* 角の装飾 */}
-            <div className="absolute top-1 left-1 w-6 h-6 border-t-2 border-l-2 border-yellow-500 rounded-tl-lg" />
-            <div className="absolute top-1 right-1 w-6 h-6 border-t-2 border-r-2 border-yellow-500 rounded-tr-lg" />
-            <div className="absolute bottom-1 left-1 w-6 h-6 border-b-2 border-l-2 border-yellow-500 rounded-bl-lg" />
-            <div className="absolute bottom-1 right-1 w-6 h-6 border-b-2 border-r-2 border-yellow-500 rounded-br-lg" />
-            
-            {/* 鶴・雲・桜のモチーフ（SVG風の装飾） */}
-            <div className="absolute inset-4 opacity-30">
-              <svg viewBox="0 0 100 100" className="w-full h-full text-yellow-500">
-                {/* 雲のモチーフ */}
-                <path
-                  d="M20,30 Q25,25 30,30 T40,30 Q45,25 50,30 T60,30"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  fill="none"
-                  className="text-yellow-400"
-                />
-                <path
-                  d="M60,50 Q65,45 70,50 T80,50 Q85,45 90,50"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  fill="none"
-                  className="text-yellow-400"
-                />
-                {/* 鶴のシルエット（簡略化） */}
-                <path
-                  d="M50,40 L45,50 L50,60 L55,50 Z"
-                  fill="currentColor"
-                  className="text-yellow-500"
-                />
-                <circle cx="50" cy="35" r="3" fill="currentColor" className="text-yellow-500" />
-                {/* 桜の花びら */}
-                <circle cx="25" cy="40" r="2" fill="currentColor" className="text-yellow-400" />
-                <circle cx="75" cy="55" r="2" fill="currentColor" className="text-yellow-400" />
-                <circle cx="30" cy="60" r="2" fill="currentColor" className="text-yellow-400" />
-                <circle cx="70" cy="45" r="2" fill="currentColor" className="text-yellow-400" />
-              </svg>
-            </div>
-            
-            {/* 上面の円形の穴 */}
-            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-24 h-24 md:w-32 md:h-32 bg-black/40 rounded-full border-4 border-yellow-600/50 shadow-inner" />
-            
-            {/* 金色の光る効果 */}
-            <motion.div
-              className="absolute inset-0 bg-gradient-to-t from-yellow-600/20 via-transparent to-transparent rounded-lg"
-              animate={{
-                opacity: [0.2, 0.4, 0.2],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-              }}
-            />
-          </motion.div>
-        </div>
-      </motion.div>
-
-      {/* 浮遊する小判 */}
-      <AnimatePresence>
-        {coins.map((coin) => (
-          <motion.div
-            key={coin.id}
-            className="absolute z-20"
-            style={{
-              left: `${coin.x}%`,
-              top: `${coin.y}%`,
-            }}
-            animate={{
-              y: [0, -20, 0],
-              rotate: [0, 5, 0],
-              scale: [1, 1.1, 1],
-            }}
-            transition={{
-              duration: 3 + coin.delay,
-              repeat: Infinity,
-              delay: coin.delay,
-              ease: 'easeInOut',
-            }}
-          >
-            <div className="relative w-12 h-12 md:w-16 md:h-16">
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full border-2 border-yellow-700 shadow-[0_0_15px_rgba(234,179,8,0.8)]"
-                animate={{
-                  boxShadow: [
-                    '0 0 15px rgba(234,179,8,0.8)',
-                    '0 0 25px rgba(234,179,8,1)',
-                    '0 0 15px rgba(234,179,8,0.8)',
-                  ],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                }}
-              />
-              {/* 小判の中央の文字 */}
-              <div className="absolute inset-0 flex items-center justify-center z-10">
-                <div className="text-yellow-900 text-[8px] md:text-xs font-bold">
-                  {coin.id % 3 === 0 ? "大" : coin.id % 3 === 1 ? "吉" : "福"}
-                </div>
-              </div>
-              {/* 小判の四角い穴 */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-3 h-3 md:w-4 md:h-4 bg-yellow-700/50 rounded-sm transform rotate-45" />
-              </div>
-              {/* 光る軌跡 */}
-              <motion.div
-                className="absolute inset-0 bg-yellow-300/50 rounded-full blur-sm"
-                animate={{
-                  opacity: [0.3, 0.7, 0.3],
-                  scale: [1, 1.2, 1],
-                }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                }}
-              />
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+      {/* 3Dおみくじ箱 */}
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-[500px] z-30">
+        <Scene showCoins={true} coins={coins} />
+      </div>
 
       {/* DRAW FORTUNE ボタン */}
       <motion.div

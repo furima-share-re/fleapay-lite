@@ -52,6 +52,13 @@ export default function OmikujiShakePageFM() {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-[#1B365D] via-[#0f2740] to-black">
+      {/* 背景の市場の屋台と人のシルエット（画像推奨） */}
+      {/* TODO: 背景画像を追加する場合は以下を使用
+        <div className="absolute inset-0 z-0 opacity-20">
+          <img src="/images/edo-market-background.png" alt="Edo Market" className="w-full h-full object-cover" />
+        </div>
+      */}
+
       {/* 背景の夜空 */}
       <div className="absolute inset-0">
         {[...Array(50)].map((_, i) => (
@@ -96,7 +103,10 @@ export default function OmikujiShakePageFM() {
         <motion.div
           className="w-24 md:w-40 h-96 bg-[#1B365D] border-2 border-white/20 relative overflow-hidden"
           style={{
-            backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 12px)`,
+            backgroundImage: `
+              repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 12px),
+              repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255,255,255,0.08) 20px, rgba(255,255,255,0.08) 22px)
+            `,
           }}
           animate={
             isShaking
@@ -115,14 +125,43 @@ export default function OmikujiShakePageFM() {
             ease: "easeInOut",
           }}
         >
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white/40 text-xs whitespace-nowrap">
+          {/* 青海波パターン（下部） */}
+          <div className="absolute bottom-0 left-0 right-0 h-24 opacity-20">
+            <svg viewBox="0 0 100 100" className="w-full h-full text-white">
+              <path
+                d="M0,80 Q25,60 50,80 T100,80"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+              />
+              <path
+                d="M0,90 Q25,70 50,90 T100,90"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+              />
+            </svg>
+          </div>
+
+          {/* 金色の紋章 */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 border-2 border-yellow-500/50 rounded-full">
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-4 bg-yellow-500/50" />
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-1 bg-yellow-500/50" />
+            <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-500/50 rounded-full" />
+            <div className="absolute bottom-1/4 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-500/50 rounded-full" />
+          </div>
+
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white/40 text-xs whitespace-nowrap writing-vertical-rl">
             江戸市場
           </div>
         </motion.div>
         <motion.div
           className="w-24 md:w-40 h-96 bg-[#1B365D] border-2 border-white/20 relative overflow-hidden"
           style={{
-            backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 12px)`,
+            backgroundImage: `
+              repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 12px),
+              repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255,255,255,0.08) 20px, rgba(255,255,255,0.08) 22px)
+            `,
           }}
           animate={
             isShaking
@@ -142,7 +181,33 @@ export default function OmikujiShakePageFM() {
             ease: "easeInOut",
           }}
         >
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white/40 text-xs whitespace-nowrap">
+          {/* 青海波パターン（下部） */}
+          <div className="absolute bottom-0 left-0 right-0 h-24 opacity-20">
+            <svg viewBox="0 0 100 100" className="w-full h-full text-white">
+              <path
+                d="M0,80 Q25,60 50,80 T100,80"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+              />
+              <path
+                d="M0,90 Q25,70 50,90 T100,90"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+              />
+            </svg>
+          </div>
+
+          {/* 金色の紋章 */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 border-2 border-yellow-500/50 rounded-full">
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-4 bg-yellow-500/50" />
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-1 bg-yellow-500/50" />
+            <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-500/50 rounded-full" />
+            <div className="absolute bottom-1/4 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-yellow-500/50 rounded-full" />
+          </div>
+
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white/40 text-xs whitespace-nowrap writing-vertical-rl">
             江戸市場
           </div>
         </motion.div>
@@ -234,11 +299,101 @@ export default function OmikujiShakePageFM() {
             }}
           >
             <div className="absolute inset-0 bg-red-700 rounded-lg shadow-[0_0_40px_rgba(220,38,38,0.8)] border-4 border-yellow-600">
+              {/* 金色の装飾枠 */}
               <div className="absolute inset-0 border-2 border-yellow-500/50 rounded-lg" />
+              <div className="absolute inset-2 border border-yellow-400/30 rounded-md" />
+
+              {/* 角の装飾 */}
+              <div className="absolute top-1 left-1 w-6 h-6 border-t-2 border-l-2 border-yellow-500 rounded-tl-lg" />
+              <div className="absolute top-1 right-1 w-6 h-6 border-t-2 border-r-2 border-yellow-500 rounded-tr-lg" />
+              <div className="absolute bottom-1 left-1 w-6 h-6 border-b-2 border-l-2 border-yellow-500 rounded-bl-lg" />
+              <div className="absolute bottom-1 right-1 w-6 h-6 border-b-2 border-r-2 border-yellow-500 rounded-br-lg" />
+
+              {/* 鶴のモチーフ（SVG風の装飾） */}
+              <div className="absolute inset-4 opacity-30">
+                <svg
+                  viewBox="0 0 100 100"
+                  className="w-full h-full text-yellow-500"
+                >
+                  {/* 雲のモチーフ */}
+                  <path
+                    d="M20,30 Q25,25 30,30 T40,30 Q45,25 50,30 T60,30"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    fill="none"
+                    className="text-yellow-400"
+                  />
+                  <path
+                    d="M60,50 Q65,45 70,50 T80,50 Q85,45 90,50"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    fill="none"
+                    className="text-yellow-400"
+                  />
+                  {/* 鶴のシルエット（簡略化） */}
+                  <path
+                    d="M50,40 L45,50 L50,60 L55,50 Z"
+                    fill="currentColor"
+                    className="text-yellow-500"
+                  />
+                  <circle
+                    cx="50"
+                    cy="35"
+                    r="3"
+                    fill="currentColor"
+                    className="text-yellow-500"
+                  />
+                  {/* 桜の花びら */}
+                  <circle
+                    cx="25"
+                    cy="40"
+                    r="2"
+                    fill="currentColor"
+                    className="text-yellow-400"
+                  />
+                  <circle
+                    cx="75"
+                    cy="55"
+                    r="2"
+                    fill="currentColor"
+                    className="text-yellow-400"
+                  />
+                  <circle
+                    cx="30"
+                    cy="60"
+                    r="2"
+                    fill="currentColor"
+                    className="text-yellow-400"
+                  />
+                  <circle
+                    cx="70"
+                    cy="45"
+                    r="2"
+                    fill="currentColor"
+                    className="text-yellow-400"
+                  />
+                </svg>
+              </div>
+
+              {/* 上面の円形の穴 */}
               <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-20 h-20 md:w-28 md:h-28 bg-black/40 rounded-full border-4 border-yellow-600/50 shadow-inner" />
-              <div className="absolute bottom-2 left-2 right-2 text-white/30 text-xs text-center">
+
+              {/* ラベル */}
+              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-white/40 text-xs text-center font-semibold">
                 おみくじ
               </div>
+
+              {/* 金色の光る効果 */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-t from-yellow-600/20 via-transparent to-transparent rounded-lg"
+                animate={{
+                  opacity: [0.2, 0.4, 0.2],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                }}
+              />
             </div>
           </motion.div>
         </div>
@@ -290,8 +445,19 @@ export default function OmikujiShakePageFM() {
                       boxShadow: { duration: 1, repeat: Infinity },
                     }}
                   />
+                  {/* 小判の中央の文字 */}
+                  <div className="absolute inset-0 flex items-center justify-center z-10">
+                    <div className="text-yellow-900 text-[8px] md:text-xs font-bold">
+                      {coin.id % 3 === 0
+                        ? "大"
+                        : coin.id % 3 === 1
+                        ? "吉"
+                        : "福"}
+                    </div>
+                  </div>
+                  {/* 小判の四角い穴 */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-3 h-3 md:w-4 md:h-4 bg-yellow-700 rounded-sm transform rotate-45" />
+                    <div className="w-3 h-3 md:w-4 md:h-4 bg-yellow-700/50 rounded-sm transform rotate-45" />
                   </div>
                   <motion.div
                     className="absolute inset-0 bg-yellow-300/70 rounded-full blur-md"
@@ -396,12 +562,17 @@ export default function OmikujiShakePageFM() {
         }}
       >
         <motion.div
-          className="px-8 py-4 bg-orange-600/90 border-4 border-orange-400 rounded-lg text-white font-bold text-lg md:text-xl shadow-[0_0_30px_rgba(251,146,60,0.8)]"
+          className="px-8 py-4 bg-orange-600/90 border-4 border-dashed border-orange-400 rounded-lg text-white font-bold text-lg md:text-xl shadow-[0_0_30px_rgba(251,146,60,0.8)] relative"
           animate={{
             boxShadow: [
               "0 0 30px rgba(251,146,60,0.8)",
               "0 0 50px rgba(251,146,60,1)",
               "0 0 30px rgba(251,146,60,0.8)",
+            ],
+            borderColor: [
+              "rgba(251,146,60,0.8)",
+              "rgba(251,146,60,1)",
+              "rgba(251,146,60,0.8)",
             ],
           }}
           transition={{
