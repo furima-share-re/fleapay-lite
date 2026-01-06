@@ -346,15 +346,8 @@ function CheckoutContent() {
                               radial-gradient(1200px 700px at -20% 110%, rgba(27,54,93,.08) 0%, transparent 60%) !important;
             background-attachment: fixed !important;
           }
-          .checkout-container {
-            max-width: 640px;
-            margin: 0 auto;
-            padding: 20px;
-            min-height: 100vh;
-            position: relative;
-          }
           /* 和紙の微細ノイズ */
-          .checkout-container::before {
+          :global(body::before) {
             content: "";
             position: fixed;
             inset: 0;
@@ -364,6 +357,13 @@ function CheckoutContent() {
             background-image: radial-gradient(circle at 25% 25%, rgba(255,255,255,.9) 1px, transparent 1px),
                               radial-gradient(circle at 75% 75%, rgba(27,54,93,.12) 1px, transparent 1px);
             background-size: 60px 60px, 80px 80px;
+          }
+          .checkout-container {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            position: relative;
           }
           .appbar {
             display: flex;
