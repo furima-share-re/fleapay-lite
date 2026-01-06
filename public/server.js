@@ -567,10 +567,24 @@ app.get("/api/admin/frames", requireAdmin, async (req, res) => {
 });
 
 // ====== 管理API: SQL実行 ======
+// セキュリティ: 本番環境では常に無効化
 app.post("/api/admin/bootstrap_sql", requireAdmin, async (req, res) => {
   try {
+    // 本番環境では常に無効化
+    const isProduction = process.env.NODE_ENV === "production";
+    if (isProduction) {
+      console.warn("[BOOTSTRAP_SQL] Blocked in production environment");
+      return res.status(403).json({ 
+        error: "sql_execution_disabled_in_production",
+        message: "SQL実行は本番環境では無効化されています"
+      });
+    }
+
     if (process.env.ADMIN_BOOTSTRAP_SQL_ENABLED !== "true") {
-      return res.status(403).json({ error: "bootstrap_sql_disabled" });
+      return res.status(403).json({ 
+        error: "bootstrap_sql_disabled",
+        message: "環境変数 ADMIN_BOOTSTRAP_SQL_ENABLED を 'true' に設定する必要があります（開発環境のみ）"
+      });
     }
 
     const { sql } = req.body || {};
