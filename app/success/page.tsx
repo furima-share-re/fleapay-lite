@@ -52,69 +52,78 @@ function SuccessContent() {
     fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:33',message:'orderId validated, storing as const',data:{validOrderId:validOrderId,validOrderIdType:typeof validOrderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
 
-    async function loadPaymentResult() {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:36',message:'loadPaymentResult entry',data:{validOrderId:validOrderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
-      
-      const MAX_POLLING_TIME = 30000; // 最大30秒
-      const POLLING_INTERVAL = 3000; // 3秒間隔
-      const startTime = Date.now();
+    // StripeのCheckout Sessionは24時間有効なので、実用的な上限を設ける（10分）
+    // ただし、決済が完了するまで待つ
+    const MAX_POLLING_TIME = 600000; // 最大10分（Stripeセッションは24時間有効だが、実用的な上限）
+    const POLLING_INTERVAL = 3000; // 3秒間隔
+    const startTime = Date.now();
+    let timeoutId: NodeJS.Timeout | null = null;
+    let isCancelled = false;
 
-      const poll = async (): Promise<void> => {
-        try {
-          const res = await fetch(`/api/checkout/result?orderId=${encodeURIComponent(validOrderId)}`);
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-          }
+    const poll = async (): Promise<void> => {
+      // コンポーネントがアンマウントされた場合は処理を停止
+      if (isCancelled) {
+        return;
+      }
 
-          const data = await res.json();
-          
-          // Webhook受信済みの場合
-          if (data.webhookReceived) {
-            // 決済が完了していない場合は、キャンセルページにリダイレクト
-            if (!data.isPaid) {
-              router.push(`/cancel?order=${encodeURIComponent(data.orderId)}&s=${encodeURIComponent(data.sellerId)}`);
-              return;
-            }
-            // 決済完了
-            setPaymentData(data);
-            setLoading(false);
-            return;
-          }
-
-          // Webhook未受信の場合、タイムアウトまでポーリング
-          const elapsed = Date.now() - startTime;
-          if (elapsed < MAX_POLLING_TIME) {
-            setTimeout(poll, POLLING_INTERVAL);
-          } else {
-            // タイムアウト: Webhook未受信だが、Stripe APIで確認できた場合は表示
-            // ただし、isPaidがfalseの場合は/cancelにリダイレクト
-            if (!data.isPaid) {
-              router.push(`/cancel?order=${encodeURIComponent(data.orderId)}&s=${encodeURIComponent(data.sellerId)}`);
-              return;
-            }
-            // タイムアウトでも決済成功と判定できる場合は表示（Stripe API確認済み）
-            setPaymentData(data);
-            setLoading(false);
-          }
-        } catch (e) {
-          console.error('loadPaymentResult error', e);
-          // エラー時はタイムアウトまで再試行
-          const elapsed = Date.now() - startTime;
-          if (elapsed < MAX_POLLING_TIME) {
-            setTimeout(poll, POLLING_INTERVAL);
-          } else {
-            setLoading(false);
-          }
+      try {
+        const res = await fetch(`/api/checkout/result?orderId=${encodeURIComponent(validOrderId)}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
         }
-      };
 
-      // 初回ポーリング開始
-      poll();
-    }
+        const data = await res.json();
+        
+        // 決済が完了した場合
+        if (data.isPaid) {
+          if (!isCancelled) {
+            setPaymentData(data);
+            setLoading(false);
+          }
+          return;
+        }
 
-    loadPaymentResult();
+        // Webhook受信済みだが決済が完了していない場合（キャンセルされた）
+        if (data.webhookReceived && !data.isPaid) {
+          if (!isCancelled) {
+            router.push(`/cancel?order=${encodeURIComponent(data.orderId)}&s=${encodeURIComponent(data.sellerId)}`);
+          }
+          return;
+        }
+
+        // 決済がまだ完了していない場合、タイムアウトまでポーリングを継続
+        const elapsed = Date.now() - startTime;
+        if (elapsed < MAX_POLLING_TIME && !isCancelled) {
+          timeoutId = setTimeout(poll, POLLING_INTERVAL);
+        } else if (!isCancelled) {
+          // 10分経過しても決済が完了しなかった場合、エラー表示
+          // ただし、Stripeセッションは24時間有効なので、ユーザーは後から決済を完了できる
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error('loadPaymentResult error', e);
+        // エラー時もタイムアウトまで再試行を継続
+        const elapsed = Date.now() - startTime;
+        if (elapsed < MAX_POLLING_TIME && !isCancelled) {
+          timeoutId = setTimeout(poll, POLLING_INTERVAL);
+        } else if (!isCancelled) {
+          // 10分経過してもエラーが続く場合、エラー表示
+          setLoading(false);
+        }
+      }
+    };
+
+    // 初回ポーリング開始
+    poll();
+
+    // クリーンアップ関数: タイマーをクリア
+    return () => {
+      isCancelled = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
   }, [orderId]);
 
   const formatJPY = (n: number) => {
@@ -123,29 +132,72 @@ function SuccessContent() {
 
   const dict = {
     ja: {
-      badge: 'Payment Completed / 決済完了',
-      title: '決済が完了しました',
+      badgeCompleted: 'Payment Completed / 決済完了',
+      badgePending: 'Payment Confirming / 決済確認中',
+      badgeError: 'Payment Status Unknown / 決済状態不明',
+      titleCompleted: '決済が完了しました',
+      titlePending: '決済を確認しています',
+      titleError: '決済状態を確認できませんでした',
       lead: 'この画面を出店スタッフにお見せください。',
-      notice: '✅ 決済が完了しました。\n出店スタッフが商品をお渡しします。\n※商品お渡し後の返品・交換はご遠慮ください。',
+      noticeCompleted: '✅ 決済が完了しました。\n出店スタッフが商品をお渡しします。\n※商品お渡し後の返品・交換はご遠慮ください。',
+      noticePending: '⏱ 決済状態を確認しています。\nしばらくお待ちください。',
+      noticeError: '❌ 決済状態を取得できませんでした。\nダッシュボードの取引履歴からご確認ください。',
       meta: 'Thanks for supporting local creators & flea market culture.\n※必要に応じて、スタッフから決済IDの確認をお願いする場合があります。'
     },
     en: {
-      badge: 'Payment Completed',
-      title: 'Payment Completed',
+      badgeCompleted: 'Payment Completed',
+      badgePending: 'Payment Confirming',
+      badgeError: 'Payment Status Unknown',
+      titleCompleted: 'Payment Completed',
+      titlePending: 'Confirming Payment',
+      titleError: 'Payment Status Unknown',
       lead: 'Please show this screen to the shop staff.',
-      notice: '✅ Your payment has been completed.\nThe staff will hand you your item.\n*Refunds and exchanges are not available after receiving your item.',
+      noticeCompleted: '✅ Your payment has been completed.\nThe staff will hand you your item.\n*Refunds and exchanges are not available after receiving your item.',
+      noticePending: '⏱ We are confirming your payment status.\nPlease wait a moment.',
+      noticeError: '❌ We could not retrieve your payment status.\nPlease check your transaction history in the dashboard.',
       meta: 'Thank you for supporting local creators and flea market culture.\n*Staff may ask you to confirm your payment ID if necessary.'
     },
     zh: {
-      badge: '付款完成',
-      title: '付款已完成',
+      badgeCompleted: '付款完成',
+      badgePending: '付款确认中',
+      badgeError: '付款状态不明',
+      titleCompleted: '付款已完成',
+      titlePending: '正在确认付款',
+      titleError: '付款状态不明',
       lead: '请将此画面出示给摊主。',
-      notice: '✅ 付款已完成。\n摊主会为您递上商品。\n※领取商品后,恕不接受退换。',
+      noticeCompleted: '✅ 付款已完成。\n摊主会为您递上商品。\n※领取商品后,恕不接受退换。',
+      noticePending: '⏱ 正在确认付款状态。\n请稍候。',
+      noticeError: '❌ 无法获取付款状态。\n请从仪表板的交易历史中确认。',
       meta: '感谢您支持本地创作者与跳蚤市集文化。\n※如有需要,工作人员可能会请您确认付款编号。'
     }
   };
 
   const t = dict[lang];
+
+  // 決済状態に基づいて表示内容を決定
+  // 注意: useEffectでisPaid=falseの場合は/cancelにリダイレクトするため、
+  // paymentDataが存在する場合は通常isPaid=trueのはずだが、念のためチェック
+  const isPaymentCompleted = !loading && paymentData && paymentData.isPaid;
+  const isPaymentPending = loading; // ローディング中は確認中
+  const isPaymentError = !loading && (!paymentData || !paymentData.isPaid); // ローディング完了後、決済が完了していない場合はエラー
+
+  const badgeText = isPaymentCompleted 
+    ? t.badgeCompleted 
+    : isPaymentPending 
+    ? t.badgePending 
+    : t.badgeError;
+  
+  const titleText = isPaymentCompleted 
+    ? t.titleCompleted 
+    : isPaymentPending 
+    ? t.titlePending 
+    : t.titleError;
+  
+  const noticeText = isPaymentCompleted 
+    ? t.noticeCompleted 
+    : isPaymentPending 
+    ? t.noticePending 
+    : t.noticeError;
 
   return (
     <html lang={lang}>
@@ -212,6 +264,41 @@ function SuccessContent() {
             box-shadow:0 8px 18px rgba(20,100,60,.23);
             margin-bottom:12px;
             font-size:13px;
+          }
+          .badge.badge-pending{
+            color:#8b5a00;
+            background: linear-gradient(135deg,#ffd54f,#ffecb3);
+            box-shadow:0 8px 18px rgba(150,100,0,.23);
+          }
+          .badge.badge-error{
+            color:#6b1a1a;
+            background: linear-gradient(135deg,#ffab91,#ffccbc);
+            box-shadow:0 8px 18px rgba(150,50,50,.23);
+          }
+          .loading-spinner{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            gap:20px;
+            padding:40px 20px;
+            min-height:200px;
+          }
+          .spinner{
+            width:48px;
+            height:48px;
+            border:4px solid rgba(35,66,54,0.1);
+            border-top-color:#205a3e;
+            border-radius:50%;
+            animation:spin 1s linear infinite;
+          }
+          @keyframes spin{
+            to{transform:rotate(360deg)}
+          }
+          .loading-text{
+            font-size:16px;
+            color:#234236;
+            font-weight:700;
           }
           .notice {
             background: rgba(255,255,255,0.92);
@@ -298,30 +385,33 @@ function SuccessContent() {
       <body>
         <div className="card-wrap">
           <article className="card">
-            <div className="badge">
-              <span>✓</span>
-              <span>{t.badge}</span>
-              <span>✓</span>
-            </div>
-
-            <h1>{t.title}</h1>
-
-            <p className="lead">{t.lead}</p>
-
             {loading ? (
-              <div className="payment-info">
-                <div className="payment-info-row">
-                  <span className="payment-info-label">決済ステータス</span>
-                  <span className="payment-info-value status-pending">確認中…</span>
+              // ローディング中はシンプルなローディング表示のみ
+              <div className="loading-spinner">
+                <div className="spinner"></div>
+                <div className="loading-text">
+                  {lang === 'ja' ? '決済状態を確認しています...' : lang === 'en' ? 'Confirming payment status...' : '正在确认付款状态...'}
                 </div>
-                <p className="payment-info-hint">
-                  店員さんへ：決済状態を確認しています。しばらくお待ちください。
-                  {paymentData && !paymentData.webhookReceived && (
-                    <><br />※Webhook受信待ちのため、最大30秒程度かかる場合があります。</>
-                  )}
-                </p>
               </div>
-            ) : paymentData && paymentData.isPaid ? (
+            ) : (
+              <>
+                <div className={`badge ${isPaymentCompleted ? '' : 'badge-error'}`}>
+                  {isPaymentCompleted ? (
+                    <>
+                      <span>✓</span>
+                      <span>{badgeText}</span>
+                      <span>✓</span>
+                    </>
+                  ) : (
+                    <span>{badgeText}</span>
+                  )}
+                </div>
+
+                <h1>{titleText}</h1>
+
+                <p className="lead">{t.lead}</p>
+
+                {paymentData && paymentData.isPaid ? (
               <div className="payment-info">
                 <div className="payment-info-row">
                   <span className="payment-info-label">決済ステータス</span>
@@ -337,23 +427,26 @@ function SuccessContent() {
                   店員さんへ：この画面で「決済ステータス：完了」「お支払い金額：{paymentData.amount ? formatJPY(paymentData.amount) : '-'}」と表示されていれば、決済は完了しています。
                 </p>
               </div>
-            ) : (
-              <div className="payment-info">
-                <div className="payment-info-row">
-                  <span className="payment-info-label">決済ステータス</span>
-                  <span className="payment-info-value status-error">状態不明</span>
+                ) : (
+                  // エラー時（30秒タイムアウト含む）
+                  <div className="payment-info">
+                    <div className="payment-info-row">
+                      <span className="payment-info-label">決済ステータス</span>
+                      <span className="payment-info-value status-error">状態不明</span>
+                    </div>
+                    <p className="payment-info-hint">
+                      店員さんへ：ネットワーク等の理由で決済状態を取得できませんでした。ダッシュボードの取引履歴からご確認ください。
+                    </p>
+                  </div>
+                )}
+
+                <div className="notice">
+                  <p>{noticeText}</p>
                 </div>
-                <p className="payment-info-hint">
-                  店員さんへ：ネットワーク等の理由で決済状態を取得できませんでした。ダッシュボードの取引履歴からご確認ください。
-                </p>
-              </div>
+
+                <p className="meta">{t.meta}</p>
+              </>
             )}
-
-            <div className="notice">
-              <p>{t.notice}</p>
-            </div>
-
-            <p className="meta">{t.meta}</p>
           </article>
         </div>
 
