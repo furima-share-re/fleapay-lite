@@ -157,7 +157,7 @@ function CheckoutContent() {
           sellerId: orderData.sellerId,
           orderId: orderData.orderId,
           summary: orderData.summary,
-          latest: !orderId
+          amount: orderData.amount
         })
       });
 
@@ -334,18 +334,36 @@ function CheckoutContent() {
             --radius-xl: 20px;
           }
           * { box-sizing: border-box; }
-          :global(html), :global(body) { height: 100%; margin: 0; }
+          :global(html), :global(body) { 
+            height: 100%; 
+            margin: 0; 
+          }
           :global(body) {
-            font-family: "Nunito Sans", "Noto Sans JP", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            font-family: "Nunito Sans", "Noto Sans JP", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
             color: var(--sumi);
             background: var(--kinari) !important;
             background-image: radial-gradient(1200px 700px at 80% -10%, rgba(230,57,70,.06) 0%, transparent 60%),
                               radial-gradient(1200px 700px at -20% 110%, rgba(27,54,93,.08) 0%, transparent 60%) !important;
+            background-attachment: fixed !important;
           }
           .checkout-container {
             max-width: 640px;
             margin: 0 auto;
             padding: 20px;
+            min-height: 100vh;
+            position: relative;
+          }
+          /* 和紙の微細ノイズ */
+          .checkout-container::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: .25;
+            z-index: -1;
+            background-image: radial-gradient(circle at 25% 25%, rgba(255,255,255,.9) 1px, transparent 1px),
+                              radial-gradient(circle at 75% 75%, rgba(27,54,93,.12) 1px, transparent 1px);
+            background-size: 60px 60px, 80px 80px;
           }
           .appbar {
             display: flex;
@@ -493,6 +511,11 @@ function CheckoutContent() {
             color: var(--hakken);
             letter-spacing: 0.02em;
             margin: 0 0 8px 0;
+            animation: gentle-pulse 1.5s ease-in-out infinite;
+          }
+          @keyframes gentle-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
           }
           .sub-title {
             font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
@@ -560,6 +583,17 @@ function CheckoutContent() {
             font-weight: 700;
             font-size: 14px;
             color: var(--shin-ai);
+            transition: all 0.2s ease;
+          }
+          .security-toggle:hover {
+            background: linear-gradient(135deg, rgba(27,54,93,0.08), rgba(27,54,93,0.12));
+          }
+          .toggle-icon {
+            font-size: 16px;
+          }
+          .toggle-arrow {
+            font-size: 12px;
+            transition: transform 0.2s ease;
           }
           .security-details {
             margin-top: 16px;
@@ -658,6 +692,13 @@ function CheckoutContent() {
           }
           .note-block p {
             margin: 2px 0;
+          }
+          .mt8 {
+            margin-top: 8px;
+          }
+          .muted {
+            color: var(--usuzumi);
+            font-size: 13px;
           }
         `}</style>
 
