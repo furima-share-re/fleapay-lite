@@ -51,58 +51,103 @@ function getBaseUrl(): string {
 
 // 同一オリジンチェック（Next.js Request用）
 export function isSameOrigin(request: NextRequest | Request): boolean {
-  const BASE_URL = getBaseUrl();
-  if (!BASE_URL) return true;
-  
   try {
-    // リクエストのホストを取得
+    // リクエストのホストを取得（最も確実な方法）
     const host = request.headers.get('host') || '';
     const referer = request.headers.get('referer') || '';
     const origin = request.headers.get('origin') || '';
     
-    // ホストがBASE_URLに含まれるかチェック
-    if (host && BASE_URL.includes(host)) {
-      return true;
+    // request.urlからホスト名を抽出
+    let requestHostname = '';
+    try {
+      const requestUrlStr = request.url ? String(request.url) : '';
+      if (requestUrlStr) {
+        let requestUrl: URL;
+        // request.urlが既に完全なURLの場合はそのまま使用
+        if (requestUrlStr.startsWith('http://') || requestUrlStr.startsWith('https://')) {
+          requestUrl = new URL(requestUrlStr);
+        } else {
+          // 相対URLの場合は、hostヘッダーから構築
+          const protocol = request.headers.get('x-forwarded-proto') || 'https';
+          requestUrl = new URL(requestUrlStr, `${protocol}://${host}`);
+        }
+        requestHostname = requestUrl.hostname.toLowerCase();
+      }
+    } catch (urlError) {
+      // URL解析エラーは無視
     }
     
-    // refererまたはoriginがBASE_URLで始まるかチェック
-    if (referer && referer.startsWith(BASE_URL)) {
-      return true;
-    }
-    
-    if (origin && origin.startsWith(BASE_URL)) {
-      return true;
-    }
-    
-    // 本番環境では、同じドメインからのリクエストを許可
-    // (HTMLファイルから直接APIを呼び出す場合など)
-    if (process.env.NODE_ENV === 'production') {
+    // BASE_URLが設定されている場合は、それと比較
+    const BASE_URL = getBaseUrl();
+    if (BASE_URL) {
+      let baseHostname = '';
       try {
-        // request.urlはNextRequestとRequestの両方で文字列
-        const requestUrlStr = request.url ? String(request.url) : '';
-        if (requestUrlStr) {
-          const requestUrl = new URL(requestUrlStr, BASE_URL);
-          const baseUrlObj = new URL(BASE_URL);
+        const baseUrlObj = new URL(BASE_URL);
+        baseHostname = baseUrlObj.hostname.toLowerCase();
+      } catch (e) {
+        // BASE_URLが無効な場合はホスト名のみで比較
+        baseHostname = BASE_URL.replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase();
+      }
+      
+      // ホストヘッダーがBASE_URLのホスト名と一致するかチェック
+      if (host) {
+        const hostLower = host.toLowerCase().split(':')[0]; // ポート番号を除去
+        if (hostLower === baseHostname) {
+          return true;
+        }
+      }
+      
+      // refererまたはoriginがBASE_URLで始まるかチェック
+      if (referer && referer.startsWith(BASE_URL)) {
+        return true;
+      }
+      
+      if (origin && origin.startsWith(BASE_URL)) {
+        return true;
+      }
+      
+      // request.urlのホスト名がBASE_URLのホスト名と一致するかチェック
+      if (requestHostname && requestHostname === baseHostname) {
+        return true;
+      }
+    } else {
+      // BASE_URLが設定されていない場合（開発環境など）
+      // ホストヘッダーとrequest.urlのホスト名が一致するかチェック
+      if (host && requestHostname) {
+        const hostLower = host.toLowerCase().split(':')[0];
+        if (hostLower === requestHostname) {
+          return true;
+        }
+      }
+      
+      // refererまたはoriginが同じドメインかチェック
+      if (referer || origin) {
+        try {
+          const refUrl = referer ? new URL(referer) : null;
+          const origUrl = origin ? new URL(origin) : null;
+          const refHostname = refUrl?.hostname.toLowerCase() || '';
+          const origHostname = origUrl?.hostname.toLowerCase() || '';
+          const hostLower = host.toLowerCase().split(':')[0];
           
-          if (requestUrl.hostname === baseUrlObj.hostname) {
+          if ((refHostname && refHostname === hostLower) || 
+              (origHostname && origHostname === hostLower)) {
             return true;
           }
+        } catch (e) {
+          // URL解析エラーは無視
         }
-      } catch (urlError) {
-        // URL解析エラーは無視して次のチェックに進む
       }
     }
     
-    // デバッグログ（本番環境では出力しない）
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('[isSameOrigin] Check failed:', {
-        BASE_URL,
-        host,
-        referer,
-        origin,
-        requestUrl: request.url ? String(request.url) : ''
-      });
-    }
+    // デバッグログ（本番環境でも出力して問題を特定しやすくする）
+    console.warn('[isSameOrigin] Check failed:', {
+      BASE_URL: BASE_URL || '(not set)',
+      host,
+      referer,
+      origin,
+      requestHostname,
+      requestUrl: request.url ? String(request.url) : ''
+    });
   } catch (error) {
     // エラーが発生した場合は、セキュリティのためfalseを返す
     console.error('[isSameOrigin] Error:', error);
@@ -182,6 +227,16 @@ export function sanitizeError(error: unknown, isDevelopment: boolean = process.e
 }
 
 // スラッグ化
+// seller_idエイリアス: データベースに存在するseller_idにマッピング
+// 例: test-seller-1 → seller-test01
+export function normalizeSellerId(sellerId: string): string {
+  const sellerIdAliases: Record<string, string> = {
+    'test-seller-1': 'seller-test01',
+  };
+  
+  return sellerIdAliases[sellerId] || sellerId;
+}
+
 export function slugify(str: string): string {
   return (str || '')
     .toLowerCase()

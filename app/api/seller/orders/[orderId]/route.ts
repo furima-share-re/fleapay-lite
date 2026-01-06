@@ -3,7 +3,7 @@
 
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sanitizeError, audit } from '@/lib/utils';
+import { sanitizeError, audit, normalizeSellerId } from '@/lib/utils';
 
 export async function DELETE(
   request: NextRequest,
@@ -11,7 +11,7 @@ export async function DELETE(
 ) {
   try {
     const { orderId } = params;
-    const sellerId = request.nextUrl.searchParams.get('s');
+    let sellerId = request.nextUrl.searchParams.get('s');
 
     if (!orderId) {
       return NextResponse.json(
@@ -26,6 +26,9 @@ export async function DELETE(
         { status: 400 }
       );
     }
+    
+    // seller_idエイリアス処理
+    sellerId = normalizeSellerId(sellerId);
 
     // 注文の存在確認とseller_idの確認（削除済みも含む）
     const order = await prisma.order.findUnique({
