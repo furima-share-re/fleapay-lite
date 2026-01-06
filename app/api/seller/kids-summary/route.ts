@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
-import { sanitizeError } from '@/lib/utils';
+import { sanitizeError, normalizeSellerId } from '@/lib/utils';
 
 const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL 
@@ -11,7 +11,7 @@ const pool = new Pool({
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const sellerId = url.searchParams.get('s');
+  let sellerId = url.searchParams.get('s');
   
   if (!sellerId) {
     return NextResponse.json(
@@ -19,6 +19,9 @@ export async function GET(request: Request) {
       { status: 400 }
     );
   }
+  
+  // seller_idエイリアス処理
+  sellerId = normalizeSellerId(sellerId);
 
   try {
     // 1) 基本集計

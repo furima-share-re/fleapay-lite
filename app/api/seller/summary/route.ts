@@ -4,7 +4,7 @@
 // 旧DB対応: order_metadata, buyer_attributes, cost_amount, deleted_atが存在しない場合に対応
 
 import { prisma } from '@/lib/prisma';
-import { jstDayBounds } from '@/lib/utils';
+import { jstDayBounds, normalizeSellerId } from '@/lib/utils';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Force dynamic rendering (this route uses nextUrl.searchParams)
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const sellerId = String(searchParams.get('s') || '');
+  let sellerId = String(searchParams.get('s') || '');
   
   if (!sellerId) {
     return NextResponse.json(
@@ -21,6 +21,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // seller_idエイリアス: test-seller-1 → seller-test01
+  // データベースにはseller-test01が存在するが、test-seller-1でアクセスされる可能性があるため
+  sellerId = normalizeSellerId(sellerId);
+
   try {
 
     // 0) サブスク状態の判定(履歴テーブルから現在プランを取得)
@@ -28,7 +32,7 @@ export async function GET(request: NextRequest) {
     let isSubscribed = false;
     
     // テストユーザーは常に全機能を利用できるようにする（test-seller-で始まるID）
-    const isTestUser = sellerId.startsWith('test-seller-');
+    const isTestUser = sellerId.startsWith('test-seller-') || sellerId.startsWith('seller-test');
     
     try {
       const sub = await prisma.sellerSubscription.findFirst({

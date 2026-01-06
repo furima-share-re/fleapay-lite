@@ -3,7 +3,7 @@
 
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { jstDayBounds, sanitizeError } from '@/lib/utils';
+import { jstDayBounds, sanitizeError, normalizeSellerId } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -188,13 +188,16 @@ async function getWeeklyAnalytics(sellerId: string, weeks: number = 4) {
 
 export async function GET(request: NextRequest) {
   try {
-    const sellerId = String(request.nextUrl.searchParams.get('s') || '');
+    let sellerId = String(request.nextUrl.searchParams.get('s') || '');
     if (!sellerId) {
       return NextResponse.json(
         { ok: false, error: 'seller_id_required' },
         { status: 400 }
       );
     }
+    
+    // seller_idエイリアス処理
+    sellerId = normalizeSellerId(sellerId);
 
     const period = String(request.nextUrl.searchParams.get('period') || 'daily');
     const days = Math.min(parseInt(request.nextUrl.searchParams.get('days') || '30', 10), 90); // 最大90日

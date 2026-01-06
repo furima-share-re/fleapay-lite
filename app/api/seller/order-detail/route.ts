@@ -3,7 +3,7 @@
 
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sanitizeError } from '@/lib/utils';
+import { sanitizeError, normalizeSellerId } from '@/lib/utils';
 const PENDING_TTL_MIN = parseInt(process.env.PENDING_TTL_MIN || '10', 10);
 
 // Force dynamic rendering (this route uses request.url)
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const sellerId = request.nextUrl.searchParams.get('s');
+    let sellerId = request.nextUrl.searchParams.get('s');
     const orderId = request.nextUrl.searchParams.get('orderId');
 
     if (!sellerId || !orderId) {
@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+    
+    // seller_idエイリアス処理
+    sellerId = normalizeSellerId(sellerId);
 
     const order = await prisma.order.findFirst({
       where: {

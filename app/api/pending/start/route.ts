@@ -4,7 +4,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getNextOrderNo, resolveSellerAccountId, buildSellerUrls, sanitizeError, isSameOrigin, bumpAndAllow, clientIp, audit } from '@/lib/utils';
+import { getNextOrderNo, resolveSellerAccountId, buildSellerUrls, sanitizeError, isSameOrigin, bumpAndAllow, clientIp, audit, normalizeSellerId } from '@/lib/utils';
 
 const RATE_LIMIT_MAX_WRITES = parseInt(process.env.RATE_LIMIT_MAX_WRITES || "12", 10);
 
@@ -38,7 +38,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { sellerId, amount, summary, imageData, aiAnalysis, paymentMethod, costAmount } = body || {};
+    const { sellerId: rawSellerId, amount, summary, imageData, aiAnalysis, paymentMethod, costAmount } = body || {};
+    // seller_idエイリアスを正規化
+    const sellerId = normalizeSellerId(rawSellerId || '');
     const amt = Number(amount);
     const costAmt = Number(costAmount) || 0;
 
