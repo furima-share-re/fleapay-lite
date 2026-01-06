@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Mesh, Group } from 'three';
 import { Text } from '@react-three/drei';
+import { MeshStandardMaterial } from 'three';
 
 interface OmikujiBoxProps {
   isShaking?: boolean;
@@ -106,7 +107,7 @@ export default function OmikujiBox({ isShaking = false, position = [0, 0, 0] }: 
         color="#ffffff"
         anchorX="center"
         anchorY="middle"
-        opacity={0.4}
+        material={new MeshStandardMaterial({ opacity: 0.4, transparent: true })}
       >
         おみくじ
       </Text>
