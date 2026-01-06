@@ -10,7 +10,7 @@ export async function GET() {
       return NextResponse.json(
         {
           error: 'openai_not_configured',
-          message: 'OPENAI_API_KEYまたはHELICONE_API_KEY環境変数が設定されていません',
+          message: 'OPENAI_API_KEY環境変数が設定されていません（HELICONE_API_KEYはオプション）',
           configuration: {
             hasOpenAIKey: !!process.env.OPENAI_API_KEY,
             hasHeliconeKey: !!process.env.HELICONE_API_KEY,

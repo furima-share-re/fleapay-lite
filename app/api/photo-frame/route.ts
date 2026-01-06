@@ -3,7 +3,7 @@
 
 import { NextResponse, NextRequest } from 'next/server';
 import sharp from 'sharp';
-import { openai, isOpenAIAvailable } from '@/lib/openai';
+import { openai, isOpenAIAvailable, callWithFallback } from '@/lib/openai';
 
 export async function POST(request: NextRequest) {
   const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -45,11 +45,11 @@ export async function POST(request: NextRequest) {
     const uint8Array = new Uint8Array(inputBuffer);
     const fileObj = new File([uint8Array], 'image.png', { type: 'image/png' });
 
-    // Helicone設定確認
+    // OpenAI設定確認（基本はHelicone経由）
     const heliconeConfigured = isOpenAIAvailable();
-    console.warn(`[写真フレーム][${requestId}] 🔧 Helicone設定:`, heliconeConfigured ? '✅ 有効' : '❌ 無効');
+    console.warn(`[写真フレーム][${requestId}] 🔧 OpenAI設定:`, heliconeConfigured ? '✅ 有効' : '❌ 無効');
     console.warn(`[写真フレーム][${requestId}] 🔧 OPENAI_API_KEY:`, process.env.OPENAI_API_KEY ? '✅ 設定済み' : '❌ 未設定');
-    console.warn(`[写真フレーム][${requestId}] 🔧 HELICONE_API_KEY:`, process.env.HELICONE_API_KEY ? '✅ 設定済み' : '❌ 未設定');
+    console.warn(`[写真フレーム][${requestId}] 🔧 HELICONE_API_KEY:`, process.env.HELICONE_API_KEY ? '✅ 設定済み（Helicone経由）' : '⚠️ 未設定（直接OpenAI API使用、Helicone推奨）');
     console.warn(`[写真フレーム][${requestId}] 🔧 NODE_ENV:`, process.env.NODE_ENV || 'development');
 
     if (!heliconeConfigured) {
@@ -57,36 +57,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'openai_not_configured',
-          message: 'OPENAI_API_KEYまたはHELICONE_API_KEY環境変数が設定されていません',
+          message: 'OPENAI_API_KEY環境変数が設定されていません',
         },
         { status: 503 }
       );
     }
 
-    console.warn(`[写真フレーム][${requestId}] 🚀 Helicone経由でOpenAI Images Edit API呼び出し開始`);
-    console.warn(`[写真フレーム][${requestId}] 📤 Base URL: https://oai.helicone.ai/v1`);
+    const usingHelicone = !!process.env.HELICONE_API_KEY;
+    console.warn(`[写真フレーム][${requestId}] 🚀 OpenAI Images Edit API呼び出し開始 (${usingHelicone ? 'Helicone経由' : '直接API'})`);
+    if (usingHelicone) {
+      console.warn(`[写真フレーム][${requestId}] 📤 Base URL: https://oai.helicone.ai/v1`);
+    }
     console.warn(`[写真フレーム][${requestId}] 📤 Model: dall-e-2`);
 
     const startTime = Date.now();
 
-    // openaiがnullでないことは既にチェック済み
-    if (!openai) {
-      throw new Error('OpenAI client is not available');
-    }
-    // OpenAI画像編集
-    const result = await openai.images.edit({
-      model: 'dall-e-2',
-      image: fileObj,
-      prompt,
-      size: '1024x1024',
-    });
+    // Helicone経由で試行、エラー時は直接OpenAI APIにフォールバック
+    const result = await callWithFallback(
+      async (client) => {
+        return await client.images.edit({
+          model: 'dall-e-2',
+          image: fileObj,
+          prompt,
+          size: '1024x1024',
+        });
+      },
+      requestId
+    );
 
     const endTime = Date.now();
     const duration = endTime - startTime;
     
     console.warn(`[写真フレーム][${requestId}] ✅ OpenAI API呼び出し成功 (${duration}ms)`);
     console.warn(`[写真フレーム][${requestId}] 📝 Response ID:`, result.created);
-    console.warn(`[写真フレーム][${requestId}] 🔍 Heliconeでこのリクエストを確認してください`);
+    if (usingHelicone) {
+      console.warn(`[写真フレーム][${requestId}] 🔍 Heliconeでこのリクエストを確認してください`);
+    }
 
     // レスポンス処理の安全性向上
     const b64 = result.data?.[0]?.b64_json;
