@@ -1402,10 +1402,11 @@
 
         // 支払い方法の判定（isCash/is_cashを最優先で使用）
         // ⚠️ paymentMethodはDBに保存されていない計算フィールドのため、isCashを優先
-        const isCash = !!(tx.isCash || tx.is_cash);
+        // isCashがtrueの場合のみ現金として扱う（null/undefined/falseは全て非現金）
+        const isCash = tx.isCash === true || tx.is_cash === true;
         // paymentMethodは互換性のため残すが、判定には使用しない
         const paymentMethod = tx.paymentMethod || tx.payment_method || '';
-        // isCashがtrueの場合は確実に現金、falseの場合はStripe決済の有無で判定
+        // isCashがtrueの場合のみ現金として扱う
         const isActuallyCash = isCash;
         li.classList.add(isActuallyCash ? "tx-cash" : "tx-cashless");
 

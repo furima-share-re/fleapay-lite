@@ -436,7 +436,7 @@ export async function GET(request: NextRequest) {
               o.world_price_high,
               o.world_price_low,
               o.world_price_sample_count,
-              om.is_cash,
+              COALESCE(om.is_cash, false) AS is_cash,
               om.category            AS raw_category,
               -- ⚠️ payment_methodは計算フィールド（DBに保存しない）
               CASE
@@ -481,7 +481,7 @@ export async function GET(request: NextRequest) {
               o.world_price_high,
               o.world_price_low,
               o.world_price_sample_count,
-              om.is_cash,
+              COALESCE(om.is_cash, false) AS is_cash,
               om.category            AS raw_category,
               -- ⚠️ payment_methodは計算フィールド（DBに保存しない）
               CASE
@@ -534,7 +534,7 @@ export async function GET(request: NextRequest) {
               NULL                     AS world_price_high,
               NULL                     AS world_price_low,
               0                        AS world_price_sample_count,
-              false                    AS is_cash,
+              false                    AS is_cash,  -- 旧DB対応: order_metadataが存在しない場合はfalse
               NULL                     AS raw_category,
               -- ⚠️ payment_methodは計算フィールド（DBに保存しない）
               CASE
@@ -672,7 +672,8 @@ export async function GET(request: NextRequest) {
         worldHigh: r.world_price_high,
         worldLow: r.world_price_low,
         worldSampleCount: r.world_price_sample_count,
-        isCash: !!r.is_cash,
+        // is_cashがnullの場合はfalseとして扱う（order_metadataが存在しない場合）
+        isCash: r.is_cash === true,
         rawCategory: r.raw_category,
         // ⚠️ paymentMethodは計算フィールド（DBに保存されていない、互換性のため返す）
         paymentMethod: r.payment_method,
@@ -684,8 +685,8 @@ export async function GET(request: NextRequest) {
         created: createdSec,
         summary: r.memo || "",
         net_amount: amt,
-        status: r.is_cash ? "現金" : "通常",
-        is_cash: !!r.is_cash,
+        status: (r.is_cash === true) ? "現金" : "通常",
+        is_cash: r.is_cash === true,
         raw_category: r.raw_category,
         payment_method: r.payment_method,
         customer_type: customerType,
