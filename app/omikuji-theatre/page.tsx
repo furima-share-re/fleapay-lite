@@ -19,6 +19,14 @@ export default function OmikujiMainPageTheatre() {
   const [enableTheatre, setEnableTheatre] = useState(true);
   const [enableLeva, setEnableLeva] = useState(process.env.NODE_ENV === 'development');
 
+  // ボタン周りの小判の定義
+  const buttonCoins = [
+    { id: 1, side: 'left' as const, delay: 0 },
+    { id: 2, side: 'left' as const, delay: 0.5 },
+    { id: 3, side: 'right' as const, delay: 0.3 },
+    { id: 4, side: 'right' as const, delay: 0.8 },
+  ];
+
   useEffect(() => {
     // 小判の3D位置を生成
     const coinArray = Array.from({ length: 6 }, (_, i) => ({
