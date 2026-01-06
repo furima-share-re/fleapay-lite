@@ -1,6 +1,8 @@
 {
-  "regions": ["hnd1"],
-  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" = \"branch-1229\" ]; then exit 1; else exit 0; fi",
+  "regions": [
+    "hnd1"
+  ],
+  "ignoreCommand": "[ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]",
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 60
@@ -11,4 +13,3 @@
   },
   "crons": []
 }
-
