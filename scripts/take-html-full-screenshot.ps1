@@ -35,3 +35,4 @@ Write-Host "Note: For full page screenshot (including scrolled content),"
 Write-Host "use browser DevTools: F12 -> Ctrl+Shift+P -> 'Capture full size screenshot'"
 
 
+

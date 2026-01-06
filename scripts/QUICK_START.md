@@ -250,3 +250,4 @@ npm install --save-dev puppeteer
 4. **CI/CDに組み込む**: GitHub Actionsなどで自動チェックを設定
 
 
+

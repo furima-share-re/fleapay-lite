@@ -157,3 +157,4 @@ git commit --no-verify
 （非推奨：緊急時のみ使用）
 
 
+
