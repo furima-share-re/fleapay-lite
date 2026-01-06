@@ -289,6 +289,19 @@
       border-color: #fbbf24;
     }
 
+    /* 決済ステータスバッジ */
+    .badge-payment-completed {
+      background: #e6f7f0;
+      color: #0b6940;
+      border-color: #b6e3c9;
+    }
+
+    .badge-payment-pending {
+      background: #fff7ed;
+      color: #b86a00;
+      border-color: #fed7aa;
+    }
+
     .tx-sub-warn {
       font-size: .75rem;
       color: var(--warn);
@@ -1463,12 +1476,23 @@
           ? `<div class="tx-sub tx-sub-warn">入力まち：${missing.join("・")}（タップして入力）</div>`
           : "";
 
+        // 決済ステータスの判定とバッジ生成
+        const isPaid = tx.isPaid === true || 
+                      tx.orderStatus === 'paid' || 
+                      tx.paymentStatus === 'succeeded';
+        const paymentStatusBadge = !isActuallyCash ? (
+          isPaid 
+            ? '<span class="badge badge-payment-completed">決済完了</span>'
+            : '<span class="badge badge-payment-pending">決済未完了</span>'
+        ) : '';
+
         li.innerHTML = `
           <div class="tx-main">
             <div class="tx-top">
               <span class="badge badge-ok">${tx.status || "通常"}</span>
               ${uncategorizedBadge}
               ${paymentBadge}
+              ${paymentStatusBadge}
               ${needInputBadge}
               <span class="tx-time">${timeStr}${dateStr ? " / " + dateStr : ""}</span>
             </div>

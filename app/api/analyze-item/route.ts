@@ -6,7 +6,7 @@ import sharp from 'sharp';
 import { bumpAndAllow, clientIp, sanitizeError } from '@/lib/utils';
 // 新API（推奨）: import { chatCompletion, getLLMProvider } from '@/lib/llm';
 // 既存API（後方互換性のため残す）:
-import { openai, isOpenAIAvailable } from '@/lib/openai';
+import { openai, isOpenAIAvailable, callWithFallback } from '@/lib/openai';
 
 const RATE_LIMIT_MAX_WRITES = 12;
 
@@ -37,11 +37,11 @@ export async function POST(request: Request) {
 
     console.warn(`[AI分析][${requestId}] 📸 画像処理開始: ${file.name || 'unknown'} (${file.size} bytes)`);
 
-    // Helicone設定確認
+    // OpenAI設定確認（基本はHelicone経由）
     const heliconeConfigured = isOpenAIAvailable();
-    console.warn(`[AI分析][${requestId}] 🔧 Helicone設定:`, heliconeConfigured ? '✅ 有効' : '❌ 無効');
+    console.warn(`[AI分析][${requestId}] 🔧 OpenAI設定:`, heliconeConfigured ? '✅ 有効' : '❌ 無効');
     console.warn(`[AI分析][${requestId}] 🔧 OPENAI_API_KEY:`, process.env.OPENAI_API_KEY ? '✅ 設定済み' : '❌ 未設定');
-    console.warn(`[AI分析][${requestId}] 🔧 HELICONE_API_KEY:`, process.env.HELICONE_API_KEY ? '✅ 設定済み' : '❌ 未設定');
+    console.warn(`[AI分析][${requestId}] 🔧 HELICONE_API_KEY:`, process.env.HELICONE_API_KEY ? '✅ 設定済み（Helicone経由）' : '⚠️ 未設定（直接OpenAI API使用、Helicone推奨）');
     console.warn(`[AI分析][${requestId}] 🔧 NODE_ENV:`, process.env.NODE_ENV || 'development');
 
     if (!heliconeConfigured) {
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: 'openai_not_configured',
-          message: 'OPENAI_API_KEYまたはHELICONE_API_KEY環境変数が設定されていません'
+          message: 'OPENAI_API_KEY環境変数が設定されていません'
         },
         { status: 503 }
       );
@@ -66,25 +66,27 @@ export async function POST(request: Request) {
     const base64Image = imageBuffer.toString('base64');
     const dataUrl = `data:image/jpeg;base64,${base64Image}`;
 
-    console.warn(`[AI分析][${requestId}] 🚀 Helicone経由でOpenAI API呼び出し開始`);
-    console.warn(`[AI分析][${requestId}] 📤 Base URL: https://oai.helicone.ai/v1`);
+    const usingHelicone = !!process.env.HELICONE_API_KEY;
+    console.warn(`[AI分析][${requestId}] 🚀 OpenAI API呼び出し開始 (${usingHelicone ? 'Helicone経由' : '直接API'})`);
+    if (usingHelicone) {
+      console.warn(`[AI分析][${requestId}] 📤 Base URL: https://oai.helicone.ai/v1`);
+    }
     console.warn(`[AI分析][${requestId}] 📤 Model: gpt-4o`);
 
     const startTime = Date.now();
     
-    // openaiがnullでないことは既にチェック済み
-    if (!openai) {
-      throw new Error('OpenAI client is not available');
-    }
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      response_format: { type: 'json_object' }, // JSON形式を強制
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: `この画像はフリーマーケットの商品写真です。以下の情報を分析して、必ずJSONオブジェクトのみを返してください（マークダウンコードブロックは使用しないでください）。
+    // Helicone経由で試行、エラー時は直接OpenAI APIにフォールバック
+    const response = await callWithFallback(
+      async (client) => {
+        return await client.chat.completions.create({
+          model: 'gpt-4o',
+          response_format: { type: 'json_object' }, // JSON形式を強制
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `この画像はフリーマーケットの商品写真です。以下の情報を分析して、必ずJSONオブジェクトのみを返してください（マークダウンコードブロックは使用しないでください）。
 
 1. 商品の簡潔で具体的な説明（summary）
    - 写真から読み取れる情報を使ってください
@@ -100,15 +102,18 @@ export async function POST(request: Request) {
   "summary": "商品の説明（50文字以内）",
   "total": 0
 }`
-          },
-          {
-            type: 'image_url',
-            image_url: { url: dataUrl }
-          }
-        ]
-      }],
-      max_tokens: 200
-    });
+              },
+              {
+                type: 'image_url',
+                image_url: { url: dataUrl }
+              }
+            ]
+          }],
+          max_tokens: 200
+        });
+      },
+      requestId
+    );
 
     const endTime = Date.now();
     const duration = endTime - startTime;
@@ -120,7 +125,9 @@ export async function POST(request: Request) {
       total_tokens: response.usage?.total_tokens,
     });
     console.warn(`[AI分析][${requestId}] 📝 Response ID:`, response.id);
-    console.warn(`[AI分析][${requestId}] 🔍 Heliconeでこのリクエストを確認してください`);
+    if (usingHelicone) {
+      console.warn(`[AI分析][${requestId}] 🔍 Heliconeでこのリクエストを確認してください`);
+    }
 
     const content = response.choices[0]?.message?.content || '{}';
     
