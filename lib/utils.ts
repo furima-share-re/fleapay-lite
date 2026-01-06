@@ -78,8 +78,8 @@ export function isSameOrigin(request: NextRequest | Request): boolean {
     // (HTMLファイルから直接APIを呼び出す場合など)
     if (process.env.NODE_ENV === 'production') {
       try {
-        // request.urlがNextRequestの場合は文字列、Requestの場合はURLオブジェクト
-        const requestUrlStr = typeof request.url === 'string' ? request.url : request.url?.toString() || '';
+        // request.urlはNextRequestとRequestの両方で文字列
+        const requestUrlStr = request.url ? String(request.url) : '';
         if (requestUrlStr) {
           const requestUrl = new URL(requestUrlStr, BASE_URL);
           const baseUrlObj = new URL(BASE_URL);
@@ -100,7 +100,7 @@ export function isSameOrigin(request: NextRequest | Request): boolean {
         host,
         referer,
         origin,
-        requestUrl: typeof request.url === 'string' ? request.url : request.url?.toString()
+        requestUrl: request.url ? String(request.url) : ''
       });
     }
   } catch (error) {
