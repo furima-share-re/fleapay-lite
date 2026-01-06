@@ -99,11 +99,8 @@ export default function Scene({
           const projectName = `Omikuji Scene ${Date.now()}`;
           
           // Theatre.jsプロジェクトの初期化
-          const theatreProject = getProject(projectName, {
-            state: {
-              stateByObject: {},
-            },
-          });
+          // stateは自動的に管理されるため、手動で指定しない
+          const theatreProject = getProject(projectName);
 
           const theatreSheet = theatreProject.sheet('Main Sheet');
 
