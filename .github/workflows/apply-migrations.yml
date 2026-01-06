@@ -1,0 +1,63 @@
+name: Apply Migrations
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  apply-migrations:
+    runs-on: ubuntu-latest
+    # 本番環境への適用は手動承認が必要
+    environment:
+      name: production
+      url: https://app.supabase.com
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to Supabase project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          supabase link --project-ref $SUPABASE_PROJECT_ID
+
+      - name: Validate migrations
+        run: |
+          echo "🔍 Validating migration files..."
+          python scripts/check_migration_safety.py
+
+      - name: Apply migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🚀 Applying migrations to production..."
+          supabase db push
+
+      - name: Update Prisma schema
+        run: |
+          echo "📝 Updating Prisma schema..."
+          npx prisma db pull
+          npx prisma generate
+
+      - name: Create PR for Prisma schema update
+        if: github.ref == 'refs/heads/main'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update Prisma schema after migration"
+          title: "Update Prisma schema after migration"
+          body: |
+            This PR updates the Prisma schema after applying database migrations.
+            
+            Please review the changes and merge if everything looks correct.
+          branch: update-prisma-schema
+          delete-branch: true
+

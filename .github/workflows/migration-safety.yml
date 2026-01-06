@@ -7,6 +7,7 @@ on:
       - "prisma/migrations/**"
       - "backend/migrations/**"
       - "supabase/migrations/**"
+      - "scripts/check_migration_safety.py"
 
 jobs:
   migration-safety:
@@ -20,3 +21,22 @@ jobs:
 
       - name: Run migration safety gate
         run: python scripts/check_migration_safety.py
+
+      - name: Validate migration file structure
+        run: |
+          echo "🔍 Checking migration file structure..."
+          if [ -d "supabase/migrations" ]; then
+            for file in supabase/migrations/*.sql; do
+              if [ -f "$file" ]; then
+                filename=$(basename "$file")
+                if ! [[ "$filename" =~ ^[0-9]{8}_[0-9]{6}_[a-z0-9_]+\.sql$ ]]; then
+                  echo "❌ Invalid migration filename: $filename"
+                  echo "   Expected format: YYYYMMDD_HHMMSS_description.sql"
+                  exit 1
+                fi
+              fi
+            done
+            echo "✅ All migration files follow naming convention"
+          else
+            echo "ℹ️  No supabase/migrations directory found"
+          fi

@@ -2,482 +2,99 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>DB 初期構築用 SQL 実行ツール (危険)</title>
+  <title>DB 初期構築用 SQL 実行ツール (削除済み)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  
-  <!-- 共通管理画面スタイル - インライン化 -->
   <style>
-    /* ===== admin-base.css の内容をインライン化 ===== */
-    :root {
-      --fleapay-blue: #1B365D;
-      --fleapay-cream: #FBF7F0;
-      --fleapay-gold: #B8902E;
-      --fleapay-gray: #666666;
-      --success-green: #2D5B3F;
-      --error-maroon: #8B2635;
-      --warning-amber: #B8860B;
-      --admin-sidebar-width: 220px;
-      --admin-header-height: 64px;
-      --admin-content-padding: 24px;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; }
-
     body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
-      background: var(--fleapay-cream);
-      color: #1A1A1A;
-      line-height: 1.5;
-    }
-
-    .admin-container {
-      display: flex;
-      min-height: 100vh;
-    }
-
-    .admin-header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: var(--admin-header-height);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
       background: #fff;
-      border-bottom: 1px solid rgba(0,0,0,0.08);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 var(--admin-content-padding);
-      z-index: 100;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
-
-    .admin-sidebar {
-      position: fixed;
-      top: var(--admin-header-height);
-      left: 0;
-      width: var(--admin-sidebar-width);
-      height: calc(100vh - var(--admin-header-height));
-      background: #fff;
-      border-right: 1px solid rgba(0,0,0,0.08);
-      padding: 16px 0;
-      overflow-y: auto;
+    .warning {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
     }
-
-    .admin-content {
-      margin-left: var(--admin-sidebar-width);
-      margin-top: var(--admin-header-height);
-      padding: var(--admin-content-padding);
-      flex: 1;
-      min-height: calc(100vh - var(--admin-header-height));
-      width: calc(100% - var(--admin-sidebar-width));
+    .error {
+      background: #f8d7da;
+      border: 2px solid #dc3545;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
     }
-
-    .nav-menu {
-      list-style: none;
-      margin: 0;
-      padding: 0;
+    h1 {
+      color: #dc3545;
     }
-
-    .nav-item {
-      display: block;
-      padding: 12px 20px;
-      color: var(--fleapay-blue);
+    code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    a {
+      color: #007bff;
       text-decoration: none;
-      font-weight: 500;
-      transition: all 0.2s ease;
-      border-radius: 0 8px 8px 0;
-      margin-right: 8px;
     }
-
-    .nav-item:hover {
-      background: rgba(27, 54, 93, 0.06);
-    }
-
-    .nav-item.active {
-      background: var(--fleapay-blue);
-      color: #fff;
-      font-weight: 600;
-    }
-
-    .env-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
-      margin-left: 12px;
-      background: var(--fleapay-gray);
-      color: #fff;
-    }
-
-    /* ===== ページ専用スタイル ===== */
-    .bootstrap-sql {
-      background: #fff;
-      border-radius: 14px;
-      padding: 24px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-    }
-
-    .bootstrap-sql-title {
-      font-size: 20px;
-      margin: 0 0 8px;
-    }
-
-    .bootstrap-sql-danger {
-      border-left: 4px solid #d32f2f;
-      background: #ffebee;
-      color: #b71c1c;
-      padding: 8px 10px;
-      margin: 0 0 16px;
-      font-size: 13px;
-    }
-
-    .bootstrap-sql-label {
-      font-size: 13px;
-      display: block;
-      margin-top: 8px;
-      margin-bottom: 4px;
-      font-weight: 500;
-    }
-
-    .bootstrap-sql-input,
-    .bootstrap-sql-textarea {
-      width: 100%;
-      box-sizing: border-box;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans JP", sans-serif;
-      font-size: 13px;
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-
-    .bootstrap-sql-textarea {
-      font-family: monospace;
-      min-height: 220px;
-      resize: vertical;
-    }
-
-    .bootstrap-sql-main-flex {
-      display: flex;
-      gap: 14px;
-      margin-top: 14px;
-      align-items: stretch;
-    }
-
-    .bootstrap-sql-panel {
-      flex: 1 1 0;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .bootstrap-sql-panel textarea {
-      flex: 1;
-      min-height: 0;
-    }
-
-    .bootstrap-sql-panel pre {
-      flex: 1;
-      min-height: 0;
-    }
-
-    .bootstrap-sql-button {
-      margin-top: 10px;
-      padding: 8px 18px;
-      border-radius: 999px;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      background: var(--fleapay-blue);
-      color: #fff;
-      transition: all 0.2s ease;
-    }
-
-    .bootstrap-sql-button:hover:not(:disabled) {
-      opacity: 0.9;
-      transform: translateY(-1px);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
-    }
-
-    .bootstrap-sql-button:disabled {
-      opacity: 0.6;
-      cursor: wait;
-    }
-
-    .bootstrap-sql-status {
-      margin-top: 10px;
-      font-size: 13px;
-      color: #555;
-      white-space: pre-wrap;
-    }
-
-    .bootstrap-sql-result {
-      margin-top: 12px;
-      padding: 10px;
-      background: #111;
-      color: #eee;
-      border-radius: 6px;
-      font-size: 12px;
-      overflow-x: auto;
-      max-height: 420px;
-      font-family: monospace;
-    }
-
-    .bootstrap-sql-preset-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin: 6px 0 4px;
-    }
-
-    .bootstrap-sql-preset-btn {
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid #ccc;
-      background: #fafafa;
-      font-size: 11px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .bootstrap-sql-preset-btn:hover {
-      background: #e3f2fd;
-    }
-
-    .bootstrap-sql-small {
-      font-size: 11px;
-      color: #777;
-      margin-top: 4px;
-    }
-
-    @media (max-width: 960px) {
-      .bootstrap-sql-main-flex {
-        flex-direction: column;
-      }
-    }
-
-    @media (max-width: 768px) {
-      .admin-sidebar {
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-      }
-      
-      .admin-content {
-        margin-left: 0;
-        width: 100%;
-      }
+    a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <div class="admin-container">
-    <!-- ヘッダー -->
-    <header class="admin-header">
-      <div>
-        <span style="font-weight:700;">Fleapay Admin</span>
-      </div>
-      <div>
-        <span>DB 初期構築用 SQL 実行ツール</span>
-        <span class="env-badge">ENV</span>
-      </div>
-    </header>
-
-    <!-- サイドバー -->
-    <aside class="admin-sidebar">
-      <ul class="nav-menu">
-        <li><a href="./admin-dashboard.html" class="nav-item">ダッシュボード</a></li>
-        <li><a href="./admin-sellers.html" class="nav-item">出店者管理</a></li>
-        <li><a href="./admin-frames.html" class="nav-item">フレーム管理</a></li>
-        <li><a href="./admin-payments.html" class="nav-item">決済・売上</a></li>
-        <li><a href="./bootstrap_sql.html" class="nav-item active">DB 初期構築 SQL</a></li>
-      </ul>
-    </aside>
-
-    <!-- コンテンツ -->
-    <main class="admin-content">
-      <section class="bootstrap-sql">
-        <h1 class="bootstrap-sql-title">DB 初期構築用 SQL 実行ツール</h1>
-
-        <div class="bootstrap-sql-danger">
-          ⚠ <b>超・危険なツールです。</b><br>
-          - 本番運用開始後は <b>ADMIN_BOOTSTRAP_SQL_ENABLED を false / 削除</b> して封印してください。<br>
-          - <code>DROP DATABASE</code> などはブロックしますが、<b>テーブル削除・データ削除は普通に実行</b>されます。
-        </div>
-
-        <label for="adminToken" class="bootstrap-sql-label">
-          Admin Token (x-admin-token)
-        </label>
-        <input
-          id="adminToken"
-          type="password"
-          class="bootstrap-sql-input"
-          placeholder="環境変数 ADMIN_TOKEN と同じ値"
-        />
-
-        <div class="bootstrap-sql-main-flex">
-          <!-- 左:SQL入力 -->
-          <div class="bootstrap-sql-panel">
-            <label for="sql" class="bootstrap-sql-label">SQL</label>
-            <div class="bootstrap-sql-preset-bar">
-              <button type="button" class="bootstrap-sql-preset-btn" data-preset="tables">
-                publicテーブル一覧
-              </button>
-              <button type="button" class="bootstrap-sql-preset-btn" data-preset="columns">
-                カラム一覧
-              </button>
-              <button type="button" class="bootstrap-sql-preset-btn" data-preset="truncate_sample">
-                TRUNCATEサンプル(要編集)
-              </button>
-            </div>
-            <textarea
-              id="sql"
-              class="bootstrap-sql-textarea"
-              placeholder="例:&#10;CREATE TABLE test (...);&#10;DELETE FROM pending_charges WHERE ...;"
-            ></textarea>
-
-            <button id="runBtn" class="bootstrap-sql-button">
-              SQLを実行する
-            </button>
-            <div class="bootstrap-sql-small">
-              ※複数ステートメントを流す場合は自己責任でお願いします。<br>
-              ※SELECT文の結果は右側に表示されます。
-            </div>
-          </div>
-
-          <!-- 右:ステータス＋結果 -->
-          <div class="bootstrap-sql-panel">
-            <label class="bootstrap-sql-label">実行結果</label>
-            <div id="status" class="bootstrap-sql-status"></div>
-            <pre id="result" class="bootstrap-sql-result"></pre>
-          </div>
-        </div>
-      </section>
-    </main>
+  <h1>⚠️ このツールは削除されました</h1>
+  
+  <div class="error">
+    <h2>原則4: 永続データは人が触らない</h2>
+    <p>
+      手動SQL実行エンドポイントは、<strong>原則4の実装</strong>に基づき完全に削除されました。
+    </p>
+    <p>
+      データベースへの変更は、<strong>Supabaseマイグレーションファイル</strong>と<strong>CI/CDによる自動適用</strong>のみが許可されています。
+    </p>
   </div>
 
-  <script>
-    // ADMIN_TOKEN 初期化(インライン化)
-    (function initializeAdminToken() {
-      try {
-        const token = localStorage.getItem("ADMIN_TOKEN");
-        const expiry = localStorage.getItem("ADMIN_TOKEN_EXPIRY");
-        if (!token || (expiry && Date.now() > Number(expiry))) {
-          console.warn("⚠️ ADMIN_TOKEN が未設定 or 有効期限切れ");
-          window.ADMIN_TOKEN = "admin-devtoken";
-          localStorage.removeItem("ADMIN_TOKEN");
-          localStorage.removeItem("ADMIN_TOKEN_EXPIRY");
-        } else {
-          window.ADMIN_TOKEN = token;
-        }
-      } catch (e) {
-        console.error("ADMIN_TOKEN 初期化エラー:", e);
-        window.ADMIN_TOKEN = null;
-      }
-    })();
+  <div class="warning">
+    <h2>代替手段</h2>
+    <p>
+      データベーススキーマを変更する場合は、以下の手順に従ってください：
+    </p>
+    <ol>
+      <li>
+        <strong>マイグレーションファイルを作成</strong><br>
+        <code>supabase/migrations/YYYYMMDD_HHMMSS_description.sql</code> 形式でファイルを作成
+      </li>
+      <li>
+        <strong>PRを作成</strong><br>
+        マイグレーションファイルを含むPRを作成
+      </li>
+      <li>
+        <strong>CI/CDで自動検証</strong><br>
+        破壊的変更がないか自動的に検証されます
+      </li>
+      <li>
+        <strong>マージ後、自動適用</strong><br>
+        マージ後、Supabase CLIで自動的にマイグレーションが適用されます
+      </li>
+    </ol>
+  </div>
 
-    // メイン処理
-    (function () {
-      const adminInput = document.getElementById("adminToken");
-      const sqlInput = document.getElementById("sql");
-      const btn = document.getElementById("runBtn");
-      const statusEl = document.getElementById("status");
-      const resultEl = document.getElementById("result");
+  <div class="warning">
+    <h2>詳細情報</h2>
+    <p>
+      詳細は以下のドキュメントを参照してください：
+    </p>
+    <ul>
+      <li><a href="/docs/PRINCIPLE_4_IMPLEMENTATION.md">原則4の実装ガイド</a></li>
+      <li><a href="/SECURITY_POLICY_SQL.md">SQLセキュリティポリシー</a></li>
+    </ul>
+  </div>
 
-      if (window.ADMIN_TOKEN) {
-        adminInput.value = window.ADMIN_TOKEN;
-      }
-
-      const presets = {
-        tables: [
-          "-- publicスキーマのテーブル一覧",
-          "SELECT table_name",
-          "FROM information_schema.tables",
-          "WHERE table_schema = 'public'",
-          "ORDER BY table_name;"
-        ].join("\n"),
-        columns: [
-          "-- publicスキーマのカラム一覧",
-          "SELECT table_name, column_name, data_type",
-          "FROM information_schema.columns",
-          "WHERE table_schema = 'public'",
-          "ORDER BY table_name, ordinal_position;"
-        ].join("\n"),
-        truncate_sample: [
-          "-- 初期構築時にデータを全消しするTRUNCATEサンプル",
-          "-- 必要なテーブル名に編集してから実行してください。",
-          "TRUNCATE TABLE",
-          "  sellers,",
-          "  orders,",
-          "  order_items,",
-          "  payments",
-          "RESTART IDENTITY CASCADE;"
-        ].join("\n")
-      };
-
-      document.querySelectorAll(".bootstrap-sql-preset-btn").forEach(function (el) {
-        el.addEventListener("click", function () {
-          const key = el.getAttribute("data-preset");
-          if (!key || !presets[key]) return;
-          sqlInput.value = presets[key];
-          statusEl.textContent = "プリセットSQLを展開しました: " + key;
-        });
-      });
-
-      async function runSql(e) {
-        e.preventDefault();
-        const token = adminInput.value.trim();
-        const sql = sqlInput.value;
-
-        if (!token) {
-          alert("Admin Token を入力してください。");
-          return;
-        }
-        if (!sql.trim()) {
-          alert("SQL を入力してください。");
-          return;
-        }
-
-        btn.disabled = true;
-        statusEl.textContent = "実行中...";
-        resultEl.textContent = "";
-
-        try {
-          const res = await fetch("/api/admin/bootstrap_sql", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-admin-token": token
-            },
-            body: JSON.stringify({ sql })
-          });
-
-          const data = await res.json().catch(() => ({}));
-
-          if (!res.ok) {
-            if (res.status === 403 && data?.error === "bootstrap_sql_disabled") {
-              statusEl.textContent = "エラー: この機能は無効化されています。環境変数 ADMIN_BOOTSTRAP_SQL_ENABLED を 'true' に設定してください。";
-            } else {
-              statusEl.textContent = "エラー: " + (data?.error || "HTTP " + res.status);
-            }
-            resultEl.textContent = JSON.stringify(data, null, 2);
-            return;
-          }
-
-          statusEl.textContent = "OK: rowCount=" + (data.rowCount ?? "null");
-          resultEl.textContent = JSON.stringify(data, null, 2);
-        } catch (err) {
-          console.error(err);
-          statusEl.textContent = "実行中にエラーが発生しました: " + err.message;
-        } finally {
-          btn.disabled = false;
-        }
-      }
-
-      btn.addEventListener("click", runSql);
-    })();
-  </script>
+  <p style="margin-top: 40px; color: #666; font-size: 14px;">
+    このツールは2026年1月に削除されました。手動SQL実行は、セキュリティとデータ整合性の観点から完全に禁止されています。
+  </p>
 </body>
 </html>
