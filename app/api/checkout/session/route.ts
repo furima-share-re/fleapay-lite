@@ -4,7 +4,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
-import { getNextOrderNo, sanitizeError, bumpAndAllow, clientIp, isSameOrigin, audit } from '@/lib/utils';
+import { getNextOrderNo, sanitizeError, bumpAndAllow, clientIp, isSameOrigin, audit, resolveSellerAccountId } from '@/lib/utils';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { 
   apiVersion: '2025-10-29.clover'
 });
@@ -83,6 +83,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 出店者のStripeアカウントID取得
+    const stripeAccountId = await resolveSellerAccountId(prisma, order.sellerId);
+    if (!stripeAccountId) {
+      console.error('[Checkout] seller stripe account not found', {
+        orderId: order.id,
+        sellerId: order.sellerId,
+      });
+      return NextResponse.json(
+        {
+          error: 'seller_stripe_account_not_found',
+          message: '出店者のStripeアカウントが設定されていません。',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 既に支払い済みの場合はエラー
+    if (order.status === 'paid') {
+      return NextResponse.json(
+        {
+          error: 'already_paid',
+          message: 'この注文は既に支払い済みです。',
+        },
+        { status: 400 }
+      );
+    }
+
     const successUrl = `${BASE_URL}/success?order=${order.id}`;
     const cancelUrl = `${BASE_URL}/cancel?s=${order.sellerId}&order=${order.id}`;
 
@@ -109,6 +136,9 @@ export async function POST(request: NextRequest) {
         },
       ],
       payment_intent_data: {
+        transfer_data: {
+          destination: stripeAccountId,
+        },
         metadata: {
           sellerId: order.sellerId,
           orderId: order.id,
