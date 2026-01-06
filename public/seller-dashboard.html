@@ -1404,6 +1404,17 @@
         // ⚠️ paymentMethodはDBに保存されていない計算フィールドのため、isCashを優先
         // isCashがtrueの場合のみ現金として扱う（null/undefined/falseは全て非現金）
         const isCash = tx.isCash === true || tx.is_cash === true;
+        // デバッグ: 最初の数件のみログ出力
+        if (typeof console !== 'undefined' && Math.random() < 0.1) {
+          console.log('[seller-dashboard] 取引判定:', {
+            orderId: tx.orderId,
+            isCash: tx.isCash,
+            is_cash: tx.is_cash,
+            paymentMethod: tx.paymentMethod || tx.payment_method,
+            status: tx.status,
+            isActuallyCash: isCash
+          });
+        }
         // paymentMethodは互換性のため残すが、判定には使用しない
         const paymentMethod = tx.paymentMethod || tx.payment_method || '';
         // isCashがtrueの場合のみ現金として扱う
@@ -1490,10 +1501,13 @@
             : '<span class="badge badge-payment-pending">決済未完了</span>'
         ) : '';
 
+        // statusバッジはisCashを直接確認（APIのstatusフィールドに依存しない）
+        const statusBadge = isActuallyCash ? "現金" : (tx.status || "通常");
+        
         li.innerHTML = `
           <div class="tx-main">
             <div class="tx-top">
-              <span class="badge badge-ok">${tx.status || "通常"}</span>
+              <span class="badge badge-ok">${statusBadge}</span>
               ${uncategorizedBadge}
               ${paymentBadge}
               ${paymentStatusBadge}
