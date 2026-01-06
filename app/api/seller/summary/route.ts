@@ -644,6 +644,10 @@ export async function GET(request: NextRequest) {
       if (index < 5) {
         console.warn(`[seller/summary] recentRes[${index}] マッピング後:`, {
           order_id: r.order_id,
+          is_cash_raw: r.is_cash,
+          is_cash_type: typeof r.is_cash,
+          isCash: r.is_cash === true,
+          status: (r.is_cash === true) ? "現金" : "通常",
           costAmount: r.cost_amount === null ? null : Number(r.cost_amount || 0),
           rawCategory: r.raw_category,
           customerType,

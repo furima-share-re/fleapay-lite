@@ -1490,10 +1490,13 @@
             : '<span class="badge badge-payment-pending">決済未完了</span>'
         ) : '';
 
+        // statusバッジはisCashを直接確認（APIのstatusフィールドに依存しない）
+        const statusBadge = isActuallyCash ? "現金" : (tx.status || "通常");
+        
         li.innerHTML = `
           <div class="tx-main">
             <div class="tx-top">
-              <span class="badge badge-ok">${tx.status || "通常"}</span>
+              <span class="badge badge-ok">${statusBadge}</span>
               ${uncategorizedBadge}
               ${paymentBadge}
               ${paymentStatusBadge}
