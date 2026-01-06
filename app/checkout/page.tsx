@@ -434,6 +434,21 @@ function CheckoutContent() {
             letter-spacing: .04em;
             color: var(--shin-ai);
           }
+          .welcome-message {
+            text-align: center;
+            margin: 8px 0 2px;
+            font-size: 24px;
+            letter-spacing: .04em;
+            color: var(--shin-ai);
+          }
+          .main-message {
+            margin-bottom: 24px;
+          }
+          .normal-view {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
           .priceBox {
             background: linear-gradient(180deg, #fff, #fafbff);
             border: 2px solid transparent;
