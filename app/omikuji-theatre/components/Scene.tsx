@@ -55,6 +55,17 @@ export default function Scene({
     if (enableTheatre) {
       const initializeTheatre = async () => {
         try {
+          // 開発環境でのみ@theatre/studioをロード（プロジェクト状態の管理のため）
+          if (process.env.NODE_ENV === 'development') {
+            try {
+              const studio = await import('@theatre/studio');
+              studio.default.initialize();
+            } catch (studioError) {
+              // @theatre/studioのロードに失敗しても続行
+              console.warn('Failed to load @theatre/studio:', studioError);
+            }
+          }
+
           // Theatre.jsの状態が破損している可能性があるため、事前にlocalStorageを完全にクリア
           if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
             try {
@@ -99,8 +110,10 @@ export default function Scene({
           const projectName = `Omikuji Scene ${Date.now()}`;
           
           // Theatre.jsプロジェクトの初期化
-          // stateは自動的に管理されるため、手動で指定しない
-          const theatreProject = getProject(projectName);
+          // @theatre/studioがロードされていない場合、空のstateオブジェクトを提供する必要がある
+          const theatreProject = getProject(projectName, {
+            state: {},
+          });
 
           const theatreSheet = theatreProject.sheet('Main Sheet');
 
