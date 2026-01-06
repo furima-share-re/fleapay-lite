@@ -1,11 +1,11 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 type FortuneType = '大吉' | '中吉' | '小吉' | '吉' | '末吉' | '凶';
 
-export default function OmikujiResultPage() {
+function OmikujiResultContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fortune = (searchParams.get('fortune') || '大吉') as FortuneType;
@@ -287,6 +287,18 @@ export default function OmikujiResultPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function OmikujiResultPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#1B365D] via-[#0f2740] to-black">
+        <div className="text-white text-xl">読み込み中...</div>
+      </div>
+    }>
+      <OmikujiResultContent />
+    </Suspense>
   );
 }
 
