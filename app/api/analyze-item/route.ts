@@ -78,12 +78,13 @@ export async function POST(request: Request) {
     }
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
+      response_format: { type: 'json_object' }, // JSON形式を強制
       messages: [{
         role: 'user',
         content: [
           {
             type: 'text',
-            text: `この画像はフリーマーケットの商品写真です。以下の情報を分析して、必ずJSONだけを返してください。
+            text: `この画像はフリーマーケットの商品写真です。以下の情報を分析して、必ずJSONオブジェクトのみを返してください（マークダウンコードブロックは使用しないでください）。
 
 1. 商品の簡潔で具体的な説明（summary）
    - 写真から読み取れる情報を使ってください
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
 2. 値札に書かれている価格（total）- 数字のみ（円）
    - 値札が見つからない、読めない場合は total を 0 にしてください
 
-**レスポンスは、必ず次の形式のJSONだけにしてください：**
+**重要: レスポンスはJSONオブジェクトのみで、マークダウンコードブロック（\`\`\`json）や説明文は含めないでください。**
 
 {
   "summary": "商品の説明（50文字以内）",
@@ -122,11 +123,29 @@ export async function POST(request: Request) {
     console.warn(`[AI分析][${requestId}] 🔍 Heliconeでこのリクエストを確認してください`);
 
     const content = response.choices[0]?.message?.content || '{}';
+    
+    // マークダウンコードブロックを除去
+    let cleanedContent = content.trim();
+    
+    // ```json と ``` を除去
+    if (cleanedContent.startsWith('```json')) {
+      cleanedContent = cleanedContent.replace(/^```json\s*/i, '').replace(/\s*```$/g, '');
+    } else if (cleanedContent.startsWith('```')) {
+      cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/\s*```$/g, '');
+    }
+    
+    // 前後の空白を除去
+    cleanedContent = cleanedContent.trim();
+    
     let parsed;
     try {
-      parsed = JSON.parse(content);
+      parsed = JSON.parse(cleanedContent);
     } catch (e) {
-      console.error('[AI分析] JSON解析エラー:', content);
+      console.error('[AI分析] JSON解析エラー:', {
+        original: content.substring(0, 200), // 最初の200文字のみログ
+        cleaned: cleanedContent.substring(0, 200),
+        error: e instanceof Error ? e.message : String(e)
+      });
       parsed = { summary: '', total: 0 };
     }
 

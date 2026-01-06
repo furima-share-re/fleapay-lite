@@ -1,0 +1,17 @@
+{
+  "regions": ["hnd1"],
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 60
+    },
+    "app/api/analyze-item/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/**/*.py": {
+      "runtime": "python3.9",
+      "maxDuration": 300
+    }
+  },
+  "crons": []
+}
+
