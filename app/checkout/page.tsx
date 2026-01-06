@@ -346,6 +346,9 @@ function CheckoutContent() {
             padding: 20px;
             min-height: 100vh;
             position: relative;
+            background: #FBF7F0;
+            background-image: radial-gradient(1200px 700px at 80% -10%, rgba(230,57,70,.06) 0%, transparent 60%),
+                              radial-gradient(1200px 700px at -20% 110%, rgba(27,54,93,.08) 0%, transparent 60%);
           }
           .appbar {
             display: flex;
@@ -422,6 +425,7 @@ function CheckoutContent() {
             font-size: 24px;
             letter-spacing: .04em;
             color: var(--shin-ai);
+            font-weight: 700;
           }
           .main-message {
             margin-bottom: 24px;
@@ -479,8 +483,10 @@ function CheckoutContent() {
           .summary {
             margin: 12px 0 0;
             font-size: 13px;
-            color: #334155;
+            color: #1A1A1A;
             white-space: pre-line;
+            font-weight: 500;
+            line-height: 1.6;
           }
           .empty-state-view {
             text-align: center;
@@ -554,11 +560,11 @@ function CheckoutContent() {
           }
           .step-desc {
             font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
-            font-weight: 400;
+            font-weight: 500;
             font-size: 13px;
-            color: var(--usuzumi);
+            color: #1A1A1A;
             margin: 0;
-            line-height: 1.5;
+            line-height: 1.6;
           }
           .security-section {
             margin: 24px 0;
@@ -617,10 +623,11 @@ function CheckoutContent() {
           }
           .security-explain {
             font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
-            font-size: 12px;
-            color: var(--usuzumi);
+            font-size: 13px;
+            color: #1A1A1A;
             margin: 0 0 0 22px;
-            line-height: 1.5;
+            line-height: 1.6;
+            font-weight: 500;
           }
           .refresh-hint {
             margin-top: 24px;
@@ -628,10 +635,11 @@ function CheckoutContent() {
           }
           .hint-text {
             font-family: 'Nunito Sans', 'Noto Sans JP', sans-serif;
-            font-size: 12px;
-            color: var(--usuzumi);
+            font-size: 13px;
+            color: #1A1A1A;
             margin: 0;
-            font-style: italic;
+            font-weight: 500;
+            line-height: 1.6;
           }
           .btn {
             width: 100%;
@@ -683,9 +691,10 @@ function CheckoutContent() {
           }
           .note-block {
             margin-top: 12px;
-            font-size: 11px;
-            color: #64748b;
-            line-height: 1.6;
+            font-size: 12px;
+            color: #1A1A1A;
+            line-height: 1.7;
+            font-weight: 500;
           }
           .note-block p {
             margin: 2px 0;
@@ -694,8 +703,10 @@ function CheckoutContent() {
             margin-top: 8px;
           }
           .muted {
-            color: var(--usuzumi);
+            color: #1A1A1A;
             font-size: 13px;
+            font-weight: 500;
+            line-height: 1.6;
           }
         `}</style>
 

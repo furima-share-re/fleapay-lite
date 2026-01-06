@@ -3,8 +3,8 @@
 
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 
 interface PaymentData {
   orderId: string;
@@ -14,6 +14,7 @@ interface PaymentData {
   orderStatus: string;
   paymentStatus: string | null;
   isPaid: boolean;
+  webhookReceived: boolean;
   paidAt: string | null;
 }
 
@@ -55,34 +56,62 @@ function SuccessContent() {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:36',message:'loadPaymentResult entry',data:{validOrderId:validOrderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
       // #endregion
-      try {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:39',message:'Before encodeURIComponent',data:{validOrderId:validOrderId,encoded:encodeURIComponent(validOrderId)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
-        const res = await fetch(`/api/checkout/result?orderId=${encodeURIComponent(validOrderId)}`);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:41',message:'After fetch',data:{ok:res.ok,status:res.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
-        if (res.ok) {
+      
+      const MAX_POLLING_TIME = 30000; // 最大30秒
+      const POLLING_INTERVAL = 3000; // 3秒間隔
+      const startTime = Date.now();
+
+      const poll = async (): Promise<void> => {
+        try {
+          const res = await fetch(`/api/checkout/result?orderId=${encodeURIComponent(validOrderId)}`);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+
           const data = await res.json();
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:45',message:'Payment data received',data:{hasData:!!data,orderId:data?.orderId,isPaid:data?.isPaid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
-          // 決済が完了していない場合は、キャンセルページにリダイレクト
-          if (data && !data.isPaid) {
-            router.push(`/cancel?order=${encodeURIComponent(data.orderId)}&s=${encodeURIComponent(data.sellerId)}`);
+          
+          // Webhook受信済みの場合
+          if (data.webhookReceived) {
+            // 決済が完了していない場合は、キャンセルページにリダイレクト
+            if (!data.isPaid) {
+              router.push(`/cancel?order=${encodeURIComponent(data.orderId)}&s=${encodeURIComponent(data.sellerId)}`);
+              return;
+            }
+            // 決済完了
+            setPaymentData(data);
+            setLoading(false);
             return;
           }
-          setPaymentData(data);
+
+          // Webhook未受信の場合、タイムアウトまでポーリング
+          const elapsed = Date.now() - startTime;
+          if (elapsed < MAX_POLLING_TIME) {
+            setTimeout(poll, POLLING_INTERVAL);
+          } else {
+            // タイムアウト: Webhook未受信だが、Stripe APIで確認できた場合は表示
+            // ただし、isPaidがfalseの場合は/cancelにリダイレクト
+            if (!data.isPaid) {
+              router.push(`/cancel?order=${encodeURIComponent(data.orderId)}&s=${encodeURIComponent(data.sellerId)}`);
+              return;
+            }
+            // タイムアウトでも決済成功と判定できる場合は表示（Stripe API確認済み）
+            setPaymentData(data);
+            setLoading(false);
+          }
+        } catch (e) {
+          console.error('loadPaymentResult error', e);
+          // エラー時はタイムアウトまで再試行
+          const elapsed = Date.now() - startTime;
+          if (elapsed < MAX_POLLING_TIME) {
+            setTimeout(poll, POLLING_INTERVAL);
+          } else {
+            setLoading(false);
+          }
         }
-      } catch (e) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:48',message:'loadPaymentResult error',data:{error:String(e)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
-        console.error('loadPaymentResult error', e);
-      } finally {
-        setLoading(false);
-      }
+      };
+
+      // 初回ポーリング開始
+      poll();
     }
 
     loadPaymentResult();
@@ -285,6 +314,12 @@ function SuccessContent() {
                   <span className="payment-info-label">決済ステータス</span>
                   <span className="payment-info-value status-pending">確認中…</span>
                 </div>
+                <p className="payment-info-hint">
+                  店員さんへ：決済状態を確認しています。しばらくお待ちください。
+                  {paymentData && !paymentData.webhookReceived && (
+                    <><br />※Webhook受信待ちのため、最大30秒程度かかる場合があります。</>
+                  )}
+                </p>
               </div>
             ) : paymentData && paymentData.isPaid ? (
               <div className="payment-info">
