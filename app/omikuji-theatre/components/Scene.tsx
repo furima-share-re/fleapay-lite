@@ -55,18 +55,8 @@ export default function Scene({
     if (enableTheatre) {
       const initializeTheatre = async () => {
         try {
-          // 開発環境でのみ@theatre/studioをロード（プロジェクト状態の管理のため）
-          if (process.env.NODE_ENV === 'development') {
-            try {
-              const studio = await import('@theatre/studio');
-              studio.default.initialize();
-            } catch (studioError) {
-              // @theatre/studioのロードに失敗しても続行
-              console.warn('Failed to load @theatre/studio:', studioError);
-            }
-          }
-
           // Theatre.jsの状態が破損している可能性があるため、事前にlocalStorageを完全にクリア
+          // 重要: studioを初期化する前にクリアする必要がある（studioは初期化時にlocalStorageから状態を読み込むため）
           if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
             try {
               // すべてのTheatre.js関連のキーを削除
@@ -100,20 +90,43 @@ export default function Scene({
                   // IndexedDBアクセスのエラーは無視
                 }
               }
+              // ストレージクリア後に少し待機してから初期化（確実にクリアが反映されるように）
+              await new Promise(resolve => setTimeout(resolve, 100));
             } catch (e) {
               // localStorageクリアのエラーは無視
             }
           }
 
-          // プロジェクト名を変更して、完全に新しい状態で開始
-          // タイムスタンプを追加することで、既存の破損した状態を回避
-          const projectName = `Omikuji Scene ${Date.now()}`;
+          // 開発環境でのみ@theatre/studioをロード（プロジェクト状態の管理のため）
+          // 注意: ストレージをクリアした後に初期化することで、studioがクリーンな状態で開始される
+          let studioLoaded = false;
+          if (process.env.NODE_ENV === 'development') {
+            try {
+              const studio = await import('@theatre/studio');
+              studio.default.initialize();
+              studioLoaded = true;
+            } catch (studioError) {
+              // @theatre/studioのロードに失敗しても続行
+              console.warn('Failed to load @theatre/studio:', studioError);
+            }
+          }
+
+          // プロジェクト名を固定（タイムスタンプを使うと毎回新しいプロジェクトが作成され、状態管理が複雑になる）
+          const projectName = 'Omikuji Scene';
           
           // Theatre.jsプロジェクトの初期化
-          // @theatre/studioがロードされていない場合、空のstateオブジェクトを提供する必要がある
-          const theatreProject = getProject(projectName, {
-            state: {},
-          });
+          // studioがロードされている場合は自動的に状態が管理される
+          // studioがロードされていない場合でも、configを渡さずに初期化できる
+          // Theatre.jsは自動的に空のプロジェクト状態を作成する
+          let theatreProject;
+          try {
+            theatreProject = getProject(projectName);
+          } catch (projectError) {
+            // getProjectでエラーが発生した場合、プロジェクト名を変更して再試行
+            console.warn('Failed to get project with default name, trying with timestamp:', projectError);
+            const fallbackProjectName = `Omikuji Scene ${Date.now()}`;
+            theatreProject = getProject(fallbackProjectName);
+          }
 
           const theatreSheet = theatreProject.sheet('Main Sheet');
 
