@@ -31,9 +31,20 @@ export function clientIp(request: NextRequest | Request): string {
   return 'unknown';
 }
 
+// ベースURL取得ヘルパー
+function getBaseUrl(): string {
+  if (process.env.APP_BASE_URL) {
+    return process.env.APP_BASE_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`.replace(/\/+$/, '');
+  }
+  return '';
+}
+
 // 同一オリジンチェック（Next.js Request用）
 export function isSameOrigin(request: NextRequest | Request): boolean {
-  const BASE_URL = process.env.BASE_URL || '';
+  const BASE_URL = getBaseUrl();
   if (!BASE_URL) return true;
   
   const referer = request.headers.get('referer') || request.headers.get('origin') || '';
@@ -57,7 +68,7 @@ export async function resolveSellerAccountId(prisma: PrismaClient, sellerId: str
 
 // 出店者用URL生成
 export function buildSellerUrls(sellerId: string, stripeAccountId: string | null, orderId: string | null = null) {
-  const base = process.env.BASE_URL || 'http://localhost:3000';
+  const base = getBaseUrl() || 'http://localhost:3000';
   const sellerUrl = `${base}/seller-purchase-standard?s=${encodeURIComponent(sellerId)}`;
   
   let checkoutUrl = `${base}/checkout?s=${encodeURIComponent(sellerId)}`;

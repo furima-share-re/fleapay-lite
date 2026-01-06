@@ -14,7 +14,16 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL 
 });
 
-const BASE_URL = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const getBaseUrl = () => {
+  if (process.env.APP_BASE_URL) {
+    return process.env.APP_BASE_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`.replace(/\/+$/, '');
+  }
+  return 'http://localhost:3000';
+};
+const BASE_URL = getBaseUrl();
 
 export async function POST(request: Request) {
   try {
