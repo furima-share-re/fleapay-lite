@@ -9,8 +9,9 @@ import { getNextOrderNo, resolveSellerAccountId, buildSellerUrls, sanitizeError,
 const RATE_LIMIT_MAX_WRITES = parseInt(process.env.RATE_LIMIT_MAX_WRITES || "12", 10);
 
 // S3クライアントの初期化
+// 注意: AWS_S3_BUCKET はVercelで予約されているため、AWS_S3_BUCKET_NAME を使用
 const AWS_REGION = process.env.AWS_REGION;
-const AWS_BUCKET = process.env.AWS_S3_BUCKET;
+const AWS_BUCKET = process.env.AWS_S3_BUCKET_NAME || process.env.AWS_S3_BUCKET;
 const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID;
 const AWS_SECRET_KEY = process.env.AWS_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY;
 const HAS_S3_CONFIG = !!(AWS_REGION && AWS_BUCKET && AWS_ACCESS_KEY && AWS_SECRET_KEY);
