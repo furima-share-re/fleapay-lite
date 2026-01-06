@@ -366,9 +366,11 @@ export function registerPaymentRoutes(app, deps) {
           AND o.created_at <  $3
           AND o.deleted_at IS NULL  -- 🆕 削除済みを除外
           AND (
-            om.is_cash = true            -- 現金
-            OR sp.status = 'succeeded'   -- カード成功
+            om.is_cash = true  -- 現金決済は表示
+            OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+            OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
           )
+          -- QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
         `,
         [sellerId, todayStart, tomorrowStart]
       );
@@ -455,9 +457,11 @@ export function registerPaymentRoutes(app, deps) {
         WHERE o.seller_id = $1
           AND o.deleted_at IS NULL  -- 🆕 削除済みを除外
           AND (
-            om.is_cash = true              -- 現金はステータスに関係なく表示
-            OR sp.status = 'succeeded'     -- カード決済はStripe成功のみ表示
+            om.is_cash = true  -- 現金決済は表示
+            OR sp.status = 'succeeded'  -- Stripe成功決済は表示
+            OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
           )
+          -- QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
           AND o.created_at >= NOW() - INTERVAL '30 days'  -- ★ 過去30日間に拡張
         ORDER BY o.created_at DESC
         `,

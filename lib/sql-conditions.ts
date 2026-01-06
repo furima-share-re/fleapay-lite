@@ -17,11 +17,12 @@ import { Prisma, PrismaClient } from '@prisma/client';
  * - 削除済みでない（deleted_at IS NULL）
  * - 現金決済（om.is_cash = true）
  * - Stripe成功決済（sp.status = 'succeeded'）
- * - Stripe決済がない場合（sp.id IS NULL）
+ * - Stripe決済がないが、現金決済またはメタデータがない場合（移行データ対応）
  * 
  * 除外する取引:
  * - 削除済み（deleted_at IS NOT NULL）
- * - Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）
+ * - QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL）
+ * - Stripe決済データがあるが未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）
  */
 export function buildOrderFilterConditions(
   sellerId: string,
@@ -38,12 +39,12 @@ export function buildOrderFilterConditions(
 
   // 決済方法のフィルタリング
   // 現金決済、Stripe成功決済、またはStripe決済がない場合を表示
-  // Stripe未完了（sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
+  // QR決済データが作られているが決済完了していない（om.is_cash = false AND sp.id IS NULL または sp.id IS NOT NULL AND sp.status != 'succeeded'）は除外
   conditions.push(
     Prisma.sql`(
       om.is_cash = true  -- 現金決済は表示
       OR sp.status = 'succeeded'  -- Stripe成功決済は表示
-      OR sp.id IS NULL  -- Stripe決済がない場合も表示（現金かその他の決済）
+      OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))  -- Stripe決済がないが、現金決済またはメタデータがない場合（移行データ）は表示
     )`
   );
 
