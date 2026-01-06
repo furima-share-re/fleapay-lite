@@ -237,7 +237,7 @@ export default function Scene({
 
             <Suspense fallback={null}>
               {/* おみくじ箱 */}
-              <OmikujiBox isShaking={isShaking} position={[0, 0, 0]} />
+              <OmikujiBox isShaking={isShaking} position={[0, 0, 0]} sheet={undefined} />
 
               {/* 小判 */}
               {showCoins &&
@@ -248,6 +248,7 @@ export default function Scene({
                     text={coin.text}
                     delay={coin.delay}
                     isSpiraling={isShaking}
+                    sheet={undefined}
                   />
                 ))}
 
@@ -259,6 +260,7 @@ export default function Scene({
                     position={fw.position}
                     color={fw.color}
                     delay={fw.delay}
+                    sheet={undefined}
                   />
                 ))}
             </Suspense>

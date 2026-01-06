@@ -37,28 +37,98 @@ export default function OmikujiBox({
     }
   });
 
-  return (
-    <e.group
-      ref={boxRef}
-      theatreKey="OmikujiBox"
-      position={position}
-    >
-      {/* メインの箱 */}
-      <e.mesh
-        ref={meshRef}
-        theatreKey="BoxMesh"
-        castShadow
-        receiveShadow
+  // sheetが存在する場合のみeditableを使用
+  if (sheet) {
+    return (
+      <e.group
+        ref={boxRef}
+        theatreKey="OmikujiBox"
+        position={position}
       >
-        <boxGeometry args={[2, 2, 2]} />
+        {/* メインの箱 */}
+        <e.mesh
+          ref={meshRef}
+          theatreKey="BoxMesh"
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[2, 2, 2]} />
+          <meshStandardMaterial
+            color="#dc2626"
+            metalness={0.3}
+            roughness={0.4}
+            emissive="#dc2626"
+            emissiveIntensity={0.2}
+          />
+        </e.mesh>
+
+      {/* 金色の装飾枠 */}
+      <mesh position={[0, 0, 1.01]}>
+        <boxGeometry args={[2.1, 2.1, 0.02]} />
         <meshStandardMaterial
-          color="#dc2626"
-          metalness={0.3}
-          roughness={0.4}
-          emissive="#dc2626"
-          emissiveIntensity={0.2}
+          color="#eab308"
+          metalness={0.9}
+          roughness={0.1}
+          emissive="#fbbf24"
+          emissiveIntensity={0.3}
         />
-      </e.mesh>
+      </mesh>
+
+      {/* 角の装飾 */}
+      {[
+        [-1, 1, 1.02],
+        [1, 1, 1.02],
+        [-1, -1, 1.02],
+        [1, -1, 1.02],
+      ].map((pos, i) => (
+        <mesh key={i} position={pos as [number, number, number]}>
+          <boxGeometry args={[0.2, 0.2, 0.05]} />
+          <meshStandardMaterial
+            color="#fbbf24"
+            metalness={0.9}
+            roughness={0.1}
+            emissive="#fbbf24"
+            emissiveIntensity={0.5}
+          />
+        </mesh>
+      ))}
+
+      {/* 上面の円形の穴 */}
+      <mesh position={[0, 1.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.6, 0.6, 0.1, 32]} />
+        <meshStandardMaterial
+          color="#000000"
+          opacity={0.4}
+          transparent
+          metalness={0.5}
+          roughness={0.3}
+        />
+      </mesh>
+
+      {/* 金色の縁 */}
+      <mesh position={[0, 1.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.6, 0.65, 32]} />
+        <meshStandardMaterial
+          color="#eab308"
+          metalness={0.9}
+          roughness={0.1}
+          emissive="#fbbf24"
+          emissiveIntensity={0.4}
+        />
+      </mesh>
+
+      {/* 前面の装飾テキスト */}
+      <Text
+        position={[0, -0.8, 1.02]}
+        fontSize={0.2}
+        color="#ffffff"
+        anchorX="center"
+        anchorY="middle"
+        material-opacity={0.4}
+        material-transparent
+      >
+        おみくじ
+      </Text>
 
       {/* 金色の装飾枠 */}
       <mesh position={[0, 0, 1.01]}>
@@ -135,7 +205,107 @@ export default function OmikujiBox({
         color="#fbbf24"
         distance={5}
       />
-    </e.group>
+      </e.group>
+    );
+  }
+
+  // sheetが存在しない場合、通常のコンポーネントを使用
+  return (
+    <group
+      ref={boxRef}
+      position={position}
+    >
+      {/* メインの箱 */}
+      <mesh
+        ref={meshRef}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry args={[2, 2, 2]} />
+        <meshStandardMaterial
+          color="#dc2626"
+          metalness={0.3}
+          roughness={0.4}
+          emissive="#dc2626"
+          emissiveIntensity={0.2}
+        />
+      </mesh>
+
+      {/* 金色の装飾枠 */}
+      <mesh position={[0, 0, 1.01]}>
+        <boxGeometry args={[2.1, 2.1, 0.02]} />
+        <meshStandardMaterial
+          color="#eab308"
+          metalness={0.9}
+          roughness={0.1}
+          emissive="#fbbf24"
+          emissiveIntensity={0.3}
+        />
+      </mesh>
+
+      {/* 角の装飾 */}
+      {[
+        [-1, 1, 1.02],
+        [1, 1, 1.02],
+        [-1, -1, 1.02],
+        [1, -1, 1.02],
+      ].map((pos, i) => (
+        <mesh key={i} position={pos as [number, number, number]}>
+          <boxGeometry args={[0.2, 0.2, 0.05]} />
+          <meshStandardMaterial
+            color="#fbbf24"
+            metalness={0.9}
+            roughness={0.1}
+            emissive="#fbbf24"
+            emissiveIntensity={0.5}
+          />
+        </mesh>
+      ))}
+
+      {/* 上面の円形の穴 */}
+      <mesh position={[0, 1.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.6, 0.6, 0.1, 32]} />
+        <meshStandardMaterial
+          color="#000000"
+          opacity={0.4}
+          transparent
+          metalness={0.5}
+          roughness={0.3}
+        />
+      </mesh>
+
+      {/* 金色の縁 */}
+      <mesh position={[0, 1.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.6, 0.65, 32]} />
+        <meshStandardMaterial
+          color="#eab308"
+          metalness={0.9}
+          roughness={0.1}
+          emissive="#fbbf24"
+          emissiveIntensity={0.4}
+        />
+      </mesh>
+
+      {/* 前面の装飾テキスト */}
+      <Text
+        position={[0, -0.8, 1.02]}
+        fontSize={0.2}
+        color="#ffffff"
+        anchorX="center"
+        anchorY="middle"
+        material-opacity={0.4}
+        material-transparent
+      >
+        おみくじ
+      </Text>
+
+      {/* 光る効果 */}
+      <pointLight
+        position={[0, 0, 2]}
+        intensity={isShaking ? 2 : 1}
+        color="#fbbf24"
+        distance={5}
+      />
+    </group>
   );
 }
-
