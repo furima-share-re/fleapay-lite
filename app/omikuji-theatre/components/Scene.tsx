@@ -55,18 +55,8 @@ export default function Scene({
     if (enableTheatre) {
       const initializeTheatre = async () => {
         try {
-          // 開発環境でのみ@theatre/studioをロード（プロジェクト状態の管理のため）
-          if (process.env.NODE_ENV === 'development') {
-            try {
-              const studio = await import('@theatre/studio');
-              studio.default.initialize();
-            } catch (studioError) {
-              // @theatre/studioのロードに失敗しても続行
-              console.warn('Failed to load @theatre/studio:', studioError);
-            }
-          }
-
           // Theatre.jsの状態が破損している可能性があるため、事前にlocalStorageを完全にクリア
+          // 重要: studioを初期化する前にクリアする必要がある（studioは初期化時にlocalStorageから状態を読み込むため）
           if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
             try {
               // すべてのTheatre.js関連のキーを削除
@@ -102,6 +92,18 @@ export default function Scene({
               }
             } catch (e) {
               // localStorageクリアのエラーは無視
+            }
+          }
+
+          // 開発環境でのみ@theatre/studioをロード（プロジェクト状態の管理のため）
+          // 注意: ストレージをクリアした後に初期化することで、studioがクリーンな状態で開始される
+          if (process.env.NODE_ENV === 'development') {
+            try {
+              const studio = await import('@theatre/studio');
+              studio.default.initialize();
+            } catch (studioError) {
+              // @theatre/studioのロードに失敗しても続行
+              console.warn('Failed to load @theatre/studio:', studioError);
             }
           }
 
