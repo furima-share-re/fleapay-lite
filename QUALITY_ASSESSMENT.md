@@ -278,3 +278,4 @@ const handleDrawFortune = useCallback(() => {
 
 これらの改善により、**総合評価を8.5/10以上**に向上させることができます。
 
+

@@ -187,3 +187,4 @@ Write-Host "📄 詳細レポートを保存しました: comprehensive-degradat
 
 
 
+
