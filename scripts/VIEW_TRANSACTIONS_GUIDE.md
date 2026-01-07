@@ -190,3 +190,4 @@ npx prisma generate
 - プロジェクト内のSQLスクリプト: `scripts/check-incomplete-qr-payments.sql`
 
 
+
