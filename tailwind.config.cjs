@@ -66,6 +66,18 @@ module.exports = {
         modern: {
           neon: "#00d4ff",
         },
+        // Kids Dashboard theme colors
+        kids: {
+          bg: "#fbf7f0",
+          panel: "#ffffff",
+          border: "#e5d9c8",
+          text: "#1f2933",
+          sub: "#6b7280",
+          brand: "#1B365D",
+          accent: "#E8B4B8",
+          accent2: "#E63946",
+          ok: "#16a34a",
+        },
       },
       fontFamily: {
         sans: ['Noto Sans JP', 'sans-serif'],
