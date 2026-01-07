@@ -66,3 +66,4 @@ postgresql://postgres.snowkercpcuixnwxchkc:[YOUR-PASSWORD]@aws-1-ap-northeast-1.
 
 
 
+
