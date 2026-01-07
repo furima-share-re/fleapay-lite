@@ -51,6 +51,25 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // EDO ICHIBA theme colors
+        ghibli: {
+          forest: "#6b9080",
+          sky: "#a8c5dd",
+          sunset: "#f4b183",
+          cream: "#fef9f0",
+        },
+        edo: {
+          indigo: "#2c4f6f",
+          vermilion: "#c73e3a",
+          gold: "#d4af37",
+        },
+        modern: {
+          neon: "#00d4ff",
+        },
+      },
+      fontFamily: {
+        sans: ['Noto Sans JP', 'sans-serif'],
+        serif: ['Noto Serif JP', 'serif'],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -70,6 +89,18 @@ module.exports = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-in-up": "fadeInUp 0.8s ease-out",
+        "shimmer": "shimmer 3s infinite",
+      },
+      keyframes: {
+        fadeInUp: {
+          "0%": { opacity: "0", transform: "translateY(30px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-1000px 0" },
+          "100%": { backgroundPosition: "1000px 0" },
+        },
       },
     },
   },
