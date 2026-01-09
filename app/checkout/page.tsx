@@ -340,7 +340,12 @@ function CheckoutContent() {
             --radius-xl: 20px;
           }
           * { box-sizing: border-box; }
+          body {
+            color: #1A1A1A;
+            background: transparent;
+          }
           .checkout-container {
+            color: #1A1A1A;
             max-width: 640px;
             margin: 0 auto;
             padding: 20px;
@@ -441,13 +446,23 @@ function CheckoutContent() {
           .lang-btn.active { background: rgba(27,54,93,.08); }
           .card {
             position: relative;
-            background: rgba(255,255,255,0.95);
+            background: #ffffff;
             border: 1px solid rgba(27,54,93,.12);
             border-radius: var(--radius-xl);
             padding: 20px;
             box-shadow: var(--card-shadow);
             overflow: hidden;
             z-index: 1;
+            color: #1A1A1A;
+          }
+          .card * {
+            color: inherit;
+          }
+          /* ボタンは常に黒文字 */
+          .card .btn,
+          .card .btn *,
+          .card .btn span {
+            color: #1A1A1A !important;
           }
           .card::after {
             content: "🌸";
@@ -486,13 +501,17 @@ function CheckoutContent() {
             gap: 8px;
           }
           .priceBox {
-            background: linear-gradient(180deg, #fff, #fafbff);
-            border: 2px solid transparent;
+            background: #ffffff;
+            border: 2px solid rgba(27,54,93,0.1);
             border-radius: var(--radius-xl);
             padding: 22px 18px;
             position: relative;
             overflow: hidden;
             margin: 10px 0 14px;
+            color: #1A1A1A;
+          }
+          .priceBox * {
+            color: inherit;
           }
           .priceBox::before {
             content: "";
@@ -694,32 +713,50 @@ function CheckoutContent() {
           }
           .btn {
             width: 100%;
-            border: 0;
+            border: 2px solid var(--shin-ai);
             border-radius: 12px;
             padding: 14px 16px;
-            background: linear-gradient(135deg, var(--shin-ai) 0%, #243B6B 100%);
-            color: #fff;
+            background: #ffffff;
+            color: #1A1A1A !important;
             font-size: 18px;
             font-weight: 900;
             letter-spacing: .04em;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 8px 25px rgba(27,54,93,.25);
+            box-shadow: 0 4px 12px rgba(27,54,93,.15);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            transition: transform .12s ease, box-shadow .12s ease;
-          }
-          .btn:disabled {
-            opacity: .6;
-            cursor: not-allowed;
-            filter: grayscale(.15);
+            transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
           }
           .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 35px rgba(27,54,93,.32);
+            background: #f8f9fa;
+            box-shadow: 0 6px 16px rgba(27,54,93,.2);
+          }
+          .btn *,
+          .btn span,
+          .btn svg {
+            color: #1A1A1A !important;
+          }
+          .btn svg {
+            stroke: #1A1A1A !important;
+          }
+          .btn:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+            background: #f3f4f6 !important;
+            color: #6b7280 !important;
+            border-color: #d1d5db !important;
+          }
+          .btn:disabled *,
+          .btn:disabled span,
+          .btn:disabled svg {
+            color: #6b7280 !important;
+          }
+          .btn:disabled svg {
+            stroke: #6b7280 !important;
           }
           .security-badges {
             display: flex;
@@ -754,10 +791,32 @@ function CheckoutContent() {
             margin-top: 8px;
           }
           .muted {
-            color: #1A1A1A;
+            color: #1A1A1A !important;
             font-size: 13px;
             font-weight: 500;
             line-height: 1.6;
+          }
+          /* すべてのテキスト要素に確実に色を設定 */
+          p, span, div, h1, h2, h3, h4, h5, h6, li, td, th {
+            color: inherit;
+          }
+          /* 特に重要なテキスト要素 */
+          .card p:not(.btn p),
+          .card span:not(.logo__sparkle):not(.btn span),
+          .card div:not(.card::after):not(.btn),
+          .priceBox p,
+          .priceBox span,
+          .priceBox div {
+            color: #1A1A1A !important;
+          }
+          /* セキュリティバッジのテキスト */
+          .security-badge,
+          .security-badge span {
+            color: var(--shin-ai) !important;
+          }
+          /* 言語切り替えボタン */
+          .lang-btn {
+            color: inherit !important;
           }
         `}</style>
 
@@ -898,7 +957,7 @@ function CheckoutContent() {
           </div>
 
           <div className="mt8">
-            <p className="muted" style={{ textAlign: 'center', fontSize: '13px', marginTop: '6px', marginBottom: '12px', lineHeight: '1.6' }}>
+            <p className="muted" style={{ textAlign: 'center', fontSize: '13px', marginTop: '6px', marginBottom: '12px', lineHeight: '1.6', color: '#1A1A1A' }}>
               {t.stripeRedirect}
             </p>
             <button
