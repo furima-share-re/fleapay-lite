@@ -1,12 +1,14 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function Phase1Page() {
   const router = useRouter();
-  const [coins, setCoins] = useState<Array<{ id: number; x: number; y: number; delay: number }>>([]);
+  const [coins, setCoins] = useState<
+    Array<{ id: number; x: number; y: number; delay: number }>
+  >([]);
 
   useEffect(() => {
     // 小判12-15枚
@@ -20,14 +22,14 @@ export default function Phase1Page() {
   }, []);
 
   const handleStart = () => {
-    router.push('/omikuji-enhanced/phase2');
+    router.push("/omikuji-enhanced/phase2");
   };
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-ghibli-cream via-white to-ghibli-cream">
       {/* 背景のジブリ風黄昏の光 */}
       <div className="absolute inset-0 bg-gradient-to-b from-amber-200/30 via-orange-100/20 to-purple-200/30 z-0" />
-      
+
       {/* 江戸建築 - 町家のシルエット */}
       <div className="absolute bottom-0 left-0 right-0 h-64 z-5 opacity-20">
         <div className="h-full flex items-end justify-around px-8">
@@ -39,7 +41,7 @@ export default function Phase1Page() {
               transition={{ delay: i * 0.2 }}
               className="w-16 h-32 bg-edo-indigo/40 rounded-t-lg relative"
               style={{
-                clipPath: 'polygon(0% 100%, 20% 0%, 80% 0%, 100% 100%)',
+                clipPath: "polygon(0% 100%, 20% 0%, 80% 0%, 100% 100%)",
               }}
             >
               {/* 格子窓 */}
@@ -59,7 +61,7 @@ export default function Phase1Page() {
       </div>
 
       {/* 伝統文様 - 青海波パターン（背景） */}
-      <div 
+      <div
         className="absolute inset-0 z-1 opacity-[0.03]"
         style={{
           backgroundImage: `repeating-linear-gradient(
@@ -81,7 +83,7 @@ export default function Phase1Page() {
 
       {/* 提灯4-6個（漢字入り） */}
       <div className="absolute top-8 left-1/2 transform -translate-x-1/2 flex gap-4 z-20">
-        {['縁日', '福', '江戸', '縁日', '福'].map((text, i) => (
+        {["縁日", "福", "江戸", "縁日", "福"].map((text, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: -20 }}
@@ -139,7 +141,7 @@ export default function Phase1Page() {
         >
           🐱
         </motion.div>
-        
+
         {/* だるま */}
         <motion.div
           initial={{ opacity: 0, scale: 0 }}
@@ -182,8 +184,10 @@ export default function Phase1Page() {
           <div className="relative w-56 h-56 md:w-72 md:h-72 bg-gradient-to-br from-red-700 to-red-900 rounded-2xl shadow-2xl border-4 border-edo-gold p-4">
             {/* 装飾パターン - 麻の葉 */}
             <div className="absolute inset-0 opacity-20">
-              <div className="w-full h-full" style={{
-                backgroundImage: `repeating-linear-gradient(
+              <div
+                className="w-full h-full"
+                style={{
+                  backgroundImage: `repeating-linear-gradient(
                   60deg,
                   transparent,
                   transparent 10px,
@@ -197,18 +201,19 @@ export default function Phase1Page() {
                   #d4af37 10px,
                   #d4af37 11px
                 )`,
-              }} />
+                }}
+              />
             </div>
 
             <div className="absolute inset-0 p-6 flex items-center justify-center">
               <div className="text-8xl md:text-9xl">🎴</div>
             </div>
-            
+
             {/* ロック機構 */}
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-14 h-14 bg-gradient-to-br from-edo-gold to-yellow-600 rounded-full flex items-center justify-center shadow-lg border-2 border-yellow-300">
               <div className="w-3 h-8 bg-yellow-800 rounded-full" />
             </div>
-            
+
             {/* ロープ */}
             <div className="absolute top-0 left-1/4 w-20 h-1 bg-gradient-to-r from-yellow-600 to-yellow-800 transform -translate-y-1/2 rounded-full" />
             <div className="absolute top-0 right-1/4 w-20 h-1 bg-gradient-to-r from-yellow-800 to-yellow-600 transform -translate-y-1/2 rounded-full" />
@@ -230,9 +235,9 @@ export default function Phase1Page() {
               className="text-5xl md:text-7xl font-serif font-bold text-edo-vermilion drop-shadow-[0_0_20px_rgba(212,175,55,0.8)]"
               animate={{
                 textShadow: [
-                  '0 0 20px rgba(212,175,55,0.8)',
-                  '0 0 30px rgba(212,175,55,1)',
-                  '0 0 20px rgba(212,175,55,0.8)',
+                  "0 0 20px rgba(212,175,55,0.8)",
+                  "0 0 30px rgba(212,175,55,1)",
+                  "0 0 20px rgba(212,175,55,0.8)",
                 ],
               }}
               transition={{
@@ -287,7 +292,9 @@ export default function Phase1Page() {
         transition={{ delay: 1.2 }}
         className="absolute top-40 right-8 z-20 bg-white/90 p-4 rounded-lg shadow-xl border-2 border-edo-vermilion"
       >
-        <div className="text-edo-vermilion font-serif font-bold text-xl">EDO ICHIBA</div>
+        <div className="text-edo-vermilion font-serif font-bold text-xl">
+          EDO ICHIBA
+        </div>
         <div className="text-edo-indigo text-sm">江戸市場</div>
       </motion.div>
 
@@ -359,11 +366,16 @@ export default function Phase1Page() {
 
       {/* 比率バッジ */}
       <div className="absolute bottom-4 left-4 z-30 flex gap-2">
-        <span className="px-3 py-1 bg-ghibli-forest text-white text-xs rounded-full">ジブリ 70%</span>
-        <span className="px-3 py-1 bg-edo-vermilion text-white text-xs rounded-full">江戸 25%</span>
-        <span className="px-3 py-1 bg-modern-neon text-white text-xs rounded-full">現代 5%</span>
+        <span className="px-3 py-1 bg-ghibli-forest text-white text-xs rounded-full">
+          ジブリ 70%
+        </span>
+        <span className="px-3 py-1 bg-edo-vermilion text-white text-xs rounded-full">
+          江戸 25%
+        </span>
+        <span className="px-3 py-1 bg-modern-neon text-white text-xs rounded-full">
+          現代 5%
+        </span>
       </div>
     </div>
   );
 }
-
