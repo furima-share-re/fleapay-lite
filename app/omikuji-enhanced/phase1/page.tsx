@@ -263,25 +263,28 @@ export default function Phase1Page() {
             left: `${coin.x}%`,
             top: `${coin.y}%`,
           }}
-          animate={{
-            y: [0, -20, 0],
-            rotate: [0, 360],
-          }}
-          transition={{
-            duration: 3 + Math.random() * 2,
-            repeat: Infinity,
-            delay: coin.delay,
-          }}
         >
-          <div className="relative w-16 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full border-2 border-yellow-700 shadow-lg">
-            {/* 刻印「両」 */}
-            <div className="absolute inset-0 flex items-center justify-center text-yellow-900 font-bold text-sm">
-              両
+          <motion.div
+            animate={{
+              y: [0, -20, 0],
+              rotate: [0, 360],
+            }}
+            transition={{
+              duration: 3 + Math.random() * 2,
+              repeat: Infinity,
+              delay: coin.delay,
+            }}
+          >
+            <div className="relative w-16 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full border-2 border-yellow-700 shadow-lg">
+              {/* 刻印「両」 */}
+              <div className="absolute inset-0 flex items-center justify-center text-yellow-900 font-bold text-sm">
+                両
+              </div>
+              {/* 家紋風の模様 */}
+              <div className="absolute top-1 left-1 w-2 h-2 bg-yellow-800 rounded-full opacity-50" />
+              <div className="absolute bottom-1 right-1 w-2 h-2 bg-yellow-800 rounded-full opacity-50" />
             </div>
-            {/* 家紋風の模様 */}
-            <div className="absolute top-1 left-1 w-2 h-2 bg-yellow-800 rounded-full opacity-50" />
-            <div className="absolute bottom-1 right-1 w-2 h-2 bg-yellow-800 rounded-full opacity-50" />
-          </div>
+          </motion.div>
         </motion.div>
       ))}
 
