@@ -202,7 +202,12 @@ function Phase3Content() {
               </div>
 
               {/* 和紙の質感 */}
-              <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml,%3Csvg width=\"100\" height=\"100\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cpath d=\"M0 0h100v100H0z\" fill=\"%23fff\"/%3E%3Cpath d=\"M0 0l100 100M100 0L0 100\" stroke=\"%23000\" stroke-width=\"0.5\" opacity=\"0.1\"/%3E%3C/svg%3E')]" />
+              <div
+                className="absolute inset-0 opacity-10"
+                style={{
+                  backgroundImage: `url('data:image/svg+xml,%3Csvg width="100" height="100" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M0 0h100v100H0z" fill="%23fff"/%3E%3Cpath d="M0 0l100 100M100 0L0 100" stroke="%23000" stroke-width="0.5" opacity="0.1"/%3E%3C/svg%3E')`,
+                }}
+              />
 
               <div className="text-center relative z-10">
                 <motion.div
