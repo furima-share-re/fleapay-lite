@@ -458,11 +458,11 @@ function CheckoutContent() {
           .card * {
             color: inherit;
           }
-          /* ボタンは常に白文字 */
+          /* ボタンは常に黒文字 */
           .card .btn,
           .card .btn *,
           .card .btn span {
-            color: #ffffff !important;
+            color: #1A1A1A !important;
           }
           .card::after {
             content: "🌸";
@@ -713,40 +713,50 @@ function CheckoutContent() {
           }
           .btn {
             width: 100%;
-            border: 0;
+            border: 2px solid var(--shin-ai);
             border-radius: 12px;
             padding: 14px 16px;
-            background: linear-gradient(135deg, var(--shin-ai) 0%, #243B6B 100%);
-            color: #ffffff !important;
+            background: #ffffff;
+            color: #1A1A1A !important;
             font-size: 18px;
             font-weight: 900;
             letter-spacing: .04em;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 8px 25px rgba(27,54,93,.25);
+            box-shadow: 0 4px 12px rgba(27,54,93,.15);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            transition: transform .12s ease, box-shadow .12s ease;
+            transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+          }
+          .btn:hover:not(:disabled) {
+            background: #f8f9fa;
+            box-shadow: 0 6px 16px rgba(27,54,93,.2);
           }
           .btn *,
           .btn span,
           .btn svg {
-            color: #ffffff !important;
+            color: #1A1A1A !important;
           }
           .btn svg {
-            stroke: #ffffff !important;
+            stroke: #1A1A1A !important;
           }
           .btn:disabled {
-            opacity: .6;
+            opacity: .5;
             cursor: not-allowed;
-            filter: grayscale(.15);
+            background: #f3f4f6 !important;
+            color: #6b7280 !important;
+            border-color: #d1d5db !important;
           }
-          .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 35px rgba(27,54,93,.32);
+          .btn:disabled *,
+          .btn:disabled span,
+          .btn:disabled svg {
+            color: #6b7280 !important;
+          }
+          .btn:disabled svg {
+            stroke: #6b7280 !important;
           }
           .security-badges {
             display: flex;
