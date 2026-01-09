@@ -340,7 +340,12 @@ function CheckoutContent() {
             --radius-xl: 20px;
           }
           * { box-sizing: border-box; }
+          body {
+            color: #1A1A1A;
+            background: transparent;
+          }
           .checkout-container {
+            color: #1A1A1A;
             max-width: 640px;
             margin: 0 auto;
             padding: 20px;
@@ -441,13 +446,17 @@ function CheckoutContent() {
           .lang-btn.active { background: rgba(27,54,93,.08); }
           .card {
             position: relative;
-            background: rgba(255,255,255,0.95);
+            background: #ffffff;
             border: 1px solid rgba(27,54,93,.12);
             border-radius: var(--radius-xl);
             padding: 20px;
             box-shadow: var(--card-shadow);
             overflow: hidden;
             z-index: 1;
+            color: #1A1A1A;
+          }
+          .card * {
+            color: inherit;
           }
           .card::after {
             content: "🌸";
@@ -486,13 +495,17 @@ function CheckoutContent() {
             gap: 8px;
           }
           .priceBox {
-            background: linear-gradient(180deg, #fff, #fafbff);
-            border: 2px solid transparent;
+            background: #ffffff;
+            border: 2px solid rgba(27,54,93,0.1);
             border-radius: var(--radius-xl);
             padding: 22px 18px;
             position: relative;
             overflow: hidden;
             margin: 10px 0 14px;
+            color: #1A1A1A;
+          }
+          .priceBox * {
+            color: inherit;
           }
           .priceBox::before {
             content: "";
@@ -754,10 +767,23 @@ function CheckoutContent() {
             margin-top: 8px;
           }
           .muted {
-            color: #1A1A1A;
+            color: #1A1A1A !important;
             font-size: 13px;
             font-weight: 500;
             line-height: 1.6;
+          }
+          /* すべてのテキスト要素に確実に色を設定 */
+          p, span, div, h1, h2, h3, h4, h5, h6, li, td, th {
+            color: inherit;
+          }
+          /* 特に重要なテキスト要素 */
+          .card p,
+          .card span:not(.logo__sparkle),
+          .card div:not(.card::after),
+          .priceBox p,
+          .priceBox span,
+          .priceBox div {
+            color: #1A1A1A !important;
           }
         `}</style>
 
@@ -898,7 +924,7 @@ function CheckoutContent() {
           </div>
 
           <div className="mt8">
-            <p className="muted" style={{ textAlign: 'center', fontSize: '13px', marginTop: '6px', marginBottom: '12px', lineHeight: '1.6' }}>
+            <p className="muted" style={{ textAlign: 'center', fontSize: '13px', marginTop: '6px', marginBottom: '12px', lineHeight: '1.6', color: '#1A1A1A' }}>
               {t.stripeRedirect}
             </p>
             <button
