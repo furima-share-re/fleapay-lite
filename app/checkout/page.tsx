@@ -475,10 +475,29 @@ function CheckoutContent() {
             letter-spacing: 1px;
             line-height: 1;
             margin: 8px 0;
+            position: relative;
+            /* フォールバック: 常に表示される通常の色 */
+            color: var(--shin-ai);
+            /* グラデーション（サポートされている場合のみ上書き） */
             background: linear-gradient(135deg, var(--shin-ai), var(--hakken));
             -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
             background-clip: text;
+            -webkit-text-fill-color: transparent;
+          }
+          /* グラデーションがサポートされていない場合のフォールバック */
+          @supports not (background-clip: text) {
+            .price {
+              background: none;
+              -webkit-text-fill-color: var(--shin-ai);
+              color: var(--shin-ai);
+            }
+          }
+          /* Safari等でグラデーションが正しく表示されない場合のフォールバック */
+          @media screen and (-webkit-min-device-pixel-ratio: 0) {
+            .price {
+              /* Safariでも確実に表示されるように */
+              color: var(--shin-ai);
+            }
           }
           .summary {
             margin: 12px 0 0;
@@ -597,6 +616,7 @@ function CheckoutContent() {
           .toggle-arrow {
             font-size: 12px;
             transition: transform 0.2s ease;
+            color: var(--shin-ai);
           }
           .security-details {
             margin-top: 16px;
