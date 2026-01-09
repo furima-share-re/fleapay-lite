@@ -458,6 +458,12 @@ function CheckoutContent() {
           .card * {
             color: inherit;
           }
+          /* ボタンは常に白文字 */
+          .card .btn,
+          .card .btn *,
+          .card .btn span {
+            color: #ffffff !important;
+          }
           .card::after {
             content: "🌸";
             position: absolute;
@@ -711,7 +717,7 @@ function CheckoutContent() {
             border-radius: 12px;
             padding: 14px 16px;
             background: linear-gradient(135deg, var(--shin-ai) 0%, #243B6B 100%);
-            color: #fff;
+            color: #ffffff !important;
             font-size: 18px;
             font-weight: 900;
             letter-spacing: .04em;
@@ -724,6 +730,14 @@ function CheckoutContent() {
             justify-content: center;
             gap: 10px;
             transition: transform .12s ease, box-shadow .12s ease;
+          }
+          .btn *,
+          .btn span,
+          .btn svg {
+            color: #ffffff !important;
+          }
+          .btn svg {
+            stroke: #ffffff !important;
           }
           .btn:disabled {
             opacity: .6;
@@ -777,13 +791,22 @@ function CheckoutContent() {
             color: inherit;
           }
           /* 特に重要なテキスト要素 */
-          .card p,
-          .card span:not(.logo__sparkle),
-          .card div:not(.card::after),
+          .card p:not(.btn p),
+          .card span:not(.logo__sparkle):not(.btn span),
+          .card div:not(.card::after):not(.btn),
           .priceBox p,
           .priceBox span,
           .priceBox div {
             color: #1A1A1A !important;
+          }
+          /* セキュリティバッジのテキスト */
+          .security-badge,
+          .security-badge span {
+            color: var(--shin-ai) !important;
+          }
+          /* 言語切り替えボタン */
+          .lang-btn {
+            color: inherit !important;
           }
         `}</style>
 
