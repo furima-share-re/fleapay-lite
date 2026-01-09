@@ -324,7 +324,7 @@ function CheckoutContent() {
   return (
     <>
       {/* Fonts are loaded in root layout.tsx */}
-      <div className="checkout-container">
+        <div className="checkout-container">
         <style jsx>{`
           :root {
             --shin-ai: #1B365D;
@@ -346,15 +346,64 @@ function CheckoutContent() {
             padding: 20px;
             min-height: 100vh;
             position: relative;
-            background: #FBF7F0;
-            background-image: radial-gradient(1200px 700px at 80% -10%, rgba(230,57,70,.06) 0%, transparent 60%),
-                              radial-gradient(1200px 700px at -20% 110%, rgba(27,54,93,.08) 0%, transparent 60%);
+            /* 江戸風の背景 */
+            background: linear-gradient(180deg, #fef9e7 0%, #fdf5e6 30%, #faf0e6 60%, #f5ebe0 100%);
+            background-image: 
+              /* 青海波パターン（背景） */
+              repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 20px,
+                rgba(44,79,111,0.03) 20px,
+                rgba(44,79,111,0.03) 22px
+              ),
+              repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 20px,
+                rgba(44,79,111,0.03) 20px,
+                rgba(44,79,111,0.03) 22px
+              ),
+              /* 黄昏の光 */
+              radial-gradient(1200px 700px at 80% -10%, rgba(230,57,70,.08) 0%, transparent 60%),
+              radial-gradient(1200px 700px at -20% 110%, rgba(27,54,93,.1) 0%, transparent 60%);
+            overflow: hidden;
+          }
+          /* 江戸風の装飾要素 */
+          .checkout-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 32px;
+            background: repeating-linear-gradient(
+              90deg,
+              transparent,
+              transparent 10px,
+              rgba(212,175,55,0.1) 10px,
+              rgba(212,175,55,0.1) 12px
+            );
+            opacity: 0.3;
+            z-index: 0;
+          }
+          .checkout-container::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: linear-gradient(to top, rgba(44,79,111,0.05) 0%, transparent 100%);
+            z-index: 0;
           }
           .appbar {
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
           }
           .logo {
             display: flex;
@@ -392,12 +441,13 @@ function CheckoutContent() {
           .lang-btn.active { background: rgba(27,54,93,.08); }
           .card {
             position: relative;
-            background: #fff;
+            background: rgba(255,255,255,0.95);
             border: 1px solid rgba(27,54,93,.12);
             border-radius: var(--radius-xl);
             padding: 20px;
             box-shadow: var(--card-shadow);
             overflow: hidden;
+            z-index: 1;
           }
           .card::after {
             content: "🌸";
@@ -476,28 +526,9 @@ function CheckoutContent() {
             line-height: 1;
             margin: 8px 0;
             position: relative;
-            /* フォールバック: 常に表示される通常の色 */
+            /* 確実に表示される色（グラデーションは使わない） */
             color: var(--shin-ai);
-            /* グラデーション（サポートされている場合のみ上書き） */
-            background: linear-gradient(135deg, var(--shin-ai), var(--hakken));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-          }
-          /* グラデーションがサポートされていない場合のフォールバック */
-          @supports not (background-clip: text) {
-            .price {
-              background: none;
-              -webkit-text-fill-color: var(--shin-ai);
-              color: var(--shin-ai);
-            }
-          }
-          /* Safari等でグラデーションが正しく表示されない場合のフォールバック */
-          @media screen and (-webkit-min-device-pixel-ratio: 0) {
-            .price {
-              /* Safariでも確実に表示されるように */
-              color: var(--shin-ai);
-            }
+            text-shadow: 0 2px 4px rgba(27,54,93,0.1);
           }
           .summary {
             margin: 12px 0 0;
