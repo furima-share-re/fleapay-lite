@@ -61,32 +61,34 @@ export async function GET(request: Request) {
       gross: bigint;
       net: bigint;
       seller_count: bigint;
-    }>>Prisma.sql`
-      SELECT
-        DATE(o.created_at AT TIME ZONE 'Asia/Tokyo') AS date,
-        COUNT(*)::bigint AS order_count,
-        COALESCE(SUM(
-          CASE
-            WHEN om.is_cash = true THEN o.amount
-            WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
-            ELSE 0
-          END
-        ), 0)::bigint AS gross,
-        COALESCE(SUM(
-          CASE
-            WHEN om.is_cash = true THEN o.amount
-            WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
-            ELSE 0
-          END
-        ), 0)::bigint AS net,
-        COUNT(DISTINCT o.seller_id)::bigint AS seller_count
-      FROM orders o
-      LEFT JOIN order_metadata om ON om.order_id = o.id
-      LEFT JOIN stripe_payments sp ON sp.order_id = o.id
-      WHERE ${Prisma.join(whereConditions, Prisma.sql` AND `)}
-      GROUP BY DATE(o.created_at AT TIME ZONE 'Asia/Tokyo')
-      ORDER BY date ASC
-    `;
+    }>>(
+      Prisma.sql`
+        SELECT
+          DATE(o.created_at AT TIME ZONE 'Asia/Tokyo') AS date,
+          COUNT(*)::bigint AS order_count,
+          COALESCE(SUM(
+            CASE
+              WHEN om.is_cash = true THEN o.amount
+              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+              ELSE 0
+            END
+          ), 0)::bigint AS gross,
+          COALESCE(SUM(
+            CASE
+              WHEN om.is_cash = true THEN o.amount
+              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+              ELSE 0
+            END
+          ), 0)::bigint AS net,
+          COUNT(DISTINCT o.seller_id)::bigint AS seller_count
+        FROM orders o
+        LEFT JOIN order_metadata om ON om.order_id = o.id
+        LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+        WHERE ${Prisma.join(whereConditions, Prisma.sql` AND `)}
+        GROUP BY DATE(o.created_at AT TIME ZONE 'Asia/Tokyo')
+        ORDER BY date ASC
+      `
+    );
 
     // 日別データを整形
     const dailyData = dailyStats.map(row => {
