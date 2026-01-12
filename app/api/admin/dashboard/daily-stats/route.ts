@@ -2,6 +2,7 @@
 // 全出店者の日別統計（曜日別平均含む）
 
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { jstDayBounds, sanitizeError } from '@/lib/utils';
 
@@ -34,19 +35,33 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const daysParam = url.searchParams.get('days');
-    const days = daysParam ? parseInt(daysParam, 10) : 30; // デフォルト30日
+    const useAllData = !daysParam; // daysパラメータがない場合は全データ
 
     const { todayStart } = jstDayBounds();
-    const startDate = new Date(todayStart.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
-
+    const startDate = useAllData ? null : new Date(todayStart.getTime() - (parseInt(daysParam!, 10) - 1) * 24 * 60 * 60 * 1000);
+    
     // 日別統計を取得
+    const whereConditions: Prisma.Sql[] = [];
+    
+    // 日付条件（全データの場合は開始日時を指定しない）
+    if (!useAllData && startDate) {
+      whereConditions.push(Prisma.sql`o.created_at >= ${startDate}`);
+    }
+    whereConditions.push(Prisma.sql`o.created_at < ${todayStart}`);
+    whereConditions.push(Prisma.sql`o.deleted_at IS NULL`);
+    whereConditions.push(Prisma.sql`(
+      om.is_cash = true
+      OR sp.status = 'succeeded'
+      OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))
+    )`);
+    
     const dailyStats = await prisma.$queryRaw<Array<{
       date: Date;
       order_count: bigint;
       gross: bigint;
       net: bigint;
       seller_count: bigint;
-    }>>`
+    }>>Prisma.sql`
       SELECT
         DATE(o.created_at AT TIME ZONE 'Asia/Tokyo') AS date,
         COUNT(*)::bigint AS order_count,
@@ -68,14 +83,7 @@ export async function GET(request: Request) {
       FROM orders o
       LEFT JOIN order_metadata om ON om.order_id = o.id
       LEFT JOIN stripe_payments sp ON sp.order_id = o.id
-      WHERE o.created_at >= ${startDate}
-        AND o.created_at < ${todayStart}
-        AND o.deleted_at IS NULL
-        AND (
-          om.is_cash = true
-          OR sp.status = 'succeeded'
-          OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))
-        )
+      WHERE ${Prisma.join(whereConditions, Prisma.sql` AND `)}
       GROUP BY DATE(o.created_at AT TIME ZONE 'Asia/Tokyo')
       ORDER BY date ASC
     `;
@@ -116,7 +124,9 @@ export async function GET(request: Request) {
       totalGross: number;
       totalNet: number;
       totalOrderCount: number;
-      totalSellerCount: number;
+      totalAvgGrossPerSeller: number; // 各日のavgGrossPerSellerの合計
+      totalAvgNetPerSeller: number; // 各日のavgNetPerSellerの合計
+      totalAvgOrderCountPerSeller: number; // 各日のavgOrderCountPerSellerの合計
       avgGrossPerDay: number;
       avgNetPerDay: number;
       avgOrderCountPerDay: number;
@@ -134,7 +144,9 @@ export async function GET(request: Request) {
           totalGross: 0,
           totalNet: 0,
           totalOrderCount: 0,
-          totalSellerCount: 0,
+          totalAvgGrossPerSeller: 0,
+          totalAvgNetPerSeller: 0,
+          totalAvgOrderCountPerSeller: 0,
           avgGrossPerDay: 0,
           avgNetPerDay: 0,
           avgOrderCountPerDay: 0,
@@ -149,7 +161,10 @@ export async function GET(request: Request) {
       stats.totalGross += day.gross;
       stats.totalNet += day.net;
       stats.totalOrderCount += day.orderCount;
-      stats.totalSellerCount += day.sellerCount;
+      // 各日の「出店者1店舗あたり」の値を合計（後で日数で割って平均を出す）
+      stats.totalAvgGrossPerSeller += day.avgGrossPerSeller;
+      stats.totalAvgNetPerSeller += day.avgNetPerSeller;
+      stats.totalAvgOrderCountPerSeller += day.avgOrderCountPerSeller;
     });
 
     // 平均を計算
@@ -157,16 +172,15 @@ export async function GET(request: Request) {
       const dayNum = parseInt(key, 10);
       const stats = weekdayStats[dayNum];
       if (stats.totalDays > 0) {
+        // 1日あたりの平均（全期間の合計を日数で割る）
         stats.avgGrossPerDay = Math.round(stats.totalGross / stats.totalDays);
         stats.avgNetPerDay = Math.round(stats.totalNet / stats.totalDays);
         stats.avgOrderCountPerDay = Math.round((stats.totalOrderCount / stats.totalDays) * 100) / 100;
         
-        const avgSellerCount = stats.totalSellerCount / stats.totalDays;
-        if (avgSellerCount > 0) {
-          stats.avgGrossPerSeller = Math.round(stats.totalGross / stats.totalSellerCount);
-          stats.avgNetPerSeller = Math.round(stats.totalNet / stats.totalSellerCount);
-          stats.avgOrderCountPerSeller = Math.round((stats.totalOrderCount / stats.totalSellerCount) * 100) / 100;
-        }
+        // 出店者1店舗あたりの平均（各日の平均を合計して日数で割る）
+        stats.avgGrossPerSeller = Math.round(stats.totalAvgGrossPerSeller / stats.totalDays);
+        stats.avgNetPerSeller = Math.round(stats.totalAvgNetPerSeller / stats.totalDays);
+        stats.avgOrderCountPerSeller = Math.round((stats.totalAvgOrderCountPerSeller / stats.totalDays) * 100) / 100;
       }
     });
 

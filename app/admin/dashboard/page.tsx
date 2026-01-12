@@ -160,7 +160,7 @@ export default function AdminDashboardPage() {
         ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
         : 'admin-devtoken';
       
-      const res = await fetch('/api/admin/dashboard/daily-stats?days=30', {
+      const res = await fetch('/api/admin/dashboard/daily-stats', {
         headers: {
           'x-admin-token': token
         }
@@ -445,7 +445,7 @@ export default function AdminDashboardPage() {
               {/* 日別統計セクション */}
               <section>
                 <div className="sec-title-row">
-                  <h2>日別統計（過去30日間）</h2>
+                  <h2>日別統計（全期間）</h2>
                   <button className="btn ghost" onClick={loadDailyStats} disabled={dailyStatsLoading}>
                     {dailyStatsLoading ? '読み込み中...' : '🔄 更新'}
                   </button>
