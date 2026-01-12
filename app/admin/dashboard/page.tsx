@@ -45,6 +45,50 @@ interface DashboardData {
   urgentCount: number;
 }
 
+interface DailyStatsData {
+  date: string;
+  dayOfWeek: string;
+  dayOfWeekNumber: number;
+  orderCount: number;
+  gross: number;
+  net: number;
+  sellerCount: number;
+  avgGrossPerSeller: number;
+  avgNetPerSeller: number;
+  avgOrderCountPerSeller: number;
+}
+
+interface WeekdayStats {
+  dayName: string;
+  totalDays: number;
+  avgGrossPerDay: number;
+  avgNetPerDay: number;
+  avgOrderCountPerDay: number;
+  avgGrossPerSeller: number;
+  avgNetPerSeller: number;
+  avgOrderCountPerSeller: number;
+}
+
+interface WeekendComparison {
+  saturday: {
+    avgGrossPerDay: number;
+    avgNetPerDay: number;
+    avgOrderCountPerDay: number;
+    avgGrossPerSeller: number;
+    avgNetPerSeller: number;
+  };
+  sunday: {
+    avgGrossPerDay: number;
+    avgNetPerDay: number;
+    avgOrderCountPerDay: number;
+    avgGrossPerSeller: number;
+    avgNetPerSeller: number;
+  };
+  higher: 'saturday' | 'sunday';
+  difference: number;
+  differencePercent: number;
+}
+
 declare global {
   interface Window {
     ADMIN_TOKEN?: string;
@@ -55,9 +99,16 @@ export default function AdminDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dailyStats, setDailyStats] = useState<{
+    dailyData: DailyStatsData[];
+    weekdayStats: WeekdayStats[];
+    weekendComparison: WeekendComparison | null;
+  } | null>(null);
+  const [dailyStatsLoading, setDailyStatsLoading] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
+    loadDailyStats();
     const interval = setInterval(loadDashboardData, 30000); // 30秒ごとに更新
     return () => clearInterval(interval);
   }, []);
@@ -99,6 +150,32 @@ export default function AdminDashboardPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadDailyStats = async () => {
+    try {
+      setDailyStatsLoading(true);
+      const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
+        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
+        : 'admin-devtoken';
+      
+      const res = await fetch('/api/admin/dashboard/daily-stats?days=30', {
+        headers: {
+          'x-admin-token': token
+        }
+      });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      
+      const statsData = await res.json();
+      setDailyStats(statsData);
+    } catch (e) {
+      console.error('Daily stats load error:', e);
+    } finally {
+      setDailyStatsLoading(false);
     }
   };
 
@@ -363,6 +440,123 @@ export default function AdminDashboardPage() {
                     </tbody>
                   </table>
                 </div>
+              </section>
+
+              {/* 日別統計セクション */}
+              <section>
+                <div className="sec-title-row">
+                  <h2>日別統計（過去30日間）</h2>
+                  <button className="btn ghost" onClick={loadDailyStats} disabled={dailyStatsLoading}>
+                    {dailyStatsLoading ? '読み込み中...' : '🔄 更新'}
+                  </button>
+                </div>
+
+                {dailyStatsLoading ? (
+                  <div style={{ textAlign: 'center', padding: '40px' }}>読み込み中...</div>
+                ) : dailyStats?.weekendComparison ? (
+                  <>
+                    {/* 土日の比較 */}
+                    <div style={{ 
+                      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                      borderRadius: '12px',
+                      padding: '20px',
+                      marginBottom: '24px',
+                      border: '2px solid var(--fleapay-blue)'
+                    }}>
+                      <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem', color: 'var(--fleapay-blue)' }}>
+                        📊 土日の売上比較
+                      </h3>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                        <div style={{
+                          background: dailyStats.weekendComparison.higher === 'saturday' ? '#fff3cd' : '#fff',
+                          padding: '16px',
+                          borderRadius: '8px',
+                          border: dailyStats.weekendComparison.higher === 'saturday' ? '2px solid var(--warning-amber)' : '1px solid #ddd'
+                        }}>
+                          <div style={{ fontSize: '0.9rem', color: 'var(--fleapay-gray)', marginBottom: '8px' }}>土曜日</div>
+                          <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--fleapay-blue)', marginBottom: '4px' }}>
+                            {formatCurrency(dailyStats.weekendComparison.saturday.avgGrossPerDay)}
+                          </div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--fleapay-gray)' }}>
+                            出店者1店舗あたり: {formatCurrency(dailyStats.weekendComparison.saturday.avgGrossPerSeller)}
+                          </div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--fleapay-gray)' }}>
+                            注文数: {dailyStats.weekendComparison.saturday.avgOrderCountPerDay.toFixed(1)}件/日
+                          </div>
+                        </div>
+                        <div style={{
+                          background: dailyStats.weekendComparison.higher === 'sunday' ? '#fff3cd' : '#fff',
+                          padding: '16px',
+                          borderRadius: '8px',
+                          border: dailyStats.weekendComparison.higher === 'sunday' ? '2px solid var(--warning-amber)' : '1px solid #ddd'
+                        }}>
+                          <div style={{ fontSize: '0.9rem', color: 'var(--fleapay-gray)', marginBottom: '8px' }}>日曜日</div>
+                          <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--fleapay-blue)', marginBottom: '4px' }}>
+                            {formatCurrency(dailyStats.weekendComparison.sunday.avgGrossPerDay)}
+                          </div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--fleapay-gray)' }}>
+                            出店者1店舗あたり: {formatCurrency(dailyStats.weekendComparison.sunday.avgGrossPerSeller)}
+                          </div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--fleapay-gray)' }}>
+                            注文数: {dailyStats.weekendComparison.sunday.avgOrderCountPerDay.toFixed(1)}件/日
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ 
+                        marginTop: '16px', 
+                        padding: '12px', 
+                        background: '#fff', 
+                        borderRadius: '8px',
+                        textAlign: 'center'
+                      }}>
+                        <strong style={{ color: 'var(--fleapay-blue)' }}>
+                          {dailyStats.weekendComparison.higher === 'saturday' ? '土曜日' : '日曜日'}の方が
+                          {formatCurrency(dailyStats.weekendComparison.difference)} ({dailyStats.weekendComparison.differencePercent}%) 高い
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* 曜日別平均 */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <h3 style={{ margin: '0 0 12px', fontSize: '1rem', color: 'var(--fleapay-blue)' }}>
+                        曜日別平均（出店者1店舗あたり）
+                      </h3>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>曜日</th>
+                              <th>1日あたり平均売上</th>
+                              <th>1日あたり平均注文数</th>
+                              <th>出店者1店舗あたり平均売上</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {dailyStats.weekdayStats.map((weekday, idx) => (
+                              <tr key={idx}>
+                                <td>
+                                  <strong>{weekday.dayName}曜日</strong>
+                                  {weekday.dayName === '土' || weekday.dayName === '日' ? (
+                                    <span style={{ marginLeft: '8px', padding: '2px 6px', background: '#fff3cd', borderRadius: '4px', fontSize: '0.75rem' }}>
+                                      週末
+                                    </span>
+                                  ) : null}
+                                </td>
+                                <td>{formatCurrency(weekday.avgGrossPerDay)}</td>
+                                <td>{weekday.avgOrderCountPerDay.toFixed(1)}件</td>
+                                <td>{formatCurrency(weekday.avgGrossPerSeller)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--fleapay-gray)' }}>
+                    データがありません
+                  </div>
+                )}
               </section>
             </>
           )}
