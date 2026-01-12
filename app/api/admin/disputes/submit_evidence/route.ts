@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 注文情報を取得して証拠を生成
-    let evidence: Stripe.DisputeEvidenceParams = {};
+    let evidence: any = {};
 
     if (payment.orderId) {
       const order = await prisma.order.findUnique({

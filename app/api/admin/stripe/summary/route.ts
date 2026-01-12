@@ -78,7 +78,6 @@ export async function GET(request: Request) {
         createdAt: { gte: startDate, lt: endDate },
         status: 'disputed',
         disputeStatus: 'needs_response',
-        rawEvent: { not: null },
       },
       select: {
         rawEvent: true,
@@ -89,6 +88,7 @@ export async function GET(request: Request) {
     const now = Date.now();
     for (const dispute of disputesNeedingResponse) {
       try {
+        if (!dispute.rawEvent) continue;
         const rawEvent = dispute.rawEvent as any;
         const dueBy = rawEvent?.data?.object?.evidence_details?.due_by;
         if (dueBy && typeof dueBy === 'number') {
