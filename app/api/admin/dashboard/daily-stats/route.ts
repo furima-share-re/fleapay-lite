@@ -174,7 +174,25 @@ export async function GET(request: Request) {
     const saturdayStats = weekdayStats[6] || null;
     const sundayStats = weekdayStats[0] || null;
     
-    let weekendComparison = null;
+    let weekendComparison: {
+      saturday: {
+        avgGrossPerDay: number;
+        avgNetPerDay: number;
+        avgOrderCountPerDay: number;
+        avgGrossPerSeller: number;
+        avgNetPerSeller: number;
+      };
+      sunday: {
+        avgGrossPerDay: number;
+        avgNetPerDay: number;
+        avgOrderCountPerDay: number;
+        avgGrossPerSeller: number;
+        avgNetPerSeller: number;
+      };
+      higher: 'saturday' | 'sunday';
+      difference: number;
+      differencePercent: number;
+    } | null = null;
     if (saturdayStats && sundayStats) {
       const satHigher = saturdayStats.avgGrossPerDay > sundayStats.avgGrossPerDay;
       const difference = Math.abs(saturdayStats.avgGrossPerDay - sundayStats.avgGrossPerDay);
