@@ -67,6 +67,7 @@ interface WeekdayStats {
   avgGrossPerSeller: number;
   avgNetPerSeller: number;
   avgOrderCountPerSeller: number;
+  avgUnitPricePerSeller: number;
 }
 
 interface WeekendComparison {
@@ -76,6 +77,7 @@ interface WeekendComparison {
     avgOrderCountPerDay: number;
     avgGrossPerSeller: number;
     avgNetPerSeller: number;
+    avgUnitPricePerSeller: number;
   };
   sunday: {
     avgGrossPerDay: number;
@@ -83,6 +85,7 @@ interface WeekendComparison {
     avgOrderCountPerDay: number;
     avgGrossPerSeller: number;
     avgNetPerSeller: number;
+    avgUnitPricePerSeller: number;
   };
   higher: 'saturday' | 'sunday';
   difference: number;
@@ -483,6 +486,9 @@ export default function AdminDashboardPage() {
                           <div style={{ fontSize: '0.85rem', color: 'var(--fleapay-gray)' }}>
                             注文数: {dailyStats.weekendComparison.saturday.avgOrderCountPerDay.toFixed(1)}件/日
                           </div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--fleapay-gray)', marginTop: '4px', fontWeight: 600 }}>
+                            平均単価: {formatCurrency(dailyStats.weekendComparison.saturday.avgUnitPricePerSeller)}
+                          </div>
                         </div>
                         <div style={{
                           background: dailyStats.weekendComparison.higher === 'sunday' ? '#fff3cd' : '#fff',
@@ -499,6 +505,9 @@ export default function AdminDashboardPage() {
                           </div>
                           <div style={{ fontSize: '0.85rem', color: 'var(--fleapay-gray)' }}>
                             注文数: {dailyStats.weekendComparison.sunday.avgOrderCountPerDay.toFixed(1)}件/日
+                          </div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--fleapay-gray)', marginTop: '4px', fontWeight: 600 }}>
+                            平均単価: {formatCurrency(dailyStats.weekendComparison.sunday.avgUnitPricePerSeller)}
                           </div>
                         </div>
                       </div>
@@ -529,6 +538,7 @@ export default function AdminDashboardPage() {
                               <th>1日あたり平均売上</th>
                               <th>1日あたり平均注文数</th>
                               <th>出店者1店舗あたり平均売上</th>
+                              <th>平均単価</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -545,6 +555,7 @@ export default function AdminDashboardPage() {
                                 <td>{formatCurrency(weekday.avgGrossPerDay)}</td>
                                 <td>{weekday.avgOrderCountPerDay.toFixed(1)}件</td>
                                 <td>{formatCurrency(weekday.avgGrossPerSeller)}</td>
+                                <td><strong>{formatCurrency(weekday.avgUnitPricePerSeller)}</strong></td>
                               </tr>
                             ))}
                           </tbody>

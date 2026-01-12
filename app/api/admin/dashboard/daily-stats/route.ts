@@ -130,6 +130,10 @@ export async function GET(request: Request) {
       const avgGrossPerSeller = sellerCount > 0 ? gross / sellerCount : 0;
       const avgNetPerSeller = sellerCount > 0 ? net / sellerCount : 0;
       const avgOrderCountPerSeller = sellerCount > 0 ? orderCount / sellerCount : 0;
+      
+      // 単価（1注文あたりの平均金額）を計算
+      const unitPrice = orderCount > 0 ? gross / orderCount : 0;
+      const avgUnitPricePerSeller = avgOrderCountPerSeller > 0 ? avgGrossPerSeller / avgOrderCountPerSeller : 0;
 
       return {
         date: date.toISOString().split('T')[0],
@@ -141,7 +145,9 @@ export async function GET(request: Request) {
         sellerCount,
         avgGrossPerSeller: Math.round(avgGrossPerSeller),
         avgNetPerSeller: Math.round(avgNetPerSeller),
-        avgOrderCountPerSeller: Math.round(avgOrderCountPerSeller * 100) / 100
+        avgOrderCountPerSeller: Math.round(avgOrderCountPerSeller * 100) / 100,
+        unitPrice: Math.round(unitPrice),
+        avgUnitPricePerSeller: Math.round(avgUnitPricePerSeller)
       };
     });
 
@@ -155,12 +161,14 @@ export async function GET(request: Request) {
       totalAvgGrossPerSeller: number; // 各日のavgGrossPerSellerの合計
       totalAvgNetPerSeller: number; // 各日のavgNetPerSellerの合計
       totalAvgOrderCountPerSeller: number; // 各日のavgOrderCountPerSellerの合計
+      totalAvgUnitPricePerSeller: number; // 各日のavgUnitPricePerSellerの合計
       avgGrossPerDay: number;
       avgNetPerDay: number;
       avgOrderCountPerDay: number;
       avgGrossPerSeller: number;
       avgNetPerSeller: number;
       avgOrderCountPerSeller: number;
+      avgUnitPricePerSeller: number;
     }> = {};
 
     // 曜日ごとに集計
@@ -175,12 +183,14 @@ export async function GET(request: Request) {
           totalAvgGrossPerSeller: 0,
           totalAvgNetPerSeller: 0,
           totalAvgOrderCountPerSeller: 0,
+          totalAvgUnitPricePerSeller: 0,
           avgGrossPerDay: 0,
           avgNetPerDay: 0,
           avgOrderCountPerDay: 0,
           avgGrossPerSeller: 0,
           avgNetPerSeller: 0,
-          avgOrderCountPerSeller: 0
+          avgOrderCountPerSeller: 0,
+          avgUnitPricePerSeller: 0
         };
       }
       
@@ -193,6 +203,7 @@ export async function GET(request: Request) {
       stats.totalAvgGrossPerSeller += day.avgGrossPerSeller;
       stats.totalAvgNetPerSeller += day.avgNetPerSeller;
       stats.totalAvgOrderCountPerSeller += day.avgOrderCountPerSeller;
+      stats.totalAvgUnitPricePerSeller += day.avgUnitPricePerSeller;
     });
 
     // 平均を計算
@@ -209,6 +220,7 @@ export async function GET(request: Request) {
         stats.avgGrossPerSeller = Math.round(stats.totalAvgGrossPerSeller / stats.totalDays);
         stats.avgNetPerSeller = Math.round(stats.totalAvgNetPerSeller / stats.totalDays);
         stats.avgOrderCountPerSeller = Math.round((stats.totalAvgOrderCountPerSeller / stats.totalDays) * 100) / 100;
+        stats.avgUnitPricePerSeller = Math.round(stats.totalAvgUnitPricePerSeller / stats.totalDays);
       }
     });
 
@@ -223,6 +235,7 @@ export async function GET(request: Request) {
         avgOrderCountPerDay: number;
         avgGrossPerSeller: number;
         avgNetPerSeller: number;
+        avgUnitPricePerSeller: number;
       };
       sunday: {
         avgGrossPerDay: number;
@@ -230,6 +243,7 @@ export async function GET(request: Request) {
         avgOrderCountPerDay: number;
         avgGrossPerSeller: number;
         avgNetPerSeller: number;
+        avgUnitPricePerSeller: number;
       };
       higher: 'saturday' | 'sunday';
       difference: number;
@@ -248,14 +262,16 @@ export async function GET(request: Request) {
           avgNetPerDay: saturdayStats.avgNetPerDay,
           avgOrderCountPerDay: saturdayStats.avgOrderCountPerDay,
           avgGrossPerSeller: saturdayStats.avgGrossPerSeller,
-          avgNetPerSeller: saturdayStats.avgNetPerSeller
+          avgNetPerSeller: saturdayStats.avgNetPerSeller,
+          avgUnitPricePerSeller: saturdayStats.avgUnitPricePerSeller
         },
         sunday: {
           avgGrossPerDay: sundayStats.avgGrossPerDay,
           avgNetPerDay: sundayStats.avgNetPerDay,
           avgOrderCountPerDay: sundayStats.avgOrderCountPerDay,
           avgGrossPerSeller: sundayStats.avgGrossPerSeller,
-          avgNetPerSeller: sundayStats.avgNetPerSeller
+          avgNetPerSeller: sundayStats.avgNetPerSeller,
+          avgUnitPricePerSeller: sundayStats.avgUnitPricePerSeller
         },
         higher: satHigher ? 'saturday' : 'sunday',
         difference,
