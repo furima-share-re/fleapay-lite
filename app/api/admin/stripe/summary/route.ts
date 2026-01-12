@@ -55,13 +55,75 @@ export async function GET(request: Request) {
         AND sp.status = 'succeeded'
     `;
 
-    // チャージバック・返金統計（TODO: 実装時に追加）
-    const disputeCount = 0;
-    const urgentDisputes = 0;
-    const refundCount = 0;
-    const refundAmount = 0;
+    // チャージバック統計
+    const disputeStats = await prisma.$queryRaw<Array<{
+      dispute_count: bigint;
+      needs_response_count: bigint;
+    }>>`
+      SELECT
+        COUNT(*)::bigint AS dispute_count,
+        COUNT(*) FILTER (
+          WHERE sp.dispute_status = 'needs_response'
+        )::bigint AS needs_response_count
+      FROM stripe_payments sp
+      WHERE sp.created_at >= ${startDate}
+        AND sp.created_at < ${endDate}
+        AND sp.status = 'disputed'
+    `;
+
+    // 期限間近のチャージバック（needs_responseのうち、raw_eventから期限を確認）
+    // 簡略化: needs_responseのものをすべて取得して、期限をチェック
+    const disputesNeedingResponse = await prisma.stripePayment.findMany({
+      where: {
+        createdAt: { gte: startDate, lt: endDate },
+        status: 'disputed',
+        disputeStatus: 'needs_response',
+        rawEvent: { not: null },
+      },
+      select: {
+        rawEvent: true,
+      },
+    });
+
+    let urgentDisputes = 0;
+    const now = Date.now();
+    for (const dispute of disputesNeedingResponse) {
+      try {
+        const rawEvent = dispute.rawEvent as any;
+        const dueBy = rawEvent?.data?.object?.evidence_details?.due_by;
+        if (dueBy && typeof dueBy === 'number') {
+          const daysUntilDue = Math.ceil((dueBy * 1000 - now) / (1000 * 60 * 60 * 24));
+          if (daysUntilDue <= 3 && daysUntilDue > 0) {
+            urgentDisputes++;
+          }
+        }
+      } catch (e) {
+        // パースエラーは無視
+      }
+    }
+
+    // 返金統計
+    const refundStats = await prisma.$queryRaw<Array<{
+      refund_count: bigint;
+      refund_amount: bigint;
+    }>>`
+      SELECT
+        COUNT(*)::bigint AS refund_count,
+        COALESCE(SUM(sp.refunded_total), 0)::bigint AS refund_amount
+      FROM stripe_payments sp
+      WHERE sp.created_at >= ${startDate}
+        AND sp.created_at < ${endDate}
+        AND (sp.status = 'refunded' OR sp.status = 'partially_refunded')
+        AND sp.refunded_total > 0
+    `;
 
     const stats = paymentsStats[0] || { payments_count: 0n, payments_gross: 0n, net_sales: 0n };
+    const disputeStat = disputeStats[0] || { dispute_count: 0n, needs_response_count: 0n };
+    const refundStat = refundStats[0] || { refund_count: 0n, refund_amount: 0n };
+
+    const disputeCount = Number(disputeStat.dispute_count) || 0;
+    const refundCount = Number(refundStat.refund_count) || 0;
+    const refundAmount = Number(refundStat.refund_amount) || 0;
 
     return NextResponse.json({
       ok: true,
