@@ -222,3 +222,17 @@ model SellerSubscription {
   @@index([sellerId, status], name: "seller_subscriptions_seller_status_idx")
   @@map("seller_subscriptions")
 }
+
+model FeeRateMaster {
+  id           String    @id @default(uuid()) @db.Uuid
+  planType     String    @map("plan_type")
+  feeRate      Decimal   @map("fee_rate") @db.Decimal(5, 4)
+  effectiveFrom DateTime @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo  DateTime? @map("effective_to") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([planType], name: "idx_fee_rate_master_plan_type")
+  @@index([planType, effectiveFrom, effectiveTo], name: "idx_fee_rate_master_effective")
+  @@map("fee_rate_master")
+}

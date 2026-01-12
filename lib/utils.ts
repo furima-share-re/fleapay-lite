@@ -249,3 +249,121 @@ export function slugify(str: string): string {
     .replace(/\-+/g, '-')
     .replace(/^\-+|\-+$/g, '');
 }
+
+// Stripe statement_descriptor_suffix用の正規化関数
+// ASCII限定（A-Z 0-9 空白 - のみ）に正規化
+// 最大22文字、suffixだけを返す（EDOICHIBAはStripe側の設定で持つ）
+// 注意: suffixは「末尾追加」なので、プラットフォーム側のdescriptorと重複しないようにする
+// 注意: *はdescriptorの区切りとしてStripe/カード明細側で特別扱いされるため、suffixには含めない
+export function normalizeStatementDescriptor(
+  shopName: string | null | undefined,
+  eventName: string = 'EVENT'
+): string {
+  // 優先順位: shopName > eventName > 固定値
+  const source = shopName ?? eventName;
+  
+  // ASCII限定に正規化: 英数字、空白、-のみ許可（*は削除）
+  const normalized = (source || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s\-]/g, '')  // ASCII英数字、空白、-以外を削除（*は含めない）
+    .replace(/\s+/g, ' ')              // 連続空白を1つに
+    .trim()
+    .slice(0, 22);                     // 最大22文字
+  
+  // 正規化後が空なら固定値（suffixだけ、EDOICHIBAは含まない）
+  if (!normalized || normalized.length === 0) {
+    return 'EVENT';
+  }
+  
+  return normalized;
+}
+
+// 手数料率取得（マスタからプラン別の手数料率を取得）
+// 本番環境では、マスタにデータがない場合はエラーを投げる（売上毀損防止）
+// ただし、運用救済として緊急固定レート（ENV）があればそれを使用
+export async function getFeeRateFromMaster(
+  prisma: PrismaClient,
+  planType: string,
+  allowDefault: boolean = process.env.NODE_ENV !== 'production'
+): Promise<number> {
+  try {
+    // planTypeのバリデーション
+    if (!planType || !['standard', 'pro', 'kids'].includes(planType)) {
+      throw new Error(`Invalid planType: ${planType}`);
+    }
+
+    const now = new Date();
+    
+    // 有効な手数料率を取得（effective_from <= now AND (effective_to IS NULL OR effective_to >= now)）
+    const feeRate = await prisma.$queryRaw<Array<{ fee_rate: number }>>`
+      SELECT fee_rate
+      FROM fee_rate_master
+      WHERE plan_type = ${planType}
+        AND effective_from <= ${now}
+        AND (effective_to IS NULL OR effective_to >= ${now})
+      ORDER BY effective_from DESC
+      LIMIT 1
+    `;
+    
+    if (feeRate && feeRate.length > 0) {
+      const rate = Number(feeRate[0].fee_rate);
+      if (isNaN(rate) || rate < 0 || rate > 1) {
+        throw new Error(`Invalid fee_rate value: ${rate} for planType: ${planType}`);
+      }
+      return rate;
+    }
+    
+    // マスタにデータがない場合の処理
+    // 運用救済: 緊急固定レート（ENV）があればそれを使用
+    const emergencyRate = process.env.FEE_RATE_EMERGENCY_OVERRIDE;
+    if (emergencyRate) {
+      const rate = Number(emergencyRate);
+      if (!isNaN(rate) && rate >= 0 && rate <= 1) {
+        console.error('[getFeeRateFromMaster] CRITICAL: Using emergency override rate', {
+          planType,
+          emergencyRate: rate,
+          message: 'This should trigger immediate alert to operations team'
+        });
+        // TODO: アラートを飛ばす（Slack通知等）
+        return rate;
+      }
+    }
+    
+    if (allowDefault) {
+      // 開発環境: デフォルト値（7%）を返す
+      console.warn(`[getFeeRateFromMaster] No fee rate found for plan_type: ${planType}, using default 0.07`);
+      return 0.07;
+    } else {
+      // 本番環境: エラーを投げる（売上毀損防止）
+      const error = new Error(`Fee rate not found for planType: ${planType}. This is a critical error in production.`);
+      console.error('[getFeeRateFromMaster] CRITICAL:', error);
+      // TODO: アラートを飛ばす（Sentry等）
+      throw error;
+    }
+  } catch (error) {
+    console.error('[getFeeRateFromMaster] Error:', error);
+    
+    // 運用救済: 緊急固定レート（ENV）があればそれを使用
+    const emergencyRate = process.env.FEE_RATE_EMERGENCY_OVERRIDE;
+    if (emergencyRate) {
+      const rate = Number(emergencyRate);
+      if (!isNaN(rate) && rate >= 0 && rate <= 1) {
+        console.error('[getFeeRateFromMaster] CRITICAL: Using emergency override rate after error', {
+          planType,
+          emergencyRate: rate,
+          originalError: error instanceof Error ? error.message : String(error)
+        });
+        // TODO: アラートを飛ばす（Slack通知等）
+        return rate;
+      }
+    }
+    
+    if (allowDefault) {
+      // 開発環境: デフォルト値（7%）を返す
+      return 0.07;
+    } else {
+      // 本番環境: エラーを再スロー
+      throw error;
+    }
+  }
+}
