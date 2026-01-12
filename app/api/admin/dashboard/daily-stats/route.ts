@@ -38,23 +38,9 @@ export async function GET(request: Request) {
     const useAllData = !daysParam; // daysパラメータがない場合は全データ
 
     const { todayStart } = jstDayBounds();
-    const startDate = useAllData ? null : new Date(todayStart.getTime() - (parseInt(daysParam!, 10) - 1) * 24 * 60 * 60 * 1000);
+    const startDate = useAllData || !daysParam ? null : new Date(todayStart.getTime() - (parseInt(daysParam, 10) - 1) * 24 * 60 * 60 * 1000);
     
     // 日別統計を取得
-    const whereConditions: Prisma.Sql[] = [];
-    
-    // 日付条件（全データの場合は開始日時を指定しない）
-    if (!useAllData && startDate) {
-      whereConditions.push(Prisma.sql`o.created_at >= ${startDate}`);
-    }
-    whereConditions.push(Prisma.sql`o.created_at < ${todayStart}`);
-    whereConditions.push(Prisma.sql`o.deleted_at IS NULL`);
-    whereConditions.push(Prisma.sql`(
-      om.is_cash = true
-      OR sp.status = 'succeeded'
-      OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))
-    )`);
-    
     const dailyStats = await prisma.$queryRaw<Array<{
       date: Date;
       order_count: bigint;
@@ -62,32 +48,72 @@ export async function GET(request: Request) {
       net: bigint;
       seller_count: bigint;
     }>>(
-      Prisma.sql`
-        SELECT
-          DATE(o.created_at AT TIME ZONE 'Asia/Tokyo') AS date,
-          COUNT(*)::bigint AS order_count,
-          COALESCE(SUM(
-            CASE
-              WHEN om.is_cash = true THEN o.amount
-              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
-              ELSE 0
-            END
-          ), 0)::bigint AS gross,
-          COALESCE(SUM(
-            CASE
-              WHEN om.is_cash = true THEN o.amount
-              WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
-              ELSE 0
-            END
-          ), 0)::bigint AS net,
-          COUNT(DISTINCT o.seller_id)::bigint AS seller_count
-        FROM orders o
-        LEFT JOIN order_metadata om ON om.order_id = o.id
-        LEFT JOIN stripe_payments sp ON sp.order_id = o.id
-        WHERE ${Prisma.join(whereConditions, Prisma.sql` AND `)}
-        GROUP BY DATE(o.created_at AT TIME ZONE 'Asia/Tokyo')
-        ORDER BY date ASC
-      `
+      useAllData || !startDate
+        ? Prisma.sql`
+          SELECT
+            DATE(o.created_at AT TIME ZONE 'Asia/Tokyo') AS date,
+            COUNT(*)::bigint AS order_count,
+            COALESCE(SUM(
+              CASE
+                WHEN om.is_cash = true THEN o.amount
+                WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+                ELSE 0
+              END
+            ), 0)::bigint AS gross,
+            COALESCE(SUM(
+              CASE
+                WHEN om.is_cash = true THEN o.amount
+                WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+                ELSE 0
+              END
+            ), 0)::bigint AS net,
+            COUNT(DISTINCT o.seller_id)::bigint AS seller_count
+          FROM orders o
+          LEFT JOIN order_metadata om ON om.order_id = o.id
+          LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+          WHERE o.created_at < ${todayStart}
+            AND o.deleted_at IS NULL
+            AND (
+              om.is_cash = true
+              OR sp.status = 'succeeded'
+              OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))
+            )
+          GROUP BY DATE(o.created_at AT TIME ZONE 'Asia/Tokyo')
+          ORDER BY date ASC
+        `
+        : Prisma.sql`
+          SELECT
+            DATE(o.created_at AT TIME ZONE 'Asia/Tokyo') AS date,
+            COUNT(*)::bigint AS order_count,
+            COALESCE(SUM(
+              CASE
+                WHEN om.is_cash = true THEN o.amount
+                WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_gross
+                ELSE 0
+              END
+            ), 0)::bigint AS gross,
+            COALESCE(SUM(
+              CASE
+                WHEN om.is_cash = true THEN o.amount
+                WHEN sp.id IS NOT NULL AND sp.status = 'succeeded' THEN sp.amount_net
+                ELSE 0
+              END
+            ), 0)::bigint AS net,
+            COUNT(DISTINCT o.seller_id)::bigint AS seller_count
+          FROM orders o
+          LEFT JOIN order_metadata om ON om.order_id = o.id
+          LEFT JOIN stripe_payments sp ON sp.order_id = o.id
+          WHERE o.created_at >= ${startDate}
+            AND o.created_at < ${todayStart}
+            AND o.deleted_at IS NULL
+            AND (
+              om.is_cash = true
+              OR sp.status = 'succeeded'
+              OR (sp.id IS NULL AND (om.is_cash = true OR om.is_cash IS NULL))
+            )
+          GROUP BY DATE(o.created_at AT TIME ZONE 'Asia/Tokyo')
+          ORDER BY date ASC
+        `
     );
 
     // 日別データを整形
