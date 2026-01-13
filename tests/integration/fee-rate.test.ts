@@ -54,7 +54,7 @@ describe('手数料率機能', () => {
 
     it('マスタにデータがない場合、開発環境ではデフォルト値（7%）を返す', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      (process.env as any).NODE_ENV = 'development';
       
       vi.mocked(mockPrisma.$queryRaw).mockResolvedValue([]);
 
@@ -62,12 +62,12 @@ describe('手数料率機能', () => {
 
       expect(result).toBe(0.07);
       
-      process.env.NODE_ENV = originalEnv;
+      (process.env as any).NODE_ENV = originalEnv || 'test';
     });
 
     it('マスタにデータがない場合、本番環境ではエラーを投げる', async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      (process.env as any).NODE_ENV = 'production';
       
       vi.mocked(mockPrisma.$queryRaw).mockResolvedValue([]);
 
@@ -75,14 +75,14 @@ describe('手数料率機能', () => {
         getFeeRateFromMaster(mockPrisma, 'standard', false)
       ).rejects.toThrow('Fee rate not found');
 
-      process.env.NODE_ENV = originalEnv;
+      (process.env as any).NODE_ENV = originalEnv || 'test';
     });
 
     it('緊急固定レート（ENV）があればそれを使用', async () => {
       const originalEnv = process.env.NODE_ENV;
       const originalOverride = process.env.FEE_RATE_EMERGENCY_OVERRIDE;
       
-      process.env.NODE_ENV = 'production';
+      (process.env as any).NODE_ENV = 'production';
       process.env.FEE_RATE_EMERGENCY_OVERRIDE = '0.10';
       
       vi.mocked(mockPrisma.$queryRaw).mockResolvedValue([]);
@@ -91,7 +91,7 @@ describe('手数料率機能', () => {
 
       expect(result).toBe(0.10);
       
-      process.env.NODE_ENV = originalEnv;
+      (process.env as any).NODE_ENV = originalEnv || 'test';
       if (originalOverride) {
         process.env.FEE_RATE_EMERGENCY_OVERRIDE = originalOverride;
       } else {

@@ -14,6 +14,9 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import Stripe from 'stripe';
+import { NextRequest } from 'next/server';
+import { POST } from '@/app/api/checkout/session/route';
 
 describe('Checkout Session 手数料徴収機能', () => {
   const mockOrder = {
@@ -51,7 +54,8 @@ describe('Checkout Session 手数料徴収機能', () => {
     // 環境変数の設定
     process.env.STRIPE_SECRET_KEY = 'sk_test_123';
     process.env.ORDER_HASH_SECRET = 'test-hash-secret';
-    process.env.NODE_ENV = 'test';
+    // NODE_ENV is read-only, use type assertion
+    (process.env as any).NODE_ENV = 'test';
   });
 
   describe('手数料計算', () => {
@@ -85,8 +89,8 @@ describe('Checkout Session 手数料徴収機能', () => {
 
       // 手数料が計算されていることを確認（1000 * 0.07 = 70、最低1円なので70円）
       expect(stripe.checkout.sessions.create).toHaveBeenCalled();
-      const createCall = vi.mocked(stripe.checkout.sessions.create).mock.calls[0][0];
-      expect(createCall.payment_intent_data?.application_fee_amount).toBe(70);
+      const createCall = vi.mocked(stripe.checkout.sessions.create).mock.calls[0]?.[0] as any;
+      expect(createCall?.payment_intent_data?.application_fee_amount).toBe(70);
     });
 
     it('プロプランで8%の手数料が計算される', async () => {
@@ -117,9 +121,9 @@ describe('Checkout Session 手数料徴収機能', () => {
 
       await POST(request);
 
-      const createCall = vi.mocked(stripe.checkout.sessions.create).mock.calls[0][0];
+      const createCall = vi.mocked(stripe.checkout.sessions.create).mock.calls[0]?.[0] as any;
       // 1000 * 0.08 = 80円
-      expect(createCall.payment_intent_data?.application_fee_amount).toBe(80);
+      expect(createCall?.payment_intent_data?.application_fee_amount).toBe(80);
     });
 
     it('小額注文でも最低1円の手数料が設定される', async () => {
@@ -150,9 +154,9 @@ describe('Checkout Session 手数料徴収機能', () => {
 
       await POST(request);
 
-      const createCall = vi.mocked(stripe.checkout.sessions.create).mock.calls[0][0];
+      const createCall = vi.mocked(stripe.checkout.sessions.create).mock.calls[0]?.[0] as any;
       // 10 * 0.07 = 0.7 → Math.floor = 0 → Math.max(0, 1) = 1円
-      expect(createCall.payment_intent_data?.application_fee_amount).toBe(1);
+      expect(createCall?.payment_intent_data?.application_fee_amount).toBe(1);
     });
 
     it('0円注文の場合は手数料0円', async () => {
@@ -183,9 +187,9 @@ describe('Checkout Session 手数料徴収機能', () => {
 
       await POST(request);
 
-      const createCall = vi.mocked(stripe.checkout.sessions.create).mock.calls[0][0];
+      const createCall = vi.mocked(stripe.checkout.sessions.create).mock.calls[0]?.[0] as any;
       // 0円の場合は0円
-      expect(createCall.payment_intent_data?.application_fee_amount).toBe(0);
+      expect(createCall?.payment_intent_data?.application_fee_amount).toBe(0);
     });
 
     it('手数料が注文金額以上にならないことを確認', async () => {
@@ -280,8 +284,8 @@ describe('Checkout Session 手数料徴収機能', () => {
 
       await POST(request);
 
-      const createCall = vi.mocked(stripe.checkout.sessions.create).mock.calls[0][0];
-      expect(createCall.payment_intent_data?.statement_descriptor_suffix).toBe('TEST SHOP');
+      const createCall = vi.mocked(stripe.checkout.sessions.create).mock.calls[0]?.[0] as any;
+      expect(createCall?.payment_intent_data?.statement_descriptor_suffix).toBe('TEST SHOP');
     });
   });
 
