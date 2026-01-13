@@ -16,6 +16,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import Stripe from 'stripe';
 import { NextRequest } from 'next/server';
+// Import POST for type checking (tests are skipped but TypeScript still checks them)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { POST } from '@/app/api/checkout/session/route';
 
 // Mock the prisma module
 vi.mock('@/lib/prisma', () => ({
