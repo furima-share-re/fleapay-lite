@@ -16,9 +16,25 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import Stripe from 'stripe';
 import { NextRequest } from 'next/server';
-// Import POST for type checking (tests are skipped but TypeScript still checks them)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { POST } from '@/app/api/checkout/session/route';
+
+// Set environment variable before importing the route module to prevent Stripe initialization error
+process.env.STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_mock_key_for_tests';
+
+// Mock Stripe before importing the route module
+vi.mock('stripe', () => {
+  return {
+    default: vi.fn().mockImplementation(() => ({
+      accounts: {
+        retrieve: vi.fn(),
+      },
+      checkout: {
+        sessions: {
+          create: vi.fn(),
+        },
+      },
+    })),
+  };
+});
 
 // Mock the prisma module
 vi.mock('@/lib/prisma', () => ({
@@ -45,6 +61,10 @@ vi.mock('@/lib/utils', async () => {
     resolveSellerAccountId: vi.fn(),
   };
 });
+
+// Import POST after setting environment variable and mocks (tests are skipped but module still loads)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { POST } from '@/app/api/checkout/session/route';
 
 // TODO: These integration tests require proper mocking of Prisma and Stripe modules
 // They need to be refactored to use vi.mock() at module level before they can run
