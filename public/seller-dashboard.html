@@ -947,6 +947,36 @@
         </div>
       </div>
 
+      <!-- 🆕 Tier（ランク）情報 カード -->
+      <div class="card" id="tier-card" style="display: none;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">現在のランク</div>
+            <div class="card-sub">QR決済回数に応じて手数料が変わります</div>
+          </div>
+        </div>
+        <div style="margin: 16px 0;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="font-size: 2rem; font-weight: 700; color: #5a6bff;" id="tier-number">—</div>
+            <div>
+              <div style="font-size: 1.2rem; font-weight: 600; color: var(--text);" id="tier-name">—</div>
+              <div style="font-size: 0.9rem; color: var(--muted);" id="tier-fee-rate">手数料: —%</div>
+            </div>
+          </div>
+          <div style="background: #f5f5f5; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+            <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 4px;">今月のQR決済回数</div>
+            <div style="font-size: 1.1rem; font-weight: 600; color: var(--text);" id="tier-transaction-count">—回</div>
+            <div style="font-size: 0.75rem; color: var(--muted); margin-top: 4px;" id="tier-range">範囲: —</div>
+          </div>
+          <div id="tier-next-info" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px; border-radius: 8px; font-size: 0.9rem; line-height: 1.6;">
+            <div id="tier-message">—</div>
+          </div>
+        </div>
+        <div class="hint" id="tier-hint">
+          QR決済を増やすとランクが上がり、手数料が下がります。
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header">
           <div class="card-title">さいきんの けっさい</div>
@@ -1882,17 +1912,77 @@
         }
       }
 
+      // 🆕 Tier情報を取得・表示
+      async function loadTierStatus() {
+        if (!sellerId) return;
+
+        try {
+          const res = await fetch(`/api/seller/tier-status?s=${encodeURIComponent(sellerId)}`);
+          const data = await res.json();
+
+          if (!res.ok || !data.success) {
+            console.error("tier-status error", data);
+            // Tier情報が取得できない場合は非表示にする
+            const tierCard = document.getElementById("tier-card");
+            if (tierCard) tierCard.style.display = "none";
+            return;
+          }
+
+          const tierData = data.data;
+          const tierCard = document.getElementById("tier-card");
+          const tierNumberEl = document.getElementById("tier-number");
+          const tierNameEl = document.getElementById("tier-name");
+          const tierFeeRateEl = document.getElementById("tier-fee-rate");
+          const tierTransactionCountEl = document.getElementById("tier-transaction-count");
+          const tierRangeEl = document.getElementById("tier-range");
+          const tierMessageEl = document.getElementById("tier-message");
+
+          if (tierCard) tierCard.style.display = "block";
+
+          // Tier番号と名前
+          if (tierNumberEl) tierNumberEl.textContent = `Tier ${tierData.tier.number}`;
+          if (tierNameEl) tierNameEl.textContent = tierData.tier.name;
+          if (tierFeeRateEl) {
+            tierFeeRateEl.textContent = `手数料: ${tierData.tier.currentFeeRatePercent}%`;
+          }
+
+          // 月間QR決済回数
+          if (tierTransactionCountEl) {
+            tierTransactionCountEl.textContent = `${tierData.transactionCount.current}回`;
+          }
+          if (tierRangeEl) {
+            const range = tierData.transactionCount.range;
+            if (range.max === null) {
+              tierRangeEl.textContent = `範囲: ${range.min}回以上`;
+            } else {
+              tierRangeEl.textContent = `範囲: ${range.min}〜${range.max}回`;
+            }
+          }
+
+          // 次のランクへのメッセージ
+          if (tierMessageEl && tierData.tier.feeRateMessage) {
+            tierMessageEl.textContent = tierData.tier.feeRateMessage;
+          }
+        } catch (e) {
+          console.error("loadTierStatus error", e);
+          const tierCard = document.getElementById("tier-card");
+          if (tierCard) tierCard.style.display = "none";
+        }
+      }
+
       // 初回読み込み: sellerIdを含む動的URLのQRコードを即座に生成
       // DOMContentLoadedを待ってから実行（DOM要素が確実に存在するように）
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
           generateQRCode();
           loadSummary();
+          loadTierStatus(); // 🆕 Tier情報も読み込む
         });
       } else {
         // DOMが既に読み込まれている場合は即座に実行
         generateQRCode();
         loadSummary();
+        loadTierStatus(); // 🆕 Tier情報も読み込む
       }
 
       // グローバルスコープに公開（モーダル保存時の再読み込み用）
