@@ -276,6 +276,40 @@ describe.skip('Checkout Session 手数料徴収機能', () => {
     });
   });
 
+  describe('戦略F: Tier制との互換性', () => {
+    it('Tier制が有効な場合でも、プランがない場合は標準プランとして扱う', async () => {
+      process.env.ENABLE_STRATEGY_F_TIER_SYSTEM = 'true';
+      const { prisma } = await import('@/lib/prisma');
+      const { getFeeRateFromMaster } = await import('@/lib/utils');
+      
+      vi.mocked(prisma.order.findFirst).mockResolvedValue(mockOrder as any);
+      vi.mocked(prisma.seller.findUnique).mockResolvedValue(mockSeller as any);
+      vi.mocked(prisma.sellerSubscription.findFirst).mockResolvedValue(null); // プランなし
+      vi.mocked(getFeeRateFromMaster).mockResolvedValue(0.07);
+
+      const stripe = new Stripe('sk_test_123');
+      vi.mocked(stripe.accounts.retrieve).mockResolvedValue({
+        charges_enabled: true,
+      } as any);
+      vi.mocked(stripe.checkout.sessions.create).mockResolvedValue({
+        id: 'cs_test_123',
+        url: 'https://checkout.stripe.com/test',
+      } as any);
+
+      const request = new NextRequest('http://localhost:3000/api/checkout/session', {
+        method: 'POST',
+        body: JSON.stringify({
+          orderId: 'order-123',
+        }),
+      });
+
+      await POST(request);
+
+      // 標準プランの手数料率で呼ばれることを確認
+      expect(getFeeRateFromMaster).toHaveBeenCalledWith(expect.anything(), 'standard');
+    });
+  });
+
   describe('プラン取得', () => {
     it('プランがない場合は標準プランとして扱う', async () => {
       const { prisma } = await import('@/lib/prisma');
