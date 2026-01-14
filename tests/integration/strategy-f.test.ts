@@ -81,7 +81,8 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
 
   describe('getMonthlyQrTransactionCount - 月間QR決済回数取得', () => {
     it('指定月のQR決済回数を取得できる', async () => {
-      vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(15);
+      const mockCount = mockPrisma.stripePayment.count as ReturnType<typeof vi.fn>;
+      mockCount.mockResolvedValue(15);
 
       const result = await getMonthlyQrTransactionCount(
         mockPrisma,
@@ -104,7 +105,8 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('現在の月間QR決済回数を取得できる', async () => {
-      vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(20);
+      const mockCount = mockPrisma.stripePayment.count as ReturnType<typeof vi.fn>;
+      mockCount.mockResolvedValue(20);
 
       const result = await getCurrentMonthlyQrTransactionCount(
         mockPrisma,
@@ -118,8 +120,8 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
 
   describe('getCommunityGoalStatus - コミュニティ目標達成判定', () => {
     it('目標が設定されていない場合はデフォルト値を返す', async () => {
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([]); // 目標なし
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([{ total_amount: 0 }]); // 取扱高
+      (mockPrisma.$queryRaw as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]); // 目標なし
+      (mockPrisma.$queryRaw as ReturnType<typeof vi.fn>).mockResolvedValueOnce([{ total_amount: 0 }]); // 取扱高
 
       const result = await getCommunityGoalStatus(mockPrisma, 'phase1');
 
@@ -131,8 +133,9 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('目標が達成されている場合、isAchievedがtrue', async () => {
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
       // 目標取得
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockQueryRaw.mockResolvedValueOnce([
         {
           phase: 'phase1',
           target_amount: 10000000,
@@ -141,7 +144,7 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
         },
       ]);
       // 取扱高取得（目標を超えている）
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockQueryRaw.mockResolvedValueOnce([
         { total_amount: 12000000 },
       ]);
 
@@ -154,8 +157,9 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('目標が未達成の場合、isAchievedがfalse', async () => {
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
       // 目標取得
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockQueryRaw.mockResolvedValueOnce([
         {
           phase: 'phase1',
           target_amount: 10000000,
@@ -164,7 +168,7 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
         },
       ]);
       // 取扱高取得（目標未達成）
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockQueryRaw.mockResolvedValueOnce([
         { total_amount: 5000000 },
       ]);
 
@@ -179,10 +183,12 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
 
   describe('getFeeRateByTier - Tier制に基づく手数料取得', () => {
     it('Tier 1の場合、4.5%を返す', async () => {
+      const mockCount = mockPrisma.stripePayment.count as ReturnType<typeof vi.fn>;
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
       // 月間QR決済回数: 2回（Tier 1）
-      vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(2);
+      mockCount.mockResolvedValue(2);
       // Tier 1の手数料率取得
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockQueryRaw.mockResolvedValueOnce([
         { fee_rate: 0.0450, tier: 1 },
       ]);
 
@@ -192,8 +198,10 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('Tier 2の場合、4.2%を返す', async () => {
-      vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(7);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      const mockCount = mockPrisma.stripePayment.count as ReturnType<typeof vi.fn>;
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockCount.mockResolvedValue(7);
+      mockQueryRaw.mockResolvedValueOnce([
         { fee_rate: 0.0420, tier: 2 },
       ]);
 
@@ -203,8 +211,10 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('Tier 3の場合、4.0%を返す', async () => {
-      vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(15);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      const mockCount = mockPrisma.stripePayment.count as ReturnType<typeof vi.fn>;
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockCount.mockResolvedValue(15);
+      mockQueryRaw.mockResolvedValueOnce([
         { fee_rate: 0.0400, tier: 3 },
       ]);
 
@@ -214,8 +224,10 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('Tier 4の場合、3.8%を返す', async () => {
-      vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(30);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      const mockCount = mockPrisma.stripePayment.count as ReturnType<typeof vi.fn>;
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockCount.mockResolvedValue(30);
+      mockQueryRaw.mockResolvedValueOnce([
         { fee_rate: 0.0380, tier: 4 },
       ]);
 
@@ -225,13 +237,15 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('Tier 5で目標達成時、2.8%を返す', async () => {
-      vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(60);
+      const mockCount = mockPrisma.stripePayment.count as ReturnType<typeof vi.fn>;
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockCount.mockResolvedValue(60);
       // Tier 5の手数料率取得
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockQueryRaw.mockResolvedValueOnce([
         { fee_rate: 0.0330, tier: 5 },
       ]);
       // コミュニティ目標取得（達成）
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockQueryRaw.mockResolvedValueOnce([
         {
           phase: 'phase1',
           target_amount: 10000000,
@@ -239,7 +253,7 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
           normal_fee_rate: 0.0330,
         },
       ]);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockQueryRaw.mockResolvedValueOnce([
         { total_amount: 12000000 },
       ]);
 
@@ -249,12 +263,14 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('Tier 5で目標未達成時、3.3%を返す', async () => {
-      vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(60);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      const mockCount = mockPrisma.stripePayment.count as ReturnType<typeof vi.fn>;
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockCount.mockResolvedValue(60);
+      mockQueryRaw.mockResolvedValueOnce([
         { fee_rate: 0.0330, tier: 5 },
       ]);
       // コミュニティ目標取得（未達成）
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockQueryRaw.mockResolvedValueOnce([
         {
           phase: 'phase1',
           target_amount: 10000000,
@@ -262,7 +278,7 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
           normal_fee_rate: 0.0330,
         },
       ]);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockQueryRaw.mockResolvedValueOnce([
         { total_amount: 5000000 },
       ]);
 
@@ -272,8 +288,10 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('Tier制の手数料率が見つからない場合、デフォルト値を返す', async () => {
-      vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(2);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([]); // Tier制の手数料率なし
+      const mockCount = mockPrisma.stripePayment.count as ReturnType<typeof vi.fn>;
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockCount.mockResolvedValue(2);
+      mockQueryRaw.mockResolvedValueOnce([]); // Tier制の手数料率なし
 
       const result = await getFeeRateByTier(mockPrisma, 'seller-123', 'standard');
 
@@ -283,8 +301,10 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
 
   describe('getFeeRateWithStrategyF - 戦略F統合手数料取得', () => {
     it('Tier制が有効な場合、Tier制を適用', async () => {
-      vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(15);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      const mockCount = mockPrisma.stripePayment.count as ReturnType<typeof vi.fn>;
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockCount.mockResolvedValue(15);
+      mockQueryRaw.mockResolvedValueOnce([
         { fee_rate: 0.0400, tier: 3 },
       ]);
 
@@ -299,7 +319,8 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('Tier制が無効な場合、従来のplan_typeベースを適用', async () => {
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockQueryRaw.mockResolvedValueOnce([
         { fee_rate: 0.07 },
       ]);
 
@@ -316,7 +337,8 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('Tier制が無効でplan_typeベースの手数料率が見つからない場合、デフォルト値（7%）を返す', async () => {
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([]);
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockQueryRaw.mockResolvedValueOnce([]);
 
       const result = await getFeeRateWithStrategyF(
         mockPrisma,
@@ -331,7 +353,8 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
 
   describe('既存機能との互換性（デグレ防止）', () => {
     it('getFeeRateFromMasterは引き続き動作する', async () => {
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockQueryRaw.mockResolvedValueOnce([
         { fee_rate: 0.07 },
       ]);
 
@@ -341,7 +364,8 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('plan_typeベースの手数料率取得が動作する（tier IS NULL）', async () => {
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockQueryRaw.mockResolvedValueOnce([
         { fee_rate: 0.08 },
       ]);
 
@@ -356,9 +380,11 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('Tier制とplan_typeベースが共存できる', async () => {
+      const mockCount = mockPrisma.stripePayment.count as ReturnType<typeof vi.fn>;
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
       // Tier制の手数料率
-      vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(15);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockCount.mockResolvedValue(15);
+      mockQueryRaw.mockResolvedValueOnce([
         { fee_rate: 0.0400, tier: 3 },
       ]);
 
@@ -372,7 +398,7 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
       expect(tierResult).toBe(0.0400);
 
       // plan_typeベースの手数料率（別のプラン）
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockQueryRaw.mockResolvedValueOnce([
         { fee_rate: 0.08 },
       ]);
 
@@ -397,7 +423,8 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('目標取扱高が0の場合、達成率が0%', async () => {
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockQueryRaw.mockResolvedValueOnce([
         {
           phase: 'phase1',
           target_amount: 0,
@@ -405,7 +432,7 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
           normal_fee_rate: 0.0330,
         },
       ]);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      mockQueryRaw.mockResolvedValueOnce([
         { total_amount: 1000000 },
       ]);
 
@@ -416,7 +443,8 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
     });
 
     it('取扱高がnullの場合、0として扱う', async () => {
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
+      const mockQueryRaw = mockPrisma.$queryRaw as ReturnType<typeof vi.fn>;
+      mockQueryRaw.mockResolvedValueOnce([
         {
           phase: 'phase1',
           target_amount: 10000000,
@@ -424,7 +452,7 @@ describe('戦略F: コミュニティ連動型ダイナミックプライシン�
           normal_fee_rate: 0.0330,
         },
       ]);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([]);
+      mockQueryRaw.mockResolvedValueOnce([]);
 
       const result = await getCommunityGoalStatus(mockPrisma, 'phase1');
 
