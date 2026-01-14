@@ -35,7 +35,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       // モジュールを動的にインポート（環境変数の変更を反映）
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
       const mockCount = vi.fn().mockResolvedValue(15);
-      const mockQueryRaw = vi.fn().mockResolvedValue([
+      const mockQueryRaw = vi.fn().mockResolvedValueOnce([
         { fee_rate: 0.04, tier: 3 },
       ]);
       const mockPrisma = {
@@ -63,7 +63,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
       // 新しいモックを作成（前のテストの影響を受けないように）
       const mockCount = vi.fn();
-      const mockQueryRaw = vi.fn().mockResolvedValue([
+      const mockQueryRaw = vi.fn().mockResolvedValueOnce([
         { fee_rate: 0.07 },
       ]);
       const mockPrisma = {
