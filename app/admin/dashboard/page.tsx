@@ -1370,7 +1370,7 @@ export default function AdminDashboardPage() {
   );
 }
 
-// KPI管理コンポーネント
+// KPI管理コンポーネント（自動集計版）
 function KpiManagementSection() {
   const [selectedWeek, setSelectedWeek] = useState(() => {
     // 今週の月曜日を取得
@@ -1381,8 +1381,8 @@ function KpiManagementSection() {
     return monday.toISOString().split('T')[0];
   });
   const [kpiData, setKpiData] = useState<any[]>([]);
+  const [metadata, setMetadata] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [editing, setEditing] = useState<{ [key: string]: any }>({});
 
   useEffect(() => {
     loadKpiData();
@@ -1395,49 +1395,19 @@ function KpiManagementSection() {
         ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
         : 'admin-devtoken';
       
-      const res = await fetch(`/api/admin/kpi-metrics?weekStart=${selectedWeek}`, {
+      const res = await fetch(`/api/admin/kpi-metrics/auto?weekStart=${selectedWeek}`, {
         headers: { 'x-admin-token': token }
       });
       
       if (res.ok) {
         const result = await res.json();
         setKpiData(result.data || []);
+        setMetadata(result.metadata || null);
       }
     } catch (e) {
       console.error('KPI load error:', e);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const saveKpiMetric = async (metricKey: string, category: string, phase: string, data: any) => {
-    try {
-      const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
-        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
-        : 'admin-devtoken';
-      
-      const res = await fetch('/api/admin/kpi-metrics', {
-        method: 'POST',
-        headers: {
-          'x-admin-token': token,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          metricKey,
-          metricCategory: category,
-          weekStartDate: selectedWeek,
-          phase,
-          ...data
-        })
-      });
-      
-      if (res.ok) {
-        await loadKpiData();
-        setEditing({});
-      }
-    } catch (e) {
-      console.error('KPI save error:', e);
-      alert('保存に失敗しました');
     }
   };
 
@@ -1487,11 +1457,13 @@ function KpiManagementSection() {
               </tr>
             </thead>
             <tbody>
-              {tier1Kpis.map((kpi) => {
-                const existing = kpiData.find(d => d.metric_key === kpi.key && d.week_start_date === selectedWeek);
-                const isEditing = editing[kpi.key];
-                const actual = existing?.actual_value ?? (isEditing ? editing[kpi.key]?.actual : null);
-                const achievement = actual !== null && kpi.target ? (actual / kpi.target * 100).toFixed(1) : null;
+              {tier1Kpis.filter(kpi => {
+                // データベースから自動集計可能なKPIのみ表示
+                return ['omikuji_completion_rate', 'ugc_posts_per_day', 'ai_generation_success_rate', 'monthly_qr_payments'].includes(kpi.key);
+              }).map((kpi) => {
+                const existing = kpiData.find(d => d.metric_key === kpi.key);
+                const actual = existing?.actual_value ?? null;
+                const achievement = existing?.achievement_rate ?? (actual !== null && kpi.target ? (actual / kpi.target * 100) : null);
 
                 return (
                   <tr key={kpi.key}>
@@ -1499,27 +1471,9 @@ function KpiManagementSection() {
                     <td>{kpi.target}{kpi.unit}</td>
                     <td>{kpi.target5y}{kpi.unit}</td>
                     <td>
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          step="0.01"
-                          defaultValue={actual ?? ''}
-                          onBlur={(e) => {
-                            const value = e.target.value ? parseFloat(e.target.value) : null;
-                            saveKpiMetric(kpi.key, 'tier1', kpi.phase, {
-                              targetValue: kpi.target,
-                              actualValue: value,
-                              unit: kpi.unit
-                            });
-                          }}
-                          style={{ width: '100px', padding: '4px', borderRadius: '4px', border: '1px solid #ddd' }}
-                          autoFocus
-                        />
-                      ) : (
-                        <span style={{ fontWeight: actual !== null ? 700 : 'normal', color: actual !== null ? 'var(--fleapay-blue)' : '#999' }}>
-                          {actual !== null ? `${actual}${kpi.unit}` : '-'}
-                        </span>
-                      )}
+                      <span style={{ fontWeight: actual !== null ? 700 : 'normal', color: actual !== null ? 'var(--fleapay-blue)' : '#999' }}>
+                        {actual !== null ? `${Number(actual).toFixed(2)}${kpi.unit}` : '-'}
+                      </span>
                     </td>
                     <td>
                       {achievement ? (
@@ -1527,20 +1481,12 @@ function KpiManagementSection() {
                           color: parseFloat(achievement) >= 100 ? '#27ae60' : parseFloat(achievement) >= 80 ? '#f39c12' : '#e74c3c',
                           fontWeight: 700
                         }}>
-                          {achievement}%
+                          {Number(achievement).toFixed(1)}%
                         </span>
                       ) : '-'}
                     </td>
                     <td>
-                      {!isEditing && (
-                        <button
-                          className="btn ghost"
-                          onClick={() => setEditing({ ...editing, [kpi.key]: { actual: actual } })}
-                          style={{ fontSize: '0.85rem', padding: '4px 8px' }}
-                        >
-                          ✏️ 編集
-                        </button>
-                      )}
+                      <span style={{ fontSize: '0.85rem', color: '#666' }}>📊 自動集計</span>
                     </td>
                   </tr>
                 );
@@ -1553,7 +1499,7 @@ function KpiManagementSection() {
   );
 }
 
-// 結果目標管理コンポーネント
+// 結果目標管理コンポーネント（自動集計版）
 function GoalManagementSection() {
   const [selectedWeek, setSelectedWeek] = useState(() => {
     const today = new Date();
@@ -1563,8 +1509,8 @@ function GoalManagementSection() {
     return monday.toISOString().split('T')[0];
   });
   const [goalData, setGoalData] = useState<any[]>([]);
+  const [metadata, setMetadata] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [editing, setEditing] = useState<{ [key: string]: any }>({});
 
   useEffect(() => {
     loadGoalData();
@@ -1577,48 +1523,19 @@ function GoalManagementSection() {
         ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
         : 'admin-devtoken';
       
-      const res = await fetch(`/api/admin/goal-achievements?weekStart=${selectedWeek}`, {
+      const res = await fetch(`/api/admin/goal-achievements/auto?weekStart=${selectedWeek}&phase=phase4`, {
         headers: { 'x-admin-token': token }
       });
       
       if (res.ok) {
         const result = await res.json();
         setGoalData(result.data || []);
+        setMetadata(result.metadata || null);
       }
     } catch (e) {
       console.error('Goal load error:', e);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const saveGoal = async (phase: string, metricType: string, data: any) => {
-    try {
-      const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
-        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
-        : 'admin-devtoken';
-      
-      const res = await fetch('/api/admin/goal-achievements', {
-        method: 'POST',
-        headers: {
-          'x-admin-token': token,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          phase,
-          metricType,
-          weekStartDate: selectedWeek,
-          ...data
-        })
-      });
-      
-      if (res.ok) {
-        await loadGoalData();
-        setEditing({});
-      }
-    } catch (e) {
-      console.error('Goal save error:', e);
-      alert('保存に失敗しました');
     }
   };
 
@@ -1663,36 +1580,18 @@ function GoalManagementSection() {
             </thead>
             <tbody>
               {goalMetrics.map((metric) => {
-                const existing = goalData.find(d => d.phase === metric.phase && d.metric_type === metric.type && d.week_start_date === selectedWeek);
-                const isEditing = editing[`${metric.phase}_${metric.type}`];
-                const actual = existing?.actual_value ?? (isEditing ? editing[`${metric.phase}_${metric.type}`]?.actual : null);
-                const achievement = existing?.achievement_rate ?? (actual !== null && metric.target ? (actual / metric.target * 100).toFixed(1) : null);
+                const existing = goalData.find(d => d.metric_type === metric.type);
+                const actual = existing?.actual_value ?? null;
+                const achievement = existing?.achievement_rate ?? (actual !== null && metric.target ? (actual / metric.target * 100) : null);
 
                 return (
                   <tr key={`${metric.phase}_${metric.type}`}>
                     <td><strong>{metric.name}</strong></td>
                     <td>{new Intl.NumberFormat('ja-JP').format(metric.target)}{metric.unit}</td>
                     <td>
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          step="1"
-                          defaultValue={actual ?? ''}
-                          onBlur={(e) => {
-                            const value = e.target.value ? parseFloat(e.target.value) : null;
-                            saveGoal(metric.phase, metric.type, {
-                              targetValue: metric.target,
-                              actualValue: value
-                            });
-                          }}
-                          style={{ width: '150px', padding: '4px', borderRadius: '4px', border: '1px solid #ddd' }}
-                          autoFocus
-                        />
-                      ) : (
-                        <span style={{ fontWeight: actual !== null ? 700 : 'normal', color: actual !== null ? 'var(--fleapay-blue)' : '#999' }}>
-                          {actual !== null ? `${new Intl.NumberFormat('ja-JP').format(actual)}${metric.unit}` : '-'}
-                        </span>
-                      )}
+                      <span style={{ fontWeight: actual !== null ? 700 : 'normal', color: actual !== null ? 'var(--fleapay-blue)' : '#999' }}>
+                        {actual !== null ? `${new Intl.NumberFormat('ja-JP').format(Math.round(actual))}${metric.unit}` : '-'}
+                      </span>
                     </td>
                     <td>
                       {achievement ? (
@@ -1705,15 +1604,7 @@ function GoalManagementSection() {
                       ) : '-'}
                     </td>
                     <td>
-                      {!isEditing && (
-                        <button
-                          className="btn ghost"
-                          onClick={() => setEditing({ ...editing, [`${metric.phase}_${metric.type}`]: { actual: actual } })}
-                          style={{ fontSize: '0.85rem', padding: '4px 8px' }}
-                        >
-                          ✏️ 編集
-                        </button>
-                      )}
+                      <span style={{ fontSize: '0.85rem', color: '#666' }}>📊 自動集計</span>
                     </td>
                   </tr>
                 );
@@ -1726,7 +1617,7 @@ function GoalManagementSection() {
   );
 }
 
-// ベンチマーク管理コンポーネント
+// ベンチマーク管理コンポーネント（自動集計版）
 function BenchmarkManagementSection() {
   const [selectedWeek, setSelectedWeek] = useState(() => {
     const today = new Date();
@@ -1737,7 +1628,6 @@ function BenchmarkManagementSection() {
   });
   const [benchmarkData, setBenchmarkData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [editing, setEditing] = useState<{ [key: string]: any }>({});
 
   useEffect(() => {
     loadBenchmarkData();
@@ -1762,36 +1652,6 @@ function BenchmarkManagementSection() {
       console.error('Benchmark load error:', e);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const saveBenchmark = async (benchmarkType: string, contentCategory: string, data: any) => {
-    try {
-      const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
-        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
-        : 'admin-devtoken';
-      
-      const res = await fetch('/api/admin/benchmark-data', {
-        method: 'POST',
-        headers: {
-          'x-admin-token': token,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          benchmarkType,
-          contentCategory,
-          weekStartDate: selectedWeek,
-          ...data
-        })
-      });
-      
-      if (res.ok) {
-        await loadBenchmarkData();
-        setEditing({});
-      }
-    } catch (e) {
-      console.error('Benchmark save error:', e);
-      alert('保存に失敗しました');
     }
   };
 
@@ -1838,10 +1698,9 @@ function BenchmarkManagementSection() {
             <tbody>
               {benchmarkMetrics.map((metric) => {
                 const key = `${metric.type}_${metric.category}`;
-                const existing = benchmarkData.find(d => d.benchmark_type === metric.type && d.content_category === metric.category && d.week_start_date === selectedWeek);
-                const isEditing = editing[key];
-                const actual = existing?.actual_value ?? (isEditing ? editing[key]?.actual : null);
-                const growthRate = existing?.growth_rate ?? (actual !== null && metric.current ? ((actual - metric.current) / metric.current * 100).toFixed(1) : null);
+                const existing = benchmarkData.find(d => d.benchmark_type === metric.type && d.content_category === metric.category);
+                const actual = existing?.actual_value ?? null;
+                const growthRate = existing?.growth_rate ?? null;
 
                 return (
                   <tr key={key}>
@@ -1850,49 +1709,14 @@ function BenchmarkManagementSection() {
                     <td>¥{metric.current}</td>
                     <td>¥{metric.target}</td>
                     <td>
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          step="1"
-                          defaultValue={actual ?? ''}
-                          onBlur={(e) => {
-                            const value = e.target.value ? parseFloat(e.target.value) : null;
-                            saveBenchmark(metric.type, metric.category, {
-                              industryStandard: metric.industry,
-                              edoIchibaCurrent: metric.current,
-                              edoIchibaTarget: metric.target,
-                              actualValue: value
-                            });
-                          }}
-                          style={{ width: '100px', padding: '4px', borderRadius: '4px', border: '1px solid #ddd' }}
-                          autoFocus
-                        />
-                      ) : (
-                        <span style={{ fontWeight: actual !== null ? 700 : 'normal', color: actual !== null ? 'var(--fleapay-blue)' : '#999' }}>
-                          {actual !== null ? `¥${actual}` : '-'}
-                        </span>
-                      )}
+                      <span style={{ color: '#999' }}>-</span>
+                      <small style={{ display: 'block', fontSize: '0.75rem', color: '#999', marginTop: '4px' }}>
+                        （広告データ連携後に自動集計）
+                      </small>
                     </td>
+                    <td>-</td>
                     <td>
-                      {growthRate ? (
-                        <span style={{
-                          color: parseFloat(growthRate) >= 0 ? '#27ae60' : '#e74c3c',
-                          fontWeight: 700
-                        }}>
-                          {parseFloat(growthRate) >= 0 ? '+' : ''}{growthRate}%
-                        </span>
-                      ) : '-'}
-                    </td>
-                    <td>
-                      {!isEditing && (
-                        <button
-                          className="btn ghost"
-                          onClick={() => setEditing({ ...editing, [key]: { actual: actual } })}
-                          style={{ fontSize: '0.85rem', padding: '4px 8px' }}
-                        >
-                          ✏️ 編集
-                        </button>
-                      )}
+                      <span style={{ fontSize: '0.85rem', color: '#666' }}>📊 準備中</span>
                     </td>
                   </tr>
                 );

@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     }
 
     // 成長率を計算（実績値と現在値から）
-    let growthRate = null;
+    let growthRate: number | null = null;
     if (actualValue !== null && edoIchibaCurrent !== null && edoIchibaCurrent > 0) {
       growthRate = ((Number(actualValue) - Number(edoIchibaCurrent)) / Number(edoIchibaCurrent)) * 100;
     }
