@@ -10,11 +10,6 @@ jobs:
   validate-migrations:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Git LFS
-        uses: git-lfs/setup-git-lfs@v3
-        with:
-          version: latest
-
       - uses: actions/checkout@v4
         with:
           lfs: true
@@ -37,11 +32,6 @@ jobs:
       url: https://app.supabase.com
     
     steps:
-      - name: Setup Git LFS
-        uses: git-lfs/setup-git-lfs@v3
-        with:
-          version: latest
-
       - uses: actions/checkout@v4
         with:
           lfs: true
@@ -74,11 +64,6 @@ jobs:
       url: https://app.supabase.com
     
     steps:
-      - name: Setup Git LFS
-        uses: git-lfs/setup-git-lfs@v3
-        with:
-          version: latest
-
       - uses: actions/checkout@v4
         with:
           lfs: true
@@ -106,11 +91,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [apply-to-staging, apply-to-production]
     steps:
-      - name: Setup Git LFS
-        uses: git-lfs/setup-git-lfs@v3
-        with:
-          version: latest
-
       - uses: actions/checkout@v4
         with:
           lfs: true
