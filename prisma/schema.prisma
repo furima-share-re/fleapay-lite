@@ -224,15 +224,49 @@ model SellerSubscription {
 }
 
 model FeeRateMaster {
-  id           String    @id @default(uuid()) @db.Uuid
-  planType     String    @map("plan_type")
-  feeRate      Decimal   @map("fee_rate") @db.Decimal(5, 4)
-  effectiveFrom DateTime @default(now()) @map("effective_from") @db.Timestamptz(6)
-  effectiveTo  DateTime? @map("effective_to") @db.Timestamptz(6)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id              String    @id @default(uuid()) @db.Uuid
+  planType        String    @map("plan_type")
+  tier            Int?      // Tier番号: 1-5 (NULLの場合は従来のplan_typeベース)
+  minTransactions Int?      @map("min_transactions")  // 最小決済回数（月間）
+  maxTransactions Int?      @map("max_transactions")  // 最大決済回数（月間、NULL=上限なし）
+  feeRate         Decimal   @map("fee_rate") @db.Decimal(5, 4)
+  effectiveFrom   DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo     DateTime? @map("effective_to") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([planType], name: "idx_fee_rate_master_plan_type")
   @@index([planType, effectiveFrom, effectiveTo], name: "idx_fee_rate_master_effective")
+  @@index([tier], name: "idx_fee_rate_master_tier")
   @@map("fee_rate_master")
+}
+
+model CommunityGoalMaster {
+  id            String    @id @default(uuid()) @db.Uuid
+  phase         String    // 'phase1', 'phase2', 'phase3'
+  targetAmount  Decimal   @map("target_amount") @db.Decimal(12, 0)  // 目標取扱高（円）
+  bonusFeeRate  Decimal   @map("bonus_fee_rate") @db.Decimal(5, 4)  // 達成時の手数料率
+  normalFeeRate Decimal   @map("normal_fee_rate") @db.Decimal(5, 4)  // 未達成時の手数料率
+  effectiveFrom DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo   DateTime? @map("effective_to") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([phase], name: "idx_community_goal_master_phase")
+  @@index([phase, effectiveFrom, effectiveTo], name: "idx_community_goal_master_effective")
+  @@map("community_goal_master")
+}
+
+model CommunityTransactionVolume {
+  id              String    @id @default(uuid()) @db.Uuid
+  periodStart     DateTime  @map("period_start") @db.Timestamptz(6)
+  periodEnd       DateTime  @map("period_end") @db.Timestamptz(6)
+  totalAmount     Decimal   @default(0) @map("total_amount") @db.Decimal(12, 0)  // 総取扱高（円）
+  transactionCount BigInt   @default(0) @map("transaction_count")  // 総決済回数
+  lastCalculatedAt DateTime @default(now()) @map("last_calculated_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([periodStart, periodEnd], name: "idx_community_transaction_volume_period")
+  @@map("community_transaction_volume")
 }
