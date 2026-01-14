@@ -82,6 +82,22 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     console.error('benchmark-data GET error', e);
+    
+    // テーブルが存在しない場合のエラーハンドリング
+    if (e instanceof Error) {
+      const errorMessage = e.message;
+      if (errorMessage.includes('relation "benchmark_data" does not exist')) {
+        return NextResponse.json(
+          {
+            error: 'table_not_found',
+            message: 'benchmark_dataテーブルが存在しません。データベースマイグレーションを適用してください。',
+            details: 'benchmark_dataテーブルのマイグレーションファイルを本番環境に適用する必要があります。',
+          },
+          { status: 500 }
+        );
+      }
+    }
+    
     return NextResponse.json(
       sanitizeError(e),
       { status: 500 }
@@ -155,6 +171,22 @@ export async function POST(request: Request) {
     });
   } catch (e) {
     console.error('benchmark-data POST error', e);
+    
+    // テーブルが存在しない場合のエラーハンドリング
+    if (e instanceof Error) {
+      const errorMessage = e.message;
+      if (errorMessage.includes('relation "benchmark_data" does not exist')) {
+        return NextResponse.json(
+          {
+            error: 'table_not_found',
+            message: 'benchmark_dataテーブルが存在しません。データベースマイグレーションを適用してください。',
+            details: 'benchmark_dataテーブルのマイグレーションファイルを本番環境に適用する必要があります。',
+          },
+          { status: 500 }
+        );
+      }
+    }
+    
     return NextResponse.json(
       sanitizeError(e),
       { status: 500 }

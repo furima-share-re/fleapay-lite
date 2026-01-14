@@ -68,6 +68,22 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('[Admin FeeRates] Error:', error);
+    
+    // テーブルが存在しない場合のエラーハンドリング
+    if (error instanceof Error) {
+      const errorMessage = error.message;
+      if (errorMessage.includes('relation "fee_rate_master" does not exist')) {
+        return NextResponse.json(
+          {
+            error: 'table_not_found',
+            message: 'fee_rate_masterテーブルが存在しません。データベースマイグレーションを適用してください。',
+            details: 'マイグレーションファイル: supabase/migrations/20250116_120000_create_fee_rate_master.sql を本番環境に適用する必要があります。',
+          },
+          { status: 500 }
+        );
+      }
+    }
+    
     return NextResponse.json(
       {
         error: 'internal_error',
