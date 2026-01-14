@@ -213,7 +213,7 @@ describe('戦略F: APIエンドポイント', () => {
         ])
         .mockResolvedValueOnce([]); // 既存レコードなし
 
-      vi.mocked(prisma.$executeRaw).mockResolvedValueOnce(undefined);
+      vi.mocked(prisma.$executeRaw).mockResolvedValueOnce(0);
 
       const request = new NextRequest('http://localhost:3000/api/admin/community-goal/update-volume', {
         method: 'POST',
@@ -241,7 +241,7 @@ describe('戦略F: APIエンドポイント', () => {
         ])
         .mockResolvedValueOnce([]);
 
-      vi.mocked(prisma.$executeRaw).mockResolvedValueOnce(undefined);
+      vi.mocked(prisma.$executeRaw).mockResolvedValueOnce(0);
 
       const request = new NextRequest('http://localhost:3000/api/admin/community-goal/update-volume', {
         method: 'POST',
@@ -268,7 +268,7 @@ describe('戦略F: APIエンドポイント', () => {
         ])
         .mockResolvedValueOnce([{ id: 'existing-id' }]); // 既存レコードあり
 
-      vi.mocked(prisma.$executeRaw).mockResolvedValueOnce(undefined);
+      vi.mocked(prisma.$executeRaw).mockResolvedValueOnce(0);
 
       const request = new NextRequest('http://localhost:3000/api/admin/community-goal/update-volume', {
         method: 'POST',
