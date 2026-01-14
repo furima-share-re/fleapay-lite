@@ -200,10 +200,11 @@ jobs:
           echo "🔗 Linking to Supabase project: $SUPABASE_PROJECT_ID"
           supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
-      - name: Set DATABASE_URL
+      - name: Update Prisma schema
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
         run: |
-          echo "🔍 Setting DATABASE_URL from GitHub Secret..."
-          if [ -z "${{ secrets.DATABASE_URL_STAGING }}" ]; then
+          if [ -z "$DATABASE_URL" ]; then
             echo "❌ Error: DATABASE_URL_STAGING secret is not set"
             echo ""
             echo "Please set DATABASE_URL_STAGING in GitHub Secrets:"
@@ -217,13 +218,6 @@ jobs:
             echo "- Supabase Dashboard → Project Settings → Database → Connection string"
             exit 1
           fi
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL_STAGING }}" >> $GITHUB_ENV
-          echo "✅ DATABASE_URL configured"
-
-      - name: Update Prisma schema
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-        run: |
           echo "📝 Updating Prisma schema..."
           npx prisma db pull
           npx prisma generate
