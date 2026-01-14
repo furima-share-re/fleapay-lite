@@ -78,7 +78,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       const mockCount = vi.fn();
       // When tier system is disabled, $queryRaw is called with tier IS NULL (not with tier=3)
       // This should return 0.07, not 0.04
-      const mockQueryRaw = vi.fn().mockResolvedValueOnce([
+      const mockQueryRaw = vi.fn().mockResolvedValue([
         { fee_rate: 0.07 },
       ]);
       const mockPrisma = {
