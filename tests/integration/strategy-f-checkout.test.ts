@@ -17,10 +17,12 @@ import { NextRequest } from 'next/server';
 const originalEnv = process.env;
 
 describe('戦略F: チェックアウト処理統合テスト', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     // 環境変数をリセット
     process.env = { ...originalEnv };
+    // モジュールキャッシュをクリア（動的インポートの影響を避けるため）
+    await vi.resetModules();
   });
 
   afterEach(() => {

@@ -232,16 +232,28 @@ export async function getFeeRateByTier(
  * @param prisma PrismaClient
  * @param sellerId 出店者ID
  * @param planType プランタイプ
- * @param useTierSystem Tier制を使用するか（デフォルト: true）
+ * @param useTierSystem Tier制を使用するか（デフォルト: 環境変数ENABLE_STRATEGY_F_TIER_SYSTEMに基づく、未設定の場合はtrue）
  * @returns 手数料率
  */
 export async function getFeeRateWithStrategyF(
   prisma: PrismaClient,
   sellerId: string,
   planType: string = 'standard',
-  useTierSystem: boolean = true
+  useTierSystem?: boolean
 ): Promise<number> {
-  if (useTierSystem) {
+  // useTierSystemが明示的に指定されていない場合は、環境変数をチェック
+  // 明示的にfalseが渡された場合は、必ずfalseとして扱う
+  let shouldUseTierSystem: boolean;
+  if (useTierSystem === false) {
+    shouldUseTierSystem = false;
+  } else if (useTierSystem === true) {
+    shouldUseTierSystem = true;
+  } else {
+    // useTierSystemが未指定の場合は環境変数をチェック
+    shouldUseTierSystem = process.env.ENABLE_STRATEGY_F_TIER_SYSTEM !== 'false';
+  }
+
+  if (shouldUseTierSystem) {
     // Tier制を適用
     return getFeeRateByTier(prisma, sellerId, planType);
   } else {
