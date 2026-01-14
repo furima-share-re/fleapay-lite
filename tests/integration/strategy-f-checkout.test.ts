@@ -149,7 +149,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
 
       // チェックアウト処理の手数料計算ロジックをテスト
       const feeRate = 0.0400;
-      const orderAmount = 10000;
+      const orderAmount: number = 10000;
       const calculatedFee = Math.floor(orderAmount * feeRate);
       const fee = orderAmount === 0 ? 0 : Math.max(calculatedFee, 1);
 
@@ -161,7 +161,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
 
       const feeRate = 0.07; // 従来の7%
-      const orderAmount = 10000;
+      const orderAmount: number = 10000;
       const calculatedFee = Math.floor(orderAmount * feeRate);
       const fee = orderAmount === 0 ? 0 : Math.max(calculatedFee, 1);
 
@@ -172,7 +172,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
   describe('手数料計算のエッジケース', () => {
     it('小額注文でも最低1円の手数料が設定される（Tier制適用時）', () => {
       const feeRate = 0.0450; // Tier 1: 4.5%
-      const orderAmount = 10; // 10円
+      const orderAmount: number = 10; // 10円
       const calculatedFee = Math.floor(orderAmount * feeRate);
       const fee = orderAmount === 0 ? 0 : Math.max(calculatedFee, 1);
 
@@ -190,7 +190,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
 
     it('Tier 5で目標達成時、手数料が2.8%になる', () => {
       const feeRate = 0.0280; // Tier 5 目標達成時
-      const orderAmount = 10000;
+      const orderAmount: number = 10000;
       const calculatedFee = Math.floor(orderAmount * feeRate);
       const fee = orderAmount === 0 ? 0 : Math.max(calculatedFee, 1);
 
@@ -199,7 +199,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
 
     it('Tier 5で目標未達成時、手数料が3.3%になる', () => {
       const feeRate = 0.0330; // Tier 5 通常
-      const orderAmount = 10000;
+      const orderAmount: number = 10000;
       const calculatedFee = Math.floor(orderAmount * feeRate);
       const fee = orderAmount === 0 ? 0 : Math.max(calculatedFee, 1);
 
