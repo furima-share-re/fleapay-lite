@@ -38,9 +38,12 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
       const mockCount = vi.fn().mockResolvedValue(15);
       // getFeeRateByTier calls $queryRaw with tier=3 (determined from count=15)
-      const mockQueryRaw = vi.fn().mockResolvedValueOnce([
-        { fee_rate: 0.04, tier: 3 },
-      ]);
+      // First call: getCurrentMonthlyQrTransactionCount -> getMonthlyQrTransactionCount -> prisma.stripePayment.count
+      // Second call: getFeeRateByTier -> prisma.$queryRaw with tier=3
+      const mockQueryRaw = vi.fn()
+        .mockResolvedValueOnce([
+          { fee_rate: 0.04, tier: 3 },
+        ]);
       const mockPrisma = {
         stripePayment: {
           count: mockCount,
@@ -71,7 +74,8 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
       // 新しいモックを作成（前のテストの影響を受けないように）
       const mockCount = vi.fn();
-      // When tier system is disabled, $queryRaw is called with tier IS NULL
+      // When tier system is disabled, $queryRaw is called with tier IS NULL (not with tier=3)
+      // This should return 0.07, not 0.04
       const mockQueryRaw = vi.fn().mockResolvedValueOnce([
         { fee_rate: 0.07 },
       ]);
