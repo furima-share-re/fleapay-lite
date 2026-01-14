@@ -1357,11 +1357,375 @@ export default function AdminDashboardPage() {
                   </table>
                 </div>
               </section>
+
+              {/* 週次管理セクション */}
+              <KpiManagementSection />
+              <GoalManagementSection />
+              <BenchmarkManagementSection />
             </>
           )}
         </main>
       </div>
     </div>
+  );
+}
+
+// KPI管理コンポーネント（自動集計版）
+function KpiManagementSection() {
+  const [selectedWeek, setSelectedWeek] = useState(() => {
+    // 今週の月曜日を取得
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(today.setDate(diff));
+    return monday.toISOString().split('T')[0];
+  });
+  const [kpiData, setKpiData] = useState<any[]>([]);
+  const [metadata, setMetadata] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadKpiData();
+  }, [selectedWeek]);
+
+  const loadKpiData = async () => {
+    setLoading(true);
+    try {
+      const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
+        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
+        : 'admin-devtoken';
+      
+      const res = await fetch(`/api/admin/kpi-metrics/auto?weekStart=${selectedWeek}`, {
+        headers: { 'x-admin-token': token }
+      });
+      
+      if (res.ok) {
+        const result = await res.json();
+        setKpiData(result.data || []);
+        setMetadata(result.metadata || null);
+      }
+    } catch (e) {
+      console.error('KPI load error:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Tier 1の主要KPI定義
+  const tier1Kpis = [
+    { key: 'system_uptime', name: 'システム稼働率', unit: '%', phase: 'phase4', target: 95, target5y: 99.5 },
+    { key: 'omikuji_completion_rate', name: 'おみくじ完了率', unit: '%', phase: 'phase4', target: 90, target5y: 95 },
+    { key: 'avg_response_time', name: '平均レスポンス時間', unit: '秒', phase: 'phase4', target: 2, target5y: 1 },
+    { key: 'system_automation_rate', name: 'システム自動運用率', unit: '%', phase: 'phase4', target: 95, target5y: 99 },
+    { key: 'ugc_posts_per_day', name: '公式UGC投稿数/日', unit: '本', phase: 'phase4', target: 12, target5y: 41 },
+    { key: 'ai_generation_success_rate', name: 'AI生成成功率', unit: '%', phase: 'phase4', target: 95, target5y: 99 },
+    { key: 'ui_improvements_per_month', name: 'UI改善回数/月', unit: '回', phase: 'phase4', target: 4, target5y: 12 },
+    { key: 'sales_meetings_per_month', name: '広告主商談件数/月', unit: '件', phase: 'phase4', target: 10, target5y: 50 },
+  ];
+
+  return (
+    <section style={{ marginTop: '40px' }}>
+      <div className="sec-title-row">
+        <h2 style={{ fontSize: '1.5rem', color: 'var(--fleapay-blue)' }}>📈 KPI週次管理</h2>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <input
+            type="date"
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(e.target.value)}
+            style={{ padding: '6px', borderRadius: '6px', border: '1px solid #ddd' }}
+          />
+          <button className="btn ghost" onClick={loadKpiData} disabled={loading}>
+            {loading ? '読み込み中...' : '🔄 更新'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', marginTop: '20px' }}>
+        <h3 style={{ fontSize: '1.2rem', marginBottom: '15px', color: 'var(--fleapay-blue)' }}>
+          Tier 1: 完全コントロール可能KPI
+        </h3>
+        <div style={{ overflowX: 'auto' }}>
+          <table>
+            <thead>
+              <tr>
+                <th>KPI</th>
+                <th>Phase 4目標</th>
+                <th>5年後目標</th>
+                <th>実績値</th>
+                <th>達成率</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tier1Kpis.filter(kpi => {
+                // データベースから自動集計可能なKPIのみ表示
+                return ['omikuji_completion_rate', 'ugc_posts_per_day', 'ai_generation_success_rate', 'monthly_qr_payments'].includes(kpi.key);
+              }).map((kpi) => {
+                const existing = kpiData.find(d => d.metric_key === kpi.key);
+                const actual = existing?.actual_value ?? null;
+                const achievement = existing?.achievement_rate ?? (actual !== null && kpi.target ? (actual / kpi.target * 100) : null);
+
+                return (
+                  <tr key={kpi.key}>
+                    <td><strong>{kpi.name}</strong><br/><small style={{ color: '#666' }}>{kpi.unit}</small></td>
+                    <td>{kpi.target}{kpi.unit}</td>
+                    <td>{kpi.target5y}{kpi.unit}</td>
+                    <td>
+                      <span style={{ fontWeight: actual !== null ? 700 : 'normal', color: actual !== null ? 'var(--fleapay-blue)' : '#999' }}>
+                        {actual !== null ? `${Number(actual).toFixed(2)}${kpi.unit}` : '-'}
+                      </span>
+                    </td>
+                    <td>
+                      {achievement ? (
+                        <span style={{
+                          color: parseFloat(achievement) >= 100 ? '#27ae60' : parseFloat(achievement) >= 80 ? '#f39c12' : '#e74c3c',
+                          fontWeight: 700
+                        }}>
+                          {Number(achievement).toFixed(1)}%
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '0.85rem', color: '#666' }}>📊 自動集計</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// 結果目標管理コンポーネント（自動集計版）
+function GoalManagementSection() {
+  const [selectedWeek, setSelectedWeek] = useState(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(today.setDate(diff));
+    return monday.toISOString().split('T')[0];
+  });
+  const [goalData, setGoalData] = useState<any[]>([]);
+  const [metadata, setMetadata] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadGoalData();
+  }, [selectedWeek]);
+
+  const loadGoalData = async () => {
+    setLoading(true);
+    try {
+      const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
+        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
+        : 'admin-devtoken';
+      
+      const res = await fetch(`/api/admin/goal-achievements/auto?weekStart=${selectedWeek}&phase=phase4`, {
+        headers: { 'x-admin-token': token }
+      });
+      
+      if (res.ok) {
+        const result = await res.json();
+        setGoalData(result.data || []);
+        setMetadata(result.metadata || null);
+      }
+    } catch (e) {
+      console.error('Goal load error:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const goalMetrics = [
+    { phase: 'phase4', type: 'annual_reach', name: '年間リーチ', target: 70000000, unit: '回' },
+    { phase: 'phase4', type: 'avg_cpm', name: '平均CPM', target: 125, unit: '円' },
+    { phase: 'phase4', type: 'annual_ad_value', name: '年間広告価値', target: 8750000, unit: '円' },
+    { phase: 'phase4', type: 'actual_revenue', name: '実質収益', target: 5000000, unit: '円' },
+  ];
+
+  return (
+    <section style={{ marginTop: '40px' }}>
+      <div className="sec-title-row">
+        <h2 style={{ fontSize: '1.5rem', color: 'var(--fleapay-blue)' }}>🎯 結果目標週次管理</h2>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <input
+            type="date"
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(e.target.value)}
+            style={{ padding: '6px', borderRadius: '6px', border: '1px solid #ddd' }}
+          />
+          <button className="btn ghost" onClick={loadGoalData} disabled={loading}>
+            {loading ? '読み込み中...' : '🔄 更新'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', marginTop: '20px' }}>
+        <h3 style={{ fontSize: '1.2rem', marginBottom: '15px', color: 'var(--fleapay-blue)' }}>
+          Phase 4 目標実績
+        </h3>
+        <div style={{ overflowX: 'auto' }}>
+          <table>
+            <thead>
+              <tr>
+                <th>指標</th>
+                <th>目標値</th>
+                <th>実績値</th>
+                <th>達成率</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {goalMetrics.map((metric) => {
+                const existing = goalData.find(d => d.metric_type === metric.type);
+                const actual = existing?.actual_value ?? null;
+                const achievement = existing?.achievement_rate ?? (actual !== null && metric.target ? (actual / metric.target * 100) : null);
+
+                return (
+                  <tr key={`${metric.phase}_${metric.type}`}>
+                    <td><strong>{metric.name}</strong></td>
+                    <td>{new Intl.NumberFormat('ja-JP').format(metric.target)}{metric.unit}</td>
+                    <td>
+                      <span style={{ fontWeight: actual !== null ? 700 : 'normal', color: actual !== null ? 'var(--fleapay-blue)' : '#999' }}>
+                        {actual !== null ? `${new Intl.NumberFormat('ja-JP').format(Math.round(actual))}${metric.unit}` : '-'}
+                      </span>
+                    </td>
+                    <td>
+                      {achievement ? (
+                        <span style={{
+                          color: parseFloat(achievement.toString()) >= 100 ? '#27ae60' : parseFloat(achievement.toString()) >= 80 ? '#f39c12' : '#e74c3c',
+                          fontWeight: 700
+                        }}>
+                          {parseFloat(achievement.toString()).toFixed(1)}%
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '0.85rem', color: '#666' }}>📊 自動集計</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ベンチマーク管理コンポーネント（自動集計版）
+function BenchmarkManagementSection() {
+  const [selectedWeek, setSelectedWeek] = useState(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(today.setDate(diff));
+    return monday.toISOString().split('T')[0];
+  });
+  const [benchmarkData, setBenchmarkData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadBenchmarkData();
+  }, [selectedWeek]);
+
+  const loadBenchmarkData = async () => {
+    setLoading(true);
+    try {
+      const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
+        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
+        : 'admin-devtoken';
+      
+      const res = await fetch(`/api/admin/benchmark-data?weekStart=${selectedWeek}`, {
+        headers: { 'x-admin-token': token }
+      });
+      
+      if (res.ok) {
+        const result = await res.json();
+        setBenchmarkData(result.data || []);
+      }
+    } catch (e) {
+      console.error('Benchmark load error:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const benchmarkMetrics = [
+    { type: 'cpm_by_content', category: 'general_ugc', name: '一般UGC', current: 80, target: 200, industry: 40 },
+    { type: 'cpm_by_content', category: 'micro_influencer', name: 'マイクロインフルエンサー', current: 100, target: 300, industry: 100 },
+    { type: 'cpm_by_content', category: 'middle_influencer', name: 'ミドルインフルエンサー', current: 200, target: 450, industry: 200 },
+  ];
+
+  return (
+    <section style={{ marginTop: '40px' }}>
+      <div className="sec-title-row">
+        <h2 style={{ fontSize: '1.5rem', color: 'var(--fleapay-blue)' }}>📊 ベンチマーク週次管理</h2>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <input
+            type="date"
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(e.target.value)}
+            style={{ padding: '6px', borderRadius: '6px', border: '1px solid #ddd' }}
+          />
+          <button className="btn ghost" onClick={loadBenchmarkData} disabled={loading}>
+            {loading ? '読み込み中...' : '🔄 更新'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', marginTop: '20px' }}>
+        <h3 style={{ fontSize: '1.2rem', marginBottom: '15px', color: 'var(--fleapay-blue)' }}>
+          CPMベンチマーク（コンテンツ種別）
+        </h3>
+        <div style={{ overflowX: 'auto' }}>
+          <table>
+            <thead>
+              <tr>
+                <th>コンテンツ種別</th>
+                <th>業界標準</th>
+                <th>EDO ICHIBA現在</th>
+                <th>EDO ICHIBA目標</th>
+                <th>実績値</th>
+                <th>成長率</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {benchmarkMetrics.map((metric) => {
+                const key = `${metric.type}_${metric.category}`;
+                const existing = benchmarkData.find(d => d.benchmark_type === metric.type && d.content_category === metric.category);
+                const actual = existing?.actual_value ?? null;
+                const growthRate = existing?.growth_rate ?? null;
+
+                return (
+                  <tr key={key}>
+                    <td><strong>{metric.name}</strong></td>
+                    <td>¥{metric.industry}</td>
+                    <td>¥{metric.current}</td>
+                    <td>¥{metric.target}</td>
+                    <td>
+                      <span style={{ color: '#999' }}>-</span>
+                      <small style={{ display: 'block', fontSize: '0.75rem', color: '#999', marginTop: '4px' }}>
+                        （広告データ連携後に自動集計）
+                      </small>
+                    </td>
+                    <td>-</td>
+                    <td>
+                      <span style={{ fontSize: '0.85rem', color: '#666' }}>📊 準備中</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   );
 }
 
