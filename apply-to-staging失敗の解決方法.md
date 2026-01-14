@@ -29,6 +29,7 @@
 - `Error: Project not found`
 - `Error: Permission denied`
 - `Error: Invalid access token`
+- `ERROR: duplicate key value violates unique constraint "schema_migrations_pkey"` ⚠️ **新規追加**
 
 ---
 
@@ -165,6 +166,73 @@
 1. Supabase Dashboardで新しいAccess Tokenを生成
 2. **Full access** を選択（可能な場合）
 3. GitHub Secretsの値を更新
+
+### エラー: "duplicate key value violates unique constraint 'schema_migrations_pkey'" ⚠️
+
+**原因**: マイグレーション履歴がデータベースと同期していない。特定のマイグレーション（例: `20250115`）が既に適用されているが、Supabase CLIが再度適用しようとしている。
+
+**エラーメッセージの例**:
+```
+ERROR: duplicate key value violates unique constraint "schema_migrations_pkey" (SQLSTATE 23505)
+Key (version)=(20250115) already exists.
+```
+
+**解決方法**:
+
+#### 方法A: 自動修復（推奨）✨
+
+ワークフローが自動的に修復を試みます。最新のワークフローを再実行してください：
+
+1. GitHubリポジトリ → **Actions** タブ
+2. **Apply Migrations** ワークフローを選択
+3. **Run workflow** をクリック
+4. ブランチを選択（`main`）
+5. **Run workflow** をクリック
+
+ワークフローが自動的に以下を実行します：
+- マイグレーション状態を確認
+- 重複しているマイグレーションを修復
+- 再度マイグレーションを適用
+
+#### 方法B: 手動でSupabase CLIから修復
+
+GitHub Actionsを待たずに、手動で修復できます：
+
+```powershell
+# 環境変数を設定
+$env:SUPABASE_ACCESS_TOKEN = "your-access-token"
+$env:SUPABASE_PROJECT_ID = "your-staging-project-id"
+
+# プロジェクトにリンク
+npx supabase link --project-ref $env:SUPABASE_PROJECT_ID
+
+# マイグレーション状態を確認
+npx supabase migration list
+
+# 重複しているマイグレーションを修復（例: 20250115）
+npx supabase migration repair --status applied --version 20250115
+
+# マイグレーションを再適用
+npx supabase db push
+```
+
+**注意**: `--version` には、エラーメッセージに表示されているバージョン番号（例: `20250115`）を指定してください。
+
+#### 方法C: データベースから直接確認・修復
+
+Supabase SQL Editorを使用して直接確認・修復することも可能です：
+
+```sql
+-- 適用済みマイグレーションを確認
+SELECT * FROM supabase_migrations.schema_migrations 
+ORDER BY version DESC;
+
+-- 特定のマイグレーションが既に存在するか確認
+SELECT * FROM supabase_migrations.schema_migrations 
+WHERE version = '20250115';
+```
+
+もし既に存在する場合は、Supabase CLIの `migration repair` コマンドを使用してください。
 
 ---
 

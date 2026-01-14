@@ -48,12 +48,47 @@ jobs:
         run: |
           supabase link --project-ref $SUPABASE_PROJECT_ID
 
+      - name: Check migration status
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🔍 Checking migration status..."
+          supabase migration list || true
+      
       - name: Apply migrations to staging
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           echo "🚀 Applying migrations to staging environment..."
-          supabase db push
+          # Try to push migrations
+          set +e
+          supabase db push 2>&1 | tee /tmp/migration_output.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "⚠️ Migration push failed with exit code $EXIT_CODE"
+            # Check if it's a duplicate key error
+            if grep -q "duplicate key value violates unique constraint.*schema_migrations_pkey" /tmp/migration_output.log; then
+              echo "🔍 Detected duplicate migration error. Extracting version..."
+              # Extract version from error message (e.g., "Key (version)=(20250115)")
+              VERSION=$(grep -oP 'Key \(version\)=\(\K[0-9]+' /tmp/migration_output.log | head -1)
+              if [ -n "$VERSION" ]; then
+                echo "🔧 Repairing migration version: $VERSION"
+                supabase migration repair --status applied --version "$VERSION" || echo "⚠️ Repair command failed, but continuing..."
+                echo "🔄 Retrying migration push..."
+                supabase db push
+              else
+                echo "❌ Could not extract version from error. Manual intervention required."
+                exit 1
+              fi
+            else
+              echo "❌ Migration failed for a different reason. Check logs above."
+              exit 1
+            fi
+          else
+            echo "✅ Migrations applied successfully"
+          fi
 
   apply-to-production:
     runs-on: ubuntu-latest
@@ -80,12 +115,47 @@ jobs:
         run: |
           supabase link --project-ref $SUPABASE_PROJECT_ID
 
+      - name: Check migration status
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🔍 Checking migration status..."
+          supabase migration list || true
+      
       - name: Apply migrations to production
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           echo "🚀 Applying migrations to production environment..."
-          supabase db push
+          # Try to push migrations
+          set +e
+          supabase db push 2>&1 | tee /tmp/migration_output.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "⚠️ Migration push failed with exit code $EXIT_CODE"
+            # Check if it's a duplicate key error
+            if grep -q "duplicate key value violates unique constraint.*schema_migrations_pkey" /tmp/migration_output.log; then
+              echo "🔍 Detected duplicate migration error. Extracting version..."
+              # Extract version from error message (e.g., "Key (version)=(20250115)")
+              VERSION=$(grep -oP 'Key \(version\)=\(\K[0-9]+' /tmp/migration_output.log | head -1)
+              if [ -n "$VERSION" ]; then
+                echo "🔧 Repairing migration version: $VERSION"
+                supabase migration repair --status applied --version "$VERSION" || echo "⚠️ Repair command failed, but continuing..."
+                echo "🔄 Retrying migration push..."
+                supabase db push
+              else
+                echo "❌ Could not extract version from error. Manual intervention required."
+                exit 1
+              fi
+            else
+              echo "❌ Migration failed for a different reason. Check logs above."
+              exit 1
+            fi
+          else
+            echo "✅ Migrations applied successfully"
+          fi
 
   update-prisma-schema:
     runs-on: ubuntu-latest
