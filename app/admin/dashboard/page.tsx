@@ -98,139 +98,6 @@ declare global {
   }
 }
 
-// 🆕 手数料率マスタ表示コンポーネント
-function FeeRateMasterSection() {
-  const [feeRates, setFeeRates] = useState<Array<{
-    id: string;
-    planType: string;
-    feeRate: number;
-    feeRatePercent: string;
-    tier: number | null;
-    effectiveFrom: Date | string;
-    effectiveTo: Date | string | null;
-  }>>([]);
-  const [tierDefinitions, setTierDefinitions] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadFeeRates();
-  }, []);
-
-  const loadFeeRates = async () => {
-    try {
-      const token = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
-        ? (window.ADMIN_TOKEN || localStorage.getItem('ADMIN_TOKEN') || 'admin-devtoken')
-        : 'admin-devtoken';
-      
-      const res = await fetch('/api/admin/fee-rates', {
-        headers: { 'x-admin-token': token }
-      });
-      
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      
-      const data = await res.json();
-      if (data.success) {
-        setFeeRates(data.data.feeRates || []);
-        setTierDefinitions(data.data.tierDefinitions || {});
-      }
-    } catch (e) {
-      console.error('Fee rates load error:', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <section>
-      <div className="sec-title-row">
-        <h2>手数料率マスタ</h2>
-        <button className="btn ghost" onClick={loadFeeRates} disabled={loading}>
-          {loading ? '読み込み中...' : '🔄 更新'}
-        </button>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '20px' }}>読み込み中...</div>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table>
-            <thead>
-              <tr>
-                <th>プラン</th>
-                <th>Tier</th>
-                <th>手数料率</th>
-                <th>有効開始日</th>
-                <th>有効終了日</th>
-              </tr>
-            </thead>
-            <tbody>
-              {feeRates.length > 0 ? (
-                feeRates.map((rate) => (
-                  <tr key={rate.id}>
-                    <td>
-                      <strong>{rate.planType}</strong>
-                    </td>
-                    <td>
-                      {rate.tier ? (
-                        <span>
-                          Tier {rate.tier} ({tierDefinitions?.[rate.tier]?.name || '-'})
-                        </span>
-                      ) : (
-                        <span style={{ color: 'var(--fleapay-gray)' }}>プラン別</span>
-                      )}
-                    </td>
-                    <td>
-                      <strong style={{ fontSize: '1.1rem', color: 'var(--fleapay-blue)' }}>
-                        {rate.feeRatePercent}%
-                      </strong>
-                    </td>
-                    <td>
-                      {new Date(rate.effectiveFrom).toLocaleDateString('ja-JP')}
-                    </td>
-                    <td>
-                      {rate.effectiveTo 
-                        ? new Date(rate.effectiveTo).toLocaleDateString('ja-JP')
-                        : <span style={{ color: 'var(--success-green)' }}>現在有効</span>
-                      }
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: 'var(--fleapay-gray)' }}>
-                    手数料率マスタのデータがありません
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {tierDefinitions && (
-        <div style={{ marginTop: '20px', padding: '16px', background: '#f5f5f5', borderRadius: '8px' }}>
-          <h3 style={{ fontSize: '1rem', marginBottom: '12px' }}>Tier定義</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-            {Object.entries(tierDefinitions).map(([tier, def]: [string, any]) => (
-              <div key={tier} style={{ background: '#fff', padding: '12px', borderRadius: '6px' }}>
-                <div style={{ fontWeight: 600, marginBottom: '4px' }}>
-                  Tier {tier}: {def.name}
-                </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--fleapay-gray)' }}>
-                  QR決済: {def.min}〜{def.max === null ? '∞' : def.max}回
-                </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--fleapay-blue)', marginTop: '4px' }}>
-                  手数料: {(def.defaultRate * 100).toFixed(2)}%
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
-
 export default function AdminDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -454,6 +321,11 @@ export default function AdminDashboardPage() {
               </Link>
             </li>
             <li>
+              <Link href="/admin/fee-rates" className="nav-item">
+                💰 手数料率設定
+              </Link>
+            </li>
+            <li>
               <Link href="/admin/frames" className="nav-item">
                 🎨 AIフレーム
               </Link>
@@ -520,9 +392,6 @@ export default function AdminDashboardPage() {
                   </div>
                 </section>
               </div>
-
-              {/* 🆕 手数料率マスタ表示セクション */}
-              <FeeRateMasterSection />
 
               <section>
                 <h2>最近のアラート</h2>
