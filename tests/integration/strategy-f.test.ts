@@ -27,14 +27,18 @@ import { getFeeRateFromMaster } from '@/lib/utils';
 // Prismaのモック
 const mockPrisma = {
   stripePayment: {
-    count: vi.fn(),
+    count: vi.fn().mockResolvedValue(0), // デフォルト値
   },
-  $queryRaw: vi.fn(),
+  $queryRaw: vi.fn().mockResolvedValue([]), // デフォルト値
 } as unknown as PrismaClient;
 
 describe('戦略F: コミュニティ連動型ダイナミックプライシング', () => {
   beforeEach(() => {
+    // 呼び出し履歴をクリア（実装は保持）
     vi.clearAllMocks();
+    // モックの呼び出し履歴もクリア
+    (mockPrisma.stripePayment.count as ReturnType<typeof vi.fn>).mockClear();
+    (mockPrisma.$queryRaw as ReturnType<typeof vi.fn>).mockClear();
   });
 
   describe('determineTier - Tier判定ロジック', () => {
