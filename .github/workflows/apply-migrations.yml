@@ -7,8 +7,53 @@ on:
   workflow_dispatch: # 手動実行も可能
 
 jobs:
-  apply-migrations:
+  validate-migrations:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate migrations
+        run: |
+          echo "🔍 Validating migration files..."
+          python scripts/check_migration_safety.py
+
+  apply-to-staging:
+    runs-on: ubuntu-latest
+    needs: validate-migrations
+    environment:
+      name: staging
+      url: https://app.supabase.com
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to Supabase project (Staging)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID_STAGING }}
+        run: |
+          supabase link --project-ref $SUPABASE_PROJECT_ID
+
+      - name: Apply migrations to staging
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🚀 Applying migrations to staging environment..."
+          supabase db push
+
+  apply-to-production:
+    runs-on: ubuntu-latest
+    needs: [validate-migrations, apply-to-staging]
     # 本番環境への適用は手動承認が必要
     environment:
       name: production
@@ -22,24 +67,30 @@ jobs:
         with:
           version: latest
 
-      - name: Link to Supabase project
+      - name: Link to Supabase project (Production)
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID_PRODUCTION }}
         run: |
           supabase link --project-ref $SUPABASE_PROJECT_ID
 
-      - name: Validate migrations
-        run: |
-          echo "🔍 Validating migration files..."
-          python scripts/check_migration_safety.py
-
-      - name: Apply migrations
+      - name: Apply migrations to production
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          echo "🚀 Applying migrations to production..."
+          echo "🚀 Applying migrations to production environment..."
           supabase db push
+
+  update-prisma-schema:
+    runs-on: ubuntu-latest
+    needs: [apply-to-staging, apply-to-production]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
 
       - name: Update Prisma schema
         run: |
@@ -55,7 +106,7 @@ jobs:
           commit-message: "chore: update Prisma schema after migration"
           title: "Update Prisma schema after migration"
           body: |
-            This PR updates the Prisma schema after applying database migrations.
+            This PR updates the Prisma schema after applying database migrations to both staging and production environments.
             
             Please review the changes and merge if everything looks correct.
           branch: update-prisma-schema
