@@ -444,6 +444,11 @@ export default function AdminDashboardPage() {
               </Link>
             </li>
             <li>
+              <Link href="/admin/kpi-management" className="nav-item">
+                📈 KPI管理
+              </Link>
+            </li>
+            <li>
               <Link href="/admin/sellers" className="nav-item">
                 👥 出店者
               </Link>
