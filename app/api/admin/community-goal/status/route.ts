@@ -7,9 +7,8 @@ import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCommunityGoalStatus } from '@/lib/strategy-f';
 
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
-
 function requireAdmin(request: Request): boolean {
+  const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
   const authHeader = request.headers.get('authorization');
   const token = authHeader?.replace('Bearer ', '');
   return token === ADMIN_TOKEN;
