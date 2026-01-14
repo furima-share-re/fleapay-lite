@@ -71,18 +71,20 @@ def scan_file(path: Path) -> list[tuple[str, str]]:
     # 例外パターンをチェック（ファイル全体に許可コメントがあるか）
     has_exception = bool(re.search(ALLOWED_EXCEPTION_PATTERN, text, flags=re.IGNORECASE))
     
+    # ファイル全体に許可コメントがある場合、すべての破壊的操作を許可
+    if has_exception:
+        return hits
+    
     for pat in FORBIDDEN_PATTERNS:
         matches = list(re.finditer(pat, text, flags=re.IGNORECASE | re.DOTALL))
         for match in matches:
-            # 例外パターンがある場合、その行の前後をチェック
-            if has_exception:
-                # マッチした行の前後50文字をチェック
-                start = max(0, match.start() - 50)
-                end = min(len(text), match.end() + 50)
-                context = text[start:end]
-                # コンテキスト内に許可コメントがある場合はスキップ
-                if re.search(ALLOWED_EXCEPTION_PATTERN, context, flags=re.IGNORECASE):
-                    continue
+            # マッチした行の前後50文字をチェック
+            start = max(0, match.start() - 50)
+            end = min(len(text), match.end() + 50)
+            context = text[start:end]
+            # コンテキスト内に許可コメントがある場合はスキップ
+            if re.search(ALLOWED_EXCEPTION_PATTERN, context, flags=re.IGNORECASE):
+                continue
             hits.append((str(path), pat))
     return hits
 
