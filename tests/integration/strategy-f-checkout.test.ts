@@ -36,7 +36,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
       const mockCount = vi.fn().mockResolvedValue(15);
       const mockQueryRaw = vi.fn().mockResolvedValueOnce([
-        { fee_rate: 0.0400, tier: 3 },
+        { fee_rate: 0.04, tier: 3 },
       ]);
       const mockPrisma = {
         stripePayment: {
@@ -52,7 +52,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
         true
       );
 
-      expect(result).toBe(0.0400);
+      expect(result).toBe(0.04);
       expect(mockCount).toHaveBeenCalled();
     });
 
@@ -61,10 +61,14 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
 
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
+      // 新しいモックを作成（前のテストの影響を受けないように）
       const mockQueryRaw = vi.fn().mockResolvedValueOnce([
         { fee_rate: 0.07 },
       ]);
       const mockPrisma = {
+        stripePayment: {
+          count: vi.fn(), // 呼ばれないが、エラーを避けるために定義
+        },
         $queryRaw: mockQueryRaw,
       } as any;
 
@@ -76,6 +80,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       );
 
       expect(result).toBe(0.07);
+      expect(mockQueryRaw).toHaveBeenCalled();
     });
 
     it('ENABLE_STRATEGY_F_TIER_SYSTEMが未設定の場合、デフォルトでTier制が有効', async () => {

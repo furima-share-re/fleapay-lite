@@ -34,9 +34,8 @@ const mockPrisma = {
 
 describe("戦略F: コミュニティ連動型ダイナミックプライシング", () => {
   beforeEach(() => {
-    // モックを完全にリセット
-    vi.mocked(mockPrisma.stripePayment.count).mockReset();
-    vi.mocked(mockPrisma.$queryRaw).mockReset();
+    // 呼び出し履歴をクリア（実装は保持）
+    vi.clearAllMocks();
   });
 
   describe("determineTier - Tier判定ロジック", () => {
