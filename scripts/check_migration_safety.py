@@ -57,7 +57,9 @@ def find_migration_files(repo_root: Path) -> list[Path]:
         elif p.is_dir():
             for f in p.rglob("*"):
                 if f.is_file() and f.suffix.lower() in ALLOWED_EXTENSIONS:
-                    files.append(f)
+                    # ロールバックファイルは除外（通常適用しないため）
+                    if "rollback" not in f.name.lower():
+                        files.append(f)
     # 重複除去
     uniq = sorted(set(files))
     return uniq
