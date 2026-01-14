@@ -15,19 +15,21 @@ import { NextRequest } from 'next/server';
 import { GET as getTierStatus } from '@/app/api/seller/tier-status/route';
 import { GET as getCommunityGoalStatus } from '@/app/api/admin/community-goal/status/route';
 import { POST as updateCommunityVolume } from '@/app/api/admin/community-goal/update-volume/route';
+import { prisma } from '@/lib/prisma';
 
-// Prismaのモック
-const mockPrisma = {
-  stripePayment: {
-    count: vi.fn(),
-  },
-  $queryRaw: vi.fn(),
-  $executeRaw: vi.fn(),
-} as any;
-
-vi.mock('@/lib/prisma', () => ({
-  prisma: mockPrisma,
-}));
+// Prismaのモック（factory functionを使用してhoisting問題を回避）
+vi.mock('@/lib/prisma', () => {
+  const mockPrisma = {
+    stripePayment: {
+      count: vi.fn(),
+    },
+    $queryRaw: vi.fn(),
+    $executeRaw: vi.fn(),
+  };
+  return {
+    prisma: mockPrisma,
+  };
+});
 
 describe('戦略F: APIエンドポイント', () => {
   beforeEach(() => {
@@ -37,9 +39,9 @@ describe('戦略F: APIエンドポイント', () => {
   describe('GET /api/seller/tier-status', () => {
     it('正常なTier情報を返す', async () => {
       // 月間QR決済回数: 15回（Tier 3）
-      mockPrisma.stripePayment.count.mockResolvedValue(15);
+      vi.mocked(prisma.stripePayment.count).mockResolvedValue(15);
       // コミュニティ目標取得
-      mockPrisma.$queryRaw
+      vi.mocked(prisma.$queryRaw)
         .mockResolvedValueOnce([
           {
             phase: 'phase1',
@@ -73,8 +75,8 @@ describe('戦略F: APIエンドポイント', () => {
     });
 
     it('Tier 5で目標達成時、ボーナス料金を表示', async () => {
-      mockPrisma.stripePayment.count.mockResolvedValue(60);
-      mockPrisma.$queryRaw
+      vi.mocked(prisma.stripePayment.count).mockResolvedValue(60);
+      vi.mocked(prisma.$queryRaw)
         .mockResolvedValueOnce([
           {
             phase: 'phase1',
@@ -97,8 +99,8 @@ describe('戦略F: APIエンドポイント', () => {
     });
 
     it('Tier 5で目標未達成時、通常料金とメッセージを表示', async () => {
-      mockPrisma.stripePayment.count.mockResolvedValue(60);
-      mockPrisma.$queryRaw
+      vi.mocked(prisma.stripePayment.count).mockResolvedValue(60);
+      vi.mocked(prisma.$queryRaw)
         .mockResolvedValueOnce([
           {
             phase: 'phase1',
@@ -134,7 +136,7 @@ describe('戦略F: APIエンドポイント', () => {
     it('正しい認証トークンで目標状況を取得できる', async () => {
       process.env.ADMIN_TOKEN = 'test-admin-token';
 
-      mockPrisma.$queryRaw
+      vi.mocked(prisma.$queryRaw)
         .mockResolvedValueOnce([
           {
             phase: 'phase1',
@@ -164,7 +166,7 @@ describe('戦略F: APIエンドポイント', () => {
     it('phaseパラメータでPhaseを指定できる', async () => {
       process.env.ADMIN_TOKEN = 'test-admin-token';
 
-      mockPrisma.$queryRaw
+      vi.mocked(prisma.$queryRaw)
         .mockResolvedValueOnce([
           {
             phase: 'phase2',
@@ -205,13 +207,13 @@ describe('戦略F: APIエンドポイント', () => {
     it('正しい認証トークンで取扱高を更新できる', async () => {
       process.env.ADMIN_TOKEN = 'test-admin-token';
 
-      mockPrisma.$queryRaw
+      vi.mocked(prisma.$queryRaw)
         .mockResolvedValueOnce([
           { total_amount: 5000000, transaction_count: 2000n },
         ])
         .mockResolvedValueOnce([]); // 既存レコードなし
 
-      mockPrisma.$executeRaw.mockResolvedValueOnce(undefined);
+      vi.mocked(prisma.$executeRaw).mockResolvedValueOnce(undefined);
 
       const request = new NextRequest('http://localhost:3000/api/admin/community-goal/update-volume', {
         method: 'POST',
@@ -233,13 +235,13 @@ describe('戦略F: APIエンドポイント', () => {
     it('yearとmonthを指定して特定月の取扱高を更新できる', async () => {
       process.env.ADMIN_TOKEN = 'test-admin-token';
 
-      mockPrisma.$queryRaw
+      vi.mocked(prisma.$queryRaw)
         .mockResolvedValueOnce([
           { total_amount: 3000000, transaction_count: 1200n },
         ])
         .mockResolvedValueOnce([]);
 
-      mockPrisma.$executeRaw.mockResolvedValueOnce(undefined);
+      vi.mocked(prisma.$executeRaw).mockResolvedValueOnce(undefined);
 
       const request = new NextRequest('http://localhost:3000/api/admin/community-goal/update-volume', {
         method: 'POST',
@@ -260,13 +262,13 @@ describe('戦略F: APIエンドポイント', () => {
     it('既存レコードがある場合、更新される', async () => {
       process.env.ADMIN_TOKEN = 'test-admin-token';
 
-      mockPrisma.$queryRaw
+      vi.mocked(prisma.$queryRaw)
         .mockResolvedValueOnce([
           { total_amount: 6000000, transaction_count: 2400n },
         ])
         .mockResolvedValueOnce([{ id: 'existing-id' }]); // 既存レコードあり
 
-      mockPrisma.$executeRaw.mockResolvedValueOnce(undefined);
+      vi.mocked(prisma.$executeRaw).mockResolvedValueOnce(undefined);
 
       const request = new NextRequest('http://localhost:3000/api/admin/community-goal/update-volume', {
         method: 'POST',
@@ -282,7 +284,7 @@ describe('戦略F: APIエンドポイント', () => {
       expect(response.status).toBe(200);
       expect(data.data.totalAmount).toBe(6000000);
       // UPDATE文が呼ばれることを確認
-      expect(mockPrisma.$executeRaw).toHaveBeenCalled();
+      expect(prisma.$executeRaw).toHaveBeenCalled();
     });
   });
 });

@@ -34,13 +34,15 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
 
       // モジュールを動的にインポート（環境変数の変更を反映）
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
+      const mockCount = vi.fn().mockResolvedValue(15);
+      const mockQueryRaw = vi.fn().mockResolvedValueOnce([
+        { fee_rate: 0.0400, tier: 3 },
+      ]);
       const mockPrisma = {
         stripePayment: {
-          count: vi.fn().mockResolvedValue(15),
+          count: mockCount,
         },
-        $queryRaw: vi.fn().mockResolvedValueOnce([
-          { fee_rate: 0.0400, tier: 3 },
-        ]),
+        $queryRaw: mockQueryRaw,
       } as any;
 
       const result = await getFeeRateWithStrategyF(
@@ -51,7 +53,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       );
 
       expect(result).toBe(0.0400);
-      expect(mockPrisma.stripePayment.count).toHaveBeenCalled();
+      expect(mockCount).toHaveBeenCalled();
     });
 
     it('ENABLE_STRATEGY_F_TIER_SYSTEM=falseの場合、Tier制が無効', async () => {
@@ -59,10 +61,11 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
 
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
+      const mockQueryRaw = vi.fn().mockResolvedValueOnce([
+        { fee_rate: 0.07 },
+      ]);
       const mockPrisma = {
-        $queryRaw: vi.fn().mockResolvedValueOnce([
-          { fee_rate: 0.07 },
-        ]),
+        $queryRaw: mockQueryRaw,
       } as any;
 
       const result = await getFeeRateWithStrategyF(
