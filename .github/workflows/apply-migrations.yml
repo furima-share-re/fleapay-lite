@@ -182,7 +182,47 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to Supabase project (Staging)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID_STAGING }}
+        run: |
+          if [ -z "$SUPABASE_PROJECT_ID" ]; then
+            echo "❌ Error: SUPABASE_PROJECT_ID_STAGING secret is not set or is empty"
+            echo "Please set SUPABASE_PROJECT_ID_STAGING in GitHub Secrets"
+            exit 1
+          fi
+          echo "🔗 Linking to Supabase project: $SUPABASE_PROJECT_ID"
+          supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Set DATABASE_URL
+        run: |
+          echo "🔍 Setting DATABASE_URL from GitHub Secret..."
+          if [ -z "${{ secrets.DATABASE_URL_STAGING }}" ]; then
+            echo "❌ Error: DATABASE_URL_STAGING secret is not set"
+            echo ""
+            echo "Please set DATABASE_URL_STAGING in GitHub Secrets:"
+            echo "1. Go to Settings → Secrets and variables → Actions"
+            echo "2. Click 'New repository secret'"
+            echo "3. Name: DATABASE_URL_STAGING"
+            echo "4. Value: Your Supabase staging database connection string"
+            echo "   Format: postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres"
+            echo ""
+            echo "You can find the connection string in:"
+            echo "- Supabase Dashboard → Project Settings → Database → Connection string"
+            exit 1
+          fi
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL_STAGING }}" >> $GITHUB_ENV
+          echo "✅ DATABASE_URL configured"
+
       - name: Update Prisma schema
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
         run: |
           echo "📝 Updating Prisma schema..."
           npx prisma db pull
