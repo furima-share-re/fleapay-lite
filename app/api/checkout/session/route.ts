@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
 import crypto from 'crypto';
 import { getNextOrderNo, sanitizeError, bumpAndAllow, clientIp, isSameOrigin, audit, resolveSellerAccountId, getFeeRateFromMaster, normalizeStatementDescriptor } from '@/lib/utils';
+import { getFeeRateWithStrategyF } from '@/lib/strategy-f';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { 
   apiVersion: '2025-10-29.clover'
 });
@@ -313,10 +314,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // マスタから手数料率を取得
+    // マスタから手数料率を取得（戦略F: Tier制対応）
     let feeRate: number;
     try {
-      feeRate = await getFeeRateFromMaster(prisma, planType);
+      // 戦略FのTier制を有効化（環境変数で制御可能）
+      const useTierSystem = process.env.ENABLE_STRATEGY_F_TIER_SYSTEM !== 'false';
+      
+      if (useTierSystem) {
+        // 戦略F: Tier制とコミュニティ連動型ダイナミックプライシング
+        feeRate = await getFeeRateWithStrategyF(prisma, order.sellerId, planType, true);
+      } else {
+        // 従来のplan_typeベースの手数料率
+        feeRate = await getFeeRateFromMaster(prisma, planType);
+      }
     } catch (error) {
       console.error('[Checkout] Failed to get fee rate', error);
       return NextResponse.json(
