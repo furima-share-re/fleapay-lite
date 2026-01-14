@@ -37,6 +37,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       // モジュールを動的にインポート（環境変数の変更を反映）
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
       const mockCount = vi.fn().mockResolvedValue(15);
+      // getFeeRateByTier calls $queryRaw with tier=3 (determined from count=15)
       const mockQueryRaw = vi.fn().mockResolvedValueOnce([
         { fee_rate: 0.04, tier: 3 },
       ]);
@@ -55,16 +56,22 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       );
 
       expect(result).toBe(0.04);
+      // getFeeRateByTier should call getCurrentMonthlyQrTransactionCount which calls prisma.stripePayment.count
+      // Note: The count is called to determine the tier, then $queryRaw is called with that tier
       expect(mockCount).toHaveBeenCalled();
+      // getFeeRateByTier should also call $queryRaw to get the fee rate from master
+      expect(mockQueryRaw).toHaveBeenCalled();
     });
 
     it('ENABLE_STRATEGY_F_TIER_SYSTEM=falseの場合、Tier制が無効', async () => {
       process.env.ENABLE_STRATEGY_F_TIER_SYSTEM = 'false';
       process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
 
+      // モジュールを動的にインポート（環境変数の変更を反映）
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
       // 新しいモックを作成（前のテストの影響を受けないように）
       const mockCount = vi.fn();
+      // When tier system is disabled, $queryRaw is called with tier IS NULL
       const mockQueryRaw = vi.fn().mockResolvedValueOnce([
         { fee_rate: 0.07 },
       ]);
@@ -83,7 +90,9 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       );
 
       expect(result).toBe(0.07);
+      // When tier system is disabled, should call $queryRaw with tier IS NULL
       expect(mockQueryRaw).toHaveBeenCalled();
+      // When tier system is disabled, should NOT call stripePayment.count
       expect(mockCount).not.toHaveBeenCalled();
     });
 
