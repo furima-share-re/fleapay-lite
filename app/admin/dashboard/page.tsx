@@ -569,6 +569,657 @@ export default function AdminDashboardPage() {
                   </div>
                 )}
               </section>
+
+              {/* ベンチマーク・成果目標・KPIセクション */}
+              <section style={{ marginTop: '40px' }}>
+                <div className="sec-title-row">
+                  <h1 style={{ fontSize: '1.8rem', borderLeft: '8px solid var(--fleapay-blue)', paddingLeft: '20px' }}>
+                    📊 広告事業 - ベンチマーク・成果目標・KPI
+                  </h1>
+                  <span className="pill">広告事業</span>
+                </div>
+              </section>
+
+              {/* 1. 結果目標セクション */}
+              <section style={{ marginTop: '30px' }}>
+                <h2 style={{ fontSize: '1.5rem', color: 'var(--fleapay-blue)', borderLeft: '6px solid #e63946', paddingLeft: '15px', marginBottom: '20px' }}>
+                  🎯 1. 結果目標（5年展望）
+                </h2>
+                
+                {/* 5年後の到達目標 */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #e63946 0%, #c0392b 100%)',
+                  color: '#fff',
+                  padding: '30px',
+                  borderRadius: '15px',
+                  marginBottom: '30px',
+                  boxShadow: '0 15px 40px rgba(230, 57, 70, 0.3)'
+                }}>
+                  <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: '#fff' }}>5年後(2031年)の到達目標</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.15)', padding: '20px', borderRadius: '12px', textAlign: 'center', backdropFilter: 'blur(10px)' }}>
+                      <div style={{ fontSize: '2em', fontWeight: 700, color: 'var(--fleapay-gold)', marginBottom: '8px' }}>1.5億</div>
+                      <div style={{ fontSize: '1.05em', opacity: 0.95 }}>年間リーチ数</div>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.15)', padding: '20px', borderRadius: '12px', textAlign: 'center', backdropFilter: 'blur(10px)' }}>
+                      <div style={{ fontSize: '2em', fontWeight: 700, color: 'var(--fleapay-gold)', marginBottom: '8px' }}>¥320</div>
+                      <div style={{ fontSize: '1.05em', opacity: 0.95 }}>加重平均CPM</div>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.15)', padding: '20px', borderRadius: '12px', textAlign: 'center', backdropFilter: 'blur(10px)' }}>
+                      <div style={{ fontSize: '2em', fontWeight: 700, color: 'var(--fleapay-gold)', marginBottom: '8px' }}>¥2.3億</div>
+                      <div style={{ fontSize: '1.05em', opacity: 0.95 }}>年間総収益</div>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.15)', padding: '20px', borderRadius: '12px', textAlign: 'center', backdropFilter: 'blur(10px)' }}>
+                      <div style={{ fontSize: '2em', fontWeight: 700, color: 'var(--fleapay-gold)', marginBottom: '8px' }}>23億円</div>
+                      <div style={{ fontSize: '1.05em', opacity: 0.95 }}>事業譲渡価値</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phase別・年次別目標マップ */}
+                <h3 style={{ fontSize: '1.2rem', color: '#e63946', margin: '25px 0 15px', borderBottom: '2px solid var(--fleapay-gold)', paddingBottom: '8px' }}>
+                  Phase別・年次別目標マップ
+                </h3>
+                <div style={{ overflowX: 'auto', marginBottom: '30px' }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>時期</th>
+                        <th>年間リーチ</th>
+                        <th>平均CPM</th>
+                        <th>年間広告価値</th>
+                        <th>実質収益</th>
+                        <th>事業譲渡価値<br/>(10倍評価)</th>
+                        <th>達成確率</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>Phase 1<br/>(6ヶ月)</strong></td>
+                        <td>2,500万</td>
+                        <td>¥125</td>
+                        <td>¥3,125,000</td>
+                        <td>¥0</td>
+                        <td>¥31,250,000</td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>90% ✅</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>Phase 2<br/>(12ヶ月)</strong></td>
+                        <td>4,000万</td>
+                        <td>¥125</td>
+                        <td>¥5,000,000</td>
+                        <td>¥2,000,000</td>
+                        <td>¥50,000,000</td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>85% ✅</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>Phase 3<br/>(18ヶ月)</strong></td>
+                        <td>5,500万</td>
+                        <td>¥125</td>
+                        <td>¥6,875,000</td>
+                        <td>¥3,500,000</td>
+                        <td>¥68,750,000</td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>80% ✅</span></td>
+                      </tr>
+                      <tr style={{ background: '#fff9e6', fontWeight: 700 }}>
+                        <td><strong>Phase 4<br/>(24ヶ月)</strong></td>
+                        <td><strong>7,000万</strong></td>
+                        <td><strong>¥125</strong></td>
+                        <td><strong>¥8,750,000</strong></td>
+                        <td><strong>¥5,000,000</strong></td>
+                        <td><strong>¥87,500,000</strong></td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>80% ✅</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>Year 3</strong></td>
+                        <td>8,500万</td>
+                        <td>¥160</td>
+                        <td>¥13,600,000</td>
+                        <td>¥80,000,000</td>
+                        <td>¥136,000,000</td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>75% ✅</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>Year 4</strong></td>
+                        <td>1億</td>
+                        <td>¥210</td>
+                        <td>¥21,000,000</td>
+                        <td>¥110,000,000</td>
+                        <td>¥210,000,000</td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>70% ✅</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>Year 5</strong></td>
+                        <td>1.2億</td>
+                        <td>¥280</td>
+                        <td>¥33,600,000</td>
+                        <td>¥150,000,000</td>
+                        <td>¥336,000,000</td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>65% ✅</span></td>
+                      </tr>
+                      <tr style={{ background: '#e8f5e9', fontWeight: 700 }}>
+                        <td><strong>Year 6-7<br/>(5年後)</strong></td>
+                        <td><strong>1.5億</strong></td>
+                        <td><strong>¥320</strong></td>
+                        <td><strong>¥48,000,000</strong></td>
+                        <td><strong>¥233,500,000</strong></td>
+                        <td><strong>¥2,335,000,000<br/>(約23億円)</strong></td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>65% ✅</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 3つのシナリオ */}
+                <h3 style={{ fontSize: '1.2rem', color: '#e63946', margin: '25px 0 15px', borderBottom: '2px solid var(--fleapay-gold)', paddingBottom: '8px' }}>
+                  目標の3つのシナリオ（5年後）
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+                  <div style={{ background: 'linear-gradient(135deg, #fff 0%, var(--fleapay-cream) 100%)', borderRadius: '15px', padding: '25px', boxShadow: '0 8px 25px rgba(0,0,0,0.1)', border: '2px solid var(--fleapay-gold)' }}>
+                    <div style={{ fontSize: '3em', marginBottom: '12px' }}>🛡️</div>
+                    <h3 style={{ color: 'var(--fleapay-blue)', fontSize: '1.3em', marginBottom: '12px', fontWeight: 700 }}>保守的シナリオ</h3>
+                    <div style={{ fontSize: '2.5em', fontWeight: 700, color: '#e63946', margin: '12px 0' }}>15億円</div>
+                    <div style={{ color: '#666', fontSize: '0.95em', lineHeight: 1.6 }}>
+                      <strong>リーチ:</strong> 1億<br/>
+                      <strong>CPM:</strong> ¥250<br/>
+                      <strong>実現確率:</strong> <span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>80%</span>
+                    </div>
+                  </div>
+                  <div style={{ background: 'linear-gradient(135deg, #fff 0%, var(--fleapay-cream) 100%)', borderRadius: '15px', padding: '25px', boxShadow: '0 8px 25px rgba(0,0,0,0.1)', border: '2px solid #e63946', borderWidth: '3px' }}>
+                    <div style={{ fontSize: '3em', marginBottom: '12px' }}>🎯</div>
+                    <h3 style={{ color: 'var(--fleapay-blue)', fontSize: '1.3em', marginBottom: '12px', fontWeight: 700 }}>標準シナリオ</h3>
+                    <div style={{ fontSize: '2.5em', fontWeight: 700, color: 'var(--fleapay-blue)', margin: '12px 0' }}>23億円</div>
+                    <div style={{ color: '#666', fontSize: '0.95em', lineHeight: 1.6 }}>
+                      <strong>リーチ:</strong> 1.5億<br/>
+                      <strong>CPM:</strong> ¥320<br/>
+                      <strong>実現確率:</strong> <span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>65%</span>
+                    </div>
+                  </div>
+                  <div style={{ background: 'linear-gradient(135deg, #fff 0%, var(--fleapay-cream) 100%)', borderRadius: '15px', padding: '25px', boxShadow: '0 8px 25px rgba(0,0,0,0.1)', border: '2px solid var(--fleapay-gold)' }}>
+                    <div style={{ fontSize: '3em', marginBottom: '12px' }}>🚀</div>
+                    <h3 style={{ color: 'var(--fleapay-blue)', fontSize: '1.3em', marginBottom: '12px', fontWeight: 700 }}>楽観的シナリオ</h3>
+                    <div style={{ fontSize: '2.5em', fontWeight: 700, color: 'var(--fleapay-gold)', margin: '12px 0' }}>53億円</div>
+                    <div style={{ color: '#666', fontSize: '0.95em', lineHeight: 1.6 }}>
+                      <strong>リーチ:</strong> 2億<br/>
+                      <strong>CPM:</strong> ¥500<br/>
+                      <strong>実現確率:</strong> <span style={{ padding: '4px 12px', borderRadius: '20px', background: '#f39c12', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>30%</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* 2. ベンチマーク比較セクション */}
+              <section style={{ marginTop: '40px' }}>
+                <h2 style={{ fontSize: '1.5rem', color: 'var(--fleapay-blue)', borderLeft: '6px solid #e63946', paddingLeft: '15px', marginBottom: '20px' }}>
+                  📊 2. ベンチマーク比較
+                </h2>
+
+                {/* 広告単価(CPM)ベンチマーク */}
+                <h3 style={{ fontSize: '1.2rem', color: '#e63946', margin: '25px 0 15px', borderBottom: '2px solid var(--fleapay-gold)', paddingBottom: '8px' }}>
+                  A. 広告単価(CPM)ベンチマーク
+                </h3>
+                <div style={{ overflowX: 'auto', marginBottom: '30px' }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>コンテンツ種別</th>
+                        <th>フォロワー層</th>
+                        <th>業界標準CPM<br/>(現在)</th>
+                        <th>EDO ICHIBA<br/>(現在)</th>
+                        <th>EDO ICHIBA<br/>(5年後)</th>
+                        <th>成長率</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>一般UGC</strong></td>
+                        <td>500-2,000人</td>
+                        <td>¥30-50</td>
+                        <td><strong>¥80</strong></td>
+                        <td><strong>¥200</strong></td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>+150%</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>マイクロインフルエンサー</strong></td>
+                        <td>5,000-10,000人</td>
+                        <td>¥80-120</td>
+                        <td><strong>¥100</strong></td>
+                        <td><strong>¥300</strong></td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>+200%</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>ミドルインフルエンサー</strong></td>
+                        <td>10,000-50,000人</td>
+                        <td>¥150-250</td>
+                        <td><strong>¥200</strong></td>
+                        <td><strong>¥450</strong></td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>+125%</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>公式ブランドUGC</strong></td>
+                        <td>-</td>
+                        <td>¥100-200</td>
+                        <td><strong>¥150</strong></td>
+                        <td><strong>¥350</strong></td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>+133%</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>バイラルコンテンツ</strong></td>
+                        <td>1万回以上</td>
+                        <td>¥200-400</td>
+                        <td><strong>¥300</strong></td>
+                        <td><strong>¥800</strong></td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>+167%</span></td>
+                      </tr>
+                      <tr style={{ background: '#fff9e6', fontWeight: 700 }}>
+                        <td><strong>加重平均CPM</strong></td>
+                        <td>-</td>
+                        <td>¥100</td>
+                        <td><strong>¥125</strong></td>
+                        <td><strong>¥320</strong></td>
+                        <td><strong><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>+156%</span></strong></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* リーチ効率ベンチマーク */}
+                <h3 style={{ fontSize: '1.2rem', color: '#e63946', margin: '25px 0 15px', borderBottom: '2px solid var(--fleapay-gold)', paddingBottom: '8px' }}>
+                  C. リーチ効率ベンチマーク
+                </h3>
+                <div style={{ overflowX: 'auto', marginBottom: '30px' }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>指標</th>
+                        <th>一般的フリマ</th>
+                        <th>EDO ICHIBA<br/>(Phase 4)</th>
+                        <th>EDO ICHIBA<br/>(5年後)</th>
+                        <th>競合優位性</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>来場者あたり投稿率</strong></td>
+                        <td>5-10%</td>
+                        <td><strong>20-50%</strong></td>
+                        <td><strong>50-70%</strong></td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>5-10倍 🔥</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>投稿あたり平均リーチ</strong></td>
+                        <td>300-800回</td>
+                        <td><strong>1,500-2,000回</strong></td>
+                        <td><strong>3,000-5,000回</strong></td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>4-6倍 🔥</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>エンゲージメント率</strong></td>
+                        <td>2-4%</td>
+                        <td><strong>6-8%</strong></td>
+                        <td><strong>10-15%</strong></td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>3-4倍 🔥</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>コンテンツ寿命</strong></td>
+                        <td>24-48時間</td>
+                        <td><strong>7日-30日</strong></td>
+                        <td><strong>30-90日</strong></td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>15-45倍 🔥</span></td>
+                      </tr>
+                      <tr>
+                        <td><strong>バイラル化率</strong></td>
+                        <td>1%未満</td>
+                        <td><strong>3-5%</strong></td>
+                        <td><strong>10-15%</strong></td>
+                        <td><span style={{ padding: '4px 12px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700 }}>10-15倍 🔥</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              {/* 3. KPI体系セクション */}
+              <section style={{ marginTop: '40px' }}>
+                <h2 style={{ fontSize: '1.5rem', color: 'var(--fleapay-blue)', borderLeft: '6px solid #e63946', paddingLeft: '15px', marginBottom: '20px' }}>
+                  📈 3. KPI体系（外的要因を排除）
+                </h2>
+
+                {/* KPI設計の原則 */}
+                <div style={{ background: '#fff3cd', borderLeft: '6px solid #f39c12', padding: '25px', margin: '25px 0', borderRadius: '8px' }}>
+                  <h3 style={{ color: '#856404', fontSize: '1.3em', marginBottom: '12px' }}>⚠️ KPI設計の原則</h3>
+                  <p style={{ fontSize: '1.05em', lineHeight: 1.8 }}>
+                    従来の「年間リーチ数」「平均CPM」などは<strong>外的要因(SNSアルゴリズム・市場動向)</strong>に依存するため、KPIとしては不適切です。本体系では<strong>完全にコントロール可能な内的要因のみ</strong>を管理指標として設定します。
+                  </p>
+                </div>
+
+                {/* Tier 1: 完全コントロール可能KPI */}
+                <div style={{ background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)', border: '3px solid #27ae60', borderRadius: '15px', padding: '25px', marginBottom: '30px', boxShadow: '0 8px 25px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ fontSize: '1.3em', marginBottom: '15px' }}>
+                    <span style={{ display: 'inline-block', padding: '6px 18px', borderRadius: '20px', background: '#27ae60', color: '#fff', fontSize: '0.85em', fontWeight: 700, marginRight: '10px' }}>Tier 1</span>
+                    完全コントロール可能KPI(Input指標)
+                  </h3>
+                  <p style={{ fontSize: '1.05em', marginBottom: '20px' }}>
+                    ✅ <strong>自社の行動・投資だけで100%達成可能</strong><br/>
+                    ✅ 外的要因の影響ゼロ<br/>
+                    ✅ 日次・週次で管理可能
+                  </p>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>カテゴリ</th>
+                          <th>KPI</th>
+                          <th>Phase 4目標</th>
+                          <th>5年後目標</th>
+                          <th>計測方法</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td rowSpan={4}><strong>システム品質</strong></td>
+                          <td>システム稼働率</td>
+                          <td>95%</td>
+                          <td>99.5%</td>
+                          <td>サーバー監視</td>
+                        </tr>
+                        <tr>
+                          <td>おみくじ完了率</td>
+                          <td>90%</td>
+                          <td>95%</td>
+                          <td>ファネル分析</td>
+                        </tr>
+                        <tr>
+                          <td>平均レスポンス時間</td>
+                          <td>2秒以内</td>
+                          <td>1秒以内</td>
+                          <td>APM</td>
+                        </tr>
+                        <tr>
+                          <td>システム自動運用率</td>
+                          <td>95%</td>
+                          <td>99%</td>
+                          <td>運用ログ</td>
+                        </tr>
+                        <tr>
+                          <td rowSpan={3}><strong>コンテンツ生産性</strong></td>
+                          <td>公式UGC投稿数/日</td>
+                          <td>12本</td>
+                          <td>41本</td>
+                          <td>配信ログ</td>
+                        </tr>
+                        <tr>
+                          <td>AI生成成功率</td>
+                          <td>95%</td>
+                          <td>99%</td>
+                          <td>生成ログ</td>
+                        </tr>
+                        <tr>
+                          <td>コンテンツ制作コスト/本</td>
+                          <td>¥200</td>
+                          <td>¥50</td>
+                          <td>会計データ</td>
+                        </tr>
+                        <tr>
+                          <td rowSpan={2}><strong>デジタル体験設計</strong></td>
+                          <td>UI改善回数/月</td>
+                          <td>4回</td>
+                          <td>12回</td>
+                          <td>A/Bテスト管理</td>
+                        </tr>
+                        <tr>
+                          <td>投稿テンプレート生成速度</td>
+                          <td>5秒</td>
+                          <td>2秒</td>
+                          <td>システムログ</td>
+                        </tr>
+                        <tr>
+                          <td rowSpan={3}><strong>営業活動</strong></td>
+                          <td>広告主商談件数/月</td>
+                          <td>10件</td>
+                          <td>50件</td>
+                          <td>CRM</td>
+                        </tr>
+                        <tr>
+                          <td>提案書送付数/月</td>
+                          <td>15件</td>
+                          <td>80件</td>
+                          <td>営業管理</td>
+                        </tr>
+                        <tr>
+                          <td>フォローアップ実施率</td>
+                          <td>100%</td>
+                          <td>100%</td>
+                          <td>CRM</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Tier 2: 影響可能KPI */}
+                <div style={{ background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', border: '3px solid #f39c12', borderRadius: '15px', padding: '25px', marginBottom: '30px', boxShadow: '0 8px 25px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ fontSize: '1.3em', marginBottom: '15px' }}>
+                    <span style={{ display: 'inline-block', padding: '6px 18px', borderRadius: '20px', background: '#f39c12', color: '#fff', fontSize: '0.85em', fontWeight: 700, marginRight: '10px' }}>Tier 2</span>
+                    影響可能KPI(Process指標)
+                  </h3>
+                  <p style={{ fontSize: '1.05em', marginBottom: '20px' }}>
+                    🟡 <strong>自社努力で大きく影響を与えられる(70-80%コントロール可能)</strong><br/>
+                    🟡 一部外的要因の影響あり(ユーザー行動)<br/>
+                    🟡 Tier 1のKPIが達成されれば、高確率で達成
+                  </p>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>カテゴリ</th>
+                          <th>KPI</th>
+                          <th>Phase 4目標</th>
+                          <th>5年後目標</th>
+                          <th>影響する内的施策(Tier 1)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td rowSpan={3}><strong>利用率</strong></td>
+                          <td>おみくじ参加率</td>
+                          <td>80%</td>
+                          <td>90%</td>
+                          <td>システム自動運用率・UI改善回数</td>
+                        </tr>
+                        <tr>
+                          <td>投稿率</td>
+                          <td>50%</td>
+                          <td>70%</td>
+                          <td>テンプレート生成速度・導線整備</td>
+                        </tr>
+                        <tr>
+                          <td>月間QR決済数</td>
+                          <td>16,000回/月</td>
+                          <td>-</td>
+                          <td>おみくじ完了率・UI改善回数・導線整備</td>
+                        </tr>
+                        <tr>
+                          <td rowSpan={2}><strong>エンゲージメント</strong></td>
+                          <td>コメント率</td>
+                          <td>5件/投稿</td>
+                          <td>15件/投稿</td>
+                          <td>コンテンツ品質・投稿本数</td>
+                        </tr>
+                        <tr>
+                          <td>シェア率</td>
+                          <td>20%</td>
+                          <td>40%</td>
+                          <td>テンプレート品質</td>
+                        </tr>
+                        <tr>
+                          <td rowSpan={2}><strong>広告主満足度</strong></td>
+                          <td>広告主NPS</td>
+                          <td>+40</td>
+                          <td>+70</td>
+                          <td>レポート配信率・商談品質</td>
+                        </tr>
+                        <tr>
+                          <td>契約更新率</td>
+                          <td>90%</td>
+                          <td>95%</td>
+                          <td>効果実証・フォローアップ</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Tier 3: 結果指標 */}
+                <div style={{ background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)', border: '3px solid #e74c3c', borderRadius: '15px', padding: '25px', marginBottom: '30px', boxShadow: '0 8px 25px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ fontSize: '1.3em', marginBottom: '15px' }}>
+                    <span style={{ display: 'inline-block', padding: '6px 18px', borderRadius: '20px', background: '#e74c3c', color: '#fff', fontSize: '0.85em', fontWeight: 700, marginRight: '10px' }}>Tier 3</span>
+                    結果指標(Outcome指標)【参考値】
+                  </h3>
+                  <p style={{ fontSize: '1.05em', marginBottom: '20px' }}>
+                    ⚠️ <strong>外的要因の影響が大きい(50%以上が外部環境依存)</strong><br/>
+                    ⚠️ ビジネス成果として重要だが、KPIとしては不適切<br/>
+                    ⚠️ Tier 1・2が達成されれば、自然に向上する「結果」として扱う
+                  </p>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>指標</th>
+                          <th>Phase 4</th>
+                          <th>5年後</th>
+                          <th>主な外的要因</th>
+                          <th>扱い方</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><strong>年間総リーチ数</strong></td>
+                          <td>7,000万</td>
+                          <td>1.5億</td>
+                          <td>SNSアルゴリズム変更</td>
+                          <td>📊 モニタリング指標</td>
+                        </tr>
+                        <tr>
+                          <td><strong>個人UGC平均リーチ</strong></td>
+                          <td>1,500回</td>
+                          <td>3,500回</td>
+                          <td>プラットフォーム仕様</td>
+                          <td>📊 モニタリング指標</td>
+                        </tr>
+                        <tr>
+                          <td><strong>平均CPM単価</strong></td>
+                          <td>¥125</td>
+                          <td>¥320</td>
+                          <td>広告市場全体の動向</td>
+                          <td>📊 市場参考値</td>
+                        </tr>
+                        <tr>
+                          <td><strong>実質広告収益</strong></td>
+                          <td>¥5,000,000</td>
+                          <td>¥233,500,000</td>
+                          <td>経済状況・業界動向</td>
+                          <td>📊 財務指標</td>
+                        </tr>
+                        <tr>
+                          <td><strong>広告主獲得数</strong></td>
+                          <td>15社</td>
+                          <td>150社</td>
+                          <td>市場環境・競合状況</td>
+                          <td>📊 営業成果指標</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Phase別KPI管理表 */}
+                <h3 style={{ fontSize: '1.2rem', color: '#e63946', margin: '25px 0 15px', borderBottom: '2px solid var(--fleapay-gold)', paddingBottom: '8px' }}>
+                  Phase別KPI管理表
+                </h3>
+                <div style={{ overflowX: 'auto', marginBottom: '30px' }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th rowSpan={2}>Phase</th>
+                        <th colSpan={4}>Tier 1(完全コントロール)</th>
+                        <th colSpan={2}>Tier 2(影響可能)</th>
+                        <th rowSpan={2}>Tier 3(参考)<br/>年間リーチ</th>
+                      </tr>
+                      <tr>
+                        <th>システム稼働率</th>
+                        <th>システム自動運用率</th>
+                        <th>公式UGC本数/日</th>
+                        <th>商談件数/月</th>
+                        <th>おみくじ参加率</th>
+                        <th>投稿率</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>Phase 1</strong></td>
+                        <td>95%</td>
+                        <td>95%</td>
+                        <td>6本</td>
+                        <td>5件</td>
+                        <td>70%</td>
+                        <td>20%</td>
+                        <td>2,500万</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Phase 2</strong></td>
+                        <td>96%</td>
+                        <td>96%</td>
+                        <td>9本</td>
+                        <td>7件</td>
+                        <td>75%</td>
+                        <td>25%</td>
+                        <td>4,000万</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Phase 3</strong></td>
+                        <td>97%</td>
+                        <td>96%</td>
+                        <td>11本</td>
+                        <td>8件</td>
+                        <td>80%</td>
+                        <td>30%</td>
+                        <td>5,500万</td>
+                      </tr>
+                      <tr style={{ background: '#e8f5e9' }}>
+                        <td><strong>Phase 4</strong></td>
+                        <td><strong>95%</strong></td>
+                        <td><strong>95%</strong></td>
+                        <td><strong>12本</strong></td>
+                        <td><strong>10件</strong></td>
+                        <td><strong>80%</strong></td>
+                        <td><strong>50%</strong></td>
+                        <td><strong>7,000万</strong></td>
+                      </tr>
+                      <tr>
+                        <td><strong>Year 5</strong></td>
+                        <td>99%</td>
+                        <td>98%</td>
+                        <td>27本</td>
+                        <td>30件</td>
+                        <td>85%</td>
+                        <td>65%</td>
+                        <td>1.2億</td>
+                      </tr>
+                      <tr style={{ background: '#e8f5e9' }}>
+                        <td><strong>Year 6-7</strong></td>
+                        <td><strong>99.5%</strong></td>
+                        <td><strong>99%</strong></td>
+                        <td><strong>41本</strong></td>
+                        <td><strong>50件</strong></td>
+                        <td><strong>90%</strong></td>
+                        <td><strong>70%</strong></td>
+                        <td><strong>1.5億</strong></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
             </>
           )}
         </main>
