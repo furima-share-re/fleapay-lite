@@ -35,7 +35,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       // モジュールを動的にインポート（環境変数の変更を反映）
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
       const mockCount = vi.fn().mockResolvedValue(15);
-      const mockQueryRaw = vi.fn().mockResolvedValueOnce([
+      const mockQueryRaw = vi.fn().mockResolvedValue([
         { fee_rate: 0.04, tier: 3 },
       ]);
       const mockPrisma = {
@@ -62,12 +62,13 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
 
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
       // 新しいモックを作成（前のテストの影響を受けないように）
-      const mockQueryRaw = vi.fn().mockResolvedValueOnce([
+      const mockCount = vi.fn();
+      const mockQueryRaw = vi.fn().mockResolvedValue([
         { fee_rate: 0.07 },
       ]);
       const mockPrisma = {
         stripePayment: {
-          count: vi.fn(), // 呼ばれないが、エラーを避けるために定義
+          count: mockCount, // 呼ばれないが、エラーを避けるために定義
         },
         $queryRaw: mockQueryRaw,
       } as any;
@@ -81,6 +82,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
 
       expect(result).toBe(0.07);
       expect(mockQueryRaw).toHaveBeenCalled();
+      expect(mockCount).not.toHaveBeenCalled();
     });
 
     it('ENABLE_STRATEGY_F_TIER_SYSTEMが未設定の場合、デフォルトでTier制が有効', async () => {
