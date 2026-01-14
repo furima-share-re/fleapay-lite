@@ -35,6 +35,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
 
       // モジュールを動的にインポート（環境変数の変更を反映）
+      await vi.resetModules();
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
       const mockCount = vi.fn().mockResolvedValue(15);
       // getFeeRateByTier calls $queryRaw with tier=3 (determined from count=15)
@@ -71,6 +72,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
 
       // モジュールを動的にインポート（環境変数の変更を反映）
+      await vi.resetModules();
       const { getFeeRateWithStrategyF } = await import('@/lib/strategy-f');
       // 新しいモックを作成（前のテストの影響を受けないように）
       const mockCount = vi.fn();
