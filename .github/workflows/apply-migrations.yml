@@ -232,6 +232,14 @@ jobs:
           echo "Port: $PORT"
           getent hosts "$HOST" || echo "⚠️ DNS lookup failed for $HOST"
           timeout 5 bash -c "nc -vz $HOST $PORT" || echo "⚠️ TCP check failed"
+          HOST_IPV4=$(getent ahostsv4 "$HOST" | awk '{print $1}' | head -n 1)
+          if [ -n "$HOST_IPV4" ]; then
+            echo "✅ Using IPv4: $HOST_IPV4"
+            DATABASE_URL=$(echo "$DATABASE_URL" | sed -E "s|@[^:/?]+|@${HOST_IPV4}|")
+            export DATABASE_URL
+          else
+            echo "⚠️ No IPv4 address found; using hostname"
+          fi
           echo "📝 Updating Prisma schema..."
           npx prisma db pull
           npx prisma generate
