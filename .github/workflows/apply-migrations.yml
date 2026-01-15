@@ -202,36 +202,22 @@ jobs:
 
       - name: Update Prisma schema
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING_DIRECT }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Error: DATABASE_URL_STAGING_DIRECT secret is not set"
+            echo "❌ Error: DATABASE_URL_STAGING secret is not set"
             echo ""
-            echo "Please set DATABASE_URL_STAGING_DIRECT in GitHub Secrets:"
+            echo "Please set DATABASE_URL_STAGING in GitHub Secrets:"
             echo "1. Go to Settings → Secrets and variables → Actions"
             echo "2. Click 'New repository secret'"
-            echo "3. Name: DATABASE_URL_STAGING_DIRECT"
-            echo "4. Value: Your Supabase staging DIRECT connection string"
+            echo "3. Name: DATABASE_URL_STAGING"
+            echo "4. Value: Your Supabase staging database connection string"
             echo "   Format: postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres"
             echo ""
             echo "You can find the connection string in:"
             echo "- Supabase Dashboard → Project Settings → Database → Connection string"
-            echo "- Make sure to select 'Direct' (not 'Pooler')"
             exit 1
           fi
-          if echo "$DATABASE_URL" | grep -q "pooler\|:6543"; then
-            echo "❌ Error: DATABASE_URL points to the pooler (6543)."
-            echo "Prisma introspection can hang via pooler."
-            echo "Please switch to the Direct connection string (5432)."
-            exit 1
-          fi
-          HOST=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:/?]+).*|\1|')
-          PORT=$(echo "$DATABASE_URL" | sed -E 's|.*:([0-9]+)/.*|\1|')
-          echo "🔌 Checking DB reachability (host/port only)..."
-          echo "Host: $HOST"
-          echo "Port: $PORT"
-          getent hosts "$HOST" || echo "⚠️ DNS lookup failed for $HOST"
-          timeout 5 bash -c "nc -vz $HOST $PORT" || echo "⚠️ TCP check failed"
           echo "📝 Updating Prisma schema..."
           npx prisma db pull
           npx prisma generate
