@@ -202,21 +202,48 @@ jobs:
 
       - name: Update Prisma schema
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+          DATABASE_URL_STAGING_DIRECT: ${{ secrets.DATABASE_URL_STAGING_DIRECT }}
+          DATABASE_URL_STAGING: ${{ secrets.DATABASE_URL_STAGING }}
         run: |
+          if [ -n "$DATABASE_URL_STAGING" ]; then
+            DATABASE_URL="$DATABASE_URL_STAGING"
+            MODE="pooler"
+          else
+            DATABASE_URL="$DATABASE_URL_STAGING_DIRECT"
+            MODE="direct"
+          fi
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Error: DATABASE_URL_STAGING secret is not set"
+            echo "❌ Error: DATABASE_URL secret is not set"
             echo ""
-            echo "Please set DATABASE_URL_STAGING in GitHub Secrets:"
+            echo "Please set DATABASE_URL_STAGING (pooler) or DATABASE_URL_STAGING_DIRECT:"
             echo "1. Go to Settings → Secrets and variables → Actions"
             echo "2. Click 'New repository secret'"
             echo "3. Name: DATABASE_URL_STAGING"
-            echo "4. Value: Your Supabase staging database connection string"
-            echo "   Format (Direct): postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres"
+            echo "4. Value: Your Supabase staging pooler connection string"
             echo "   Format (Pooler): postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres"
             echo ""
             echo "You can find the connection string in:"
             echo "- Supabase Dashboard → Project Settings → Database → Connection string"
+            exit 1
+          fi
+          if [ "$MODE" = "pooler" ]; then
+            echo "⚠️ Using pooler for Prisma introspection (less reliable)."
+            if echo "$DATABASE_URL" | grep -q '\?'; then
+              DATABASE_URL="${DATABASE_URL}&pgbouncer=true&connection_limit=1&pool_timeout=20&connect_timeout=10&sslmode=require"
+            else
+              DATABASE_URL="${DATABASE_URL}?pgbouncer=true&connection_limit=1&pool_timeout=20&connect_timeout=10&sslmode=require"
+            fi
+            export DATABASE_URL
+            for i in 1 2 3; do
+              echo "📝 Updating Prisma schema (pooler attempt $i/3)..."
+              if timeout 120 npx prisma db pull; then
+                npx prisma generate
+                exit 0
+              fi
+              echo "⚠️ Prisma db pull failed on attempt $i"
+              sleep 10
+            done
+            echo "❌ Prisma db pull failed via pooler after retries."
             exit 1
           fi
           echo "📝 Updating Prisma schema..."
