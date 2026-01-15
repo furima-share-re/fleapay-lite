@@ -270,3 +270,65 @@ model CommunityTransactionVolume {
   @@index([periodStart, periodEnd], name: "idx_community_transaction_volume_period")
   @@map("community_transaction_volume")
 }
+
+model BenchmarkData {
+  id              String   @id @default(uuid()) @db.Uuid
+  benchmarkType   String   @map("benchmark_type")
+  contentCategory String?  @map("content_category")
+  weekStartDate   DateTime @map("week_start_date") @db.Date
+  industryStandard Decimal? @map("industry_standard")
+  edoIchibaCurrent Decimal? @map("edo_ichiba_current")
+  edoIchibaTarget Decimal? @map("edo_ichiba_target")
+  actualValue     Decimal? @map("actual_value")
+  growthRate      Decimal? @map("growth_rate")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy       String?  @map("created_by")
+
+  @@unique([benchmarkType, contentCategory, weekStartDate], name: "benchmark_data_benchmark_type_content_category_week_start_d_key")
+  @@index([benchmarkType], name: "idx_benchmark_data_type")
+  @@index([weekStartDate(sort: Desc)], name: "idx_benchmark_data_week")
+  @@map("benchmark_data")
+}
+
+model GoalAchievement {
+  id              String   @id @default(uuid()) @db.Uuid
+  phase           String
+  metricType      String   @map("metric_type")
+  weekStartDate   DateTime @map("week_start_date") @db.Date
+  targetValue     Decimal? @map("target_value")
+  actualValue     Decimal? @map("actual_value")
+  achievementRate Decimal? @map("achievement_rate")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy       String?  @map("created_by")
+
+  @@unique([phase, metricType, weekStartDate], name: "goal_achievements_phase_metric_type_week_start_date_key")
+  @@index([phase], name: "idx_goal_achievements_phase")
+  @@index([metricType], name: "idx_goal_achievements_type")
+  @@index([weekStartDate(sort: Desc)], name: "idx_goal_achievements_week")
+  @@map("goal_achievements")
+}
+
+model KpiMetric {
+  id             String   @id @default(uuid()) @db.Uuid
+  metricKey      String   @map("metric_key")
+  metricCategory String   @map("metric_category")
+  weekStartDate  DateTime @map("week_start_date") @db.Date
+  targetValue    Decimal? @map("target_value")
+  actualValue    Decimal? @map("actual_value")
+  unit           String?
+  phase          String?
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy      String?  @map("created_by")
+
+  @@unique([metricKey, weekStartDate], name: "kpi_metrics_metric_key_week_start_date_key")
+  @@index([metricCategory], name: "idx_kpi_metrics_category")
+  @@index([metricKey], name: "idx_kpi_metrics_key")
+  @@index([weekStartDate(sort: Desc)], name: "idx_kpi_metrics_week")
+  @@map("kpi_metrics")
+}

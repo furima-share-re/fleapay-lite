@@ -5,6 +5,11 @@ on:
     paths:
       - "supabase/migrations/**"
   workflow_dispatch: # 手動実行も可能
+    inputs:
+      run_prisma_update:
+        description: "Run Prisma schema update (requires reachable DB)"
+        required: false
+        default: "false"
 
 jobs:
   validate-migrations:
@@ -170,6 +175,7 @@ jobs:
           fi
 
   update-prisma-schema:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_prisma_update == 'true'
     runs-on: ubuntu-latest
     needs: [apply-to-staging, apply-to-production]
     steps:
