@@ -29,6 +29,20 @@ interface TierDefinition {
   defaultRate: number;
 }
 
+const strategyFTiers = [
+  { label: '第1段', name: '村', range: '0〜3回/月', rate: '4.8% + 40円' },
+  { label: '第2段', name: '町', range: '4〜10回/月', rate: '4.4% + 40円' },
+  { label: '第3段', name: '城下町', range: '11〜24回/月', rate: '4.1% + 40円' },
+  { label: '第4段', name: '藩', range: '25〜50回/月', rate: '3.8% + 40円' },
+  { label: '第5段', name: '天下', range: '51回以上 + 目標達成', rate: '3.3% + 40円' },
+];
+
+const phaseGoals = [
+  { phase: 'Phase 1', period: '0-3ヶ月', target: '¥10,000,000', rate: '2.8%', intent: '成功体験の創出' },
+  { phase: 'Phase 2', period: '4-12ヶ月', target: '¥40,000,000', rate: '2.8%', intent: '本格運用・コミュニティ効果最大化' },
+  { phase: 'Phase 3', period: '2年目以降', target: '段階的目標', rate: '2.7-2.8%', intent: '最適化とデータ価値還元' },
+];
+
 export default function AdminFeeRatesPage() {
   const [feeRates, setFeeRates] = useState<FeeRate[]>([]);
   const [tierDefinitions, setTierDefinitions] = useState<Record<string, TierDefinition> | null>(null);
@@ -169,6 +183,56 @@ export default function AdminFeeRatesPage() {
           background: transparent;
           border: 1px solid #ddd;
         }
+        .tier-grid {
+          display: grid;
+          gap: 12px;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+        .tier-card {
+          border: 1px solid rgba(0,0,0,0.08);
+          border-radius: 12px;
+          padding: 14px;
+          background: #fff;
+        }
+        .tier-label {
+          font-size: 0.75rem;
+          color: var(--fleapay-gray);
+        }
+        .tier-name {
+          font-size: 1rem;
+          font-weight: 700;
+          margin: 4px 0;
+        }
+        .tier-rate {
+          font-size: 1rem;
+          font-weight: 700;
+          color: var(--fleapay-blue);
+        }
+        .tier-range {
+          font-size: 0.8rem;
+          color: var(--fleapay-gray);
+          margin-top: 6px;
+        }
+        .highlight-card {
+          border: 1px solid var(--warning-amber);
+          background: #fff9e6;
+          border-radius: 12px;
+          padding: 16px;
+        }
+        .progress-bar {
+          position: relative;
+          height: 12px;
+          border-radius: 999px;
+          background: #ececec;
+          overflow: hidden;
+          margin-top: 8px;
+        }
+        .progress-fill {
+          position: absolute;
+          inset: 0;
+          width: 85%;
+          background: linear-gradient(90deg, #f5c542, #b8902e);
+        }
       `}</style>
 
       <header className="admin-header">
@@ -223,6 +287,86 @@ export default function AdminFeeRatesPage() {
               <button className="btn ghost" onClick={loadFeeRates} disabled={loading}>
                 {loading ? '読み込み中...' : '🔄 更新'}
               </button>
+            </div>
+          </section>
+
+          <section>
+            <h2>戦略F：コミュニティ連動型 料金体系</h2>
+            <div className="tier-grid">
+              <div className="tier-card">
+                <div className="tier-label">現金決済</div>
+                <div className="tier-name">完全無料</div>
+                <div className="tier-rate">0%</div>
+                <div className="tier-range">現金はいつでも0%</div>
+              </div>
+              {strategyFTiers.map((tier) => (
+                <div key={tier.name} className="tier-card">
+                  <div className="tier-label">{tier.label}</div>
+                  <div className="tier-name">{tier.name}</div>
+                  <div className="tier-rate">{tier.rate}</div>
+                  <div className="tier-range">{tier.range}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section style={{ marginTop: '20px' }}>
+            <h2>Tier 5 ダイナミックプライシング</h2>
+            <div className="tier-grid">
+              <div className="tier-card">
+                <div className="tier-label">通常料金</div>
+                <div className="tier-name">3.3% + 40円</div>
+                <div className="tier-range">51回以上 + コミュニティ未達</div>
+              </div>
+              <div className="tier-card" style={{ borderColor: 'var(--warning-amber)', background: '#fff9e6' }}>
+                <div className="tier-label">ボーナス料金</div>
+                <div className="tier-name">2.8% + 40円</div>
+                <div className="tier-range">コミュニティ目標達成時に適用</div>
+              </div>
+            </div>
+          </section>
+
+          <section style={{ marginTop: '20px' }}>
+            <h2>Phase別コミュニティ目標</h2>
+            <div style={{ overflowX: 'auto' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>フェーズ</th>
+                    <th>期間</th>
+                    <th>目標取扱高</th>
+                    <th>達成時手数料</th>
+                    <th>戦略意図</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {phaseGoals.map((goal) => (
+                    <tr key={goal.phase}>
+                      <td><strong>{goal.phase}</strong></td>
+                      <td>{goal.period}</td>
+                      <td>{goal.target}</td>
+                      <td><strong>{goal.rate}</strong></td>
+                      <td>{goal.intent}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section style={{ marginTop: '20px' }}>
+            <h2>Phase 1 進捗（リリース記念チャレンジ）</h2>
+            <div className="highlight-card">
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px' }}>
+                現在の取扱高: ¥8,500,000 / 目標: ¥10,000,000
+              </div>
+              <div style={{ color: 'var(--fleapay-gray)' }}>達成率 85%（あと¥1,500,000）</div>
+              <div className="progress-bar">
+                <div className="progress-fill"></div>
+              </div>
+              <p style={{ marginTop: '10px', fontSize: '0.9rem', color: 'var(--fleapay-gray)' }}>
+                目標達成時は「天下」ユーザーの手数料が 2.8% + 40円 になります。
+              </p>
             </div>
           </section>
 
