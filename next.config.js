@@ -34,6 +34,16 @@ const nextConfig = {
     ],
     unoptimized: false,
   },
+
+  // Stripe Webhook: /webhooks/stripe -> /api/webhooks/stripe
+  async rewrites() {
+    return [
+      {
+        source: '/webhooks/stripe',
+        destination: '/api/webhooks/stripe',
+      },
+    ];
+  },
   
   // BASE_URLが設定されている場合、assetPrefixを設定
   // Render環境では通常空文字列で問題ないが、必要に応じて設定
