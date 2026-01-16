@@ -57,6 +57,7 @@ function SellerDashboardContent() {
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<'on' | 'off'>('on');
 
   useEffect(() => {
     if (!sellerId) return;
@@ -111,6 +112,13 @@ function SellerDashboardContent() {
   const communityTarget = 10_000_000;
   const communityCurrent = 8_500_000;
   const communityPercent = Math.min(100, Math.round((communityCurrent / communityTarget) * 100));
+  const todayCount = summary?.salesToday?.count ?? 0;
+  const missionProgress = Math.min(3, todayCount);
+  const rewardPercent = Math.min(100, Math.round((todayCount / 5) * 100));
+  const rewardMessage =
+    todayCount > 0 ? 'すごい！ きょうも うれたよ' : 'きょうの うりあげが たまってきたよ';
+  const rewardHint = todayCount > 0 ? 'もっと うってみよう' : 'まずは 1けん うってみよう';
+  const isOnMode = mode === 'on';
 
   if (!sellerId) {
     return (
@@ -179,10 +187,69 @@ function SellerDashboardContent() {
           border-radius: 999px;
           font-weight: 600;
           color: var(--sub);
+          border: none;
+          background: transparent;
+          cursor: pointer;
         }
         .mode-pill.active {
           background: var(--brand);
           color: #fff;
+        }
+        .mission-card {
+          background: #fff5e9;
+          border: 1px solid rgba(184, 144, 46, 0.35);
+        }
+        .mission-title {
+          font-size: 1rem;
+          font-weight: 700;
+          color: var(--brand);
+        }
+        .mission-progress {
+          margin-top: 6px;
+          font-size: 0.85rem;
+          color: var(--sub);
+        }
+        .mission-list {
+          list-style: none;
+          padding: 0;
+          margin: 10px 0 0;
+          display: grid;
+          gap: 8px;
+        }
+        .mission-item {
+          display: flex;
+          gap: 8px;
+          align-items: flex-start;
+          font-size: 0.85rem;
+        }
+        .mission-check {
+          width: 18px;
+          height: 18px;
+          border-radius: 5px;
+          border: 2px solid var(--border);
+          background: #fff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.8rem;
+          color: var(--success);
+        }
+        .reward-card {
+          background: #fffdf3;
+          border: 1px solid rgba(184, 144, 46, 0.35);
+        }
+        .reward-bar {
+          margin-top: 8px;
+          height: 10px;
+          border-radius: 999px;
+          background: #f5efe6;
+          overflow: hidden;
+        }
+        .reward-bar-fill {
+          height: 100%;
+          width: 0%;
+          background: linear-gradient(90deg, #e63946, #b8902e);
+          transition: width 0.3s ease;
         }
         .brand {
           display: flex;
@@ -403,8 +470,22 @@ function SellerDashboardContent() {
       </header>
       <div className="mode-row">
         <div className="mode-toggle" aria-label="表示モード">
-          <span className="mode-pill active">やさしい</span>
-          <span className="mode-pill">ふつう</span>
+          <button
+            type="button"
+            className={`mode-pill ${isOnMode ? 'active' : ''}`}
+            onClick={() => setMode('on')}
+            aria-pressed={isOnMode}
+          >
+            やさしい
+          </button>
+          <button
+            type="button"
+            className={`mode-pill ${!isOnMode ? 'active' : ''}`}
+            onClick={() => setMode('off')}
+            aria-pressed={!isOnMode}
+          >
+            ふつう
+          </button>
         </div>
         <div style={{ fontSize: '0.72rem', color: 'var(--sub)' }}>
           表示モードは出店者に合わせて切替
@@ -417,6 +498,37 @@ function SellerDashboardContent() {
         <div className="notice-card">{error}</div>
       ) : (
         <>
+          {isOnMode && (
+            <div className="grid" style={{ marginBottom: '16px' }}>
+              <div className="card mission-card">
+                <div className="card-title mission-title">きょうの ミッション</div>
+                <div className="mission-progress">{missionProgress} / 3 できたら 100てん！</div>
+                <ul className="mission-list">
+                  <li className="mission-item">
+                    <span className="mission-check">✓</span>
+                    <span>おきゃくさんに「いらっしゃいませ！」と いえた</span>
+                  </li>
+                  <li className="mission-item">
+                    <span className="mission-check">✓</span>
+                    <span>QR / カード で 1回 うってみた</span>
+                  </li>
+                  <li className="mission-item">
+                    <span className="mission-check">✓</span>
+                    <span>かってくれた ひとの じょうほうを いれてみた</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="card reward-card">
+                <div className="card-title">ごほうび</div>
+                <div className="big-number" style={{ fontSize: '1.2rem' }}>{rewardMessage}</div>
+                <div className="reward-bar">
+                  <div className="reward-bar-fill" style={{ width: `${rewardPercent}%` }}></div>
+                </div>
+                <div className="muted" style={{ marginTop: '8px' }}>{rewardHint}</div>
+              </div>
+            </div>
+          )}
+
           <section className="hero">
             <h1 className="hero-title">出店者向けダッシュボード</h1>
             <p className="hero-sub">今月のQR決済回数とコミュニティ目標に連動して、手数料が下がります。</p>
@@ -455,89 +567,105 @@ function SellerDashboardContent() {
             </div>
           </div>
 
-          <h2 className="section-title">戦略F 料金体系（QR決済）</h2>
-          <div className="tier-grid">
-            <div className="tier-card">
-              <div className="tier-label">現金決済</div>
-              <div className="tier-name">完全無料</div>
-              <div className="tier-rate">0%</div>
-              <div className="tier-range">現金はいつでも無料</div>
-            </div>
-            {TIERS.map((tier) => (
-              <div key={tier.name} className={`tier-card ${tier.name === currentTier.name ? 'active' : ''}`}>
-                <div className="tier-label">{tier.label}</div>
-                <div className="tier-name">{tier.name}</div>
-                <div className="tier-rate">{tier.rate}</div>
-                <div className="tier-range">{tier.range}</div>
-                {tier.name === currentTier.name && <span className="badge">現在地</span>}
+          {!isOnMode && (
+            <>
+              <h2 className="section-title">戦略F 料金体系（QR決済）</h2>
+              <div className="tier-grid">
+                <div className="tier-card">
+                  <div className="tier-label">現金決済</div>
+                  <div className="tier-name">完全無料</div>
+                  <div className="tier-rate">0%</div>
+                  <div className="tier-range">現金はいつでも無料</div>
+                </div>
+                {TIERS.map((tier) => (
+                  <div key={tier.name} className={`tier-card ${tier.name === currentTier.name ? 'active' : ''}`}>
+                    <div className="tier-label">{tier.label}</div>
+                    <div className="tier-name">{tier.name}</div>
+                    <div className="tier-rate">{tier.rate}</div>
+                    <div className="tier-range">{tier.range}</div>
+                    {tier.name === currentTier.name && <span className="badge">現在地</span>}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
 
-          <h2 className="section-title">コミュニティ目標チャレンジ（Phase 1）</h2>
-          <div className="card progress-card">
-            <div className="card-title">リリース記念チャレンジ</div>
-            <div className="big-number">{formatYen(communityCurrent)}</div>
-            <div className="muted">目標: {formatYen(communityTarget)} / 達成率 {communityPercent}%</div>
-            <div className="progress-bar">
-              <div className="progress-fill"></div>
-            </div>
-            <p className="muted" style={{ marginTop: '10px' }}>
-              目標を達成すると、天下ランクの手数料が 2.8% + 40円 に切り替わります。
-            </p>
-          </div>
+          {!isOnMode && (
+            <>
+              <h2 className="section-title">コミュニティ目標チャレンジ（Phase 1）</h2>
+              <div className="card progress-card">
+                <div className="card-title">リリース記念チャレンジ</div>
+                <div className="big-number">{formatYen(communityCurrent)}</div>
+                <div className="muted">目標: {formatYen(communityTarget)} / 達成率 {communityPercent}%</div>
+                <div className="progress-bar">
+                  <div className="progress-fill"></div>
+                </div>
+                <p className="muted" style={{ marginTop: '10px' }}>
+                  目標を達成すると、天下ランクの手数料が 2.8% + 40円 に切り替わります。
+                </p>
+              </div>
+            </>
+          )}
 
-          <h2 className="section-title">Tier 5 ダイナミックプライシング</h2>
-          <div className="grid">
-            <div className="card">
-              <div className="card-title">通常料金</div>
-              <div className="big-number">3.3% + 40円</div>
-              <div className="muted">51回以上で適用、コミュニティ未達時</div>
-            </div>
-            <div className="card">
-              <div className="card-title">ボーナス料金</div>
-              <div className="big-number">2.8% + 40円</div>
-              <div className="muted">コミュニティ目標達成時に自動適用</div>
-            </div>
-          </div>
+          {!isOnMode && (
+            <>
+              <h2 className="section-title">Tier 5 ダイナミックプライシング</h2>
+              <div className="grid">
+                <div className="card">
+                  <div className="card-title">通常料金</div>
+                  <div className="big-number">3.3% + 40円</div>
+                  <div className="muted">51回以上で適用、コミュニティ未達時</div>
+                </div>
+                <div className="card">
+                  <div className="card-title">ボーナス料金</div>
+                  <div className="big-number">2.8% + 40円</div>
+                  <div className="muted">コミュニティ目標達成時に自動適用</div>
+                </div>
+              </div>
+            </>
+          )}
 
-          <h2 className="section-title">Phase別のコミュニティ目標</h2>
-          <div className="card">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>フェーズ</th>
-                  <th>期間</th>
-                  <th>目標取扱高</th>
-                  <th>達成時手数料</th>
-                  <th>狙い</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Phase 1</td>
-                  <td>0-3ヶ月</td>
-                  <td>¥10,000,000</td>
-                  <td>2.8%</td>
-                  <td>成功体験の創出</td>
-                </tr>
-                <tr>
-                  <td>Phase 2</td>
-                  <td>4-12ヶ月</td>
-                  <td>¥40,000,000</td>
-                  <td>2.8%</td>
-                  <td>本格運用・協力行動の促進</td>
-                </tr>
-                <tr>
-                  <td>Phase 3</td>
-                  <td>2年目以降</td>
-                  <td>段階的目標</td>
-                  <td>2.7-2.8%</td>
-                  <td>最適化・データ価値還元</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {!isOnMode && (
+            <>
+              <h2 className="section-title">Phase別のコミュニティ目標</h2>
+              <div className="card">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>フェーズ</th>
+                      <th>期間</th>
+                      <th>目標取扱高</th>
+                      <th>達成時手数料</th>
+                      <th>狙い</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Phase 1</td>
+                      <td>0-3ヶ月</td>
+                      <td>¥10,000,000</td>
+                      <td>2.8%</td>
+                      <td>成功体験の創出</td>
+                    </tr>
+                    <tr>
+                      <td>Phase 2</td>
+                      <td>4-12ヶ月</td>
+                      <td>¥40,000,000</td>
+                      <td>2.8%</td>
+                      <td>本格運用・協力行動の促進</td>
+                    </tr>
+                    <tr>
+                      <td>Phase 3</td>
+                      <td>2年目以降</td>
+                      <td>段階的目標</td>
+                      <td>2.7-2.8%</td>
+                      <td>最適化・データ価値還元</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           <h2 className="section-title">最近の取引</h2>
           <div className="card">

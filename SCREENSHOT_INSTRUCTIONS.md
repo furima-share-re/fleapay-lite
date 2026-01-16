@@ -47,9 +47,9 @@
   - 各プランのURLが正しく表示されている
 
 ### 3. セラーダッシュボード（オプション）
-- Standardプラン: https://fleapay-lite-t1.onrender.com/seller-dashboard.html?s=test-seller-standard
-- Proプラン: https://fleapay-lite-t1.onrender.com/seller-dashboard.html?s=test-seller-pro
-- Kidsプラン: https://fleapay-lite-t1.onrender.com/seller-dashboard.html?s=test-seller-kids
+- Standardプラン: https://fleapay-lite-t1.onrender.com/seller-dashboard?s=test-seller-standard
+- Proプラン: https://fleapay-lite-t1.onrender.com/seller-dashboard?s=test-seller-pro
+- Kidsプラン: https://fleapay-lite-t1.onrender.com/seller-dashboard?s=test-seller-kids
 
 ## 自動化スクリプト（オプション）
 

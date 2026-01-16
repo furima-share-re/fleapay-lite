@@ -138,11 +138,11 @@ Test-Endpoint -Name "マイグレーション状態取得" -Url "$BASE_URL/api/a
 Write-Host ""
 
 # ============================================
-# 4. HTMLファイル（public配下）
+# 4. 画面URL確認
 # ============================================
-Write-Host "=== 4. HTMLファイル（public配下） ===" -ForegroundColor Yellow
+Write-Host "=== 4. 画面URL確認 ===" -ForegroundColor Yellow
 
-Test-Endpoint -Name "出店者ダッシュボード（HTML）" -Url "$BASE_URL/seller-dashboard.html?s=test-seller-pro" -Description "出店者ダッシュボード（404エラー修正済み）"
+Test-Endpoint -Name "出店者ダッシュボード" -Url "$BASE_URL/seller-dashboard?s=test-seller-pro" -Description "出店者ダッシュボード"
 Test-Endpoint -Name "Kidsダッシュボード（HTML）" -Url "$BASE_URL/kids-dashboard.html?s=test-seller-kids" -Description "Kidsダッシュボード（HTML）"
 Test-Endpoint -Name "出店者購入画面（HTML）" -Url "$BASE_URL/seller-purchase.html?s=test-seller-standard" -Description "出店者購入画面（HTML）"
 

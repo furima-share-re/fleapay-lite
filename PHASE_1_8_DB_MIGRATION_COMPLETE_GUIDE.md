@@ -570,7 +570,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 1. **セラーダッシュボードの表示確認**
    ```
-   https://app.fleapay.jp/seller-dashboard.html?s=seller-test01
+   https://app.fleapay.jp/seller-dashboard?s=seller-test01
    ```
    - 取引データが正しく表示されることを確認
 

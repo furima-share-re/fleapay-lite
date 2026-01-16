@@ -13,7 +13,7 @@
 **販売者（出店者）用API**
 
 - エンドポイントパスが`/api/seller/`配下であることから、販売者向け
-- `seller-dashboard.html`で使用されており、販売者のダッシュボード画面で注文詳細モーダルを表示する際に呼び出される
+- `seller-dashboard`で使用されており、販売者のダッシュボード画面で注文詳細モーダルを表示する際に呼び出される
 - 認証方式：
   - **クエリパラメータで`sellerId`を受け取るのみ**
   - **明示的な認証チェック（セッション、トークン等）は実装されていない**
@@ -66,7 +66,7 @@
 ## 実装場所
 
 - **定義場所**: `server.js` 644行目
-- **使用場所**: `public/seller-dashboard.html` 1747行目
+- **使用場所**: `app/seller-dashboard/page.tsx`
 - **類似API**: `payments.js`の`/api/seller/order-detail`（写真・属性なしの簡易版）
 
 ---

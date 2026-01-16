@@ -75,7 +75,7 @@ function buildSellerUrls(sellerId, stripeAccountId) {
   const checkoutUrl = `${base}/checkout.html?s=${encodeURIComponent(sellerId)}${
     stripeAccountId ? `&acct=${encodeURIComponent(stripeAccountId)}` : ""
   }`;
-  const dashboardUrl = `${base}/seller-dashboard.html?s=${encodeURIComponent(sellerId)}`;
+  const dashboardUrl = `${base}/seller-dashboard?s=${encodeURIComponent(sellerId)}`;
   return { sellerUrl, checkoutUrl, dashboardUrl };
 }
 

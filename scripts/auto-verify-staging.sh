@@ -106,7 +106,7 @@ echo ""
 echo "3. 画面確認（HTMLの存在確認）"
 
 PAGES=(
-    "seller-dashboard.html?s=test-seller-pro:セラーダッシュボード"
+    "seller-dashboard?s=test-seller-pro:セラーダッシュボード"
     "seller-purchase-standard.html?s=test-seller-pro:レジ画面"
 )
 
