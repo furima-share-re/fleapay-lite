@@ -396,7 +396,7 @@ function SellerDashboardContent() {
           <div className="brand-mark">市</div>
           <div>
             <div className="brand-title">ecoichiba 出店者ダッシュボード</div>
-            <div className="brand-sub">Payment by Fleapay / 戦略F 料金体系</div>
+            <div className="brand-sub">出店者ダッシュボード / 戦略F 料金体系</div>
           </div>
         </div>
         <div className="seller-chip">{summary?.sellerId || sellerId}</div>

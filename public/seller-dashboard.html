@@ -123,6 +123,105 @@
       color: #fff;
     }
 
+    .mode-on .mode-off-only {
+      display: none !important;
+    }
+
+    .mode-off .mode-on-only {
+      display: none !important;
+    }
+
+    .mode-label {
+      display: inline-flex;
+      gap: 6px;
+      align-items: baseline;
+    }
+
+    .mode-label .label-on {
+      display: none;
+    }
+
+    .mode-on .mode-label .label-on {
+      display: inline;
+    }
+
+    .mode-on .mode-label .label-off {
+      display: none;
+    }
+
+    .mode-off .mode-label .label-on {
+      display: none;
+    }
+
+    .mode-off .mode-label .label-off {
+      display: inline;
+    }
+
+    .mission-card {
+      background: #fff5e9;
+      border: 1px solid rgba(184, 144, 46, 0.35);
+    }
+
+    .mission-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--edo-indigo);
+    }
+
+    .mission-progress {
+      margin-top: 6px;
+      font-size: .85rem;
+      color: var(--sub);
+    }
+
+    .mission-list {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .mission-item {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      font-size: .85rem;
+    }
+
+    .mission-check {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      border: 2px solid var(--border);
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .8rem;
+      color: var(--ok);
+    }
+
+    .reward-card {
+      background: #fffdf3;
+      border: 1px solid rgba(184, 144, 46, 0.35);
+    }
+
+    .reward-bar {
+      margin-top: 8px;
+      height: 10px;
+      border-radius: 999px;
+      background: #f5efe6;
+      overflow: hidden;
+    }
+
+    .reward-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #e63946, #b8902e);
+      transition: width .3s ease;
+    }
+
     .card {
       background: var(--panel);
       border-radius: 16px;
@@ -828,21 +927,55 @@
         <div class="brand-logo" aria-hidden="true"></div>
         <div>
           <p class="brand-title">ecoichiba</p>
-          <p class="brand-sub">出店者ダッシュボード / Payment by Fleapay</p>
+          <p class="brand-sub">出店者ダッシュボード</p>
         </div>
       </div>
       <div class="user-chip" id="shop-name">出店者</div>
     </header>
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:4px 4px 12px;">
       <div class="mode-toggle" aria-label="表示モード">
-        <span class="mode-pill active">やさしい</span>
-        <span class="mode-pill">ふつう</span>
+        <span class="mode-pill active" data-mode="on">やさしい</span>
+        <span class="mode-pill" data-mode="off">ふつう</span>
       </div>
       <div style="font-size:.72rem; color:var(--muted);">表示モードは出店者に合わせて切替</div>
     </div>
 
     <!-- ホーム -->
     <section id="sec-home" class="section active">
+      <div class="card mission-card mode-on-only">
+        <div class="card-header">
+          <div class="mission-title">きょうの ミッション</div>
+          <div class="pill">やってみよう</div>
+        </div>
+        <div class="mission-progress" id="mission-progress">0 / 3 できたら 100てん！</div>
+        <ul class="mission-list">
+          <li class="mission-item">
+            <span class="mission-check">✓</span>
+            <span>おきゃくさんに「いらっしゃいませ！」と いえた</span>
+          </li>
+          <li class="mission-item">
+            <span class="mission-check">✓</span>
+            <span>QR / カード で 1回 うってみた</span>
+          </li>
+          <li class="mission-item">
+            <span class="mission-check">✓</span>
+            <span>かってくれた ひとの じょうほうを いれてみた</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="card reward-card mode-on-only">
+        <div class="card-header">
+          <div class="card-title">ごほうび</div>
+          <div class="pill">きょうの きろく</div>
+        </div>
+        <div class="kpi-value" id="reward-message">きょうの うりあげが たまってきたよ</div>
+        <div class="reward-bar">
+          <div class="reward-bar-fill" id="reward-bar-fill"></div>
+        </div>
+        <div class="hint" id="reward-hint">まずは 1けん うってみよう</div>
+      </div>
+
       <div class="card">
         <div class="card-header">
           <div>
@@ -854,16 +987,25 @@
 
         <div class="kpi-row">
           <div class="kpi">
-            <div class="kpi-label">売上合計(返金・チャージバック反映後)</div>
+            <div class="kpi-label mode-label">
+              <span class="label-on">ぜんぶの うりあげ</span>
+              <span class="label-off">売上合計(返金・チャージバック反映後)</span>
+            </div>
             <div class="kpi-value" id="kpi-total">¥—</div>
-            <div class="kpi-note">純売上</div>
+            <div class="kpi-note mode-label">
+              <span class="label-on">ぜんぶの きろく</span>
+              <span class="label-off">純売上</span>
+            </div>
           </div>
         </div>
 
         <!-- 🟦 🆕 仕入額 -->
         <div class="kpi-row">
           <div class="kpi">
-            <div class="kpi-label">きょうの 仕入額</div>
+            <div class="kpi-label mode-label">
+              <span class="label-on">きょうの しゅうにゅうの ざいりょう</span>
+              <span class="label-off">きょうの 仕入額</span>
+            </div>
             <div class="kpi-value" id="kpi-cost">¥—</div>
           </div>
         </div>
@@ -871,19 +1013,31 @@
         <!-- 🟩 🆕 利益 -->
         <div class="kpi-row">
           <div class="kpi">
-            <div class="kpi-label">きょうの 利益</div>
+            <div class="kpi-label mode-label">
+              <span class="label-on">きょうの もうけ</span>
+              <span class="label-off">きょうの 利益</span>
+            </div>
             <div class="kpi-value" id="kpi-profit">¥—</div>
-            <div class="kpi-note">純売上 − 仕入額</div>
+            <div class="kpi-note mode-label">
+              <span class="label-on">うりあげ － しゅうにゅう</span>
+              <span class="label-off">純売上 − 仕入額</span>
+            </div>
           </div>
         </div>
 
         <div class="kpi-row">
           <div class="kpi">
-            <div class="kpi-label">決済回数</div>
+            <div class="kpi-label mode-label">
+              <span class="label-on">きょうの けっさい すう</span>
+              <span class="label-off">決済回数</span>
+            </div>
             <div class="kpi-value" id="kpi-count">—件</div>
           </div>
           <div class="kpi">
-            <div class="kpi-label">平均客単価</div>
+            <div class="kpi-label mode-label">
+              <span class="label-on">おきゃくさん ひとり あたり</span>
+              <span class="label-off">平均客単価</span>
+            </div>
             <div class="kpi-value" id="kpi-avg">¥—</div>
           </div>
         </div>
@@ -894,7 +1048,7 @@
       </div>
 
       <!-- 📊 売上・利益グラフカード -->
-      <div class="chart-card">
+      <div class="chart-card mode-off-only">
         <div class="chart-header">
           <div class="chart-title">売上・利益の推移</div>
           <div class="chart-period-toggle">
@@ -932,7 +1086,7 @@
       </div>
 
       <!-- 🆕 ベンチマーク比較グラフカード -->
-      <div class="chart-card">
+      <div class="chart-card mode-off-only">
         <div class="chart-header">
           <div class="chart-title">📊 実績 vs ベンチマーク</div>
           <div class="chart-period-toggle">
@@ -970,7 +1124,7 @@
       </div>
 
       <!-- 🆕 直近1ヶ月の適切な企画 -->
-      <div class="plans-card">
+      <div class="plans-card mode-off-only">
         <h2 class="plans-title">🎯 直近1ヶ月の適切な企画</h2>
         <div class="plan-grid" id="upcoming-plans-grid">
           <!-- JavaScriptで動的に生成 -->
@@ -978,7 +1132,7 @@
       </div>
 
       <!-- 🟦 (A) データ精度スコア カード -->
-      <div class="card">
+      <div class="card mode-off-only">
         <div class="card-header">
           <div>
             <div class="card-title">データ精度スコア</div>
@@ -992,7 +1146,7 @@
       </div>
 
       <!-- 🆕 Tier（ランク）情報 カード -->
-      <div class="card" id="tier-card" style="display: none;">
+      <div class="card mode-off-only" id="tier-card" style="display: none;">
         <div class="card-header">
           <div>
             <div class="card-title">現在のランク</div>
@@ -1268,6 +1422,9 @@
       const $ = s => document.querySelector(s);
       const params = new URLSearchParams(location.search);
       const sellerId = params.get("s") || "";
+      const modeToggle = document.querySelector(".mode-toggle");
+      const modePills = document.querySelectorAll(".mode-pill[data-mode]");
+      const bodyEl = document.body;
 
       const shopNameEl = $("#shop-name");
       const shopDisplayEl = $("#shop-display");
@@ -1282,6 +1439,33 @@
       const purchaseUrlEl = $("#purchase-url");
       const purchaseQrEl = $("#purchase-qr");
       const copyBtnEl = $("#copy-purchase-url");
+      const missionProgressEl = $("#mission-progress");
+      const rewardMessageEl = $("#reward-message");
+      const rewardHintEl = $("#reward-hint");
+      const rewardBarFillEl = $("#reward-bar-fill");
+
+      function setMode(nextMode) {
+        if (!bodyEl) return;
+        const isOn = nextMode === "on";
+        bodyEl.classList.toggle("mode-on", isOn);
+        bodyEl.classList.toggle("mode-off", !isOn);
+        modePills.forEach(pill => {
+          pill.classList.toggle("active", pill.getAttribute("data-mode") === nextMode);
+        });
+      }
+
+      if (modeToggle) {
+        modeToggle.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) return;
+          const mode = target.getAttribute("data-mode");
+          if (mode === "on" || mode === "off") {
+            setMode(mode);
+          }
+        });
+      }
+
+      setMode("on");
 
       // 🟦 (A) データ精度スコア用の要素
       const dataScoreEl = $("#data-score");
@@ -1883,6 +2067,26 @@
           if (kpiTotalEl) kpiTotalEl.textContent = formatYen(todayNet);
           if (kpiCountEl) kpiCountEl.textContent = `${countToday}件`;
           if (kpiAvgEl) kpiAvgEl.textContent = formatYen(avgToday || 0);
+
+          if (missionProgressEl) {
+            const progress = Math.min(3, countToday);
+            missionProgressEl.textContent = `${progress} / 3 できたら 100てん！`;
+          }
+
+          if (rewardMessageEl) {
+            rewardMessageEl.textContent = countToday > 0
+              ? "すごい！ きょうも うれたよ"
+              : "きょうの うりあげが たまってきたよ";
+          }
+          if (rewardHintEl) {
+            rewardHintEl.textContent = countToday > 0
+              ? "もっと うってみよう"
+              : "まずは 1けん うってみよう";
+          }
+          if (rewardBarFillEl) {
+            const percent = Math.min(100, Math.round((countToday / 5) * 100));
+            rewardBarFillEl.style.width = `${percent}%`;
+          }
 
           // 🟦 仕入額・利益の表示
           const costToday = data.salesToday?.cost ?? 0;
