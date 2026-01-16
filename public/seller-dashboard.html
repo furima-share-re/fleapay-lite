@@ -44,6 +44,26 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    body.tier-1 {
+      --bg: linear-gradient(180deg, #f7efe2 0%, #fbf7f0 55%, #f6f1e9 100%);
+    }
+
+    body.tier-2 {
+      --bg: linear-gradient(180deg, #f4e7cf 0%, #f7efe2 50%, #efe5d6 100%);
+    }
+
+    body.tier-3 {
+      --bg: linear-gradient(180deg, #efe1cb 0%, #f3eadb 45%, #e7dccb 100%);
+    }
+
+    body.tier-4 {
+      --bg: linear-gradient(180deg, #1b365d 0%, #243f68 35%, #b8902e 100%);
+    }
+
+    body.tier-5 {
+      --bg: linear-gradient(180deg, #0e2a4d 0%, #1b365d 40%, #b8902e 100%);
+    }
+
     .wrap {
       max-width: 720px;
       margin: 0 auto;
@@ -1451,6 +1471,15 @@
 
       const dataScoreEl = $("#data-score");
 
+      function applyTierTheme(tierNumber) {
+        if (!bodyEl) return;
+        bodyEl.classList.remove("tier-1", "tier-2", "tier-3", "tier-4", "tier-5");
+        const normalized = Number(tierNumber);
+        if (Number.isFinite(normalized) && normalized >= 1 && normalized <= 5) {
+          bodyEl.classList.add(`tier-${normalized}`);
+        }
+      }
+
       const txFilterBtn = document.getElementById("tx-filter-need-input");
       let txFilterNeedInputOnly = false;
       let latestTxList = [];
@@ -1990,6 +2019,7 @@
           if (!res.ok || !data.success) {
             const tierCard = document.getElementById("tier-card");
             if (tierCard) tierCard.style.display = "none";
+            applyTierTheme(null);
             return;
           }
 
@@ -2025,9 +2055,12 @@
           if (tierMessageEl && tierData.tier.feeRateMessage) {
             tierMessageEl.textContent = tierData.tier.feeRateMessage;
           }
+
+          applyTierTheme(tierData.tier.number);
         } catch (e) {
           const tierCard = document.getElementById("tier-card");
           if (tierCard) tierCard.style.display = "none";
+          applyTierTheme(null);
         }
       }
 
