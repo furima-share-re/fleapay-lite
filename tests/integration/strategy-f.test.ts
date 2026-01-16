@@ -30,13 +30,25 @@ const mockPrisma = {
     count: vi.fn(),
   },
   $queryRaw: vi.fn(),
+  $executeRaw: vi.fn(),
 } as unknown as PrismaClient;
+
+const monthlyStatRow = [
+  {
+    id: "stat-1",
+    year_month: "2025-07",
+    transaction_count: 0,
+    start_tier: 1,
+    current_tier: 1,
+  },
+];
 
 describe("戦略F: コミュニティ連動型ダイナミックプライシング", () => {
   beforeEach(() => {
     // モックをリセット（実装もクリア）
     vi.mocked(mockPrisma.stripePayment.count).mockReset();
     vi.mocked(mockPrisma.$queryRaw).mockReset();
+    vi.mocked(mockPrisma.$executeRaw).mockReset();
   });
 
   describe("determineTier - Tier判定ロジック", () => {
@@ -184,16 +196,18 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
   });
 
   describe("getFeeRateByTier - Tier制に基づく手数料取得", () => {
-    it("Tier 1の場合、4.5%を返す", async () => {
+    it("Tier 1の場合、4.8%を返す", async () => {
       // モックをリセットしてから設定
       vi.mocked(mockPrisma.stripePayment.count).mockReset();
       vi.mocked(mockPrisma.$queryRaw).mockReset();
       // 月間QR決済回数: 2回（Tier 1）
       vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(2);
-      // Tier 1の手数料率取得
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
-        { fee_rate: 0.045, tier: 1 },
-      ]);
+      // 月次スタッツ取得 → Tier 1の手数料率取得
+      vi.mocked(mockPrisma.$queryRaw)
+        .mockResolvedValueOnce(monthlyStatRow)
+        .mockResolvedValueOnce([
+          { fee_rate: 0.048, tier: 1 },
+        ]);
 
       const result = await getFeeRateByTier(
         mockPrisma,
@@ -201,16 +215,18 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
         "standard"
       );
 
-      expect(result).toBe(0.045);
+      expect(result).toBe(0.048);
     });
 
-    it("Tier 2の場合、4.2%を返す", async () => {
+    it("Tier 2の場合、4.4%を返す", async () => {
       vi.mocked(mockPrisma.stripePayment.count).mockReset();
       vi.mocked(mockPrisma.$queryRaw).mockReset();
       vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(7);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
-        { fee_rate: 0.042, tier: 2 },
-      ]);
+      vi.mocked(mockPrisma.$queryRaw)
+        .mockResolvedValueOnce(monthlyStatRow)
+        .mockResolvedValueOnce([
+          { fee_rate: 0.044, tier: 2 },
+        ]);
 
       const result = await getFeeRateByTier(
         mockPrisma,
@@ -218,16 +234,18 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
         "standard"
       );
 
-      expect(result).toBe(0.042);
+      expect(result).toBe(0.044);
     });
 
-    it("Tier 3の場合、4.0%を返す", async () => {
+    it("Tier 3の場合、4.1%を返す", async () => {
       vi.mocked(mockPrisma.stripePayment.count).mockReset();
       vi.mocked(mockPrisma.$queryRaw).mockReset();
       vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(15);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
-        { fee_rate: 0.04, tier: 3 },
-      ]);
+      vi.mocked(mockPrisma.$queryRaw)
+        .mockResolvedValueOnce(monthlyStatRow)
+        .mockResolvedValueOnce([
+          { fee_rate: 0.041, tier: 3 },
+        ]);
 
       const result = await getFeeRateByTier(
         mockPrisma,
@@ -235,16 +253,18 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
         "standard"
       );
 
-      expect(result).toBe(0.04);
+      expect(result).toBe(0.041);
     });
 
     it("Tier 4の場合、3.8%を返す", async () => {
       vi.mocked(mockPrisma.stripePayment.count).mockReset();
       vi.mocked(mockPrisma.$queryRaw).mockReset();
       vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(30);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
-        { fee_rate: 0.038, tier: 4 },
-      ]);
+      vi.mocked(mockPrisma.$queryRaw)
+        .mockResolvedValueOnce(monthlyStatRow)
+        .mockResolvedValueOnce([
+          { fee_rate: 0.038, tier: 4 },
+        ]);
 
       const result = await getFeeRateByTier(
         mockPrisma,
@@ -259,9 +279,8 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
       vi.mocked(mockPrisma.stripePayment.count).mockReset();
       vi.mocked(mockPrisma.$queryRaw).mockReset();
       vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(60);
-      // Tier 5の手数料率取得
       vi.mocked(mockPrisma.$queryRaw)
-        .mockResolvedValueOnce([{ fee_rate: 0.033, tier: 5 }])
+        .mockResolvedValueOnce(monthlyStatRow)
         // コミュニティ目標取得（達成）
         .mockResolvedValueOnce([
           {
@@ -287,7 +306,7 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
       vi.mocked(mockPrisma.$queryRaw).mockReset();
       vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(60);
       vi.mocked(mockPrisma.$queryRaw)
-        .mockResolvedValueOnce([{ fee_rate: 0.033, tier: 5 }])
+        .mockResolvedValueOnce(monthlyStatRow)
         // コミュニティ目標取得（未達成）
         .mockResolvedValueOnce([
           {
@@ -312,7 +331,9 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
       vi.mocked(mockPrisma.stripePayment.count).mockReset();
       vi.mocked(mockPrisma.$queryRaw).mockReset();
       vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(2);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([]); // Tier制の手数料率なし
+      vi.mocked(mockPrisma.$queryRaw)
+        .mockResolvedValueOnce(monthlyStatRow)
+        .mockResolvedValueOnce([]); // Tier制の手数料率なし
 
       const result = await getFeeRateByTier(
         mockPrisma,
@@ -320,7 +341,7 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
         "standard"
       );
 
-      expect(result).toBe(0.045); // Tier 1のデフォルト値
+      expect(result).toBe(0.048); // Tier 1のデフォルト値
     });
   });
 
@@ -329,9 +350,11 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
       vi.mocked(mockPrisma.stripePayment.count).mockReset();
       vi.mocked(mockPrisma.$queryRaw).mockReset();
       vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(15);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
-        { fee_rate: 0.04, tier: 3 },
-      ]);
+      vi.mocked(mockPrisma.$queryRaw)
+        .mockResolvedValueOnce(monthlyStatRow)
+        .mockResolvedValueOnce([
+          { fee_rate: 0.041, tier: 3 },
+        ]);
 
       const result = await getFeeRateWithStrategyF(
         mockPrisma,
@@ -340,7 +363,7 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
         true
       );
 
-      expect(result).toBe(0.04);
+      expect(result).toBe(0.041);
     });
 
     it("Tier制が無効な場合、従来のplan_typeベースを適用", async () => {
@@ -409,9 +432,11 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
       vi.mocked(mockPrisma.stripePayment.count).mockReset();
       vi.mocked(mockPrisma.$queryRaw).mockReset();
       vi.mocked(mockPrisma.stripePayment.count).mockResolvedValue(15);
-      vi.mocked(mockPrisma.$queryRaw).mockResolvedValueOnce([
-        { fee_rate: 0.04, tier: 3 },
-      ]);
+      vi.mocked(mockPrisma.$queryRaw)
+        .mockResolvedValueOnce(monthlyStatRow)
+        .mockResolvedValueOnce([
+          { fee_rate: 0.041, tier: 3 },
+        ]);
 
       const tierResult = await getFeeRateWithStrategyF(
         mockPrisma,
@@ -420,7 +445,7 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
         true
       );
 
-      expect(tierResult).toBe(0.04);
+      expect(tierResult).toBe(0.041);
 
       // plan_typeベースの手数料率（別のプラン）
       vi.mocked(mockPrisma.$queryRaw).mockReset();
@@ -496,16 +521,16 @@ describe("戦略F: コミュニティ連動型ダイナミックプライシン�
       expect(TIER_DEFINITIONS[5]).toBeDefined();
     });
 
-    it("Tier 1の手数料率が4.5%", () => {
-      expect(TIER_DEFINITIONS[1].defaultRate).toBe(0.045);
+    it("Tier 1の手数料率が4.8%", () => {
+      expect(TIER_DEFINITIONS[1].defaultRate).toBe(0.048);
     });
 
-    it("Tier 2の手数料率が4.2%", () => {
-      expect(TIER_DEFINITIONS[2].defaultRate).toBe(0.042);
+    it("Tier 2の手数料率が4.4%", () => {
+      expect(TIER_DEFINITIONS[2].defaultRate).toBe(0.044);
     });
 
-    it("Tier 3の手数料率が4.0%", () => {
-      expect(TIER_DEFINITIONS[3].defaultRate).toBe(0.04);
+    it("Tier 3の手数料率が4.1%", () => {
+      expect(TIER_DEFINITIONS[3].defaultRate).toBe(0.041);
     });
 
     it("Tier 4の手数料率が3.8%", () => {

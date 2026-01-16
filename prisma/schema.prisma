@@ -271,6 +271,21 @@ model CommunityTransactionVolume {
   @@map("community_transaction_volume")
 }
 
+model SellerMonthlyStat {
+  id               String   @id @default(uuid()) @db.Uuid
+  sellerId         String   @map("seller_id")
+  yearMonth        String   @map("year_month")
+  transactionCount Int      @default(0) @map("transaction_count")
+  startTier        Int      @default(1) @map("start_tier")
+  currentTier      Int      @default(1) @map("current_tier")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([sellerId, yearMonth], name: "idx_seller_monthly_stats_unique")
+  @@index([sellerId], name: "idx_seller_monthly_stats_seller")
+  @@map("seller_monthly_stats")
+}
+
 model BenchmarkData {
   id              String   @id @default(uuid()) @db.Uuid
   benchmarkType   String   @map("benchmark_type")
