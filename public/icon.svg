@@ -1,6 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" fill="#1B365D"/>
-  <circle cx="50" cy="50" r="35" fill="#FFD700" opacity="0.9"/>
-  <text x="50" y="60" font-family="Arial, sans-serif" font-size="40" font-weight="bold" text-anchor="middle" fill="#1B365D">福</text>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#24255E"/>
+      <stop offset="100%" stop-color="#12153A"/>
+    </linearGradient>
+    <linearGradient id="torii" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#D33A2F"/>
+      <stop offset="100%" stop-color="#A8241E"/>
+    </linearGradient>
+    <linearGradient id="fig" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F5C861"/>
+      <stop offset="100%" stop-color="#E0A83B"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" fill="url(#bg)"/>
+  <path fill="url(#torii)" d="M10 28 C30 20 70 20 90 28 L86 36 C68 32 32 32 14 36 Z"/>
+  <rect x="18" y="38" width="64" height="7" fill="url(#torii)"/>
+  <rect x="24" y="45" width="52" height="6" fill="#B12A22"/>
+  <rect x="26" y="45" width="10" height="40" fill="url(#torii)"/>
+  <rect x="64" y="45" width="10" height="40" fill="url(#torii)"/>
+  <rect x="30" y="57" width="40" height="7" fill="#B12A22"/>
+  <path fill="url(#fig)" d="M16 62 C16 58 20 56 24 56 C28 56 32 58 32 62 V88 H26 V76 H22 V88 H16 Z"/>
+  <path fill="url(#fig)" d="M32 62 C32 58 36 56 40 56 C44 56 48 58 48 62 V88 H42 V76 H38 V88 H32 Z"/>
+  <path fill="url(#fig)" d="M56 62 C56 58 60 56 64 56 C68 56 72 58 72 62 V88 H66 V76 H62 V88 H56 Z"/>
+  <path fill="url(#fig)" d="M72 62 C72 58 76 56 80 56 C84 56 88 58 88 62 V88 H82 V76 H78 V88 H72 Z"/>
 </svg>
 
