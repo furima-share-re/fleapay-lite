@@ -21,7 +21,7 @@
 
 | URL                                               | 説明                            | パラメータ      | 備考                              |
 | ------------------------------------------------- | ------------------------------- | --------------- | --------------------------------- |
-| `https://edo-ichiba.com/seller-dashboard.html`    | 出店者ダッシュボード（HTML 版） | `?s={sellerId}` | 売上サマリー、取引履歴、QR コード |
+| `https://edo-ichiba.com/seller-dashboard`         | 出店者ダッシュボード           | `?s={sellerId}` | 売上サマリー、取引履歴、QR コード |
 | `https://edo-ichiba.com/seller-purchase-standard` | 出店者購入画面（標準版）        | `?s={sellerId}` | カメラ、AI 解析、QR コード決済    |
 | `https://edo-ichiba.com/seller-register`          | 出店者登録ページ                |                 | React Hook Form + Zod             |
 | `https://edo-ichiba.com/kids-dashboard`           | Kids ダッシュボード             | `?s={sellerId}` | Kids プラン専用                   |
@@ -184,7 +184,7 @@
 
 ```
 # 出店者ダッシュボード
-https://edo-ichiba.com/seller-dashboard.html?s=test-seller-pro
+https://edo-ichiba.com/seller-dashboard?s=test-seller-pro
 
 # 出店者購入画面
 https://edo-ichiba.com/seller-purchase-standard?s=test-seller-pro

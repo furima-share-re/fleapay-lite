@@ -51,7 +51,7 @@ try {
 Write-Host ""
 Write-Host "2. ダッシュボード" -ForegroundColor Yellow
 try {
-    $response = Invoke-WebRequest -Uri "$BaseUrl/seller-dashboard.html?s=test-seller-standard" -UseBasicParsing -TimeoutSec 10
+    $response = Invoke-WebRequest -Uri "$BaseUrl/seller-dashboard?s=test-seller-standard" -UseBasicParsing -TimeoutSec 10
     if ($response.StatusCode -eq 200) {
         Write-Host "   ✅ OK: ダッシュボードが表示される (Status: $($response.StatusCode))" -ForegroundColor Green
         $testResults += @{ Test = "Standard Dashboard"; Status = "PASS"; Details = "Status: $($response.StatusCode)" }
@@ -122,7 +122,7 @@ try {
 Write-Host ""
 Write-Host "2. ダッシュボード" -ForegroundColor Yellow
 try {
-    $response = Invoke-WebRequest -Uri "$BaseUrl/seller-dashboard.html?s=test-seller-pro" -UseBasicParsing -TimeoutSec 10
+    $response = Invoke-WebRequest -Uri "$BaseUrl/seller-dashboard?s=test-seller-pro" -UseBasicParsing -TimeoutSec 10
     if ($response.StatusCode -eq 200) {
         Write-Host "   ✅ OK: ダッシュボードが表示される (Status: $($response.StatusCode))" -ForegroundColor Green
         $testResults += @{ Test = "Pro Dashboard"; Status = "PASS"; Details = "Status: $($response.StatusCode)" }
@@ -197,7 +197,7 @@ try {
 Write-Host ""
 Write-Host "2. ダッシュボード" -ForegroundColor Yellow
 try {
-    $response = Invoke-WebRequest -Uri "$BaseUrl/seller-dashboard.html?s=test-seller-kids" -UseBasicParsing -TimeoutSec 10
+    $response = Invoke-WebRequest -Uri "$BaseUrl/seller-dashboard?s=test-seller-kids" -UseBasicParsing -TimeoutSec 10
     if ($response.StatusCode -eq 200) {
         Write-Host "   ✅ OK: ダッシュボードが表示される (Status: $($response.StatusCode))" -ForegroundColor Green
         $testResults += @{ Test = "Kids Dashboard"; Status = "PASS"; Details = "Status: $($response.StatusCode)" }

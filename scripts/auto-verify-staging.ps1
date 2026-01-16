@@ -190,7 +190,7 @@ Write-Host ""
 Write-Host "3. 画面確認（HTMLの存在確認）" -ForegroundColor Yellow
 
 $pages = @(
-    @{ Name = "セラーダッシュボード"; Url = "$BaseUrl/seller-dashboard.html?s=test-seller-pro" },
+    @{ Name = "セラーダッシュボード"; Url = "$BaseUrl/seller-dashboard?s=test-seller-pro" },
     @{ Name = "レジ画面"; Url = "$BaseUrl/seller-purchase-standard.html?s=test-seller-pro" }
 )
 

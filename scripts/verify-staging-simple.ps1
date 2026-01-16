@@ -49,7 +49,7 @@ Write-Host ""
 # 3. Pages
 Write-Host "3. Pages" -ForegroundColor Yellow
 $pages = @(
-    @{url="$BaseUrl/seller-dashboard.html?s=test-seller-pro"; name="Dashboard"},
+    @{url="$BaseUrl/seller-dashboard?s=test-seller-pro"; name="Dashboard"},
     @{url="$BaseUrl/seller-purchase-standard.html?s=test-seller-pro"; name="Purchase"}
 )
 

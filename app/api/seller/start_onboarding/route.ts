@@ -138,7 +138,7 @@ export async function POST(request: Request) {
     }
 
     // 6) 本人確認ページ（Stripe Onboarding）を作成
-    const returnUrl = `${BASE_URL}/seller-dashboard.html?s=${encodeURIComponent(normalizedId)}`;
+    const returnUrl = `${BASE_URL}/seller-dashboard?s=${encodeURIComponent(normalizedId)}`;
     const refreshUrl = `${BASE_URL}/seller-register.html?retry=1`;
 
     const link = await stripe.accountLinks.create({
