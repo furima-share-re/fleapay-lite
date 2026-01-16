@@ -4,24 +4,32 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Fleapay｜出店者用ダッシュボード</title>
+  <title>ecoichiba｜出店者ダッシュボード</title>
 
   <!-- Chart.js ライブラリ -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
 
   <style>
     :root {
-      --bg: #f7f7fb;
-      --panel: #ffffff;
-      --border: #e3e3ef;
-      --text: #222222;
-      --sub: #555555;
-      --muted: #777777;
-      --brand: #5a6bff;
-      --ok: #1a9b63;
-      --warn: #f59e0b;
-      --danger: #e11d48;
-      --badge: #eef0ff;
+      --edo-indigo: #1b365d;
+      --edo-red: #e63946;
+      --kinari: #fbf7f0;
+      --kintsugi: #b8902e;
+      --bg: var(--kinari);
+      --panel: #fffdf8;
+      --border: #e4dccd;
+      --text: #2b2b2b;
+      --sub: #5f5b55;
+      --muted: #7a746b;
+      --brand: var(--edo-indigo);
+      --accent: var(--edo-red);
+      --ok: #1a8c5c;
+      --warn: #c88a20;
+      --danger: #c5313a;
+      --badge: #f4efe6;
     }
 
     * {
@@ -30,7 +38,7 @@
 
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+      font-family: "Noto Sans JP", system-ui, -apple-system, "Segoe UI", "Hiragino Sans", sans-serif;
       background: var(--bg);
       color: var(--text);
       -webkit-font-smoothing: antialiased;
@@ -48,6 +56,7 @@
       align-items: center;
       gap: 12px;
       padding: 8px 4px 12px;
+      border-bottom: 1px solid rgba(184, 144, 46, 0.18);
     }
 
     .brand {
@@ -60,7 +69,8 @@
       width: 28px;
       height: 28px;
       border-radius: 999px;
-      background: radial-gradient(circle at 30% 30%, #fff 0, #fff 35%, #5a6bff 100%);
+      background: radial-gradient(circle at 30% 30%, #fff 0, #fff 38%, var(--edo-indigo) 100%);
+      border: 1px solid rgba(184, 144, 46, 0.4);
     }
 
     .brand-title {
@@ -68,11 +78,12 @@
       font-size: 1.1rem;
       font-weight: 700;
       letter-spacing: .03em;
+      color: var(--edo-indigo);
     }
 
     .brand-sub {
       font-size: .75rem;
-      color: var(--sub);
+      color: var(--kintsugi);
     }
 
     .user-chip {
@@ -80,12 +91,36 @@
       padding: 6px 10px;
       border-radius: 999px;
       border: 1px solid var(--border);
-      background: #fff;
+      background: #fffaf1;
       color: var(--sub);
       max-width: 50%;
       text-overflow: ellipsis;
       white-space: nowrap;
       overflow: hidden;
+    }
+
+    .mode-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px;
+      border-radius: 999px;
+      border: 1px solid rgba(27, 54, 93, 0.15);
+      background: #fff;
+      font-size: .72rem;
+      color: var(--muted);
+    }
+
+    .mode-pill {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .mode-pill.active {
+      background: var(--edo-indigo);
+      color: #fff;
     }
 
     .card {
@@ -94,7 +129,7 @@
       border: 1px solid var(--border);
       padding: 14px 14px 16px;
       margin-bottom: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, .04);
+      box-shadow: 0 2px 8px rgba(27, 54, 93, .06);
     }
 
     .card-header {
@@ -107,6 +142,7 @@
     .card-title {
       font-size: .98rem;
       font-weight: 700;
+      color: var(--edo-indigo);
     }
 
     .card-sub {
@@ -119,16 +155,16 @@
       padding: 4px 8px;
       border-radius: 999px;
       border: 1px solid var(--border);
-      background: #f9fafb;
+      background: #fffaf1;
       color: var(--sub);
       cursor: pointer;
     }
 
     /* 入力まちフィルタ ON 時の見た目 */
     .pill-toggle-active {
-      background: var(--brand);
+      background: var(--accent);
       color: #fff;
-      border-color: var(--brand);
+      border-color: var(--accent);
     }
 
     .kpi-row {
@@ -141,8 +177,8 @@
       flex: 1;
       padding: 10px 10px;
       border-radius: 12px;
-      background: #f9f9ff;
-      border: 1px solid #e4e6ff;
+      background: #fff8e8;
+      border: 1px solid rgba(184, 144, 46, 0.2);
     }
 
     .kpi-label {
@@ -255,13 +291,13 @@
       border-radius: 999px;
       background: var(--badge);
       color: var(--sub);
-      border: 1px solid rgba(90, 107, 255, 0.15);
+      border: 1px solid rgba(27, 54, 93, 0.15);
     }
 
     .badge-ok {
-      background: #e6f7f0;
+      background: #e9f4ef;
       color: var(--ok);
-      border-color: #b6e3c9;
+      border-color: #b7dfc7;
     }
 
     .badge-refund {
@@ -271,9 +307,9 @@
     }
 
     .badge-cb-pending {
-      background: #fffbeb;
-      color: #92400e;
-      border-color: #fbbf24;
+      background: #fff1d6;
+      color: #8b5b12;
+      border-color: #e2b65d;
     }
 
     .badge-cb-lost {
@@ -284,22 +320,22 @@
 
     /* 入力まちバッジ */
     .badge-need-input {
-      background: #fef3c7;
-      color: #92400e;
-      border-color: #fbbf24;
+      background: #fdeec8;
+      color: #8b5b12;
+      border-color: #e2b65d;
     }
 
     /* 決済ステータスバッジ */
     .badge-payment-completed {
-      background: #e6f7f0;
-      color: #0b6940;
-      border-color: #b6e3c9;
+      background: #e9f4ef;
+      color: #0d6741;
+      border-color: #b7dfc7;
     }
 
     .badge-payment-pending {
-      background: #fff7ed;
-      color: #b86a00;
-      border-color: #fed7aa;
+      background: #fff1d6;
+      color: #a16100;
+      border-color: #e2b65d;
     }
 
     .tx-sub-warn {
@@ -344,9 +380,9 @@
     }
 
     .notice-important {
-      border-left: 4px solid var(--warn);
+      border-left: 4px solid var(--kintsugi);
       padding-left: 8px;
-      background: linear-gradient(to right, rgba(245, 158, 11, 0.05), transparent);
+      background: linear-gradient(to right, rgba(184, 144, 46, 0.08), transparent);
     }
 
     .field {
@@ -372,8 +408,8 @@
       margin-top: 6px;
       padding: 8px 10px;
       border-radius: 10px;
-      border: 1px dashed var(--border);
-      background: #f9fafb;
+      border: 1px dashed rgba(27, 54, 93, 0.2);
+      background: #fffaf1;
       text-align: center;
     }
 
@@ -406,8 +442,8 @@
       left: 0;
       right: 0;
       bottom: 0;
-      border-top: 1px solid #ddddee;
-      background: #ffffff;
+      border-top: 1px solid rgba(27, 54, 93, 0.15);
+      background: #fffaf1;
       display: flex;
       justify-content: space-around;
       padding: 6px 0 4px;
@@ -431,7 +467,7 @@
     }
 
     .nav-btn.active {
-      color: var(--brand);
+      color: var(--edo-indigo);
       font-weight: 700;
     }
 
@@ -528,7 +564,7 @@
       padding: 8px 14px;
       border-radius: 999px;
       border: none;
-      background: var(--brand);
+      background: var(--edo-red);
       color: #fff;
       font-size: .85rem;
       cursor: pointer;
@@ -590,7 +626,7 @@
     .chart-period-toggle {
       display: flex;
       gap: 4px;
-      background: #f3f4f6;
+      background: #f7efe2;
       border-radius: 999px;
       padding: 2px;
     }
@@ -607,7 +643,7 @@
     }
 
     .period-btn.active {
-      background: var(--brand);
+      background: var(--edo-indigo);
       color: #ffffff;
       font-weight: 600;
     }
@@ -658,7 +694,7 @@
 
     /* 🆕 直近1ヶ月企画カード */
     .plans-card {
-      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      background: linear-gradient(135deg, #1b365d 0%, #b8902e 100%);
       border-radius: 16px;
       padding: 20px;
       margin-bottom: 12px;
@@ -684,19 +720,20 @@
       background: white;
       padding: 16px;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 8px rgba(27, 54, 93, 0.08);
+      border: 1px solid rgba(184, 144, 46, 0.2);
     }
 
     .plan-week {
       font-size: 0.8rem;
-      color: var(--brand);
+      color: var(--edo-indigo);
       font-weight: 600;
       margin-bottom: 6px;
     }
 
     .plan-title {
       font-size: 1.1rem;
-      color: #fa709a;
+      color: var(--edo-indigo);
       margin-bottom: 8px;
       font-weight: 700;
     }
@@ -728,12 +765,12 @@
     .metric-value {
       font-size: 1.1rem;
       font-weight: 700;
-      color: var(--brand);
+      color: var(--edo-indigo);
     }
 
     .improvement-badge {
       display: inline-block;
-      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      background: linear-gradient(135deg, #b8902e 0%, #e9d69a 100%);
       color: white;
       padding: 2px 8px;
       border-radius: 12px;
@@ -790,12 +827,19 @@
       <div class="brand">
         <div class="brand-logo" aria-hidden="true"></div>
         <div>
-          <p class="brand-title">Fleapay</p>
-          <p class="brand-sub">出店者用 ダッシュボード</p>
+          <p class="brand-title">ecoichiba</p>
+          <p class="brand-sub">出店者ダッシュボード / Payment by Fleapay</p>
         </div>
       </div>
       <div class="user-chip" id="shop-name">出店者</div>
     </header>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:4px 4px 12px;">
+      <div class="mode-toggle" aria-label="表示モード">
+        <span class="mode-pill active">やさしい</span>
+        <span class="mode-pill">ふつう</span>
+      </div>
+      <div style="font-size:.72rem; color:var(--muted);">表示モードは出店者に合わせて切替</div>
+    </div>
 
     <!-- ホーム -->
     <section id="sec-home" class="section active">
@@ -869,15 +913,15 @@
 
         <div class="chart-legend">
           <div class="legend-item">
-            <div class="legend-color" style="background: #5a6bff;"></div>
+            <div class="legend-color" style="background: #1b365d;"></div>
             <span>売上</span>
           </div>
           <div class="legend-item">
-            <div class="legend-color" style="background: #f59e0b;"></div>
+            <div class="legend-color" style="background: #b8902e;"></div>
             <span>仕入額</span>
           </div>
           <div class="legend-item">
-            <div class="legend-color" style="background: #1a9b63;"></div>
+            <div class="legend-color" style="background: #1a8c5c;"></div>
             <span>利益</span>
           </div>
         </div>
@@ -907,15 +951,15 @@
 
         <div class="chart-legend">
           <div class="legend-item">
-            <div class="legend-color" style="background: #5a6bff;"></div>
+            <div class="legend-color" style="background: #1b365d;"></div>
             <span>実績売上</span>
           </div>
           <div class="legend-item">
-            <div class="legend-color" style="background: #fa709a;"></div>
+            <div class="legend-color" style="background: #b8902e;"></div>
             <span>ベンチマーク（目標）</span>
           </div>
           <div class="legend-item">
-            <div class="legend-color" style="background: #38ef7d;"></div>
+            <div class="legend-color" style="background: #e63946;"></div>
             <span>企画後予想</span>
           </div>
         </div>
@@ -2349,24 +2393,24 @@
                   {
                     label: '売上',
                     data: salesData,
-                    backgroundColor: 'rgba(90, 107, 255, 0.7)',
-                    borderColor: 'rgba(90, 107, 255, 1)',
+                    backgroundColor: 'rgba(27, 54, 93, 0.7)',
+                    borderColor: 'rgba(27, 54, 93, 1)',
                     borderWidth: 1,
                     order: 3
                   },
                   {
                     label: '仕入額',
                     data: costData,
-                    backgroundColor: 'rgba(245, 158, 11, 0.7)',
-                    borderColor: 'rgba(245, 158, 11, 1)',
+                    backgroundColor: 'rgba(184, 144, 46, 0.7)',
+                    borderColor: 'rgba(184, 144, 46, 1)',
                     borderWidth: 1,
                     order: 2
                   },
                   {
                     label: '利益',
                     data: profitData,
-                    backgroundColor: 'rgba(26, 155, 99, 0.8)',
-                    borderColor: 'rgba(26, 155, 99, 1)',
+                    backgroundColor: 'rgba(26, 140, 92, 0.8)',
+                    borderColor: 'rgba(26, 140, 92, 1)',
                     borderWidth: 2,
                     type: 'line',
                     fill: false,
@@ -2609,16 +2653,16 @@
                   {
                     label: '実績売上',
                     data: actualData,
-                    backgroundColor: 'rgba(90, 107, 255, 0.7)',
-                    borderColor: 'rgba(90, 107, 255, 1)',
+                    backgroundColor: 'rgba(27, 54, 93, 0.7)',
+                    borderColor: 'rgba(27, 54, 93, 1)',
                     borderWidth: 2,
                     order: 3
                   },
                   {
                     label: 'ベンチマーク（目標）',
                     data: benchmarkData,
-                    backgroundColor: 'rgba(250, 112, 154, 0.5)',
-                    borderColor: 'rgba(250, 112, 154, 1)',
+                    backgroundColor: 'rgba(184, 144, 46, 0.45)',
+                    borderColor: 'rgba(184, 144, 46, 1)',
                     borderWidth: 2,
                     borderDash: [5, 5],
                     type: 'line',
@@ -2631,8 +2675,8 @@
                   {
                     label: '企画後予想',
                     data: improvedData,
-                    backgroundColor: 'rgba(56, 239, 125, 0.8)',
-                    borderColor: 'rgba(56, 239, 125, 1)',
+                    backgroundColor: 'rgba(230, 57, 70, 0.75)',
+                    borderColor: 'rgba(230, 57, 70, 1)',
                     borderWidth: 2,
                     type: 'line',
                     fill: false,
