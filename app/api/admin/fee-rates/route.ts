@@ -44,11 +44,11 @@ export async function GET(request: Request) {
 
     // Tier定義も返す
     const tierDefinitions = {
-      1: { name: 'ビギナー', min: 0, max: 3, defaultRate: 0.0450 },
-      2: { name: 'レギュラー', min: 4, max: 10, defaultRate: 0.0420 },
-      3: { name: 'エキスパート', min: 11, max: 24, defaultRate: 0.0400 },
-      4: { name: 'マスター', min: 25, max: 50, defaultRate: 0.0380 },
-      5: { name: 'レジェンド', min: 51, max: null, defaultRate: 0.0330 },
+      1: { name: '村', min: 0, max: 3, defaultRate: 0.0480 },
+      2: { name: '町', min: 4, max: 10, defaultRate: 0.0440 },
+      3: { name: '城下町', min: 11, max: 24, defaultRate: 0.0410 },
+      4: { name: '藩', min: 25, max: 50, defaultRate: 0.0380 },
+      5: { name: '天下', min: 51, max: null, defaultRate: 0.0330 },
     };
 
     return NextResponse.json({

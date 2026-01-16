@@ -23,6 +23,9 @@ vi.mock('@/lib/prisma', () => {
     stripePayment: {
       count: vi.fn(),
     },
+    sellerSubscription: {
+      findFirst: vi.fn(),
+    },
     $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),
   };
@@ -34,14 +37,27 @@ vi.mock('@/lib/prisma', () => {
 describe('戦略F: APIエンドポイント', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.$executeRaw).mockReset();
   });
 
   describe('GET /api/seller/tier-status', () => {
     it('正常なTier情報を返す', async () => {
       // 月間QR決済回数: 15回（Tier 3）
+      vi.mocked(prisma.sellerSubscription.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.stripePayment.count).mockResolvedValue(15);
-      // コミュニティ目標取得
+      vi.mocked(prisma.$executeRaw).mockResolvedValueOnce(0);
+      // 月次スタッツ → fee_rate → コミュニティ目標 → 取扱高
       vi.mocked(prisma.$queryRaw)
+        .mockResolvedValueOnce([
+          {
+            id: 'stat-1',
+            year_month: '2025-07',
+            transaction_count: 0,
+            start_tier: 1,
+            current_tier: 1,
+          },
+        ])
+        .mockResolvedValueOnce([{ fee_rate: 0.041, tier: 3 }])
         .mockResolvedValueOnce([
           {
             phase: 'phase1',
@@ -59,8 +75,8 @@ describe('戦略F: APIエンドポイント', () => {
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.data.tier.number).toBe(3);
-      expect(data.data.tier.name).toBe('エキスパート');
-      expect(data.data.tier.currentFeeRatePercent).toBe('4.00');
+      expect(data.data.tier.name).toBe('城下町');
+      expect(data.data.tier.currentFeeRatePercent).toBe('4.10');
       expect(data.data.transactionCount.current).toBe(15);
       expect(data.data.communityGoal.phase).toBe('phase1');
     });
@@ -76,7 +92,19 @@ describe('戦略F: APIエンドポイント', () => {
 
     it('Tier 5で目標達成時、ボーナス料金を表示', async () => {
       vi.mocked(prisma.stripePayment.count).mockResolvedValue(60);
+      vi.mocked(prisma.sellerSubscription.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.$executeRaw).mockResolvedValueOnce(0);
       vi.mocked(prisma.$queryRaw)
+        .mockResolvedValueOnce([
+          {
+            id: 'stat-1',
+            year_month: '2025-07',
+            transaction_count: 0,
+            start_tier: 1,
+            current_tier: 1,
+          },
+        ])
+        .mockResolvedValueOnce([{ fee_rate: 0.033, tier: 5 }])
         .mockResolvedValueOnce([
           {
             phase: 'phase1',
@@ -100,7 +128,19 @@ describe('戦略F: APIエンドポイント', () => {
 
     it('Tier 5で目標未達成時、通常料金とメッセージを表示', async () => {
       vi.mocked(prisma.stripePayment.count).mockResolvedValue(60);
+      vi.mocked(prisma.sellerSubscription.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.$executeRaw).mockResolvedValueOnce(0);
       vi.mocked(prisma.$queryRaw)
+        .mockResolvedValueOnce([
+          {
+            id: 'stat-1',
+            year_month: '2025-07',
+            transaction_count: 0,
+            start_tier: 1,
+            current_tier: 1,
+          },
+        ])
+        .mockResolvedValueOnce([{ fee_rate: 0.033, tier: 5 }])
         .mockResolvedValueOnce([
           {
             phase: 'phase1',

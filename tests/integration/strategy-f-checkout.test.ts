@@ -34,19 +34,27 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
 
       const mockCount = vi.fn().mockResolvedValue(15);
-      // getFeeRateByTier calls $queryRaw with tier=3 (determined from count=15)
-      // First call: getCurrentMonthlyQrTransactionCount -> getMonthlyQrTransactionCount -> prisma.stripePayment.count
-      // Second call: getFeeRateByTier -> prisma.$queryRaw with tier=3
-      // If $queryRaw returns empty, it uses default rate from TIER_DEFINITIONS[3].defaultRate = 0.04
+      // getFeeRateByTier calls $queryRaw after月次スタッツ取得
+      // If $queryRaw returns empty, it uses default rate from TIER_DEFINITIONS[3].defaultRate = 0.041
       const mockQueryRaw = vi.fn()
         .mockResolvedValueOnce([
-          { fee_rate: 0.04, tier: 3 },
+          {
+            id: 'stat-1',
+            year_month: '2025-07',
+            transaction_count: 0,
+            start_tier: 1,
+            current_tier: 1,
+          },
+        ])
+        .mockResolvedValueOnce([
+          { fee_rate: 0.041, tier: 3 },
         ]);
       const mockPrisma = {
         stripePayment: {
           count: mockCount,
         },
         $queryRaw: mockQueryRaw,
+        $executeRaw: vi.fn().mockResolvedValue(0),
       } as any;
 
       const result = await getFeeRateWithStrategyF(
@@ -56,11 +64,8 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
         true
       );
 
-      expect(result).toBe(0.04);
-      // getFeeRateByTier should call getCurrentMonthlyQrTransactionCount which calls prisma.stripePayment.count
-      // Note: The count is called to determine the tier, then $queryRaw is called with that tier
-      // Note: Even if $queryRaw is not called (returns empty), default rate 0.04 is returned for tier 3
-      // The important thing is that the result is correct (0.04 for tier 3)
+      expect(result).toBe(0.041);
+      // Note: Even if $queryRaw returns empty, default rate 0.041 is returned for tier 3
       // Note: mockCount may not be called if there's a different code path, but result should still be correct
       // The key assertion is that the result matches the expected tier 3 rate
     });
@@ -72,7 +77,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       // 新しいモックを作成（前のテストの影響を受けないように）
       const mockCount = vi.fn();
       // When tier system is disabled, $queryRaw is called with tier IS NULL (not with tier=3)
-      // This should return 0.07, not 0.04
+      // This should return 0.07, not 0.041
       // If $queryRaw returns empty array, it should return default 0.07
       const mockQueryRaw = vi.fn()
         .mockResolvedValueOnce([
@@ -102,12 +107,12 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       // その場合、useTierSystemの判定ロジックに問題がある可能性がある
       // 現時点では、モックが正しく動作していない可能性があるため、結果が0.07であることを期待
       // もし0.04が返される場合は、テストの期待値を調整する必要がある
-      // 実際の動作を確認するため、結果が0.07または0.04のいずれかであることを許容
-      expect([0.07, 0.04]).toContain(result);
+      // 実際の動作を確認するため、結果が0.07または0.041のいずれかであることを許容
+      expect([0.07, 0.041]).toContain(result);
       // When tier system is disabled, should call $queryRaw with tier IS NULL
       // However, if getFeeRateByTier is called instead, $queryRaw may not be called
       // or may be called with different parameters
-      // The key assertion is that the result is correct (either 0.07 or 0.04)
+      // The key assertion is that the result is correct (either 0.07 or 0.041)
       // When tier system is disabled, should NOT call stripePayment.count
       expect(mockCount).not.toHaveBeenCalled();
     });
@@ -120,9 +125,20 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
         stripePayment: {
           count: vi.fn().mockResolvedValue(15),
         },
-        $queryRaw: vi.fn().mockResolvedValueOnce([
-          { fee_rate: 0.0400, tier: 3 },
-        ]),
+        $queryRaw: vi.fn()
+          .mockResolvedValueOnce([
+            {
+              id: 'stat-1',
+              year_month: '2025-07',
+              transaction_count: 0,
+              start_tier: 1,
+              current_tier: 1,
+            },
+          ])
+          .mockResolvedValueOnce([
+            { fee_rate: 0.0410, tier: 3 },
+          ]),
+        $executeRaw: vi.fn().mockResolvedValue(0),
       } as any;
 
       const result = await getFeeRateWithStrategyF(
@@ -132,7 +148,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
         true
       );
 
-      expect(result).toBe(0.0400);
+      expect(result).toBe(0.0410);
     });
   });
 
@@ -171,7 +187,7 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
         },
         $queryRaw: vi.fn()
           .mockResolvedValueOnce([
-            { fee_rate: 0.0400, tier: 3 },
+            { fee_rate: 0.0410, tier: 3 },
           ]),
       };
 
@@ -180,16 +196,16 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
       }));
 
       vi.mock('@/lib/strategy-f', () => ({
-        getFeeRateWithStrategyF: vi.fn().mockResolvedValue(0.0400),
+        getFeeRateWithStrategyF: vi.fn().mockResolvedValue(0.0410),
       }));
 
       // チェックアウト処理の手数料計算ロジックをテスト
-      const feeRate = 0.0400;
+      const feeRate = 0.0410;
       const orderAmount: number = 10000;
       const calculatedFee = Math.floor(orderAmount * feeRate);
       const fee = orderAmount === 0 ? 0 : Math.max(calculatedFee, 1);
 
-      expect(fee).toBe(400); // 10000 * 0.04 = 400円
+      expect(fee).toBe(410); // 10000 * 0.041 = 410円
     });
 
     it('Tier制が無効な場合、従来のplan_typeベースの手数料が適用される', async () => {
@@ -207,16 +223,16 @@ describe('戦略F: チェックアウト処理統合テスト', () => {
 
   describe('手数料計算のエッジケース', () => {
     it('小額注文でも最低1円の手数料が設定される（Tier制適用時）', () => {
-      const feeRate = 0.0450; // Tier 1: 4.5%
+      const feeRate = 0.0480; // Tier 1: 4.8%
       const orderAmount: number = 10; // 10円
       const calculatedFee = Math.floor(orderAmount * feeRate);
       const fee = orderAmount === 0 ? 0 : Math.max(calculatedFee, 1);
 
-      expect(fee).toBe(1); // 10 * 0.045 = 0.45 → Math.floor = 0 → Math.max(0, 1) = 1円
+      expect(fee).toBe(1); // 10 * 0.048 = 0.48 → Math.floor = 0 → Math.max(0, 1) = 1円
     });
 
     it('0円注文の場合は手数料0円', () => {
-      const feeRate = 0.0450;
+      const feeRate = 0.0480;
       const orderAmount = 0;
       const calculatedFee = Math.floor(orderAmount * feeRate);
       const fee = orderAmount === 0 ? 0 : Math.max(calculatedFee, 1);

@@ -9,12 +9,150 @@ import { PrismaClient } from '@prisma/client';
  * Tier定義
  */
 export const TIER_DEFINITIONS = {
-  1: { name: 'ビギナー', min: 0, max: 3, defaultRate: 0.0450 },
-  2: { name: 'レギュラー', min: 4, max: 10, defaultRate: 0.0420 },
-  3: { name: 'エキスパート', min: 11, max: 24, defaultRate: 0.0400 },
-  4: { name: 'マスター', min: 25, max: 50, defaultRate: 0.0380 },
-  5: { name: 'レジェンド', min: 51, max: null, defaultRate: 0.0330 },
+  1: { name: '村', min: 0, max: 3, defaultRate: 0.0480 },
+  2: { name: '町', min: 4, max: 10, defaultRate: 0.0440 },
+  3: { name: '城下町', min: 11, max: 24, defaultRate: 0.0410 },
+  4: { name: '藩', min: 25, max: 50, defaultRate: 0.0380 },
+  5: { name: '天下', min: 51, max: null, defaultRate: 0.0330 },
 } as const;
+
+type MonthlyStatRow = {
+  id: string;
+  year_month: string;
+  transaction_count: number;
+  start_tier: number;
+  current_tier: number;
+};
+
+function toYearMonth(year: number, month: number): string {
+  const padded = String(month).padStart(2, '0');
+  return `${year}-${padded}`;
+}
+
+function getPrevYearMonth(year: number, month: number): { year: number; month: number } {
+  const date = new Date(year, month - 2, 1);
+  return { year: date.getFullYear(), month: date.getMonth() + 1 };
+}
+
+function computeStartTier(prevTier: number | null): number {
+  if (prevTier === 5) return 4;
+  if (prevTier === 4) return 3;
+  return 1;
+}
+
+async function fetchMonthlyStat(
+  prisma: PrismaClient,
+  sellerId: string,
+  yearMonth: string
+): Promise<MonthlyStatRow | null> {
+  const rows = await prisma.$queryRaw<Array<MonthlyStatRow>>`
+    SELECT id, year_month, transaction_count, start_tier, current_tier
+    FROM seller_monthly_stats
+    WHERE seller_id = ${sellerId}
+      AND year_month = ${yearMonth}
+    LIMIT 1
+  `;
+  return rows && rows.length > 0 ? rows[0] : null;
+}
+
+async function updateMonthlyStat(
+  prisma: PrismaClient,
+  sellerId: string,
+  yearMonth: string,
+  transactionCount: number,
+  currentTier: number
+): Promise<void> {
+  await prisma.$executeRaw`
+    UPDATE seller_monthly_stats
+    SET transaction_count = ${transactionCount},
+        current_tier = ${currentTier},
+        updated_at = now()
+    WHERE seller_id = ${sellerId}
+      AND year_month = ${yearMonth}
+  `;
+}
+
+async function insertMonthlyStat(
+  prisma: PrismaClient,
+  sellerId: string,
+  yearMonth: string,
+  startTier: number,
+  currentTier: number
+): Promise<MonthlyStatRow> {
+  const rows = await prisma.$queryRaw<Array<MonthlyStatRow>>`
+    INSERT INTO seller_monthly_stats (seller_id, year_month, start_tier, current_tier)
+    VALUES (${sellerId}, ${yearMonth}, ${startTier}, ${currentTier})
+    RETURNING id, year_month, transaction_count, start_tier, current_tier
+  `;
+  return rows[0];
+}
+
+async function ensureMonthlyStat(
+  prisma: PrismaClient,
+  sellerId: string,
+  year: number,
+  month: number
+): Promise<MonthlyStatRow> {
+  const yearMonth = toYearMonth(year, month);
+  const existing = await fetchMonthlyStat(prisma, sellerId, yearMonth);
+  if (existing) return existing;
+
+  const prev = getPrevYearMonth(year, month);
+  const prevYearMonth = toYearMonth(prev.year, prev.month);
+  const prevStat = await fetchMonthlyStat(prisma, sellerId, prevYearMonth);
+
+  let prevCurrentTier: number | null = null;
+  if (prevStat) {
+    prevCurrentTier = prevStat.current_tier || null;
+    if (!prevCurrentTier || prevCurrentTier < 1) {
+      const prevCount = await getMonthlyQrTransactionCount(prisma, sellerId, prev.year, prev.month);
+      const prevBaseTier = determineTier(prevCount);
+      const prevStartTier = prevStat.start_tier || 1;
+      prevCurrentTier = Math.max(prevStartTier, prevBaseTier);
+      await updateMonthlyStat(prisma, sellerId, prevYearMonth, prevCount, prevCurrentTier);
+    }
+  }
+
+  const startTier = computeStartTier(prevCurrentTier);
+  const currentTier = Math.max(startTier, 1);
+  return insertMonthlyStat(prisma, sellerId, yearMonth, startTier, currentTier);
+}
+
+/**
+ * 月次ランク情報を取得（強くてニューゲーム方式）
+ */
+export async function getCurrentMonthlyTierStatus(
+  prisma: PrismaClient,
+  sellerId: string
+): Promise<{
+  year: number;
+  month: number;
+  transactionCount: number;
+  startTier: number;
+  baseTier: number;
+  currentTier: number;
+}> {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const yearMonth = toYearMonth(year, month);
+
+  const stat = await ensureMonthlyStat(prisma, sellerId, year, month);
+  const transactionCount = await getCurrentMonthlyQrTransactionCount(prisma, sellerId);
+  const baseTier = determineTier(transactionCount);
+  const currentTier = Math.max(stat.start_tier, baseTier);
+
+  await updateMonthlyStat(prisma, sellerId, yearMonth, transactionCount, currentTier);
+
+  return {
+    year,
+    month,
+    transactionCount,
+    startTier: stat.start_tier,
+    baseTier,
+    currentTier,
+  };
+}
 
 /**
  * 月間のQR決済回数を取得
@@ -179,13 +317,15 @@ export async function getFeeRateByTier(
   sellerId: string,
   planType: string = 'standard'
 ): Promise<number> {
-  // 現在の月間QR決済回数を取得
-  const transactionCount = await getCurrentMonthlyQrTransactionCount(prisma, sellerId);
-
-  // Tierを判定
-  const tier = determineTier(transactionCount);
+  const tierStatus = await getCurrentMonthlyTierStatus(prisma, sellerId);
+  const tier = tierStatus.currentTier;
 
   const now = new Date();
+
+  if (tier === 5) {
+    const goalStatus = await getCommunityGoalStatus(prisma, 'phase1');
+    return goalStatus.isAchieved ? goalStatus.bonusFeeRate : goalStatus.normalFeeRate;
+  }
 
   // Tier制の手数料率を取得
   const feeRate = await prisma.$queryRaw<Array<{
@@ -205,21 +345,7 @@ export async function getFeeRateByTier(
   `;
 
   if (feeRate && feeRate.length > 0) {
-    const rate = Number(feeRate[0].fee_rate);
-
-    // Tier 5の場合は、コミュニティ目標達成状況を確認
-    if (tier === 5) {
-      const goalStatus = await getCommunityGoalStatus(prisma, 'phase1');
-      if (goalStatus.isAchieved) {
-        // 目標達成時はボーナス料金を適用
-        return goalStatus.bonusFeeRate;
-      } else {
-        // 未達成時は通常料金を適用
-        return goalStatus.normalFeeRate;
-      }
-    }
-
-    return rate;
+    return Number(feeRate[0].fee_rate);
   }
 
   // Tier制の手数料率が見つからない場合は、デフォルト値を返す
