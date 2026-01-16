@@ -155,6 +155,35 @@ function SellerDashboardContent() {
           gap: 12px;
           padding: 8px 4px 16px;
         }
+        .mode-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 0 4px 16px;
+          border-bottom: 1px solid rgba(184, 144, 46, 0.2);
+        }
+        .mode-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px;
+          border-radius: 999px;
+          border: 1px solid rgba(27, 54, 93, 0.15);
+          background: #fff;
+          font-size: 0.72rem;
+          color: var(--sub);
+        }
+        .mode-pill {
+          padding: 4px 10px;
+          border-radius: 999px;
+          font-weight: 600;
+          color: var(--sub);
+        }
+        .mode-pill.active {
+          background: var(--brand);
+          color: #fff;
+        }
         .brand {
           display: flex;
           align-items: center;
@@ -366,12 +395,21 @@ function SellerDashboardContent() {
         <div className="brand">
           <div className="brand-mark">市</div>
           <div>
-            <div className="brand-title">EDO ICHIBA 出店者ダッシュボード</div>
-            <div className="brand-sub">Fleapay｜戦略F 料金体系</div>
+            <div className="brand-title">ecoichiba 出店者ダッシュボード</div>
+            <div className="brand-sub">Payment by Fleapay / 戦略F 料金体系</div>
           </div>
         </div>
         <div className="seller-chip">{summary?.sellerId || sellerId}</div>
       </header>
+      <div className="mode-row">
+        <div className="mode-toggle" aria-label="表示モード">
+          <span className="mode-pill active">やさしい</span>
+          <span className="mode-pill">ふつう</span>
+        </div>
+        <div style={{ fontSize: '0.72rem', color: 'var(--sub)' }}>
+          表示モードは出店者に合わせて切替
+        </div>
+      </div>
 
       {loading ? (
         <div className="notice-card">読み込み中...</div>
