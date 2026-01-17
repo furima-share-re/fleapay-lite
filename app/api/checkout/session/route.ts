@@ -23,6 +23,19 @@ const getBaseUrl = () => {
 const BASE_URL = getBaseUrl();
 const RATE_LIMIT_MAX_CHECKOUT = parseInt(process.env.RATE_LIMIT_MAX_CHECKOUT || "12", 10);
 
+const resolveOrderHashSecret = (): string | null => {
+  const secret = process.env.ORDER_HASH_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[Checkout] ORDER_HASH_SECRET is missing in production');
+      return null;
+    }
+    console.warn('[Checkout] ORDER_HASH_SECRET not set, using default (development only)');
+    return 'dev-default-secret-do-not-use-in-production';
+  }
+  return secret;
+};
+
 export async function POST(request: NextRequest) {
   try {
     if (!isSameOrigin(request)) {
@@ -231,41 +244,35 @@ export async function POST(request: NextRequest) {
           // 金額が変わっていないことを確認（orderId + amount + currencyを連結してHMACでハッシュ）
           // 注意: Stripe Secret Keyは決済API用で、アプリ内の署名/HMAC用途に流用しない（セキュリティ設計）
           const hashInput = `${order.id}:${orderAmount}:jpy`;
-          const secret = process.env.ORDER_HASH_SECRET;
-          if (!secret) {
-            // 本番環境では必須
-            if (process.env.NODE_ENV === 'production') {
-              console.error('[Checkout] ORDER_HASH_SECRET is missing in production');
-              throw new Error('ORDER_HASH_SECRET is missing');
+          const hashSecret = resolveOrderHashSecret();
+          if (hashSecret) {
+            const expectedAmountHash = crypto
+              .createHmac('sha256', hashSecret)
+              .update(hashInput)
+              .digest('base64')
+              .slice(0, 16);
+            const sessionAmountHash = existingSession.metadata?.orderAmountHash;
+
+            if (sessionAmountHash === expectedAmountHash) {
+              console.log('[Checkout] Reusing existing session', {
+                orderId: order.id,
+                sessionId: existingSession.id,
+                amountHash: expectedAmountHash
+              });
+              return NextResponse.json({
+                url: existingSession.url,
+                sessionId: existingSession.id,
+                reused: true
+              });
+            } else {
+              console.warn('[Checkout] Existing session amount mismatch, creating new one', {
+                orderId: order.id,
+                expectedHash: expectedAmountHash,
+                sessionHash: sessionAmountHash
+              });
             }
-            // 開発環境のみデフォルト値（本番では使用しない）
-            console.warn('[Checkout] ORDER_HASH_SECRET not set, using default (development only)');
-          }
-          const hashSecret = secret || 'dev-default-secret-do-not-use-in-production';
-          const expectedAmountHash = crypto
-            .createHmac('sha256', hashSecret)
-            .update(hashInput)
-            .digest('base64')
-            .slice(0, 16);
-          const sessionAmountHash = existingSession.metadata?.orderAmountHash;
-          
-          if (sessionAmountHash === expectedAmountHash) {
-            console.log('[Checkout] Reusing existing session', {
-              orderId: order.id,
-              sessionId: existingSession.id,
-              amountHash: expectedAmountHash
-            });
-            return NextResponse.json({ 
-              url: existingSession.url, 
-              sessionId: existingSession.id,
-              reused: true
-            });
           } else {
-            console.warn('[Checkout] Existing session amount mismatch, creating new one', {
-              orderId: order.id,
-              expectedHash: expectedAmountHash,
-              sessionHash: sessionAmountHash
-            });
+            console.warn('[Checkout] ORDER_HASH_SECRET missing; skipping session reuse check');
           }
         }
       } catch (stripeError) {
@@ -419,28 +426,14 @@ export async function POST(request: NextRequest) {
     // orderId + amount + currencyを連結してHMACでハッシュ（改ざん検知を強化）
     // 注意: Stripe Secret Keyは決済API用で、アプリ内の署名/HMAC用途に流用しない（セキュリティ設計）
     const hashInput = `${order.id}:${orderAmount}:jpy`;
-    const secret = process.env.ORDER_HASH_SECRET;
-    if (!secret) {
-      // 本番環境では必須、開発環境のみデフォルト許可
-      if (process.env.NODE_ENV === 'production') {
-        console.error('[Checkout] ORDER_HASH_SECRET is missing in production');
-        return NextResponse.json(
-          {
-            error: 'configuration_error',
-            message: 'システム設定エラーが発生しました。管理者にお問い合わせください。',
-          },
-          { status: 500 }
-        );
-      }
-      // 開発環境のみデフォルト値（本番では使用しない）
-      console.warn('[Checkout] ORDER_HASH_SECRET not set, using default (development only)');
-    }
-    const hashSecret = secret || 'dev-default-secret-do-not-use-in-production';
-    const orderAmountHash = crypto
-      .createHmac('sha256', hashSecret)
-      .update(hashInput)
-      .digest('base64')
-      .slice(0, 16);
+    const hashSecret = resolveOrderHashSecret();
+    const orderAmountHash = hashSecret
+      ? crypto
+          .createHmac('sha256', hashSecret)
+          .update(hashInput)
+          .digest('base64')
+          .slice(0, 16)
+      : null;
 
     const successUrl = `${BASE_URL}/success?order=${order.id}`;
     const cancelUrl = `${BASE_URL}/cancel?s=${order.sellerId}&order=${order.id}`;
@@ -486,7 +479,7 @@ export async function POST(request: NextRequest) {
         sellerId: order.sellerId,
         orderId: order.id,
         planType,
-        orderAmountHash,  // 金額ハッシュ（再利用時の照合用）: orderId + amount + currencyを連結してHMACでハッシュ
+        ...(orderAmountHash ? { orderAmountHash } : {}),
       },
     };
 
