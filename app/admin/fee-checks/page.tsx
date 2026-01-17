@@ -32,6 +32,8 @@ interface FeeCheckRow {
   actualApplicationFee: number | null;
   feeDelta: number | null;
   checkStatus: CheckStatus;
+  currentMonthCount: number;
+  prevMonthCount: number;
 }
 
 interface FeeCheckSummary {
@@ -443,6 +445,8 @@ export default function AdminFeeChecksPage() {
                       <th>取引</th>
                       <th>出店者</th>
                       <th>決済ID</th>
+                      <th>当月回数</th>
+                      <th>前月回数</th>
                       <th>売上</th>
                       <th>手数料率</th>
                       <th>期待手数料</th>
@@ -484,6 +488,8 @@ export default function AdminFeeChecksPage() {
                               {row.status}
                             </div>
                           </td>
+                          <td>{row.currentMonthCount}</td>
+                          <td>{row.prevMonthCount}</td>
                           <td>
                             <div>{formatCurrency(row.amountGross)}</div>
                             <div style={{ color: 'var(--fleapay-gray)', fontSize: '0.8rem' }}>

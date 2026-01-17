@@ -92,6 +92,25 @@ function isUuid(value: string): boolean {
   );
 }
 
+function toYearMonth(date: Date) {
+  return { year: date.getFullYear(), month: date.getMonth() + 1 };
+}
+
+function prevYearMonth(year: number, month: number) {
+  const prev = new Date(year, month - 2, 1);
+  return { year: prev.getFullYear(), month: prev.getMonth() + 1 };
+}
+
+function monthBounds(year: number, month: number) {
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 1);
+  return { start, end };
+}
+
+function monthKey(sellerId: string, year: number, month: number) {
+  return `${sellerId}:${year}-${String(month).padStart(2, '0')}`;
+}
+
 export async function GET(request: Request) {
   if (!requireAdmin(request)) {
     return NextResponse.json(
@@ -140,6 +159,39 @@ export async function GET(request: Request) {
       },
     });
 
+    const monthPairs = new Map<string, { sellerId: string; year: number; month: number }>();
+    for (const payment of payments) {
+      const { year, month } = toYearMonth(payment.createdAt);
+      const currentKey = monthKey(payment.sellerId, year, month);
+      if (!monthPairs.has(currentKey)) {
+        monthPairs.set(currentKey, { sellerId: payment.sellerId, year, month });
+      }
+      const prev = prevYearMonth(year, month);
+      const prevKey = monthKey(payment.sellerId, prev.year, prev.month);
+      if (!monthPairs.has(prevKey)) {
+        monthPairs.set(prevKey, { sellerId: payment.sellerId, year: prev.year, month: prev.month });
+      }
+    }
+
+    const monthCountsEntries = await Promise.all(
+      Array.from(monthPairs.values()).map(async ({ sellerId, year, month }) => {
+        const { start, end } = monthBounds(year, month);
+        const count = await prisma.stripePayment.count({
+          where: {
+            sellerId,
+            status: 'succeeded',
+            createdAt: {
+              gte: start,
+              lt: end,
+            },
+          },
+        });
+        return [monthKey(sellerId, year, month), count] as const;
+      })
+    );
+
+    const monthCounts = new Map(monthCountsEntries);
+
     const rows = payments.map((payment) => {
       const rawEvent = (payment.rawEvent as RawEvent | null) || null;
       const { feeRate, source } = extractFeeRate(rawEvent);
@@ -159,6 +211,13 @@ export async function GET(request: Request) {
         checkStatus = 'mismatch';
       }
 
+      const { year, month } = toYearMonth(payment.createdAt);
+      const prev = prevYearMonth(year, month);
+      const currentMonthCount =
+        monthCounts.get(monthKey(payment.sellerId, year, month)) ?? 0;
+      const prevMonthCount =
+        monthCounts.get(monthKey(payment.sellerId, prev.year, prev.month)) ?? 0;
+
       return {
         id: payment.id,
         orderId: payment.order?.id || payment.orderId,
@@ -177,6 +236,8 @@ export async function GET(request: Request) {
         actualApplicationFee: applicationFee,
         feeDelta: delta,
         checkStatus,
+        currentMonthCount,
+        prevMonthCount,
       };
     });
 
