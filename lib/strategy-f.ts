@@ -295,20 +295,19 @@ export async function getMonthlyTierStatusAt(
   let prevTransactionCount: number | null = null;
   if (overrides?.prevTransactionCount !== null && overrides?.prevTransactionCount !== undefined) {
     prevTransactionCount = overrides.prevTransactionCount;
-    const prevBaseTier = determineTier(prevTransactionCount);
-    const prevStartTier = prevStat?.start_tier || 1;
-    prevCurrentTier = Math.max(prevStartTier, prevBaseTier);
-  } else if (prevStat?.current_tier && prevStat.current_tier > 0) {
-    prevCurrentTier = prevStat.current_tier;
-  } else if (prevStat) {
+  } else {
     prevTransactionCount = await getMonthlyQrTransactionCount(
       prisma,
       sellerId,
       prev.year,
       prev.month
     );
-    const prevBaseTier = determineTier(prevTransactionCount);
-    const prevStartTier = prevStat.start_tier || 1;
+  }
+  const prevBaseTier = determineTier(prevTransactionCount);
+  const prevStartTier = prevStat?.start_tier || 1;
+  if (prevStat?.current_tier && prevStat.current_tier > 0) {
+    prevCurrentTier = prevStat.current_tier;
+  } else {
     prevCurrentTier = Math.max(prevStartTier, prevBaseTier);
   }
 
