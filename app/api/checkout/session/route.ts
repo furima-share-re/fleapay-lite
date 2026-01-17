@@ -328,14 +328,16 @@ export async function POST(request: NextRequest) {
         feeRate = await getFeeRateFromMaster(prisma, planType);
       }
     } catch (error) {
-      console.error('[Checkout] Failed to get fee rate', error);
-      return NextResponse.json(
-        {
-          error: 'fee_rate_error',
-          message: '手数料率の取得に失敗しました。管理者にお問い合わせください。',
-        },
-        { status: 500 }
-      );
+      // フォールバック: 5% で処理継続（運用救済）
+      const fallbackRateRaw = process.env.FEE_RATE_FALLBACK_OVERRIDE;
+      const fallbackRate = fallbackRateRaw ? Number(fallbackRateRaw) : 0.05;
+      feeRate = Number.isFinite(fallbackRate) ? fallbackRate : 0.05;
+      console.error('[Checkout] Failed to get fee rate, using fallback', {
+        error,
+        sellerId: order.sellerId,
+        planType,
+        feeRate,
+      });
     }
 
     // 手数料計算（浮動小数誤差対策: 整数演算に寄せる）

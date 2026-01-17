@@ -24,6 +24,18 @@ type MonthlyStatRow = {
   current_tier: number;
 };
 
+function isMissingSellerMonthlyStatsTable(error: unknown): boolean {
+  const err = error as {
+    code?: string;
+    meta?: { code?: string; message?: string };
+    message?: string;
+  };
+  if (!err) return false;
+  if (err.code === 'P2010' && err.meta?.code === '42P01') return true;
+  const message = `${err.meta?.message ?? ''} ${err.message ?? ''}`.toLowerCase();
+  return message.includes('seller_monthly_stats') && message.includes('does not exist');
+}
+
 function toYearMonth(year: number, month: number): string {
   const padded = String(month).padStart(2, '0');
   return `${year}-${padded}`;
@@ -137,21 +149,37 @@ export async function getCurrentMonthlyTierStatus(
   const month = now.getMonth() + 1;
   const yearMonth = toYearMonth(year, month);
 
-  const stat = await ensureMonthlyStat(prisma, sellerId, year, month);
-  const transactionCount = await getCurrentMonthlyQrTransactionCount(prisma, sellerId);
-  const baseTier = determineTier(transactionCount);
-  const currentTier = Math.max(stat.start_tier, baseTier);
+  try {
+    const stat = await ensureMonthlyStat(prisma, sellerId, year, month);
+    const transactionCount = await getCurrentMonthlyQrTransactionCount(prisma, sellerId);
+    const baseTier = determineTier(transactionCount);
+    const currentTier = Math.max(stat.start_tier, baseTier);
 
-  await updateMonthlyStat(prisma, sellerId, yearMonth, transactionCount, currentTier);
+    await updateMonthlyStat(prisma, sellerId, yearMonth, transactionCount, currentTier);
 
-  return {
-    year,
-    month,
-    transactionCount,
-    startTier: stat.start_tier,
-    baseTier,
-    currentTier,
-  };
+    return {
+      year,
+      month,
+      transactionCount,
+      startTier: stat.start_tier,
+      baseTier,
+      currentTier,
+    };
+  } catch (error) {
+    if (isMissingSellerMonthlyStatsTable(error)) {
+      const transactionCount = await getCurrentMonthlyQrTransactionCount(prisma, sellerId);
+      const baseTier = determineTier(transactionCount);
+      return {
+        year,
+        month,
+        transactionCount,
+        startTier: 1,
+        baseTier,
+        currentTier: Math.max(1, baseTier),
+      };
+    }
+    throw error;
+  }
 }
 
 /**
