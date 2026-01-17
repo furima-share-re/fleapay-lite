@@ -290,6 +290,16 @@ export default function AdminPaymentsPage() {
                 💳 決済・CB管理
               </Link>
             </li>
+            <li>
+              <Link href="/admin/fee-checks" className="nav-item">
+                ✅ 手数料チェック
+              </Link>
+            </li>
+            <li>
+              <Link href="/admin/tier-boundary" className="nav-item">
+                🧪 Tier境界テスト
+              </Link>
+            </li>
           </ul>
         </nav>
 
