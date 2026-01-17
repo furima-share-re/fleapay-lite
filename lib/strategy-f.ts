@@ -214,6 +214,35 @@ export async function getMonthlyQrTransactionCount(
 }
 
 /**
+ * 指定日時の月間QR決済回数を取得
+ * @param prisma PrismaClient
+ * @param sellerId 出店者ID
+ * @param asOf 判定対象日時
+ * @returns 月間QR決済回数
+ */
+export async function getMonthlyQrTransactionCountAt(
+  prisma: PrismaClient,
+  sellerId: string,
+  asOf: Date
+): Promise<number> {
+  const startDate = new Date(asOf.getFullYear(), asOf.getMonth(), 1);
+  const endDate = new Date(asOf.getFullYear(), asOf.getMonth() + 1, 1);
+
+  const count = await prisma.stripePayment.count({
+    where: {
+      sellerId,
+      status: 'succeeded',
+      createdAt: {
+        gte: startDate,
+        lt: endDate,
+      },
+    },
+  });
+
+  return count;
+}
+
+/**
  * 現在の月間QR決済回数を取得
  * @param prisma PrismaClient
  * @param sellerId 出店者ID
@@ -225,6 +254,92 @@ export async function getCurrentMonthlyQrTransactionCount(
 ): Promise<number> {
   const now = new Date();
   return getMonthlyQrTransactionCount(prisma, sellerId, now.getFullYear(), now.getMonth() + 1);
+}
+
+/**
+ * 境界値テスト向け: 指定日時のTier状態を取得（DBは更新しない）
+ */
+export async function getMonthlyTierStatusAt(
+  prisma: PrismaClient,
+  sellerId: string,
+  asOf: Date,
+  overrides?: {
+    transactionCount?: number | null;
+    prevTransactionCount?: number | null;
+  }
+): Promise<{
+  year: number;
+  month: number;
+  yearMonth: string;
+  transactionCount: number;
+  startTier: number;
+  baseTier: number;
+  currentTier: number;
+  prevMonth: {
+    year: number;
+    month: number;
+    transactionCount: number | null;
+    startTier: number | null;
+    currentTier: number | null;
+  };
+}> {
+  const year = asOf.getFullYear();
+  const month = asOf.getMonth() + 1;
+  const yearMonth = toYearMonth(year, month);
+
+  const prev = getPrevYearMonth(year, month);
+  const prevYearMonth = toYearMonth(prev.year, prev.month);
+  const prevStat = await fetchMonthlyStat(prisma, sellerId, prevYearMonth);
+
+  let prevCurrentTier: number | null = null;
+  let prevTransactionCount: number | null = null;
+  if (overrides?.prevTransactionCount !== null && overrides?.prevTransactionCount !== undefined) {
+    prevTransactionCount = overrides.prevTransactionCount;
+    const prevBaseTier = determineTier(prevTransactionCount);
+    const prevStartTier = prevStat?.start_tier || 1;
+    prevCurrentTier = Math.max(prevStartTier, prevBaseTier);
+  } else if (prevStat?.current_tier && prevStat.current_tier > 0) {
+    prevCurrentTier = prevStat.current_tier;
+  } else if (prevStat) {
+    prevTransactionCount = await getMonthlyQrTransactionCount(
+      prisma,
+      sellerId,
+      prev.year,
+      prev.month
+    );
+    const prevBaseTier = determineTier(prevTransactionCount);
+    const prevStartTier = prevStat.start_tier || 1;
+    prevCurrentTier = Math.max(prevStartTier, prevBaseTier);
+  }
+
+  const startTier = computeStartTier(prevCurrentTier);
+  const transactionCountOverride =
+    overrides?.transactionCount !== null && overrides?.transactionCount !== undefined
+      ? overrides.transactionCount
+      : null;
+  const transactionCount =
+    transactionCountOverride !== null
+      ? transactionCountOverride
+      : await getMonthlyQrTransactionCountAt(prisma, sellerId, asOf);
+  const baseTier = determineTier(transactionCount);
+  const currentTier = Math.max(startTier, baseTier);
+
+  return {
+    year,
+    month,
+    yearMonth,
+    transactionCount,
+    startTier,
+    baseTier,
+    currentTier,
+    prevMonth: {
+      year: prev.year,
+      month: prev.month,
+      transactionCount: prevTransactionCount,
+      startTier: prevStat?.start_tier ?? null,
+      currentTier: prevStat?.current_tier ?? null,
+    },
+  };
 }
 
 /**
