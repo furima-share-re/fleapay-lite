@@ -96,6 +96,11 @@ export default function AdminFeeChecksPage() {
     return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(safe);
   };
 
+  const formatCurrencyOptional = (amount: number | null | undefined) => {
+    if (typeof amount !== 'number') return '未取得';
+    return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(amount);
+  };
+
   const formatNumber = (value: number | null | undefined, fractionDigits = 2) => {
     if (typeof value !== 'number') return '-';
     return new Intl.NumberFormat('ja-JP', {
@@ -482,7 +487,7 @@ export default function AdminFeeChecksPage() {
                           <td>
                             <div>{formatCurrency(row.amountGross)}</div>
                             <div style={{ color: 'var(--fleapay-gray)', fontSize: '0.8rem' }}>
-                              Stripe手数料: {formatCurrency(row.amountFee)}
+                              Stripe手数料: {formatCurrencyOptional(row.amountFee)}
                             </div>
                           </td>
                           <td>
