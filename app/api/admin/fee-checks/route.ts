@@ -2,6 +2,7 @@
 // 管理者向け: 決済手数料チェック結果取得API
 
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'admin-devtoken';
@@ -85,6 +86,12 @@ function calculateExpectedFee(amount: number, feeRate: number): number {
   return amount === 0 ? 0 : Math.max(calculatedFee, 1);
 }
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 export async function GET(request: Request) {
   if (!requireAdmin(request)) {
     return NextResponse.json(
@@ -100,18 +107,21 @@ export async function GET(request: Request) {
     const statusFilter = (searchParams.get('status') || 'all').toLowerCase();
     const query = (searchParams.get('q') || '').trim();
 
+    const where: Prisma.StripePaymentWhereInput | undefined = query
+      ? {
+          OR: [
+            { paymentIntentId: { contains: query, mode: 'insensitive' } },
+            ...(isUuid(query)
+              ? [{ orderId: query }, { sellerId: query }]
+              : []),
+          ],
+        }
+      : undefined;
+
     const payments = await prisma.stripePayment.findMany({
       take: limit,
       orderBy: { createdAt: 'desc' },
-      where: query
-        ? {
-            OR: [
-              { paymentIntentId: { contains: query, mode: 'insensitive' } },
-              { orderId: { contains: query, mode: 'insensitive' } },
-              { sellerId: { contains: query, mode: 'insensitive' } },
-            ],
-          }
-        : undefined,
+      where,
       include: {
         order: {
           select: {
