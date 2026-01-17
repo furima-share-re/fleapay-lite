@@ -378,6 +378,11 @@ export default function AdminTierBoundaryPage() {
                   <div className="mono">上書き: {result.overrides.transactionCount ?? 'なし'}</div>
                 </div>
                 <div className="card">
+                  <div className="card-title">前月決済回数</div>
+                  <div className="card-metric">{result.prevMonth.transactionCount ?? '-'}</div>
+                  <div className="mono">上書き: {result.overrides.prevTransactionCount ?? 'なし'}</div>
+                </div>
+                <div className="card">
                   <div className="card-title">Tier判定</div>
                   <div className="card-metric">Tier {result.currentTier}</div>
                   <div className="mono">開始Tier: {result.startTier} / 基本Tier: {result.baseTier}</div>
@@ -399,7 +404,6 @@ export default function AdminTierBoundaryPage() {
                   <div className="mono">決済回数: {result.prevMonth.transactionCount ?? '未計算'}</div>
                   <div className="mono">startTier: {result.prevMonth.startTier ?? '-'}</div>
                   <div className="mono">currentTier: {result.prevMonth.currentTier ?? '-'}</div>
-                  <div className="mono">上書き: {result.overrides.prevTransactionCount ?? 'なし'}</div>
                 </div>
               </div>
             </section>
