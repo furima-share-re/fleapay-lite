@@ -26,6 +26,10 @@ export async function GET(request: NextRequest) {
   sellerId = normalizeSellerId(sellerId);
 
   try {
+    const sellerProfile = await prisma.seller.findUnique({
+      where: { id: sellerId },
+      select: { shopName: true, displayName: true }
+    });
 
     // 0) サブスク状態の判定(履歴テーブルから現在プランを取得)
     let planType = "standard";
@@ -827,6 +831,8 @@ export async function GET(request: NextRequest) {
 
     const responseData = {
       sellerId,
+      shopName: sellerProfile?.shopName || null,
+      displayName: sellerProfile?.displayName || null,
       planType,
       isSubscribed,
 

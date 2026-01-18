@@ -673,6 +673,18 @@
       font-size: .85rem;
     }
 
+    .field-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .field-status {
+      font-size: .8rem;
+      color: var(--sub);
+    }
+
     .btn-primary {
       padding: 8px 14px;
       border-radius: 999px;
@@ -1246,6 +1258,17 @@
         <div class="field">
           <div class="field-label">お店の名前</div>
           <div class="field-value" id="shop-display">（あとで設定予定）</div>
+          <input
+            id="shop-name-input"
+            class="field-select"
+            type="text"
+            placeholder="お店の名前を入力"
+            maxlength="50"
+          />
+          <div class="field-actions">
+            <button type="button" class="btn-primary" id="shop-name-save">保存</button>
+            <span class="field-status" id="shop-name-status"></span>
+          </div>
         </div>
 
         <div class="field">
@@ -1430,6 +1453,9 @@
 
       const shopNameEl = $("#shop-name");
       const shopDisplayEl = $("#shop-display");
+      const shopNameInputEl = $("#shop-name-input");
+      const shopNameSaveEl = $("#shop-name-save");
+      const shopNameStatusEl = $("#shop-name-status");
       const todayLabelEl = $("#today-label");
       const kpiTotalEl = $("#kpi-total");
       const kpiCountEl = $("#kpi-count");
@@ -1834,11 +1860,65 @@
         }
       }
 
+      function setShopLabel(label) {
+        if (shopNameEl) shopNameEl.textContent = label;
+        if (shopDisplayEl) shopDisplayEl.textContent = label;
+      }
+
+      function setShopStatus(message, isError) {
+        if (!shopNameStatusEl) return;
+        shopNameStatusEl.textContent = message || "";
+        shopNameStatusEl.style.color = isError ? "var(--edo-red)" : "var(--sub)";
+      }
+
+      if (shopNameSaveEl) {
+        shopNameSaveEl.addEventListener("click", async () => {
+          if (!sellerId) {
+            setShopStatus("出店者IDが必要です。", true);
+            return;
+          }
+          const name = shopNameInputEl?.value?.trim() || "";
+          if (!name) {
+            setShopStatus("お店の名前を入力してください。", true);
+            return;
+          }
+
+          shopNameSaveEl.disabled = true;
+          setShopStatus("保存中…");
+
+          try {
+            const res = await fetch("/api/seller/update-profile", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sellerId, shopName: name })
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+              setShopStatus("保存できませんでした。", true);
+              return;
+            }
+
+            const shopLabel = data.shopName || data.displayName || sellerId || "出店者";
+            setShopLabel(shopLabel);
+            if (shopNameInputEl) shopNameInputEl.value = data.shopName || data.displayName || name;
+            setShopStatus("保存しました。");
+          } catch (e) {
+            setShopStatus("保存できませんでした。", true);
+          } finally {
+            shopNameSaveEl.disabled = false;
+          }
+        });
+      }
+
       async function loadSummary() {
         generateQRCode();
 
         if (!sellerId) {
           if (homeHintEl) homeHintEl.textContent = "URLに ?s=出店者ID が ひつようです。";
+          if (shopNameInputEl) shopNameInputEl.disabled = true;
+          if (shopNameSaveEl) shopNameSaveEl.disabled = true;
+          setShopStatus("出店者IDが必要です。", true);
           return;
         }
 
@@ -1873,8 +1953,11 @@
             }
           }
 
-          if (shopNameEl) shopNameEl.textContent = data.displayName || data.sellerId || "出店者";
-          if (shopDisplayEl) shopDisplayEl.textContent = data.displayName || data.sellerId || "出店者";
+          const shopLabel = data.shopName || data.displayName || data.sellerId || "出店者";
+          setShopLabel(shopLabel);
+          if (shopNameInputEl) {
+            shopNameInputEl.value = data.shopName || data.displayName || "";
+          }
 
           const now = new Date();
           const nowJst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
