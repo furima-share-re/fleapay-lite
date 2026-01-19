@@ -95,6 +95,39 @@
         </div>
       </section>
 
+      <!-- eBay売れ筋 -->
+      <section>
+        <h2>eBay売れ筋（直近90日）</h2>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+          <input
+            id="ebayKeyword"
+            type="text"
+            placeholder="キーワード（例: Pokemon card）"
+            style="padding: 8px; border-radius: 8px; min-width: 240px;"
+          />
+          <select id="ebayMarketplace" style="padding: 8px; border-radius: 8px;">
+            <option value="EBAY_US">US</option>
+            <option value="EBAY_GB">UK</option>
+            <option value="EBAY_JP">JP</option>
+          </select>
+          <select id="ebayLimit" style="padding: 8px; border-radius: 8px;">
+            <option value="10">10件</option>
+            <option value="20">20件</option>
+            <option value="50" selected>50件</option>
+          </select>
+          <button id="ebaySearchBtn" class="ghost">🔍 検索</button>
+        </div>
+        <div id="ebaySoldStatus" style="font-size: 12px; color: var(--fleapay-gray); margin-bottom: 6px;"></div>
+        <div id="ebaySoldList">
+          <div style="text-align: center; padding: 20px; color: var(--fleapay-gray);">
+            検索キーワードを入力してください
+          </div>
+        </div>
+        <div style="font-size: 12px; color: var(--fleapay-gray); margin-top: 6px;">
+          ※ Marketplace Insights API（eBay提供）を使用。未承認の場合は取得できません。
+        </div>
+      </section>
+
       <!-- 出店者アクティビティ -->
       <section>
         <h2>出店者アクティビティ</h2>
@@ -129,6 +162,7 @@
       
       // データ読み込み
       await loadDashboardData();
+      initEbaySection();
       setupEventListeners();
       startAutoRefresh();
     });
@@ -277,6 +311,171 @@
       `).join('');
       
       tbody.innerHTML = rows;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatEbayPrice(avgPrice) {
+      if (!avgPrice || avgPrice.value === null || avgPrice.value === undefined) {
+        return '—';
+      }
+      const value = Number(avgPrice.value);
+      if (!Number.isFinite(value)) return '—';
+      const currency = (avgPrice.currency || '').toUpperCase();
+      const symbol = currency === 'USD' ? '$' : currency === 'GBP' ? '£' : currency === 'JPY' ? '¥' : '';
+      const amount = value.toLocaleString(currency === 'JPY' ? 'ja-JP' : 'en-US');
+      return symbol ? `${symbol}${amount}` : `${amount} ${currency || ''}`.trim();
+    }
+
+    function renderEbaySoldItems(payload) {
+      const listEl = document.getElementById('ebaySoldList');
+      const statusEl = document.getElementById('ebaySoldStatus');
+      if (!listEl) return;
+
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      if (!items.length) {
+        listEl.innerHTML = `
+          <div style="text-align: center; padding: 20px; color: var(--fleapay-gray);">
+            該当データがありません
+          </div>
+        `;
+        if (statusEl) {
+          statusEl.textContent = '取得結果: 0件';
+        }
+        return;
+      }
+
+      const rows = items.map((item, index) => {
+        const title = escapeHtml(item.title || '—');
+        const sold = adminUI.formatNumber(item.soldQuantity || 0);
+        const avgPrice = formatEbayPrice(item.averageSoldPrice);
+        const link = item.itemUrl
+          ? `<a href="${escapeHtml(item.itemUrl)}" target="_blank" rel="noopener">${title}</a>`
+          : title;
+        return `
+          <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; width: 60px;">${index + 1}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">${link}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; width: 120px; text-align: right;">${sold}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; width: 140px; text-align: right;">${avgPrice}</td>
+          </tr>
+        `;
+      }).join('');
+
+      listEl.innerHTML = `
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: var(--fleapay-cream);">
+              <th style="padding: 10px; text-align: left; border-bottom: 1px solid #eee;">順位</th>
+              <th style="padding: 10px; text-align: left; border-bottom: 1px solid #eee;">商品</th>
+              <th style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">売れた数</th>
+              <th style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">平均価格</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+
+      if (statusEl) {
+        statusEl.textContent = `取得結果: ${items.length}件`;
+      }
+    }
+
+    async function loadEbayTopSold({ showToast = false } = {}) {
+      const keywordEl = document.getElementById('ebayKeyword');
+      const marketplaceEl = document.getElementById('ebayMarketplace');
+      const limitEl = document.getElementById('ebayLimit');
+      const listEl = document.getElementById('ebaySoldList');
+      const statusEl = document.getElementById('ebaySoldStatus');
+
+      if (!keywordEl || !listEl) return;
+
+      const keyword = keywordEl.value.trim();
+      if (!keyword) {
+        listEl.innerHTML = `
+          <div style="text-align: center; padding: 20px; color: var(--fleapay-gray);">
+            キーワードを入力してください
+          </div>
+        `;
+        if (statusEl) statusEl.textContent = '';
+        return;
+      }
+
+      const marketplace = marketplaceEl ? marketplaceEl.value : 'EBAY_US';
+      const limit = limitEl ? limitEl.value : '10';
+      localStorage.setItem('adminEbayKeyword', keyword);
+
+      listEl.innerHTML = `
+        <div style="text-align: center; padding: 20px; color: var(--fleapay-gray);">
+          読み込み中...
+        </div>
+      `;
+      if (statusEl) statusEl.textContent = `取得中: ${keyword}`;
+
+      try {
+        const params = new URLSearchParams({
+          q: keyword,
+          marketplace,
+          limit
+        });
+        const data = await adminAPI.request(`/api/admin/ebay-sold?${params.toString()}`);
+        if (!data.ok) {
+          throw new Error(data.message || 'eBayデータの取得に失敗しました');
+        }
+        renderEbaySoldItems(data);
+        if (showToast) {
+          adminUI.showToast('eBay売れ筋を更新しました', 'success');
+        }
+      } catch (error) {
+        listEl.innerHTML = `
+          <div style="text-align: center; padding: 20px; color: var(--error-maroon);">
+            ${escapeHtml(error.message || 'eBayデータの取得に失敗しました')}
+          </div>
+        `;
+        if (statusEl) statusEl.textContent = '取得失敗';
+        if (showToast) {
+          adminUI.showToast('eBay売れ筋の取得に失敗しました', 'error');
+        }
+      }
+    }
+
+    function initEbaySection() {
+      const keywordEl = document.getElementById('ebayKeyword');
+      const searchBtn = document.getElementById('ebaySearchBtn');
+      const marketplaceEl = document.getElementById('ebayMarketplace');
+      const limitEl = document.getElementById('ebayLimit');
+
+      if (!keywordEl) return;
+
+      const savedKeyword = localStorage.getItem('adminEbayKeyword');
+      keywordEl.value = savedKeyword || 'Pokemon card';
+
+      if (searchBtn) {
+        searchBtn.addEventListener('click', () => loadEbayTopSold({ showToast: true }));
+      }
+
+      keywordEl.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          loadEbayTopSold({ showToast: true });
+        }
+      });
+
+      if (marketplaceEl) {
+        marketplaceEl.addEventListener('change', () => loadEbayTopSold());
+      }
+      if (limitEl) {
+        limitEl.addEventListener('change', () => loadEbayTopSold());
+      }
+
+      loadEbayTopSold();
     }
 
     function setupEventListeners() {

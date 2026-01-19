@@ -8,6 +8,8 @@ import { buildPriceStats } from "./stats.js";
 const EBAY_CLIENT_ID = process.env.EBAY_CLIENT_ID || "";
 const EBAY_CLIENT_SECRET = process.env.EBAY_CLIENT_SECRET || "";
 const EBAY_ENV = process.env.EBAY_ENV || "production"; // or "sandbox"
+const DEFAULT_EBAY_SCOPE = "https://api.ebay.com/oauth/api_scope";
+const INSIGHTS_SCOPE = "https://api.ebay.com/oauth/api_scope/buy.marketplace.insights";
 
 // デバッグログ用フラグ
 const WORLD_PRICE_DEBUG = process.env.WORLD_PRICE_DEBUG === "1";
@@ -16,11 +18,8 @@ const WORLD_PRICE_DEBUG = process.env.WORLD_PRICE_DEBUG === "1";
 export const EBAY_SOURCE_MODE =
   process.env.EBAY_SOURCE_MODE || "active";
 
-// eBay アクセストークンの簡易キャッシュ
-const ebayTokenCache = {
-  token: null,
-  expiresAt: 0, // epoch ms
-};
+// eBay アクセストークンの簡易キャッシュ (scope別)
+const ebayTokenCache = new Map();
 
 // 為替レートキャッシュ (USD/JPY, GBP/JPY)
 let fxCache = {
@@ -30,15 +29,17 @@ let fxCache = {
 };
 
 // eBay OAuth トークン取得(client_credentials)
-async function getEbayAccessToken() {
+async function getEbayAccessToken(scopes = DEFAULT_EBAY_SCOPE) {
   if (!EBAY_CLIENT_ID || !EBAY_CLIENT_SECRET) {
     console.warn("[world-price] EBAY_CLIENT_ID/SECRET not set, skip eBay call");
     return null;
   }
 
+  const scopeKey = Array.isArray(scopes) ? scopes.join(" ") : scopes;
   const now = Date.now();
-  if (ebayTokenCache.token && ebayTokenCache.expiresAt > now + 60_000) {
-    return ebayTokenCache.token;
+  const cached = ebayTokenCache.get(scopeKey);
+  if (cached && cached.expiresAt > now + 60_000) {
+    return cached.token;
   }
 
   const tokenUrl =
@@ -53,7 +54,7 @@ async function getEbayAccessToken() {
 
   const body = new URLSearchParams();
   body.set("grant_type", "client_credentials");
-  body.set("scope", "https://api.ebay.com/oauth/api_scope");
+  body.set("scope", scopeKey);
 
   const res = await fetch(tokenUrl, {
     method: "POST",
@@ -79,12 +80,91 @@ async function getEbayAccessToken() {
     return null;
   }
 
-  ebayTokenCache.token = accessToken;
-  ebayTokenCache.expiresAt = Date.now() + expiresIn * 1000;
+  ebayTokenCache.set(scopeKey, {
+    token: accessToken,
+    expiresAt: Date.now() + expiresIn * 1000
+  });
 
   console.log("[world-price] ebay token refreshed, expiresIn(s)=", expiresIn);
 
   return accessToken;
+}
+
+export async function fetchEbayTopSoldItems(keyword, marketplaceId, options = {}) {
+  const limit = Number(options.limit) || 10;
+  const q = (keyword || "").trim();
+
+  if (!q) {
+    return { items: [], total: 0 };
+  }
+
+  const token = await getEbayAccessToken([DEFAULT_EBAY_SCOPE, INSIGHTS_SCOPE]);
+  if (!token) {
+    console.warn("[world-price] no ebay token for insights, skip");
+    return null;
+  }
+
+  const baseUrl =
+    EBAY_ENV === "sandbox"
+      ? "https://api.sandbox.ebay.com/buy/marketplace_insights/v1_beta/item_sales/search"
+      : "https://api.ebay.com/buy/marketplace_insights/v1_beta/item_sales/search";
+
+  const params = new URLSearchParams();
+  params.set("q", q);
+  params.set("limit", String(limit));
+
+  const url = `${baseUrl}?${params.toString()}`;
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "X-EBAY-C-MARKETPLACE-ID": marketplaceId,
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("[world-price] ebay insights error", marketplaceId, res.status, text);
+    return null;
+  }
+
+  const data = await res.json();
+  const rawItems = Array.isArray(data.itemSales) ? data.itemSales : [];
+
+  const items = rawItems.map((item) => {
+    const title = item.title || item.item?.title || item.itemId || "";
+    const soldQuantity = Number(
+      item.totalSoldQuantity ??
+      item.soldQuantity ??
+      item.quantitySold ??
+      item.quantity ??
+      0
+    );
+    const avgPrice =
+      item.averageSoldPrice ||
+      item.avgSoldPrice ||
+      item.averagePrice ||
+      null;
+    const avgValue = avgPrice?.value ?? avgPrice?.amount ?? null;
+    const avgCurrency = avgPrice?.currency || avgPrice?.currencyCode || null;
+
+    return {
+      itemId: item.itemId || item.item?.itemId || null,
+      title,
+      soldQuantity: Number.isFinite(soldQuantity) ? soldQuantity : 0,
+      averageSoldPrice: avgValue !== null && Number.isFinite(Number(avgValue))
+        ? { value: Number(avgValue), currency: avgCurrency }
+        : null,
+      itemUrl: item.itemWebUrl || item.item?.itemWebUrl || null,
+    };
+  });
+
+  items.sort((a, b) => (b.soldQuantity || 0) - (a.soldQuantity || 0));
+
+  return {
+    items,
+    total: Number(data.totalEntries || data.total || items.length) || 0,
+  };
 }
 
 // 為替レート取得(外部API + 1時間キャッシュ)

@@ -50,10 +50,10 @@ function Test-Endpoint {
 
         if ($result.status -eq "success") {
             $script:report.summary.success++
-            Write-Host "✅ $Name - Status: $($response.StatusCode) ($($stopwatch.ElapsedMilliseconds)ms)" -ForegroundColor Green
+            Write-Host "[OK] $Name - Status: $($response.StatusCode) ($($stopwatch.ElapsedMilliseconds)ms)" -ForegroundColor Green
         } else {
             $script:report.summary.failed++
-            Write-Host "❌ $Name - Status: $($response.StatusCode) (期待: $ExpectedStatus)" -ForegroundColor Red
+            Write-Host "[FAIL] $Name - Status: $($response.StatusCode) (期待: $ExpectedStatus)" -ForegroundColor Red
         }
     } catch {
         $result.status = "failed"
@@ -62,7 +62,7 @@ function Test-Endpoint {
             $result.actualStatus = $_.Exception.Response.StatusCode.value__
         }
         $script:report.summary.failed++
-        Write-Host "❌ $Name - エラー: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "[FAIL] $Name - エラー: $($_.Exception.Message)" -ForegroundColor Red
     } finally {
         $script:report.summary.total++
         $script:report.results += $result
@@ -82,7 +82,7 @@ $script:report = @{
     results = @()
 }
 
-Write-Host "🔍 包括的デグレチェックを開始します..." -ForegroundColor Cyan
+Write-Host "包括的デグレチェックを開始します..." -ForegroundColor Cyan
 Write-Host "ベースURL: $BASE_URL" -ForegroundColor Cyan
 Write-Host ""
 
@@ -171,7 +171,7 @@ Write-Host "成功率: $([Math]::Round(($script:report.summary.success / $script
 if ($script:report.summary.failed -gt 0) {
     Write-Host "`n=== 失敗した項目 ===" -ForegroundColor Red
     $script:report.results | Where-Object { $_.status -eq "failed" } | ForEach-Object {
-        Write-Host "❌ $($_.name) - Status: $($_.actualStatus)" -ForegroundColor Red
+        Write-Host "[FAIL] $($_.name) - Status: $($_.actualStatus)" -ForegroundColor Red
         Write-Host "   URL: $($_.url)" -ForegroundColor Red
         if ($_.error) {
             Write-Host "   エラー: $($_.error)" -ForegroundColor Red
@@ -183,7 +183,7 @@ if ($script:report.summary.failed -gt 0) {
 # レポートをJSONファイルに保存
 $script:report | ConvertTo-Json -Depth 10 | Out-File -FilePath "comprehensive-degradation-check-report.json" -Encoding UTF8
 
-Write-Host "📄 詳細レポートを保存しました: comprehensive-degradation-check-report.json" -ForegroundColor Green
+Write-Host "Report saved: comprehensive-degradation-check-report.json" -ForegroundColor Green
 
 
 
