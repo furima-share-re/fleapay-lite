@@ -1272,6 +1272,50 @@
         </div>
 
         <div class="field">
+          <div class="field-label">購入者情報の初期値</div>
+          <div class="field-value">取引編集で未入力の項目に自動反映されます。</div>
+          <select id="default-customer-type" class="field-select" style="margin-top:6px;">
+            <option value="">購入者タイプ（未選択）</option>
+            <option value="domestic">日本のひと</option>
+            <option value="inbound">外国のひと</option>
+          </select>
+          <select id="default-gender" class="field-select" style="margin-top:6px;">
+            <option value="">性別（未選択）</option>
+            <option value="male">男性</option>
+            <option value="female">女性</option>
+            <option value="unknown">わからない</option>
+          </select>
+          <select id="default-age" class="field-select" style="margin-top:6px;">
+            <option value="">年齢帯（未選択）</option>
+            <option value="child">こども</option>
+            <option value="age_16_29">16〜29</option>
+            <option value="age_30_59">30〜59</option>
+            <option value="age_60_plus">60+</option>
+          </select>
+          <select id="default-category" class="field-select" style="margin-top:6px;">
+            <option value="">商品カテゴリ（未選択）</option>
+            <option value="toy">おもちゃ</option>
+            <option value="card">カード・トレカ</option>
+            <option value="clothes">ふく</option>
+            <option value="book">本</option>
+            <option value="handmade">ハンドメイド</option>
+            <option value="other">そのた</option>
+          </select>
+          <select id="default-language" class="field-select" style="margin-top:6px;">
+            <option value="">購入者のことば（未選択）</option>
+            <option value="ja">日本語</option>
+            <option value="en">英語</option>
+            <option value="zh">中国語</option>
+            <option value="ko">韓国語</option>
+            <option value="other">その他</option>
+          </select>
+          <div class="field-actions">
+            <button type="button" class="btn-secondary" id="default-buyer-save">初期値を保存</button>
+            <span class="field-status" id="default-buyer-status"></span>
+          </div>
+        </div>
+
+        <div class="field">
           <div class="field-label">レシートの ひょうじ げんご</div>
           <div class="field-value">自動（おすすめ）</div>
         </div>
@@ -1471,6 +1515,13 @@
       const rewardMessageEl = $("#reward-message");
       const rewardHintEl = $("#reward-hint");
       const rewardBarFillEl = $("#reward-bar-fill");
+      const defaultCustomerTypeEl = $("#default-customer-type");
+      const defaultGenderEl = $("#default-gender");
+      const defaultAgeEl = $("#default-age");
+      const defaultCategoryEl = $("#default-category");
+      const defaultLanguageEl = $("#default-language");
+      const defaultBuyerSaveEl = $("#default-buyer-save");
+      const defaultBuyerStatusEl = $("#default-buyer-status");
 
       function setMode(nextMode) {
         if (!bodyEl) return;
@@ -1871,6 +1922,71 @@
         shopNameStatusEl.style.color = isError ? "var(--edo-red)" : "var(--sub)";
       }
 
+      function buyerDefaultsKey() {
+        return sellerId ? `seller-buyer-defaults:${sellerId}` : "seller-buyer-defaults:unknown";
+      }
+
+      function setBuyerDefaultsStatus(message, isError) {
+        if (!defaultBuyerStatusEl) return;
+        defaultBuyerStatusEl.textContent = message || "";
+        defaultBuyerStatusEl.style.color = isError ? "var(--edo-red)" : "var(--sub)";
+      }
+
+      function readBuyerDefaultsFromForm() {
+        return {
+          customerType: defaultCustomerTypeEl?.value || "",
+          gender: defaultGenderEl?.value || "",
+          ageBand: defaultAgeEl?.value || "",
+          category: defaultCategoryEl?.value || "",
+          buyerLanguage: defaultLanguageEl?.value || ""
+        };
+      }
+
+      function applyBuyerDefaultsToForm(defaults) {
+        if (!defaults) return;
+        if (defaultCustomerTypeEl) defaultCustomerTypeEl.value = defaults.customerType || "";
+        if (defaultGenderEl) defaultGenderEl.value = defaults.gender || "";
+        if (defaultAgeEl) defaultAgeEl.value = defaults.ageBand || "";
+        if (defaultCategoryEl) defaultCategoryEl.value = defaults.category || "";
+        if (defaultLanguageEl) defaultLanguageEl.value = defaults.buyerLanguage || "";
+      }
+
+      function loadBuyerDefaults() {
+        if (!sellerId) return null;
+        try {
+          const raw = localStorage.getItem(buyerDefaultsKey());
+          if (!raw) return null;
+          return JSON.parse(raw);
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function saveBuyerDefaults(defaults) {
+        if (!sellerId) return false;
+        try {
+          localStorage.setItem(buyerDefaultsKey(), JSON.stringify(defaults));
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      function applyBuyerDefaultsToModalIfEmpty(defaults) {
+        if (!defaults) return;
+        const typeEl = document.getElementById("modal-customer-type");
+        const genEl = document.getElementById("modal-gender");
+        const ageEl = document.getElementById("modal-age");
+        const catEl = document.getElementById("modal-category");
+        const langEl = document.getElementById("modal-language");
+
+        if (typeEl && !typeEl.value && defaults.customerType) typeEl.value = defaults.customerType;
+        if (genEl && !genEl.value && defaults.gender) genEl.value = defaults.gender;
+        if (ageEl && !ageEl.value && defaults.ageBand) ageEl.value = defaults.ageBand;
+        if (catEl && !catEl.value && defaults.category) catEl.value = defaults.category;
+        if (langEl && !langEl.value && defaults.buyerLanguage) langEl.value = defaults.buyerLanguage;
+      }
+
       if (shopNameSaveEl) {
         shopNameSaveEl.addEventListener("click", async () => {
           if (!sellerId) {
@@ -1911,6 +2027,22 @@
         });
       }
 
+      if (defaultBuyerSaveEl) {
+        defaultBuyerSaveEl.addEventListener("click", () => {
+          if (!sellerId) {
+            setBuyerDefaultsStatus("出店者IDが必要です。", true);
+            return;
+          }
+          const defaults = readBuyerDefaultsFromForm();
+          const ok = saveBuyerDefaults(defaults);
+          if (ok) {
+            setBuyerDefaultsStatus("初期値を保存しました。");
+          } else {
+            setBuyerDefaultsStatus("保存できませんでした。", true);
+          }
+        });
+      }
+
       async function loadSummary() {
         generateQRCode();
 
@@ -1918,7 +2050,14 @@
           if (homeHintEl) homeHintEl.textContent = "URLに ?s=出店者ID が ひつようです。";
           if (shopNameInputEl) shopNameInputEl.disabled = true;
           if (shopNameSaveEl) shopNameSaveEl.disabled = true;
+          if (defaultCustomerTypeEl) defaultCustomerTypeEl.disabled = true;
+          if (defaultGenderEl) defaultGenderEl.disabled = true;
+          if (defaultAgeEl) defaultAgeEl.disabled = true;
+          if (defaultCategoryEl) defaultCategoryEl.disabled = true;
+          if (defaultLanguageEl) defaultLanguageEl.disabled = true;
+          if (defaultBuyerSaveEl) defaultBuyerSaveEl.disabled = true;
           setShopStatus("出店者IDが必要です。", true);
+          setBuyerDefaultsStatus("出店者IDが必要です。", true);
           return;
         }
 
@@ -1957,6 +2096,11 @@
           setShopLabel(shopLabel);
           if (shopNameInputEl) {
             shopNameInputEl.value = data.shopName || data.displayName || "";
+          }
+
+          const defaults = loadBuyerDefaults();
+          if (defaults) {
+            applyBuyerDefaultsToForm(defaults);
           }
 
           const now = new Date();
@@ -2161,6 +2305,8 @@
 
       window.loadSummary = loadSummary;
       window.generateQRCode = generateQRCode;
+      window.getBuyerDefaults = loadBuyerDefaults;
+      window.applyBuyerDefaultsToModalIfEmpty = applyBuyerDefaultsToModalIfEmpty;
     })();
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -2246,6 +2392,13 @@
 
         if (catEl) catEl.value = data.itemCategory || "";
         if (langEl) langEl.value = data.buyerLanguage || "";
+
+        const defaults = typeof window.getBuyerDefaults === "function"
+          ? window.getBuyerDefaults()
+          : null;
+        if (typeof window.applyBuyerDefaultsToModalIfEmpty === "function") {
+          window.applyBuyerDefaultsToModalIfEmpty(defaults);
+        }
 
         modal.style.display = "flex";
 
