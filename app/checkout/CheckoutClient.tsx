@@ -418,15 +418,24 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
             box-shadow: inset 0 0 0 1px #D4AF37;
           }
           .lang-btn {
-            width: 34px;
-            height: 34px;
+            min-width: 38px;
+            height: 32px;
+            padding: 0 8px;
             border: 0;
             background: transparent;
-            border-radius: 50%;
+            border-radius: 3px;  /* 江戸風: 角ばった */
             font-size: 14px;
+            font-weight: 800;
+            color: var(--shin-ai);
             cursor: pointer;
+            letter-spacing: .04em;
+            line-height: 1;
           }
-          .lang-btn.active { background: rgba(27,54,93,.08); }
+          .lang-btn.active {
+            background: #1B365D;
+            color: #FBF7F0;
+            box-shadow: inset 0 0 0 1px #D4AF37;
+          }
           .card {
             position: relative;
             background: #fffdf7;
@@ -919,21 +928,21 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
                 onClick={() => setLang('ja')}
                 aria-label="日本語"
               >
-                🇯🇵
+                日
               </button>
               <button
                 className={`lang-btn ${lang === 'en' ? 'active' : ''}`}
                 onClick={() => setLang('en')}
                 aria-label="English"
               >
-                🇺🇸
+                EN
               </button>
               <button
                 className={`lang-btn ${lang === 'zh' ? 'active' : ''}`}
                 onClick={() => setLang('zh')}
                 aria-label="中文"
               >
-                🇨🇳
+                中
               </button>
             </div>
           </div>
