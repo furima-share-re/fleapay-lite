@@ -345,58 +345,43 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
             color: #1A1A1A;
             max-width: 640px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 56px 20px 40px;  /* 上部に暖簾分の余白 */
             min-height: 100vh;
             position: relative;
-            /* 江戸風の背景 */
-            background: linear-gradient(180deg, #fef9e7 0%, #fdf5e6 30%, #faf0e6 60%, #f5ebe0 100%);
-            background-image: 
-              /* 青海波パターン（背景） */
-              repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 20px,
-                rgba(44,79,111,0.03) 20px,
-                rgba(44,79,111,0.03) 22px
-              ),
-              repeating-linear-gradient(
-                90deg,
-                transparent,
-                transparent 20px,
-                rgba(44,79,111,0.03) 20px,
-                rgba(44,79,111,0.03) 22px
-              ),
-              /* 黄昏の光 */
-              radial-gradient(1200px 700px at 80% -10%, rgba(230,57,70,.08) 0%, transparent 60%),
-              radial-gradient(1200px 700px at -20% 110%, rgba(27,54,93,.1) 0%, transparent 60%);
+            /* 江戸風: 藍 → 生成りグラデで「夕暮れの空」 */
+            background:
+              radial-gradient(1200px 700px at 80% -10%, rgba(230,57,70,.18) 0%, transparent 55%),
+              radial-gradient(1200px 700px at -20% 110%, rgba(27,54,93,.22) 0%, transparent 60%),
+              linear-gradient(180deg, #f6e6d4 0%, #f7ecd9 30%, #f0e2c8 60%, #ead7b5 100%);
             overflow: hidden;
           }
-          /* 江戸風の装飾要素 */
+          /* 江戸風の上部暖簾（藍地 + 金筋 + 朱の印） */
           .checkout-container::before {
             content: "";
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 32px;
-            background: repeating-linear-gradient(
-              90deg,
-              transparent,
-              transparent 10px,
-              rgba(212,175,55,0.1) 10px,
-              rgba(212,175,55,0.1) 12px
-            );
-            opacity: 0.3;
-            z-index: 0;
+            height: 40px;
+            background:
+              /* 金縁の細い帯 */
+              linear-gradient(180deg, transparent 36px, #B8902E 36px, #B8902E 38px, transparent 38px),
+              /* 暖簾本体: 藍地 */
+              linear-gradient(180deg, #1B365D 0%, #2a4a7a 70%, #B8902E 70%, #B8902E 72%, transparent 72%);
+            box-shadow: 0 4px 12px rgba(27,54,93,.25);
+            z-index: 2;
           }
+          /* 全面に大きな青海波パターン（薄く透ける藍） */
           .checkout-container::after {
             content: "";
             position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 64px;
-            background: linear-gradient(to top, rgba(44,79,111,0.05) 0%, transparent 100%);
+            inset: 40px 0 0 0;
+            background-image:
+              radial-gradient(circle at 0 16px, transparent 14px, rgba(27,54,93,.10) 14px, rgba(27,54,93,.10) 15px, transparent 15px),
+              radial-gradient(circle at 16px 16px, transparent 14px, rgba(27,54,93,.10) 14px, rgba(27,54,93,.10) 15px, transparent 15px),
+              radial-gradient(circle at 32px 16px, transparent 14px, rgba(27,54,93,.10) 14px, rgba(27,54,93,.10) 15px, transparent 15px);
+            background-size: 32px 32px;
+            pointer-events: none;
             z-index: 0;
           }
           .appbar {
@@ -426,10 +411,11 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
           .lang-switch {
             display: flex;
             gap: 4px;
-            background: rgba(255,255,255,.6);
-            border: 1px solid rgba(27,54,93,.15);
-            border-radius: 999px;
+            background: rgba(253,250,243,.85);
+            border: 2px solid #1B365D;
+            border-radius: 4px;
             padding: 3px;
+            box-shadow: inset 0 0 0 1px #D4AF37;
           }
           .lang-btn {
             width: 34px;
@@ -443,23 +429,49 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
           .lang-btn.active { background: rgba(27,54,93,.08); }
           .card {
             position: relative;
-            background: #ffffff;
-            border: 1px solid rgba(27,54,93,.12);
-            border-radius: var(--radius-xl);
-            padding: 20px;
-            box-shadow: var(--card-shadow);
-            overflow: hidden;
+            background: #fffdf7;
+            /* 二重の縁: 外側は藍、内側は金（額装風） */
+            border: 3px solid #1B365D;
+            border-radius: 6px;
+            padding: 24px 20px 22px;
+            box-shadow:
+              inset 0 0 0 2px #D4AF37,
+              inset 0 0 0 4px #fffdf7,
+              0 16px 40px rgba(27,54,93,.25);
+            overflow: visible;
             z-index: 1;
             color: #1A1A1A;
           }
           .card * {
             color: inherit;
           }
-          /* ボタンは常に黒文字 */
+          /* 右上に朱印（FleaPay）風スタンプ */
+          .card > .stamp {
+            position: absolute;
+            top: -14px;
+            right: 16px;
+            width: 56px;
+            height: 56px;
+            background: radial-gradient(circle, #C23B47, #8B2635);
+            color: #FBF7F0;
+            font-weight: 900;
+            font-size: 11px;
+            display: grid;
+            place-items: center;
+            border-radius: 6px;
+            border: 2px solid #FBF7F0;
+            box-shadow: 0 4px 12px rgba(139,38,53,.5), inset 0 0 0 2px #C23B47;
+            transform: rotate(-8deg);
+            letter-spacing: .04em;
+            line-height: 1.1;
+            text-align: center;
+            z-index: 3;
+          }
+          /* 江戸風ボタンは生成り（クリーム）文字 — 朱地と対比 */
           .card .btn,
           .card .btn *,
           .card .btn span {
-            color: #1A1A1A !important;
+            color: #FBF7F0 !important;
           }
           .card::after {
             content: "🌸";
@@ -483,11 +495,25 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
           }
           .welcome-message {
             text-align: center;
-            margin: 8px 0 2px;
-            font-size: 24px;
-            letter-spacing: .04em;
+            margin: 4px 0 12px;
+            font-size: 28px;
+            letter-spacing: .12em;
             color: var(--shin-ai);
-            font-weight: 700;
+            font-weight: 900;
+            position: relative;
+            padding-bottom: 12px;
+          }
+          /* 看板の下に金の二重線 */
+          .welcome-message::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background:
+              linear-gradient(180deg, #D4AF37 0 1px, transparent 1px 3px, #D4AF37 3px 4px);
           }
           .main-message {
             margin-bottom: 24px;
@@ -498,14 +524,25 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
             gap: 8px;
           }
           .priceBox {
-            background: #ffffff;
-            border: 2px solid rgba(27,54,93,0.1);
-            border-radius: var(--radius-xl);
-            padding: 22px 18px;
+            background:
+              /* 角の金色アクセント（江戸の隅切り） */
+              linear-gradient(135deg, #D4AF37 0 12px, transparent 12px) top left,
+              linear-gradient(225deg, #D4AF37 0 12px, transparent 12px) top right,
+              linear-gradient(45deg, #D4AF37 0 12px, transparent 12px) bottom left,
+              linear-gradient(315deg, #D4AF37 0 12px, transparent 12px) bottom right,
+              /* 内側の生成り背景 */
+              linear-gradient(#fdfaf3, #fdfaf3);
+            background-size: 24px 24px, 24px 24px, 24px 24px, 24px 24px, 100% 100%;
+            background-repeat: no-repeat;
+            background-origin: padding-box;
+            border: 2px solid #1B365D;
+            border-radius: 4px;  /* 江戸風は角ばった方が映える */
+            padding: 28px 22px 24px;
             position: relative;
             overflow: hidden;
             margin: 10px 0 14px;
             color: #1A1A1A;
+            box-shadow: 0 6px 18px rgba(27,54,93,.18);
           }
           .priceBox * {
             color: inherit;
@@ -516,7 +553,7 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
             left: 0;
             right: 0;
             top: 0;
-            height: 3px;
+            height: 4px;
             opacity: .9;
             background: linear-gradient(90deg, var(--hakken) 0%, #ff8a65 25%, var(--shin-ai) 50%, #5c7cfa 75%, var(--hakken) 100%);
           }
@@ -537,14 +574,20 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
           }
           .price {
             font-weight: 900;
-            font-size: 48px;
-            letter-spacing: 1px;
+            font-size: 64px;
+            letter-spacing: 2px;
             line-height: 1;
-            margin: 8px 0;
+            margin: 12px 0 6px;
             position: relative;
-            /* 確実に表示される色（グラデーションは使わない） */
+            /* 江戸風: 藍の重厚な色 + 薄い金の影（Codex 指摘で朱下線は撤去、CTAとの競合を解消） */
             color: var(--shin-ai);
-            text-shadow: 0 2px 4px rgba(27,54,93,0.1);
+            text-shadow:
+              0 2px 0 rgba(212,175,55,.35),
+              0 4px 12px rgba(27,54,93,.15);
+          }
+          /* mobile では 56px に抑える */
+          @media (max-width: 480px) {
+            .price { font-size: 56px; }
           }
           .summary {
             margin: 12px 0 0;
@@ -708,44 +751,76 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
             font-weight: 500;
             line-height: 1.6;
           }
+          /* 江戸風 暖簾ボタン: 朱地 + 金縁 + 微振動アニメ */
           .btn {
             width: 100%;
-            border: 2px solid var(--shin-ai);
-            border-radius: 12px;
-            padding: 14px 16px;
-            background: #ffffff;
-            color: #1A1A1A !important;
-            font-size: 18px;
+            border: 3px solid #D4AF37;
+            border-radius: 6px;
+            padding: 22px 16px;
+            background:
+              /* 内側に金の細線 */
+              linear-gradient(#C23B47, #8B2635) padding-box,
+              linear-gradient(#D4AF37, #B8902E) border-box;
+            color: #FBF7F0 !important;
+            font-size: 22px;
             font-weight: 900;
-            letter-spacing: .04em;
+            letter-spacing: .08em;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 4px 12px rgba(27,54,93,.15);
+            box-shadow:
+              inset 0 0 0 2px rgba(255,255,255,.18),
+              inset 0 -4px 0 rgba(0,0,0,.25),
+              0 8px 24px rgba(139,38,53,.45),
+              0 0 0 4px rgba(212,175,55,.18);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+            gap: 12px;
+            transition: transform .12s ease, box-shadow .12s ease;
+            animation: edo-pulse 2.4s ease-in-out infinite;
+            text-shadow: 0 1px 2px rgba(0,0,0,.35);
+          }
+          @keyframes edo-pulse {
+            0%, 100% { box-shadow:
+              inset 0 0 0 2px rgba(255,255,255,.18),
+              inset 0 -4px 0 rgba(0,0,0,.25),
+              0 8px 24px rgba(139,38,53,.45),
+              0 0 0 4px rgba(212,175,55,.18); }
+            50% { box-shadow:
+              inset 0 0 0 2px rgba(255,255,255,.25),
+              inset 0 -4px 0 rgba(0,0,0,.25),
+              0 12px 32px rgba(230,57,70,.55),
+              0 0 0 6px rgba(212,175,55,.35); }
           }
           .btn:hover:not(:disabled) {
-            background: #f8f9fa;
-            box-shadow: 0 6px 16px rgba(27,54,93,.2);
+            transform: translateY(-1px);
+          }
+          .btn:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow:
+              inset 0 0 0 2px rgba(255,255,255,.18),
+              inset 0 2px 6px rgba(0,0,0,.35),
+              0 4px 12px rgba(139,38,53,.45);
           }
           .btn *,
-          .btn span,
-          .btn svg {
-            color: #1A1A1A !important;
+          .btn span {
+            color: #FBF7F0 !important;
           }
           .btn svg {
-            stroke: #1A1A1A !important;
+            stroke: #FBF7F0 !important;
           }
+          /* 「印」アイコンは撤去（FLEAPAY 朱印スタンプと役割が重複し、
+             長いラベル/桁数の多い金額時に absolute 配置で衝突する Codex 指摘） */
           .btn:disabled {
-            opacity: .5;
+            opacity: .55;
             cursor: not-allowed;
-            background: #f3f4f6 !important;
+            background: #d6d3cb !important;
             color: #6b7280 !important;
-            border-color: #d1d5db !important;
+            border-color: #b8b6ae !important;
+            animation: none;
+            box-shadow: none;
+            text-shadow: none;
           }
           .btn:disabled *,
           .btn:disabled span,
@@ -754,6 +829,18 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
           }
           .btn:disabled svg {
             stroke: #6b7280 !important;
+          }
+          /* アクセシビリティ: モーション控えめ希望ユーザーへの配慮（Codex 指摘） */
+          @media (prefers-reduced-motion: reduce) {
+            .btn,
+            .card::after,
+            .sakura-float,
+            .exciting-title {
+              animation: none !important;
+            }
+            .btn:hover:not(:disabled) {
+              transform: none;
+            }
           }
           .security-badges {
             display: flex;
@@ -766,13 +853,14 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
             display: flex;
             align-items: center;
             gap: 6px;
-            background: #fff;
-            border: 1px solid #e7f3ff;
-            border-radius: 999px;
-            padding: 8px 12px;
+            background: #fdfaf3;
+            border: 1.5px solid #1B365D;
+            border-radius: 3px;
+            padding: 6px 12px;
             font-size: 12px;
             color: var(--shin-ai);
-            box-shadow: 0 2px 8px rgba(0,0,0,.05);
+            box-shadow: inset 0 0 0 1px #D4AF37, 0 2px 6px rgba(27,54,93,.12);
+            font-weight: 700;
           }
           .note-block {
             margin-top: 12px;
@@ -852,6 +940,10 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
         </div>
 
         <div className="card" role="main">
+          {/* 朱印スタンプ（江戸風） */}
+          <div className="stamp" aria-hidden="true">
+            <span>FLEA<br/>PAY</span>
+          </div>
           <header className="header">
             <h1 className="welcome-message">{t.welcome}</h1>
           </header>
