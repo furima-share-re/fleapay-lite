@@ -18,9 +18,16 @@ const lastStripeCheck = new Map<string, number>();
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const __t0 = Date.now();
+  let __lapT = __t0;
+  const lap = (label: string) => {
+    const now = Date.now();
+    console.warn(`[TIMING] checkout/result ${label} step=${now - __lapT}ms total=${now - __t0}ms`);
+    __lapT = now;
+  };
   try {
     const orderId = request.nextUrl.searchParams.get('orderId');
-    
+
     if (!orderId) {
       return NextResponse.json(
         { error: 'order_id_required' },
@@ -69,6 +76,7 @@ export async function GET(request: NextRequest) {
         AND o.deleted_at IS NULL
       LIMIT 1
     `;
+    lap('queryRaw#mainSelect');
 
     const row = (result as Array<Record<string, unknown>>)[0];
 
@@ -125,6 +133,7 @@ export async function GET(request: NextRequest) {
             // Checkout Sessionを確認
             console.log(`[Stripe API] Retrieving Checkout Session: ${stripeSid}`);
             const session = await stripe.checkout.sessions.retrieve(stripeSid);
+            lap('stripe.checkout.sessions.retrieve');
             console.log(`[Stripe API] Session status: ${session.status}, payment_status: ${session.payment_status}`);
             
             if (session.payment_status === 'paid' && session.status === 'complete') {
@@ -135,6 +144,7 @@ export async function GET(request: NextRequest) {
                   : session.payment_intent.id;
                 
               const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+              lap('stripe.paymentIntents.retrieve#cs');
               console.log(`[Stripe API] PaymentIntent status: ${pi.status}`);
               
               if (pi.status === 'succeeded') {
@@ -201,6 +211,7 @@ export async function GET(request: NextRequest) {
             // PaymentIntent IDを直接確認
             console.log(`[Stripe API] Retrieving PaymentIntent: ${stripeSid}`);
             const pi = await stripe.paymentIntents.retrieve(stripeSid);
+            lap('stripe.paymentIntents.retrieve#pi');
             console.log(`[Stripe API] PaymentIntent status: ${pi.status}`);
             
             if (pi.status === 'succeeded') {

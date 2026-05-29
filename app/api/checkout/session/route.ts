@@ -37,12 +37,20 @@ const resolveOrderHashSecret = (): string | null => {
 };
 
 export async function POST(request: NextRequest) {
+  const __t0 = Date.now();
+  let __lapT = __t0;
+  const lap = (label: string) => {
+    const now = Date.now();
+    console.warn(`[TIMING] checkout/session ${label} step=${now - __lapT}ms total=${now - __t0}ms`);
+    __lapT = now;
+  };
   try {
     if (!isSameOrigin(request)) {
       return NextResponse.json({ error: "forbidden_origin" }, { status: 403 });
     }
 
     const body = await request.json();
+    lap('request.json');
     const { sellerId, amount: bodyAmount, summary, orderId: bodyOrderId } = body || {};
     const orderId = bodyOrderId || request.nextUrl.searchParams.get('order') || '';
 
@@ -74,6 +82,7 @@ export async function POST(request: NextRequest) {
           orderMetadata: true,
         },
       });
+      lap('order.findFirst');
       if (!order) {
         return NextResponse.json(
           { error: 'order_not_found' },
@@ -98,6 +107,7 @@ export async function POST(request: NextRequest) {
           orderMetadata: true,
         },
       });
+      lap('order.create');
       orderMetadata = order.orderMetadata;
     }
 
@@ -120,6 +130,7 @@ export async function POST(request: NextRequest) {
     // 重要: transfer_data.destination と application_fee_amount を使用するため、
     // 出店者は Stripe Connect の connected account (Express/Custom/Standard) を持つ必要がある
     const stripeAccountId = await resolveSellerAccountId(prisma, order.sellerId);
+    lap('resolveSellerAccountId');
     if (!stripeAccountId) {
       console.error('[Checkout] seller stripe account not found', {
         orderId: order.id,
@@ -140,6 +151,7 @@ export async function POST(request: NextRequest) {
     // Webhook（account.updated）で更新することを推奨
     try {
       const account = await stripe.accounts.retrieve(stripeAccountId);
+      lap('stripe.accounts.retrieve');
       if (!account.charges_enabled) {
         console.error('[Checkout] Connected account charges not enabled', {
           orderId: order.id,
@@ -171,6 +183,7 @@ export async function POST(request: NextRequest) {
       where: { id: order.sellerId },
       select: { shopName: true, displayName: true }
     });
+    lap('seller.findUnique');
 
     // 金額バリデーション: order.amountは最小通貨単位（JPYなら円）の整数である必要がある
     // 注意: Idempotency対策で使用するため、先に定義する
@@ -239,6 +252,7 @@ export async function POST(request: NextRequest) {
     if (order.stripeSid) {
       try {
         const existingSession = await stripe.checkout.sessions.retrieve(order.stripeSid);
+        lap('stripe.checkout.sessions.retrieve');
         // セッションが有効な場合（未完了、未期限切れ）は再利用
         if (existingSession.status === 'open' && existingSession.payment_status === 'unpaid') {
           // 金額が変わっていないことを確認（orderId + amount + currencyを連結してHMACでハッシュ）
@@ -293,7 +307,8 @@ export async function POST(request: NextRequest) {
       },
       orderBy: { startedAt: 'desc' }
     });
-    
+    lap('sellerSubscription.findFirst#1');
+
     // endedAt nullがない場合、endedAt > now()のものを探す
     if (!subscription) {
       subscription = await prisma.sellerSubscription.findFirst({
@@ -304,6 +319,7 @@ export async function POST(request: NextRequest) {
         },
         orderBy: { startedAt: 'desc' }
       });
+      lap('sellerSubscription.findFirst#2');
     }
 
     // プランがない場合は標準プランとして扱う
@@ -330,9 +346,11 @@ export async function POST(request: NextRequest) {
       if (useTierSystem) {
         // 戦略F: Tier制とコミュニティ連動型ダイナミックプライシング
         feeRate = await getFeeRateWithStrategyF(prisma, order.sellerId, planType, true);
+        lap('getFeeRateWithStrategyF');
       } else {
         // 従来のplan_typeベースの手数料率
         feeRate = await getFeeRateFromMaster(prisma, planType);
+        lap('getFeeRateFromMaster');
       }
     } catch (error) {
       // フォールバック: 5% で処理継続（運用救済）
@@ -488,6 +506,7 @@ export async function POST(request: NextRequest) {
     const session = await stripe.checkout.sessions.create(sessionParams, {
       idempotencyKey: `checkout_session_${order.id}`,  // Stripe APIレベルでの重複防止
     });
+    lap('stripe.checkout.sessions.create');
 
     // データベースにstripe_sidを保存（Stripe API確認用）
     await prisma.order.update({
@@ -497,6 +516,7 @@ export async function POST(request: NextRequest) {
         status: 'in_checkout',
       },
     });
+    lap('order.update');
 
     audit("checkout_session_created", { orderId: order.id, sellerId: order.sellerId, sessionId: session.id });
 
