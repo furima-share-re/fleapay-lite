@@ -35,22 +35,13 @@ function SuccessContent() {
   }, []);
 
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:24',message:'useEffect entry',data:{orderId:orderId,orderIdType:typeof orderId,isNull:orderId===null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     if (!orderId) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:26',message:'orderId is null, returning early',data:{orderId:orderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       setLoading(false);
       return;
     }
 
     // Store orderId in a const to ensure type narrowing
     const validOrderId: string = orderId;
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/98db92bb-3759-47d0-bd16-f6a7ab2ea3c6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/success/page.tsx:33',message:'orderId validated, storing as const',data:{validOrderId:validOrderId,validOrderIdType:typeof validOrderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
 
     // StripeのCheckout Sessionは24時間有効なので、実用的な上限を設ける（10分）
     // ただし、決済が完了するまで待つ
