@@ -579,21 +579,15 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
             line-height: 1;
             margin: 12px 0 6px;
             position: relative;
-            /* 江戸風: 藍の重厚な色 + 薄い金の影 */
+            /* 江戸風: 藍の重厚な色 + 薄い金の影（Codex 指摘で朱下線は撤去、CTAとの競合を解消） */
             color: var(--shin-ai);
             text-shadow:
               0 2px 0 rgba(212,175,55,.35),
               0 4px 12px rgba(27,54,93,.15);
           }
-          /* 価格の下に毛筆風の朱の線 */
-          .price::after {
-            content: "";
-            display: block;
-            margin: 10px auto 0;
-            width: 60%;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, #C23B47 20%, #E63946 50%, #C23B47 80%, transparent);
-            border-radius: 2px;
+          /* mobile では 56px に抑える */
+          @media (max-width: 480px) {
+            .price { font-size: 56px; }
           }
           .summary {
             margin: 12px 0 0;
@@ -816,24 +810,8 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
           .btn svg {
             stroke: #FBF7F0 !important;
           }
-          /* 左下に「印」マーク（紗綾形風） */
-          .btn::before {
-            content: "印";
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 30px;
-            height: 30px;
-            display: grid;
-            place-items: center;
-            border: 1.5px solid #D4AF37;
-            border-radius: 3px;
-            font-size: 14px;
-            font-weight: 900;
-            color: #FBF7F0;
-            background: rgba(0,0,0,.18);
-          }
+          /* 「印」アイコンは撤去（FLEAPAY 朱印スタンプと役割が重複し、
+             長いラベル/桁数の多い金額時に absolute 配置で衝突する Codex 指摘） */
           .btn:disabled {
             opacity: .55;
             cursor: not-allowed;
@@ -844,11 +822,6 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
             box-shadow: none;
             text-shadow: none;
           }
-          .btn:disabled::before {
-            border-color: #9a9890;
-            color: #6b7280;
-            background: rgba(0,0,0,.05);
-          }
           .btn:disabled *,
           .btn:disabled span,
           .btn:disabled svg {
@@ -856,6 +829,18 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
           }
           .btn:disabled svg {
             stroke: #6b7280 !important;
+          }
+          /* アクセシビリティ: モーション控えめ希望ユーザーへの配慮（Codex 指摘） */
+          @media (prefers-reduced-motion: reduce) {
+            .btn,
+            .card::after,
+            .sakura-float,
+            .exciting-title {
+              animation: none !important;
+            }
+            .btn:hover:not(:disabled) {
+              transform: none;
+            }
           }
           .security-badges {
             display: flex;
