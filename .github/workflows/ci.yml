@@ -1,30 +1,50 @@
 name: CI
+
+# aicxo の CI 構造に合わせた軽量品質ガード。
+# checkout + npm ci の重複を避けるため 1 job に集約し、
+# type-check → lint → test → build を直列実行する（fail-fast）。
+# aicxo 固有のガード script（test:schemas / check:migrations / ops:check 等）は
+# edoichiba には存在しないため取り込まない。それらは別 workflow
+# （migration-safety.yml 等）で担保している。
+
 on:
+  # pull_request は base ブランチを限定しない（main 以外を base にした PR でも
+  # CI を回す。aicxo は [main] 限定だが、edoichiba は feature ブランチへの
+  # PR があるため限定するとカバレッジが落ちる）。
   pull_request:
+  push:
+    branches: [main]
+
+# 同一 PR で複数 push があった場合、最新だけ実行する
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
+    name: Checks (typecheck + lint + test + build)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
+          cache: 'npm'
 
-      # npm ci は package-lock.json 必須で落ちやすいので
-      # 初回導入は npm install に逃がして「まず緑」を作る
-      - name: Install
-        run: npm install
+      - name: Install dependencies
+        run: npm ci
+        # postinstall で prisma generate が走る
 
       - name: Type check
-        run: npm run type-check --if-present
+        run: npm run type-check
 
       - name: Lint
-        run: npm run lint --if-present
+        run: npm run lint
 
       - name: Test
-        run: npm run test --if-present
+        run: npm run test
 
       - name: Build
-        run: npm run build --if-present
+        run: npm run build
