@@ -14,11 +14,19 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
+  const __t0 = Date.now();
+  let __lapT = __t0;
+  const lap = (label: string) => {
+    const now = Date.now();
+    console.warn(`[TIMING] webhook/stripe ${label} step=${now - __lapT}ms total=${now - __t0}ms`);
+    __lapT = now;
+  };
   try {
     console.warn('[WEBHOOK] hit /api/webhooks/stripe');
 
     // Raw bodyを取得
     const body = await request.text();
+    lap('request.text');
     const sig = request.headers.get('stripe-signature');
 
     if (!sig) {
@@ -91,6 +99,7 @@ export async function POST(request: NextRequest) {
             try {
               console.warn('[WEBHOOK] Fetching charge info for chargeId=', chargeId);
               const charge = await stripe.charges.retrieve(chargeId);
+              lap('stripe.charges.retrieve');
               balanceTxId =
                 typeof charge.balance_transaction === 'string'
                   ? charge.balance_transaction
@@ -104,6 +113,7 @@ export async function POST(request: NextRequest) {
                 const balanceTx = await stripe.balanceTransactions.retrieve(
                   balanceTxId
                 );
+                lap('stripe.balanceTransactions.retrieve');
                 fee = balanceTx.fee || 0;
                 console.warn('[WEBHOOK] Retrieved fee=', fee);
               }
@@ -127,6 +137,7 @@ export async function POST(request: NextRequest) {
           );
 
           // ✅ UPSERTパターン（ON CONFLICT）
+          const __upsertT = Date.now();
           await prisma.stripePayment.upsert({
             where: { paymentIntentId: pi.id },
             create: {
@@ -155,6 +166,8 @@ export async function POST(request: NextRequest) {
             },
           });
 
+          console.warn(`[TIMING] webhook/stripe stripePayment.upsert step=${Date.now() - __upsertT}ms total=${Date.now() - __t0}ms`);
+          __lapT = Date.now();
           console.warn('[WEBHOOK] Payment upserted successfully for pi.id=', pi.id);
 
           // ordersテーブルのステータス更新
@@ -168,6 +181,7 @@ export async function POST(request: NextRequest) {
                 updatedAt: new Date(),
               },
             });
+            lap('order.update');
             console.warn(
               '[WEBHOOK] Order status updated to "paid" for orderId=',
               orderId
@@ -181,6 +195,7 @@ export async function POST(request: NextRequest) {
                 updatedAt: new Date(),
               },
             });
+            lap('orderMetadata.update');
             console.warn(
               '[WEBHOOK] Payment state updated to "stripe_completed" for orderId=',
               orderId
