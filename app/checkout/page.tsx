@@ -42,21 +42,8 @@ function CheckoutContent() {
     };
   }, []);
 
-  useEffect(() => {
-    // sellerIdのみの場合は自動でorderIdを取得
-    if (!orderId && sellerId) {
-      fetch(`/api/price/latest?s=${sellerId}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.orderId) {
-            window.location.href = `/checkout?s=${sellerId}&order=${data.orderId}`;
-          }
-        })
-        .catch(err => {
-          console.warn('[FleaPay] 自動orderId取得に失敗:', err);
-        });
-    }
-  }, [orderId, sellerId]);
+  // 注: 旧 /api/price/latest による sellerId-only QR の自動 orderId 解決は廃止。
+  // 現状は QR に order パラメータが含まれている前提。order なしで来た場合は空状態画面を表示する。
 
   useEffect(() => {
     if (!orderId && !sellerId) {
@@ -66,17 +53,12 @@ function CheckoutContent() {
 
     async function fetchLatest() {
       try {
-        let url: string | undefined;
-        if (orderId) {
-          url = `/api/seller/order-detail?s=${sellerId}&orderId=${encodeURIComponent(orderId)}`;
-        } else if (sellerId) {
-          url = `/api/price/latest?s=${encodeURIComponent(sellerId)}`;
-        }
-
-        if (!url) {
+        // orderId がない場合は何もせず空状態画面を表示（旧 /api/price/latest フォールバックは廃止）
+        if (!orderId) {
           setLoading(false);
           return;
         }
+        const url = `/api/seller/order-detail?s=${sellerId}&orderId=${encodeURIComponent(orderId)}`;
 
         const res = await fetch(url);
         if (!res.ok) {
