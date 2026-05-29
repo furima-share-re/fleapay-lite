@@ -210,7 +210,7 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
     ja: {
       welcome: 'いらっしゃいませ!',
       enjoy: 'フリマとお祭りをお楽しみください 🎆',
-      pay: '{amount} を支払う',
+      pay: 'タップして {amount} を支払う',
       fetching: '処理中...',
       errorCheckout: '決済処理でエラーが発生しました。もう一度お試しください。',
       errorRateLimit: 'アクセスが集中しています。少し待ってから再度お試しください。',
@@ -240,12 +240,12 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
       securityExplain3: 'カード番号はFleaPayに保存されません',
       securityLearnMore: 'もっと詳しく見る →',
       refreshHint: '出店者さんの準備を待っています…',
-      stripeRedirect: 'このあと、安全な Stripe の決済画面に移動します。次の画面でカード番号 → 有効期限 → 名義(ローマ字)を入力して《支払う》を押してください。'
+      stripeRedirect: '次の画面でカード情報を入力します。'
     },
     en: {
       welcome: 'Welcome!',
       enjoy: 'Enjoy the flea market & festival 🎆',
-      pay: 'Pay {amount}',
+      pay: 'Tap to pay {amount}',
       fetching: 'Processing...',
       errorCheckout: 'Payment processing error occurred. Please try again.',
       errorRateLimit: 'Too many requests. Please wait a moment and try again.',
@@ -275,12 +275,12 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
       securityExplain3: 'Card numbers not saved by FleaPay',
       securityLearnMore: 'Learn More →',
       refreshHint: 'Waiting for seller preparation…',
-      stripeRedirect: "You will be redirected to Stripe's secure payment page next. On the next Stripe page, enter your card number → expiry date → name, then press Pay."
+      stripeRedirect: 'Card details on the next page.'
     },
     zh: {
       welcome: '欢迎光临!',
       enjoy: '祝您在集市和祭典玩得开心 🎆',
-      pay: '支付 {amount}',
+      pay: '点击支付 {amount}',
       fetching: '处理中...',
       errorCheckout: '支付处理出错。请再试一次。',
       errorRateLimit: '访问过于频繁。请稍候再试。',
@@ -310,7 +310,7 @@ export default function CheckoutClient({ initialData, orderId, sellerId }: Check
       securityExplain3: 'FleaPay不保存卡号',
       securityLearnMore: '了解更多 →',
       refreshHint: '正在等待摊主准备…',
-      stripeRedirect: '接下来会跳转到 Stripe 安全支付页面。在 Stripe 页面输入 卡号 → 有效期 → 姓名(拼音),然后点击【支付】。'
+      stripeRedirect: '下一页输入卡片信息。'
     }
   };
 
