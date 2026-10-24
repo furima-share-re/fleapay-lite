@@ -53,13 +53,15 @@ export default function CancelPage() {
 
   const t = dict[lang];
 
+  // html/head は root layout が持つので、title と lang はここで反映する
+  useEffect(() => {
+    document.title = 'Fleapay｜決済が完了していません';
+    document.documentElement.lang = lang;
+  }, [lang]);
+
   return (
-    <html lang={lang}>
-      <head>
-        <meta charSet="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Fleapay｜決済が完了していません</title>
-        {/* Fonts are loaded in root layout.tsx */}
+    <>
+        {/* html/head/body は root layout.tsx が持つ。ここで再度返すと再描画時に removeChild で落ちる */}
         <style dangerouslySetInnerHTML={{ __html: `
           :root{
             --night1:#0f2740;
@@ -205,8 +207,6 @@ export default function CancelPage() {
             border-color:#3b3a30;
           }
         ` }} />
-      </head>
-      <body>
         <div className="card-wrap">
           <article className="card">
             <h1>{t.title}</h1>
@@ -280,8 +280,7 @@ export default function CancelPage() {
             中文
           </button>
         </div>
-      </body>
-    </html>
+    </>
   );
 }
 
