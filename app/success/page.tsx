@@ -165,6 +165,12 @@ function SuccessContent() {
 
   const t = dict[lang];
 
+  // html/head は root layout が持つので、title と lang はここで反映する
+  useEffect(() => {
+    document.title = 'Fleapay｜決済完了';
+    document.documentElement.lang = lang;
+  }, [lang]);
+
   // 決済状態に基づいて表示内容を決定
   // 注意: useEffectでisPaid=falseの場合は/cancelにリダイレクトするため、
   // paymentDataが存在する場合は通常isPaid=trueのはずだが、念のためチェック
@@ -191,12 +197,8 @@ function SuccessContent() {
     : t.noticeError;
 
   return (
-    <html lang={lang}>
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Fleapay｜決済完了</title>
-        {/* Fonts are loaded in root layout.tsx */}
+    <>
+        {/* html/head/body は root layout.tsx が持つ。ここで再度返すと再描画時に removeChild で落ちる */}
         <style dangerouslySetInnerHTML={{ __html: `
           :root{
             --night1:#0f2740;
@@ -372,8 +374,6 @@ function SuccessContent() {
             border-color:#205a3e;
           }
         ` }} />
-      </head>
-      <body>
         <div className="card-wrap">
           <article className="card">
             {loading ? (
@@ -461,8 +461,7 @@ function SuccessContent() {
             中文
           </button>
         </div>
-      </body>
-    </html>
+    </>
   );
 }
 
