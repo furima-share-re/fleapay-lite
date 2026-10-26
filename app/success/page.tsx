@@ -16,6 +16,22 @@ interface PaymentData {
   isPaid: boolean;
   webhookReceived: boolean;
   paidAt: string | null;
+  orderNo?: number | null;
+  checkedAt?: string;
+}
+
+// 店員の照合用: 日本時間の HH:MM:SS
+function formatClock(d: Date | string | null | undefined): string {
+  if (!d) return '-';
+  const date = typeof d === 'string' ? new Date(d) : d;
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleTimeString('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 }
 
 function SuccessContent() {
@@ -25,6 +41,14 @@ function SuccessContent() {
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<'ja' | 'en' | 'zh'>('ja');
+  // 現在時刻（毎秒更新）。古い画面・スクリーンショットと見分けるため
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     // 初期言語設定
@@ -414,8 +438,22 @@ function SuccessContent() {
                     {paymentData.amount ? formatJPY(paymentData.amount) : '-'}
                   </span>
                 </div>
+                {paymentData.orderNo != null && (
+                  <div className="payment-info-row">
+                    <span className="payment-info-label">注文番号</span>
+                    <span className="payment-info-value">#{paymentData.orderNo}</span>
+                  </div>
+                )}
+                <div className="payment-info-row">
+                  <span className="payment-info-label">確認時刻</span>
+                  <span className="payment-info-value">{formatClock(paymentData.checkedAt)}</span>
+                </div>
+                <div className="payment-info-row">
+                  <span className="payment-info-label">現在時刻</span>
+                  <span className="payment-info-value">{formatClock(now)}</span>
+                </div>
                 <p className="payment-info-hint">
-                  店員さんへ：この画面で「決済ステータス：完了」「お支払い金額：{paymentData.amount ? formatJPY(paymentData.amount) : '-'}」と表示されていれば、決済は完了しています。
+                  店員さんへ：「決済ステータス：完了」「お支払い金額：{paymentData.amount ? formatJPY(paymentData.amount) : '-'}」のほかに、①注文番号がご自身のレジの注文と同じ ②現在時刻の秒が動いている ③確認時刻がついさっき、の3点を確認してください。スクリーンショットや古い画面では、②③が合いません。
                 </p>
               </div>
                 ) : (
