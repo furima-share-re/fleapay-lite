@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
     const result = await prisma.$queryRaw`
       SELECT
         o.id            AS order_id,
+        o.order_no,
         o.seller_id,
         o.amount,
         o.status       AS order_status,
@@ -286,6 +287,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       orderId: row.order_id,
+      // 店員の照合用（成功画面に表示）。order_no は INT なので number で返る
+      orderNo: row.order_no === null || row.order_no === undefined ? null : Number(row.order_no),
       sellerId: row.seller_id,
       amount: row.amount,
       currency: row.currency || 'jpy',
@@ -293,7 +296,9 @@ export async function GET(request: NextRequest) {
       paymentStatus: row.payment_status || null,
       isPaid,
       webhookReceived,
-      paidAt: row.paid_at
+      paidAt: row.paid_at,
+      // サーバーの確認時刻（端末の時計に依存しない）
+      checkedAt: new Date().toISOString()
     });
   } catch (e) {
     console.error('/api/checkout/result error', e);

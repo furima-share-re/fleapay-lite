@@ -548,9 +548,13 @@ export async function createCheckoutSessionForOrder(
         destination: stripeAccountId, // Stripe Connect接続アカウント必須
       },
       statement_descriptor_suffix: statementDescriptorSuffix, // 明細名最適化
+      // Stripe ダッシュボードの決済一覧「説明」列に出る（現場で注文番号から照合するため）。
+      // 客の領収書にも出るので出店者IDなどは入れない
+      description: `Order #${order.orderNo}`,
       metadata: {
         sellerId: order.sellerId,
         orderId: order.id,
+        orderNo: String(order.orderNo), // 現場の照合用（UUID は現場で探せない）
         planType, // プラン情報をメタデータに保存
         feeRate: feeRate.toString(), // 手数料率をメタデータに保存
       },
@@ -559,6 +563,7 @@ export async function createCheckoutSessionForOrder(
     metadata: {
       sellerId: order.sellerId,
       orderId: order.id,
+      orderNo: String(order.orderNo),
       planType,
       ...(orderAmountHash ? { orderAmountHash } : {}),
     },
@@ -568,8 +573,8 @@ export async function createCheckoutSessionForOrder(
   // Stripe API呼び出し時にidempotencyKeyを指定
   const session = await stripe.checkout.sessions.create(sessionParams, {
     // Stripe APIレベルでの重複防止。sessionParams を変えたら v を上げる
-    // （同じキーを別パラメータで再利用すると Stripe が 400 を返すため。v2: wechat_pay 追加）
-    idempotencyKey: `checkout_session_v2_${order.id}`,
+    // （同じキーを別パラメータで再利用すると Stripe が 400 を返すため。v2: wechat_pay 追加、v3: 注文番号の metadata/description 追加）
+    idempotencyKey: `checkout_session_v3_${order.id}`,
   });
   lap('stripe.checkout.sessions.create');
 
